@@ -1,0 +1,7 @@
+backend/serviceAccountKey.json
+backend/venv/
+backend/__pycache__/
+frontend/node_modules/
+frontend/.env
+frontend/dist/
+.claude/
