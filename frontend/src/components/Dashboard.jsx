@@ -4,53 +4,57 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase.js";
 import {
   AttendanceIcon,
-  TimetableIcon,
-  ExaminationIcon,
   RouteIcon,
   EmployeesIcon,
-  FeeIcon,
-  AdmissionIcon,
-  UploadIcon,
   StudentIcon,
   TransportIcon,
+  AdmissionIcon,
+  FeeIcon,
+  ExaminationIcon,
   VisitorIcon,
-  GatePassIcon,
 } from "./icons.jsx";
 
 const QUICK_ACTION_GROUPS = [
   {
-    title: "Academic",
+    title: "Student",
     color: "#2563eb",
     items: [
-      { to: "/upload/students", label: "Add Student", icon: StudentIcon },
-      { to: "/timetable/build", label: "Build Timetable", icon: TimetableIcon },
-      { to: "/exams/marks-entry", label: "Marks Entry", icon: ExaminationIcon },
+      { to: "/students", label: "Add Student", icon: StudentIcon },
+      { to: "/admissions", label: "Admissions", icon: AdmissionIcon },
+      { to: "/attendance", label: "Student Attendance", icon: AttendanceIcon },
     ],
   },
   {
-    title: "Fee",
-    color: "#16a34a",
-    items: [
-      { to: "/upload/feePayments", label: "Fee Payment", icon: FeeIcon },
-      { to: "/upload/feeStructure", label: "Fee Structure", icon: FeeIcon },
-    ],
-  },
-  {
-    title: "HR & Front Desk",
+    title: "Employees",
     color: "#db2777",
     items: [
-      { to: "/employees/attendance", label: "Staff Attendance", icon: AttendanceIcon },
-      { to: "/upload/admissions", label: "New Admission", icon: AdmissionIcon },
-      { to: "/upload/visitors", label: "Visitor Log", icon: VisitorIcon },
-      { to: "/upload/enquiries", label: "Enquiries", icon: AdmissionIcon },
-      { to: "/upload/gatePasses", label: "Gate Pass", icon: GatePassIcon },
+      { to: "/employees", label: "Employee Portal", icon: EmployeesIcon },
+      { to: "/attendance?tab=staff", label: "Staff Attendance", icon: AttendanceIcon },
+    ],
+  },
+  {
+    title: "Fee & Examination",
+    color: "#059669",
+    items: [
+      { to: "/fee", label: "Fee", icon: FeeIcon },
+      { to: "/examination", label: "Examination", icon: ExaminationIcon },
+    ],
+  },
+  {
+    title: "Front Desk",
+    color: "#7c3aed",
+    items: [
+      { to: "/front-desk", label: "Front Desk", icon: VisitorIcon },
     ],
   },
   {
     title: "Transport",
     color: "#ea580c",
     items: [
-      { to: "/add-route", label: "Add Route", icon: RouteIcon },
+      { to: "/schools", label: "Schools", icon: RouteIcon },
+      { to: "/drivers", label: "Drivers", icon: EmployeesIcon },
+      { to: "/buses", label: "Buses", icon: TransportIcon },
+      { to: "/add-route", label: "Add / Upload Routes", icon: RouteIcon },
       { to: "/transport", label: "Transport Map", icon: TransportIcon },
     ],
   },
@@ -94,7 +98,6 @@ export default function Dashboard() {
   const schoolCount = useCount("schools");
   const studentCount = useCount("students");
   const employeeCount = useCount("employees");
-  const pendingAdmissions = useCount("admissions", (a) => a.status !== "Admitted");
 
   return (
     <div className="dashboard-page">
@@ -107,7 +110,6 @@ export default function Dashboard() {
         <StatCard label="Schools" value={schoolCount} icon={RouteIcon} />
         <StatCard label="Students" value={studentCount} icon={StudentIcon} />
         <StatCard label="Employees" value={employeeCount} icon={EmployeesIcon} />
-        <StatCard label="Pending Admissions" value={pendingAdmissions} icon={AdmissionIcon} />
       </div>
 
       {QUICK_ACTION_GROUPS.map((group) => (
@@ -125,11 +127,6 @@ export default function Dashboard() {
           </div>
         </div>
       ))}
-
-      <Link to="/upload" className="dashboard-all-data-link">
-        <UploadIcon />
-        Browse all data in Upload Data →
-      </Link>
     </div>
   );
 }

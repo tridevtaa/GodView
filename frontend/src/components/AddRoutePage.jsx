@@ -24,9 +24,16 @@ import {
   TILE_ATTRIBUTION,
 } from "../utils/mapConfig.js";
 import { LANDMARKS } from "../utils/landmarks.js";
+import { Link } from "react-router-dom";
+import Tabs from "./Tabs.jsx";
+import { ExcelPanel } from "./entityApi.jsx";
 
-const BACKEND_URL =
-  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+
+const ADD_ROUTE_TABS = [
+  { key: "pins", label: "Pin Drop" },
+  { key: "bulk", label: "Bulk Upload" },
+];
 
 // Fix default Leaflet marker icons (Vite bundling quirk) - safe to repeat.
 delete L.Icon.Default.prototype._getIconUrl;
@@ -73,6 +80,7 @@ export default function AddRoutePage() {
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(null);
   const [routedPath, setRoutedPath] = useState([]); // [[lat,lng], ...]
+  const [tab, setTab] = useState("pins");
 
   useEffect(() => {
     async function load() {
@@ -85,7 +93,7 @@ export default function AddRoutePage() {
         setBuses(busSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (e) {
         setLoadError(
-          "Could not load schools/buses. Upload them first, and check Firestore rules."
+          "Could not load schools/buses. Upload them first, and check Firestore rules.",
         );
       }
     }
@@ -94,7 +102,7 @@ export default function AddRoutePage() {
 
   const selectedSchool = useMemo(
     () => schools.find((s) => s.id === schoolId) || null,
-    [schools, schoolId]
+    [schools, schoolId],
   );
 
   // Build the route preview one-way: school -> stops in order, following
@@ -137,7 +145,7 @@ export default function AddRoutePage() {
 
   function updateStop(idx, field, value) {
     setStops((prev) =>
-      prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s))
+      prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
     );
   }
 
@@ -202,166 +210,202 @@ export default function AddRoutePage() {
 
   return (
     <div className="add-route-page">
-      <h1>Add Route (drop pins)</h1>
+      <h1>Add Route</h1>
       <p>
-        Pick a school and bus, then click the map to drop stops in order —
-        no need to type latitude/longitude by hand. Fine-tune each stop's
-        name and student count below.
+        Drop pins on the map for a single route, or bulk-upload many routes at
+        once from an Excel file (one row per stop). Needs schools and buses to
+        already exist —{" "}
+        <Link to="/schools" className="directory-footer-link">
+          manage schools
+        </Link>{" "}
+        ·{" "}
+        <Link to="/buses" className="directory-footer-link">
+          manage buses
+        </Link>
+        .
       </p>
 
-      {loadError && <p className="status-err">{loadError}</p>}
+      <Tabs tabs={ADD_ROUTE_TABS} active={tab} onChange={setTab} />
 
-      <div className="route-form-row">
-        <label>
-          Route ID
-          <input
-            value={routeId}
-            onChange={(e) => setRouteId(e.target.value)}
-            placeholder="e.g. RT003"
-          />
-        </label>
-        <label>
-          School
-          <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
-            <option value="">Select school</option>
-            {schools.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.id})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Bus
-          <select value={busId} onChange={(e) => setBusId(e.target.value)}>
-            <option value="">Select bus</option>
-            {buses.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.busNumber} ({b.id})
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      {tab === "bulk" ? (
+        <ExcelPanel
+          endpoint="/upload/routes"
+          templateHint="Columns: route_id, school_id, bus_id, stop_order, stop_name, lat, lng, students_count — one row per stop; rows sharing the same route_id + school_id are grouped into one route."
+          templateFile="routes_template.xlsx"
+        />
+      ) : (
+        <>
+          {loadError && <p className="status-err">{loadError}</p>}
 
-      <div className="add-route-map-wrap">
-        <MapContainer
-          center={mapCenter}
-          zoom={selectedSchool ? 13 : DEFAULT_ZOOM}
-          minZoom={MIN_ZOOM}
-          maxZoom={MAX_ZOOM}
-          maxBounds={HARYANA_BOUNDS}
-          maxBoundsViscosity={1.0}
-          className="leaflet-container add-route-map"
-        >
-          <TileLayer
-            attribution={TILE_ATTRIBUTION}
-            url={TILE_URL}
-            maxZoom={MAX_ZOOM}
-          />
-          {selectedSchool && <FlyTo center={mapCenter} zoom={13} />}
-          <ClickCapture onClick={addStop} />
-
-          {LANDMARKS.map((lm) => (
-            <CircleMarker
-              key={lm.id}
-              center={[lm.lat, lm.lng]}
-              radius={5}
-              pathOptions={{
-                color: lm.type === "university" ? "#7c3aed" : "#0f766e",
-                fillColor: lm.type === "university" ? "#7c3aed" : "#0f766e",
-                fillOpacity: 0.9,
-                weight: 2,
-              }}
-            >
-              <Tooltip permanent direction="top" offset={[0, -6]} className="landmark-label">
-                {lm.name}
-              </Tooltip>
-            </CircleMarker>
-          ))}
-
-          {selectedSchool && (
-            <Marker position={mapCenter} icon={schoolIcon}>
-              <Popup>{selectedSchool.name}</Popup>
-            </Marker>
-          )}
-
-          {stops.map((s, i) => (
-            <Marker key={i} position={[s.lat, s.lng]}>
-              <Popup>
-                Stop {i + 1}: {s.name}
-              </Popup>
-            </Marker>
-          ))}
-
-          {routedPath.length > 1 && (
-            <Polyline
-              positions={routedPath}
-              pathOptions={{ color: "#1d3fae", weight: 4 }}
-            />
-          )}
-        </MapContainer>
-      </div>
-
-      <div className="stop-list">
-        {stops.length === 0 && (
-          <p className="hint">Click the map above to drop your first stop.</p>
-        )}
-        {stops.map((s, i) => (
-          <div key={i} className="stop-row">
-            <span className="stop-index">{i + 1}</span>
-            <input
-              value={s.name}
-              onChange={(e) => updateStop(i, "name", e.target.value)}
-              placeholder="Stop name"
-            />
-            <input
-              type="number"
-              min="0"
-              value={s.students_count}
-              onChange={(e) =>
-                updateStop(i, "students_count", e.target.value)
-              }
-              placeholder="Students"
-            />
-            <button
-              type="button"
-              onClick={() => moveStop(i, -1)}
-              disabled={i === 0}
-              title="Move up"
-            >
-              ↑
-            </button>
-            <button
-              type="button"
-              onClick={() => moveStop(i, 1)}
-              disabled={i === stops.length - 1}
-              title="Move down"
-            >
-              ↓
-            </button>
-            <button type="button" onClick={() => removeStop(i)} title="Remove">
-              ✕
-            </button>
+          <div className="route-form-row">
+            <label>
+              Route ID
+              <input
+                value={routeId}
+                onChange={(e) => setRouteId(e.target.value)}
+                placeholder="e.g. RT003"
+              />
+            </label>
+            <label>
+              School
+              <select
+                value={schoolId}
+                onChange={(e) => setSchoolId(e.target.value)}
+              >
+                <option value="">Select school</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.id})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Bus
+              <select value={busId} onChange={(e) => setBusId(e.target.value)}>
+                <option value="">Select bus</option>
+                {buses.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.busNumber} ({b.id})
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
-        ))}
-      </div>
 
-      <button onClick={handleSubmit} disabled={!canSubmit}>
-        {busy ? "Saving..." : "Save Route"}
-      </button>
+          <div className="add-route-map-wrap">
+            <MapContainer
+              center={mapCenter}
+              zoom={selectedSchool ? 13 : DEFAULT_ZOOM}
+              minZoom={MIN_ZOOM}
+              maxZoom={MAX_ZOOM}
+              maxBounds={HARYANA_BOUNDS}
+              maxBoundsViscosity={1.0}
+              className="leaflet-container add-route-map"
+            >
+              <TileLayer
+                attribution={TILE_ATTRIBUTION}
+                url={TILE_URL}
+                maxZoom={MAX_ZOOM}
+              />
+              {selectedSchool && <FlyTo center={mapCenter} zoom={13} />}
+              <ClickCapture onClick={addStop} />
 
-      {status && (
-        <div className={status.type === "success" ? "status-ok" : "status-err"}>
-          <p>{status.message}</p>
-          {status.details && (
-            <ul>
-              {status.details.map((d, i) => (
-                <li key={i}>{d}</li>
+              {LANDMARKS.map((lm) => (
+                <CircleMarker
+                  key={lm.id}
+                  center={[lm.lat, lm.lng]}
+                  radius={5}
+                  pathOptions={{
+                    color: lm.type === "university" ? "#7c3aed" : "#0f766e",
+                    fillColor: lm.type === "university" ? "#7c3aed" : "#0f766e",
+                    fillOpacity: 0.9,
+                    weight: 2,
+                  }}
+                >
+                  <Tooltip
+                    permanent
+                    direction="top"
+                    offset={[0, -6]}
+                    className="landmark-label"
+                  >
+                    {lm.name}
+                  </Tooltip>
+                </CircleMarker>
               ))}
-            </ul>
+
+              {selectedSchool && (
+                <Marker position={mapCenter} icon={schoolIcon}>
+                  <Popup>{selectedSchool.name}</Popup>
+                </Marker>
+              )}
+
+              {stops.map((s, i) => (
+                <Marker key={i} position={[s.lat, s.lng]}>
+                  <Popup>
+                    Stop {i + 1}: {s.name}
+                  </Popup>
+                </Marker>
+              ))}
+
+              {routedPath.length > 1 && (
+                <Polyline
+                  positions={routedPath}
+                  pathOptions={{ color: "#1d3fae", weight: 4 }}
+                />
+              )}
+            </MapContainer>
+          </div>
+
+          <div className="stop-list">
+            {stops.length === 0 && (
+              <p className="hint">
+                Click the map above to drop your first stop.
+              </p>
+            )}
+            {stops.map((s, i) => (
+              <div key={i} className="stop-row">
+                <span className="stop-index">{i + 1}</span>
+                <input
+                  value={s.name}
+                  onChange={(e) => updateStop(i, "name", e.target.value)}
+                  placeholder="Stop name"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={s.students_count}
+                  onChange={(e) =>
+                    updateStop(i, "students_count", e.target.value)
+                  }
+                  placeholder="Students"
+                />
+                <button
+                  type="button"
+                  onClick={() => moveStop(i, -1)}
+                  disabled={i === 0}
+                  title="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveStop(i, 1)}
+                  disabled={i === stops.length - 1}
+                  title="Move down"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeStop(i)}
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={handleSubmit} disabled={!canSubmit}>
+            {busy ? "Saving..." : "Save Route"}
+          </button>
+
+          {status && (
+            <div
+              className={status.type === "success" ? "status-ok" : "status-err"}
+            >
+              <p>{status.message}</p>
+              {status.details && (
+                <ul>
+                  {status.details.map((d, i) => (
+                    <li key={i}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

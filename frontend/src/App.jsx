@@ -3,42 +3,46 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Sidebar from "./components/Sidebar.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import MapView from "./components/MapView.jsx";
-import UploadPage from "./components/UploadPage.jsx";
+import StudentsPage from "./components/StudentsPage.jsx";
+import EmployeesPage from "./components/EmployeesPage.jsx";
+import SchoolsPage from "./components/SchoolsPage.jsx";
+import DriversPage from "./components/DriversPage.jsx";
+import BusesPage from "./components/BusesPage.jsx";
 import AddRoutePage from "./components/AddRoutePage.jsx";
+import AdmissionsPage from "./components/AdmissionsPage.jsx";
+import FeePage from "./components/FeePage.jsx";
 import AttendancePage from "./components/AttendancePage.jsx";
-import TimetablePage from "./components/TimetablePage.jsx";
-import MarksEntryPage from "./components/MarksEntryPage.jsx";
-import EmployeeAttendancePage from "./components/EmployeeAttendancePage.jsx";
+import ExaminationPage from "./components/ExaminationPage.jsx";
+import FrontDeskPage from "./components/FrontDeskPage.jsx";
 
 export default function App() {
   return (
     <BrowserRouter>
       <div className="app-shell">
-        <Sidebar />
-        <div className="app-main">
-          <header className="topbar">
-            <Link to="/" className="brand">
-              <img src="/logo.png" alt="GodView logo" className="brand-logo" />
-              <span>
-                GodView
-                <small>Fleet Intelligence</small>
-              </span>
-            </Link>
-          </header>
+        <header className="topbar">
+          <Link to="/" className="brand">
+            <img src="/logo.png" alt="GodView logo" className="brand-logo" />
+            <span>GodView</span>
+          </Link>
+          <Sidebar />
+        </header>
 
-          <div className="app-content">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/transport" element={<MapView />} />
-              <Route path="/add-route" element={<AddRoutePage />} />
-              <Route path="/attendance/mark" element={<AttendancePage />} />
-              <Route path="/timetable/build" element={<TimetablePage />} />
-              <Route path="/exams/marks-entry" element={<MarksEntryPage />} />
-              <Route path="/employees/attendance" element={<EmployeeAttendancePage />} />
-              <Route path="/upload" element={<UploadPage />} />
-              <Route path="/upload/:tab" element={<UploadPage />} />
-            </Routes>
-          </div>
+        <div className="app-content">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/students" element={<StudentsPage />} />
+            <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/schools" element={<SchoolsPage />} />
+            <Route path="/drivers" element={<DriversPage />} />
+            <Route path="/buses" element={<BusesPage />} />
+            <Route path="/transport" element={<MapView />} />
+            <Route path="/add-route" element={<AddRoutePage />} />
+            <Route path="/admissions" element={<AdmissionsPage />} />
+            <Route path="/fee" element={<FeePage />} />
+            <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/examination" element={<ExaminationPage />} />
+            <Route path="/front-desk" element={<FrontDeskPage />} />
+          </Routes>
         </div>
       </div>
     </BrowserRouter>
