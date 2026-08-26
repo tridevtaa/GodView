@@ -1,4 +1,4 @@
-# GodView — School Bus Mapping MVP
+# GodView — School Management System
 
 A single map page: your school is pinned. Click it, and every bus route for
 that school appears — stops, and how many students board at each stop. A
