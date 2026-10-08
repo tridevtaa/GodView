@@ -19,7 +19,7 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [grade, setGrade] = useState("");
-  const { people, loading, source, add } = usePeople(mode);
+  const { people, loading, source, add, patch } = usePeople(mode);
 
   const grades = useMemo(() => (mode === "students" ? gradeOptions(people) : []), [people, mode]);
   const inGrade = useMemo(
@@ -88,6 +88,8 @@ export default function App() {
           person={visible[openIndex]}
           mode={mode}
           index={openIndex}
+          canEdit={source === "firestore"}
+          onUpdate={patch}
           onClose={closeProfile}
         />
       )}

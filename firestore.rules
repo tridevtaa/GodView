@@ -29,5 +29,14 @@ service cloud.firestore {
     match /employees/{id} {
       allow read, write: if isStaff();
     }
+
+    // Profile photos as JPEG data URLs, id "{students|employees}-{personId}".
+    match /photos/{id} {
+      allow read, delete: if isStaff();
+      allow create, update: if isStaff()
+        && request.resource.data.data is string
+        && request.resource.data.data.matches('^data:image/jpeg;base64,.*')
+        && request.resource.data.data.size() < 400000;
+    }
   }
 }
