@@ -4,12 +4,13 @@ import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import FeeSummary from "./components/FeeSummary.jsx";
+import ImportModal from "./components/ImportModal.jsx";
 import { gradeOptions } from "./components/GradeFilter.jsx";
 import { gradeLabel } from "./components/PersonCard.jsx";
 import { usePeople } from "./data/usePeople.js";
 
 const SEARCH_KEYS = {
-  students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone"],
+  students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
   employees: ["name", "designation", "department", "employee_no"],
 };
 
@@ -19,12 +20,15 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [grade, setGrade] = useState("");
-  const { people, loading, source, add, patch } = usePeople(mode);
+  const [importing, setImporting] = useState(false);
+  const { people, loading, source, add, patch, reload } = usePeople(mode);
 
-  const grades = useMemo(() => (mode === "students" ? gradeOptions(people) : []), [people, mode]);
+  // Students who left stay in Firestore (history) but aren't shown.
+  const current = useMemo(() => people.filter((p) => p.status !== "left"), [people]);
+  const grades = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
   const inGrade = useMemo(
-    () => (mode === "students" && grade ? people.filter((p) => p.class === grade) : people),
-    [people, mode, grade]
+    () => (mode === "students" && grade ? current.filter((p) => p.class === grade) : current),
+    [current, mode, grade]
   );
 
   const visible = useMemo(() => {
@@ -55,6 +59,7 @@ export default function App() {
         grade={grade}
         onGrade={setGrade}
         onAdd={() => setAdding(true)}
+        onImport={mode === "students" && source !== "error" ? () => setImporting(true) : null}
         onSwitch={switchMode}
       />
 
@@ -91,6 +96,13 @@ export default function App() {
           canEdit={source === "firestore"}
           onUpdate={patch}
           onClose={closeProfile}
+        />
+      )}
+      {importing && (
+        <ImportModal
+          students={source === "firestore" ? people : []}
+          onClose={() => setImporting(false)}
+          onDone={reload}
         />
       )}
       {adding && <AddModal mode={mode} onClose={() => setAdding(false)} onSave={add} />}

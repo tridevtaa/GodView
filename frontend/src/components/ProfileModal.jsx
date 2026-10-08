@@ -2,17 +2,43 @@ import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
 import { Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
 
+const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
+
+// Shows only the last 4 digits until staff choose to reveal the number.
+function Masked({ value }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span className="masked">
+      {shown ? value : `•••• •••• ${value.slice(-4)}`}
+      <button type="button" className="masked-toggle" onClick={() => setShown((s) => !s)}>
+        {shown ? "Hide" : "Show"}
+      </button>
+    </span>
+  );
+}
+
 const DETAILS = {
   students: [
     ["Admission no.", (p) => p.admission_no],
     ["Grade", (p) => [gradeLabel(p.class), p.stream, p.section].filter(Boolean).join(" – ")],
+    ["Status", (p) => (p.status === "inactive" ? "Inactive" : p.status === "left" ? `Left (${p.left_as_of})` : "")],
+    ["Remarks", (p) => p.remarks],
     ["Father", (p) => p.parent_name && `${relation(p.gender)} ${p.parent_name}`],
     ["Mother", (p) => p.mother_name],
-    ["Parent phone", (p) => p.parent_phone && <a href={`tel:${p.parent_phone}`}>{p.parent_phone}</a>],
+    ["Parent phone", (p) => phone(p.parent_phone)],
+    ["Father phone", (p) => p.father_phone !== p.parent_phone && phone(p.father_phone)],
+    ["Mother phone", (p) => p.mother_phone !== p.parent_phone && phone(p.mother_phone)],
+    ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
+    ["Address", (p) => [p.address, p.city, p.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ")],
     ["Roll no.", (p) => p.roll_no],
     ["Date of birth", (p) => p.dob],
     ["Category", (p) => p.category],
     ["Session", (p) => p.session],
+    ["Admission date", (p) => p.admission_date],
+    ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
+    ["Religion", (p) => p.religion],
+    ["SRN", (p) => p.srn],
+    ["Aadhaar", (p) => p.aadhaar && <Masked value={p.aadhaar} />],
     ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
     ["School", (p) => p.school_id],
   ],

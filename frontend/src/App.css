@@ -763,3 +763,75 @@ button {
   color: var(--fee-overdue);
   font-size: 12px;
 }
+
+/* ---------- Inactive students ---------- */
+
+.card.inactive .card-photo {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.card-status {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e4e4e4;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.masked {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.masked-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--tag);
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+/* ---------- Import ---------- */
+
+.import-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.import-file {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.import-file input {
+  font-size: 13px;
+}
+
+.import-file span {
+  display: none;
+}
+
+.import-options {
+  margin-bottom: 12px;
+}
+
+.import-summary {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.import-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+}
