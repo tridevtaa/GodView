@@ -8,3 +8,6 @@ frontend/dist/
 
 # Real student data, kept out of git
 frontend/src/data/*.local.json
+
+# Wrangler local state
+frontend/.wrangler/
