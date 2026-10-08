@@ -118,7 +118,7 @@ button {
   text-decoration: underline;
 }
 
-.profile {
+.account-btn {
   display: grid;
   place-items: center;
   border: none;
@@ -371,10 +371,16 @@ button {
   max-width: 520px;
 }
 
-.profile-close {
+.profile-tools {
   position: absolute;
   top: 12px;
   right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-close {
   border: none;
   background: none;
   font-size: 28px;
@@ -834,4 +840,60 @@ button {
   align-items: flex-start;
   gap: 8px;
   font-size: 14px;
+}
+
+/* ---------- Profile edit ---------- */
+
+.profile-edit-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.profile-edit-btn svg {
+  fill: currentColor;
+}
+
+.profile-edit-btn:hover {
+  border-color: var(--accent);
+}
+
+.profile .profile-head h2 {
+  padding-right: 96px;
+}
+
+.profile-edit fieldset {
+  margin: 0 0 18px;
+  padding: 0;
+  border: none;
+}
+
+.profile-edit legend {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.edit-note {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.edit-actions {
+  position: sticky;
+  bottom: -28px;
+  margin: 0 -28px -28px;
+  padding: 14px 28px;
+  background: var(--surface);
+  border-top: 1px solid var(--bg);
 }
