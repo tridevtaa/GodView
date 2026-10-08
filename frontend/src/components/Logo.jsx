@@ -10,11 +10,14 @@ export function LogoMark({ size = 28 }) {
   );
 }
 
+// "Godview × Mav.school" co-brand lockup for the header.
 export default function Logo() {
   return (
-    <a className="logo" href="/" aria-label="Godview home">
-      <LogoMark />
-      <span>Godview</span>
+    <a className="logo" href="/" aria-label="Godview for Mav.school — home">
+      <LogoMark size={26} />
+      <span className="logo-word">Godview</span>
+      <span className="logo-x" aria-hidden="true">×</span>
+      <img className="logo-partner" src="/mav-school.svg" alt="Mav.school" width="128" height="16" />
     </a>
   );
 }
