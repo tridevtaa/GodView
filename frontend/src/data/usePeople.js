@@ -10,6 +10,8 @@ export function usePeople(kind) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [source, setSource] = useState("firestore");
+  const [version, setVersion] = useState(0);
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,7 +34,7 @@ export function usePeople(kind) {
     return () => {
       cancelled = true;
     };
-  }, [kind]);
+  }, [kind, version]);
 
   const add = useCallback(
     async (record) => {
@@ -48,5 +50,5 @@ export function usePeople(kind) {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, ...fields } : p)));
   }, []);
 
-  return { people, loading, source, add, patch };
+  return { people, loading, source, add, patch, reload };
 }

@@ -55,7 +55,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
   const fee = person.fee_status || "unknown";
   return (
     <article
-      className="card"
+      className={`card${person.status === "inactive" ? " inactive" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={`Open profile of ${person.name}`}
@@ -75,6 +75,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
             {isStudent ? gradeLabel(person.class) : person.designation}
           </span>
         </div>
+        {person.status === "inactive" && <span className="card-status">Inactive</span>}
         <div className="card-name">{person.name}</div>
         <div className="card-row">
           <span className="card-sub">
