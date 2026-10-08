@@ -719,3 +719,47 @@ button {
 .account-menu button:hover {
   background: var(--bg);
 }
+
+/* ---------- Photo upload ---------- */
+
+.profile-photo {
+  position: relative;
+  flex: none;
+}
+
+.photo-upload {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.72);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  backdrop-filter: blur(4px);
+}
+
+.photo-upload svg {
+  fill: currentColor;
+}
+
+.photo-upload:hover {
+  background: rgba(17, 17, 17, 0.86);
+}
+
+.photo-upload:disabled {
+  opacity: 0.7;
+}
+
+.photo-error {
+  max-width: 140px;
+  margin: 6px 0 0;
+  color: var(--fee-overdue);
+  font-size: 12px;
+}

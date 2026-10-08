@@ -1,3 +1,5 @@
+import { usePhoto } from "../data/photos.js";
+
 const AVATAR_TINTS = ["#dbeafe", "#fce7f3", "#dcfce7", "#fef3c7", "#ede9fe", "#e0f2fe"];
 
 function initials(name = "") {
@@ -9,9 +11,11 @@ function initials(name = "") {
     .join("");
 }
 
-export function Photo({ person, index }) {
-  if (person.photo_url) {
-    return <img className="card-photo" src={person.photo_url} alt={person.name} loading="lazy" />;
+export function Photo({ person, kind, index }) {
+  const stored = usePhoto(kind, person);
+  const src = stored || person.photo_url;
+  if (src) {
+    return <img className="card-photo" src={src} alt={person.name} loading="lazy" />;
   }
   return (
     <div className="card-photo placeholder" style={{ background: AVATAR_TINTS[index % AVATAR_TINTS.length] }}>
@@ -63,7 +67,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
         }
       }}
     >
-      <Photo person={person} index={index} />
+      <Photo person={person} kind={mode} index={index} />
       <div className="card-body">
         <div className="card-row">
           <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>

@@ -43,5 +43,10 @@ export function usePeople(kind) {
     [kind, source]
   );
 
-  return { people, loading, source, add };
+  // Apply fields already saved elsewhere (e.g. has_photo) to the list on screen.
+  const patch = useCallback((id, fields) => {
+    setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, ...fields } : p)));
+  }, []);
+
+  return { people, loading, source, add, patch };
 }
