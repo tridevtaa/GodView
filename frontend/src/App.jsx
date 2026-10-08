@@ -3,10 +3,11 @@ import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
+import FeeSummary from "./components/FeeSummary.jsx";
 import { usePeople } from "./data/usePeople.js";
 
 const SEARCH_KEYS = {
-  students: ["name", "parent_name", "admission_no", "class"],
+  students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone"],
   employees: ["name", "designation", "department", "employee_no"],
 };
 
@@ -15,7 +16,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
-  const { people, loading, usingSample, add } = usePeople(mode);
+  const { people, loading, source, add } = usePeople(mode);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -45,9 +46,14 @@ export default function App() {
       />
 
       <main className="content">
-        {usingSample && !loading && (
-          <p className="notice">Showing sample data — add records or upload to Firestore to see real ones.</p>
+        {!loading && source !== "firestore" && (
+          <p className="notice">
+            {source === "local"
+              ? `${people.length} ${mode} from a local file — not yet saved to Firestore.`
+              : "Showing sample data — add records or upload to Firestore to see real ones."}
+          </p>
         )}
+        {!loading && mode === "students" && <FeeSummary students={people} />}
         {loading ? (
           <p className="empty">Loading…</p>
         ) : visible.length === 0 ? (

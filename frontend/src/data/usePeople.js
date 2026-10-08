@@ -3,12 +3,21 @@ import { addDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { SAMPLE } from "./sample.js";
 
-// Loads a Firestore collection ("students" | "employees"). Falls back to
-// sample data when the collection is empty or Firestore can't be reached.
+// Optional real records kept out of git (e.g. students.local.json). The glob
+// resolves to {} when no such file exists, so the build never depends on it.
+const LOCAL = Object.fromEntries(
+  Object.entries(import.meta.glob("./*.local.json", { eager: true, import: "default" })).map(
+    ([file, rows]) => [file.match(/\.\/(\w+)\.local\.json$/)[1], rows]
+  )
+);
+
+// Loads a Firestore collection ("students" | "employees"). When it is empty or
+// Firestore can't be reached, falls back to local records, then sample data.
+// `source` is "firestore" | "local" | "sample".
 export function usePeople(kind) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [usingSample, setUsingSample] = useState(false);
+  const [source, setSource] = useState("firestore");
 
   useEffect(() => {
     let cancelled = false;
@@ -18,9 +27,16 @@ export function usePeople(kind) {
       .catch(() => [])
       .then((rows) => {
         if (cancelled) return;
-        const fallback = rows.length === 0;
-        setUsingSample(fallback);
-        setPeople(fallback ? SAMPLE[kind] : rows);
+        if (rows.length > 0) {
+          setSource("firestore");
+          setPeople(rows);
+        } else if (LOCAL[kind]?.length) {
+          setSource("local");
+          setPeople(LOCAL[kind]);
+        } else {
+          setSource("sample");
+          setPeople(SAMPLE[kind]);
+        }
         setLoading(false);
       });
     return () => {
@@ -41,5 +57,5 @@ export function usePeople(kind) {
     [kind]
   );
 
-  return { people, loading, usingSample, add };
+  return { people, loading, source, add };
 }

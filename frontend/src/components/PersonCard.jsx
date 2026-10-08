@@ -20,7 +20,25 @@ export function Photo({ person, index }) {
   );
 }
 
-export const FEE_LABEL = { paid: "Fees paid", due: "Fees due", overdue: "Fees overdue" };
+export const FEE_LABEL = {
+  paid: "Fees paid",
+  due: "Fees due",
+  overdue: "Fees overdue",
+  unknown: "Fee status not recorded",
+};
+
+// "2" -> "Grade 2"; "Nursery" / "KG 1" stay as they are.
+export function gradeLabel(klass = "") {
+  return /^\d+$/.test(klass) ? `Grade ${klass}` : klass;
+}
+
+const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+export const formatINR = (n) => inr.format(n);
+
+export function feeTitle(person) {
+  const fee = person.fee_status || "unknown";
+  return person.fee_due ? `${FEE_LABEL[fee]}: ${formatINR(person.fee_due)}` : FEE_LABEL[fee];
+}
 
 export function relation(gender) {
   if (gender === "F") return "D/O";
@@ -30,7 +48,7 @@ export function relation(gender) {
 
 export default function PersonCard({ person, mode, index, onOpen }) {
   const isStudent = mode === "students";
-  const fee = person.fee_status || "paid";
+  const fee = person.fee_status || "unknown";
   return (
     <article
       className="card"
@@ -50,7 +68,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
         <div className="card-row">
           <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
           <span className="tag">
-            {isStudent ? `Grade ${person.class}` : person.designation}
+            {isStudent ? gradeLabel(person.class) : person.designation}
           </span>
         </div>
         <div className="card-name">{person.name}</div>
@@ -59,7 +77,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
             {isStudent ? `${relation(person.gender)} ${person.parent_name}` : person.department}
           </span>
           {isStudent && (
-            <span className={`fee fee-${fee}`} title={FEE_LABEL[fee]} aria-label={FEE_LABEL[fee]}>
+            <span className={`fee fee-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)}>
               ₹
             </span>
           )}

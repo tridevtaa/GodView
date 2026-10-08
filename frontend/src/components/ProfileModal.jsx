@@ -1,13 +1,18 @@
 import { useEffect } from "react";
-import { Photo, FEE_LABEL, relation } from "./PersonCard.jsx";
+import { Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
 
 const DETAILS = {
   students: [
     ["Admission no.", (p) => p.admission_no],
-    ["Grade", (p) => [p.class, p.section].filter(Boolean).join(" – ")],
-    ["Parent", (p) => p.parent_name && `${relation(p.gender)} ${p.parent_name}`],
+    ["Grade", (p) => [gradeLabel(p.class), p.stream, p.section].filter(Boolean).join(" – ")],
+    ["Father", (p) => p.parent_name && `${relation(p.gender)} ${p.parent_name}`],
+    ["Mother", (p) => p.mother_name],
     ["Parent phone", (p) => p.parent_phone && <a href={`tel:${p.parent_phone}`}>{p.parent_phone}</a>],
     ["Roll no.", (p) => p.roll_no],
+    ["Date of birth", (p) => p.dob],
+    ["Category", (p) => p.category],
+    ["Session", (p) => p.session],
+    ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
     ["School", (p) => p.school_id],
   ],
   employees: [
@@ -28,7 +33,7 @@ export default function ProfileModal({ person, mode, index, onClose }) {
   }, [onClose]);
 
   const isStudent = mode === "students";
-  const fee = person.fee_status || "paid";
+  const fee = person.fee_status || "unknown";
   const rows = DETAILS[mode]
     .map(([label, get]) => [label, get(person)])
     .filter(([, value]) => value);
@@ -49,12 +54,15 @@ export default function ProfileModal({ person, mode, index, onClose }) {
           <Photo person={person} index={index} />
           <div>
             <h2>{person.name}</h2>
-            <span className="tag">{isStudent ? `Grade ${person.class}` : person.designation}</span>
+            <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
             {isStudent && (
               <div className="profile-fee">
                 <span className={`fee fee-${fee}`} aria-hidden="true">₹</span>
-                {FEE_LABEL[fee]}
+                {feeTitle(person)}
               </div>
+            )}
+            {isStudent && person.fee_as_of && (
+              <div className="profile-fee-note">as of {person.fee_as_of}</div>
             )}
           </div>
         </div>
@@ -66,6 +74,24 @@ export default function ProfileModal({ person, mode, index, onClose }) {
             </div>
           ))}
         </dl>
+        {isStudent && person.fee_due > 0 && (
+          <div className="profile-dues">
+            <h3>Pending fees</h3>
+            {person.fee_due_months?.length > 0 && <p>For {person.fee_due_months.join(", ")}</p>}
+            <dl>
+              {Object.entries(person.fee_breakdown || {}).map(([head, amount]) => (
+                <div key={head}>
+                  <dt>{head.replace(/_/g, " ")}</dt>
+                  <dd>{formatINR(amount)}</dd>
+                </div>
+              ))}
+              <div className="profile-dues-total">
+                <dt>Total</dt>
+                <dd>{formatINR(person.fee_due)}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
       </section>
     </div>
   );
