@@ -1,6 +1,7 @@
 import Logo from "./Logo.jsx";
+import GradeFilter from "./GradeFilter.jsx";
 
-export default function TopBar({ mode, query, onQuery, onAdd, onSwitch }) {
+export default function TopBar({ mode, query, onQuery, grades, grade, onGrade, onAdd, onSwitch }) {
   const other = mode === "students" ? "Employees" : "Students";
   return (
     <header className="topbar">
@@ -12,6 +13,7 @@ export default function TopBar({ mode, query, onQuery, onAdd, onSwitch }) {
         value={query}
         onChange={(e) => onQuery(e.target.value)}
       />
+      {mode === "students" && <GradeFilter options={grades} value={grade} onChange={onGrade} />}
       <button className="btn-add" onClick={onAdd}>
         Add
       </button>

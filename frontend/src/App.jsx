@@ -4,6 +4,8 @@ import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import FeeSummary from "./components/FeeSummary.jsx";
+import { gradeOptions } from "./components/GradeFilter.jsx";
+import { gradeLabel } from "./components/PersonCard.jsx";
 import { usePeople } from "./data/usePeople.js";
 
 const SEARCH_KEYS = {
@@ -16,15 +18,22 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
+  const [grade, setGrade] = useState("");
   const { people, loading, source, add } = usePeople(mode);
+
+  const grades = useMemo(() => (mode === "students" ? gradeOptions(people) : []), [people, mode]);
+  const inGrade = useMemo(
+    () => (mode === "students" && grade ? people.filter((p) => p.class === grade) : people),
+    [people, mode, grade]
+  );
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return people;
-    return people.filter((p) =>
+    if (!q) return inGrade;
+    return inGrade.filter((p) =>
       SEARCH_KEYS[mode].some((k) => String(p[k] ?? "").toLowerCase().includes(q))
     );
-  }, [people, query, mode]);
+  }, [inGrade, query, mode]);
 
   const openIndex = visible.findIndex((p) => p.id === openId);
   const closeProfile = useCallback(() => setOpenId(null), []);
@@ -32,6 +41,7 @@ export default function App() {
   function switchMode() {
     setMode((m) => (m === "students" ? "employees" : "students"));
     setQuery("");
+    setGrade("");
     setOpenId(null);
   }
 
@@ -41,6 +51,9 @@ export default function App() {
         mode={mode}
         query={query}
         onQuery={setQuery}
+        grades={grades}
+        grade={grade}
+        onGrade={setGrade}
         onAdd={() => setAdding(true)}
         onSwitch={switchMode}
       />
@@ -53,11 +66,14 @@ export default function App() {
               : "Showing sample data — add records or upload to Firestore to see real ones."}
           </p>
         )}
-        {!loading && mode === "students" && <FeeSummary students={people} />}
+        {!loading && mode === "students" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
         {loading ? (
           <p className="empty">Loading…</p>
         ) : visible.length === 0 ? (
-          <p className="empty">No {mode} match “{query}”.</p>
+          <p className="empty">
+            No {mode} match{query ? ` “${query}”` : ""}
+            {grade ? ` in ${gradeLabel(grade)}` : ""}.
+          </p>
         ) : (
           <div className="grid">
             {visible.map((p, i) => (

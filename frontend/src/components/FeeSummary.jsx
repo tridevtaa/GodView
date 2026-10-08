@@ -1,6 +1,6 @@
 import { formatINR } from "./PersonCard.jsx";
 
-export default function FeeSummary({ students }) {
+export default function FeeSummary({ students, scope }) {
   const due = students.filter((s) => s.fee_due > 0);
   const pending = due.reduce((sum, s) => sum + s.fee_due, 0);
   const withPayments = students.filter((s) => typeof s.fee_paid === "number");
@@ -10,14 +10,14 @@ export default function FeeSummary({ students }) {
   return (
     <section className="fee-summary" aria-label="Fee summary">
       <div className="fee-stat">
-        <span className="fee-stat-label">Total pending</span>
+        <span className="fee-stat-label">Total pending · {scope}</span>
         <span className="fee-stat-value pending">{formatINR(pending)}</span>
         <span className="fee-stat-note">
           {due.length} students{asOf ? ` · as of ${asOf}` : ""}
         </span>
       </div>
       <div className="fee-stat">
-        <span className="fee-stat-label">Total received till date</span>
+        <span className="fee-stat-label">Total received till date · {scope}</span>
         {withPayments.length > 0 ? (
           <>
             <span className="fee-stat-value received">{formatINR(received)}</span>
