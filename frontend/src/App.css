@@ -7,9 +7,9 @@
 :root {
   --font: "Montserrat", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --bg: #efefef;
+  --bg: #eef0f8; /* soft indigo tint behind the white tiles */
   --surface: #ffffff;
-  --surface-2: #f4f4f6;
+  --surface-2: #f3f4fa;
   --border: #e4e4e8;
   --border-strong: #cfcfcf;
 
