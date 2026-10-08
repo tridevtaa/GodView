@@ -1,0 +1,33 @@
+rules_version = '2';
+
+// Only verified Google accounts listed in /staff/{email} may use GodView.
+// Anything not matched below (including the old app's collections) is denied.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email != null
+        && request.auth.token.email_verified == true;
+    }
+
+    function isStaff() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.token.email.lower()));
+    }
+
+    // Staff list: each person may read only their own entry; changes are
+    // made in the Firebase console, never from the app.
+    match /staff/{email} {
+      allow read: if signedIn() && request.auth.token.email.lower() == email;
+      allow write: if false;
+    }
+
+    match /students/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /employees/{id} {
+      allow read, write: if isStaff();
+    }
+  }
+}

@@ -1,50 +1,97 @@
-import React from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import Sidebar from "./components/Sidebar.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import MapView from "./components/MapView.jsx";
-import StudentsPage from "./components/StudentsPage.jsx";
-import EmployeesPage from "./components/EmployeesPage.jsx";
-import SchoolsPage from "./components/SchoolsPage.jsx";
-import DriversPage from "./components/DriversPage.jsx";
-import BusesPage from "./components/BusesPage.jsx";
-import AddRoutePage from "./components/AddRoutePage.jsx";
-import AdmissionsPage from "./components/AdmissionsPage.jsx";
-import FeePage from "./components/FeePage.jsx";
-import AttendancePage from "./components/AttendancePage.jsx";
-import ExaminationPage from "./components/ExaminationPage.jsx";
-import FrontDeskPage from "./components/FrontDeskPage.jsx";
+import { useCallback, useMemo, useState } from "react";
+import TopBar from "./components/TopBar.jsx";
+import PersonCard from "./components/PersonCard.jsx";
+import AddModal from "./components/AddModal.jsx";
+import ProfileModal from "./components/ProfileModal.jsx";
+import FeeSummary from "./components/FeeSummary.jsx";
+import { gradeOptions } from "./components/GradeFilter.jsx";
+import { gradeLabel } from "./components/PersonCard.jsx";
+import { usePeople } from "./data/usePeople.js";
+
+const SEARCH_KEYS = {
+  students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone"],
+  employees: ["name", "designation", "department", "employee_no"],
+};
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <div className="app-shell">
-        <header className="topbar">
-          <Link to="/" className="brand">
-            <img src="/logo.png" alt="GodView logo" className="brand-logo" />
-            <span>GodView</span>
-          </Link>
-          <Sidebar />
-        </header>
+  const [mode, setMode] = useState("students");
+  const [query, setQuery] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [openId, setOpenId] = useState(null);
+  const [grade, setGrade] = useState("");
+  const { people, loading, source, add } = usePeople(mode);
 
-        <div className="app-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/students" element={<StudentsPage />} />
-            <Route path="/employees" element={<EmployeesPage />} />
-            <Route path="/schools" element={<SchoolsPage />} />
-            <Route path="/drivers" element={<DriversPage />} />
-            <Route path="/buses" element={<BusesPage />} />
-            <Route path="/transport" element={<MapView />} />
-            <Route path="/add-route" element={<AddRoutePage />} />
-            <Route path="/admissions" element={<AdmissionsPage />} />
-            <Route path="/fee" element={<FeePage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/examination" element={<ExaminationPage />} />
-            <Route path="/front-desk" element={<FrontDeskPage />} />
-          </Routes>
-        </div>
-      </div>
-    </BrowserRouter>
+  const grades = useMemo(() => (mode === "students" ? gradeOptions(people) : []), [people, mode]);
+  const inGrade = useMemo(
+    () => (mode === "students" && grade ? people.filter((p) => p.class === grade) : people),
+    [people, mode, grade]
+  );
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return inGrade;
+    return inGrade.filter((p) =>
+      SEARCH_KEYS[mode].some((k) => String(p[k] ?? "").toLowerCase().includes(q))
+    );
+  }, [inGrade, query, mode]);
+
+  const openIndex = visible.findIndex((p) => p.id === openId);
+  const closeProfile = useCallback(() => setOpenId(null), []);
+
+  function switchMode() {
+    setMode((m) => (m === "students" ? "employees" : "students"));
+    setQuery("");
+    setGrade("");
+    setOpenId(null);
+  }
+
+  return (
+    <div className="page">
+      <TopBar
+        mode={mode}
+        query={query}
+        onQuery={setQuery}
+        grades={grades}
+        grade={grade}
+        onGrade={setGrade}
+        onAdd={() => setAdding(true)}
+        onSwitch={switchMode}
+      />
+
+      <main className="content">
+        {!loading && source !== "firestore" && (
+          <p className="notice">
+            {source === "error"
+              ? `Couldn’t load ${mode}. Check your connection or ask an administrator for access.`
+              : "Showing sample data — add records or upload to Firestore to see real ones."}
+          </p>
+        )}
+        {!loading && mode === "students" && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
+        {loading ? (
+          <p className="empty">Loading…</p>
+        ) : visible.length === 0 ? (
+          <p className="empty">
+            No {mode} match{query ? ` “${query}”` : ""}
+            {grade ? ` in ${gradeLabel(grade)}` : ""}.
+          </p>
+        ) : (
+          <div className="grid">
+            {visible.map((p, i) => (
+              <PersonCard key={p.id} person={p} mode={mode} index={i} onOpen={() => setOpenId(p.id)} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      {openIndex !== -1 && (
+        <ProfileModal
+          person={visible[openIndex]}
+          mode={mode}
+          index={openIndex}
+          onClose={closeProfile}
+        />
+      )}
+      {adding && <AddModal mode={mode} onClose={() => setAdding(false)} onSave={add} />}
+    </div>
   );
 }
