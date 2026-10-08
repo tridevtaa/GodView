@@ -61,12 +61,12 @@ export default function App() {
       <main className="content">
         {!loading && source !== "firestore" && (
           <p className="notice">
-            {source === "local"
-              ? `${people.length} ${mode} from a local file — not yet saved to Firestore.`
+            {source === "error"
+              ? `Couldn’t load ${mode}. Check your connection or ask an administrator for access.`
               : "Showing sample data — add records or upload to Firestore to see real ones."}
           </p>
         )}
-        {!loading && mode === "students" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
+        {!loading && mode === "students" && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
         {loading ? (
           <p className="empty">Loading…</p>
         ) : visible.length === 0 ? (

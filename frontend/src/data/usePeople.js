@@ -3,17 +3,9 @@ import { addDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { SAMPLE } from "./sample.js";
 
-// Optional real records kept out of git (e.g. students.local.json). The glob
-// resolves to {} when no such file exists, so the build never depends on it.
-const LOCAL = Object.fromEntries(
-  Object.entries(import.meta.glob("./*.local.json", { eager: true, import: "default" })).map(
-    ([file, rows]) => [file.match(/\.\/(\w+)\.local\.json$/)[1], rows]
-  )
-);
-
-// Loads a Firestore collection ("students" | "employees"). When it is empty or
-// Firestore can't be reached, falls back to local records, then sample data.
-// `source` is "firestore" | "local" | "sample".
+// Loads a Firestore collection ("students" | "employees"). An empty collection
+// shows sample data; a failed read shows nothing and reports the error.
+// `source` is "firestore" | "sample" | "error".
 export function usePeople(kind) {
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,21 +16,19 @@ export function usePeople(kind) {
     setLoading(true);
     getDocs(collection(db, kind))
       .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-      .catch(() => [])
-      .then((rows) => {
-        if (cancelled) return;
-        if (rows.length > 0) {
-          setSource("firestore");
-          setPeople(rows);
-        } else if (LOCAL[kind]?.length) {
-          setSource("local");
-          setPeople(LOCAL[kind]);
-        } else {
-          setSource("sample");
-          setPeople(SAMPLE[kind]);
+      .then(
+        (rows) => {
+          if (cancelled) return;
+          setSource(rows.length > 0 ? "firestore" : "sample");
+          setPeople(rows.length > 0 ? rows : SAMPLE[kind]);
+        },
+        () => {
+          if (cancelled) return;
+          setSource("error");
+          setPeople([]);
         }
-        setLoading(false);
-      });
+      )
+      .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
@@ -46,15 +36,11 @@ export function usePeople(kind) {
 
   const add = useCallback(
     async (record) => {
-      let id = `local-${Date.now()}`;
-      try {
-        id = (await addDoc(collection(db, kind), record)).id;
-      } catch {
-        // Keep the record locally so the draft UI still works offline.
-      }
-      setPeople((prev) => [{ id, ...record }, ...prev]);
+      const { id } = await addDoc(collection(db, kind), record);
+      setPeople((prev) => [{ id, ...record }, ...(source === "sample" ? [] : prev)]);
+      setSource("firestore");
     },
-    [kind]
+    [kind, source]
   );
 
   return { people, loading, source, add };
