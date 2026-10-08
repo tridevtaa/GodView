@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // Read Firebase config from Vite env vars so local/dev/prod setup does not
 // require editing source files.
@@ -25,3 +26,4 @@ if (missingKeys.length > 0) {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);

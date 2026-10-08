@@ -31,12 +31,19 @@ export default function AddModal({ mode, onClose, onSave }) {
     Object.fromEntries(fields.map(([key, , type]) => [key, Array.isArray(type) ? type[0] : ""]))
   );
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   async function submit(e) {
     e.preventDefault();
     setSaving(true);
-    await onSave(form);
-    onClose();
+    setError("");
+    try {
+      await onSave(form);
+      onClose();
+    } catch {
+      setError("Couldn’t save. Check your connection and that you have access, then try again.");
+      setSaving(false);
+    }
   }
 
   return (
@@ -64,6 +71,7 @@ export default function AddModal({ mode, onClose, onSave }) {
             </label>
           ))}
         </div>
+        {error && <p className="auth-error">{error}</p>}
         <div className="modal-actions">
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
