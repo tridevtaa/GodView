@@ -563,6 +563,7 @@ def upload_students():
                 "admissionNo": cell_str(row, "admission_no"),
                 "parentName": cell_str(row, "parent_name"),
                 "parentPhone": cell_str(row, "parent_phone"),
+                "stopName": cell_str(row, "stop_name"),
             })
             count += 1
         batch.commit()
@@ -585,6 +586,8 @@ def add_student():
         admission_no = str(body.get("admission_no", "")).strip()
         parent_name = str(body.get("parent_name", "")).strip()
         parent_phone = str(body.get("parent_phone", "")).strip()
+        route_id = str(body.get("route_id", "")).strip()
+        stop_name = str(body.get("stop_name", "")).strip()
 
         errors = []
         if not name:
@@ -595,6 +598,8 @@ def add_student():
             errors.append("class is required.")
         if not section:
             errors.append("section is required.")
+        if route_id and not db.collection("routes").document(route_id).get().exists:
+            errors.append(f"route_id '{route_id}' not found.")
         if errors:
             return jsonify({"error": "Validation failed", "details": errors}), 400
 
@@ -608,6 +613,8 @@ def add_student():
             "admissionNo": admission_no,
             "parentName": parent_name,
             "parentPhone": parent_phone,
+            "routeId": route_id,
+            "stopName": stop_name,
         })
         return jsonify({"count": 1, "id": student_id})
     except Exception as e:
@@ -1261,6 +1268,7 @@ def upload_employees():
             batch.set(ref, {
                 "name": str(row["name"]),
                 "schoolId": str(row["school_id"]),
+                "staffType": cell_str(row, "staff_type"),
                 "designation": cell_str(row, "designation"),
                 "department": cell_str(row, "department"),
                 "phone": cell_str(row, "phone"),
@@ -1282,6 +1290,7 @@ def add_employee():
         body = request.get_json(silent=True) or {}
         name = str(body.get("name", "")).strip()
         school_id = str(body.get("school_id", "")).strip()
+        staff_type = str(body.get("staff_type", "")).strip()
         designation = str(body.get("designation", "")).strip()
         department = str(body.get("department", "")).strip()
         phone = str(body.get("phone", "")).strip()
@@ -1293,6 +1302,8 @@ def add_employee():
             errors.append("name is required.")
         if school_id not in fetch_ids("schools"):
             errors.append(f"school_id '{school_id}' not found. Add the school first.")
+        if staff_type and staff_type not in ("Teaching", "Non-Teaching"):
+            errors.append("staff_type must be 'Teaching' or 'Non-Teaching'.")
         if errors:
             return jsonify({"error": "Validation failed", "details": errors}), 400
 
@@ -1300,6 +1311,7 @@ def add_employee():
         db.collection("employees").document(employee_id).set({
             "name": name,
             "schoolId": school_id,
+            "staffType": staff_type,
             "designation": designation,
             "department": department,
             "phone": phone,
@@ -1629,6 +1641,7 @@ def upload_fee_payments():
             ref = db.collection("feePayments").document(doc_id)
             batch.set(ref, {
                 "studentId": str(row["student_id"]),
+                "feeType": cell_str(row, "fee_type"),
                 "amountPaid": float(row["amount_paid"]),
                 "paymentDate": str(row["payment_date"]),
                 "mode": cell_str(row, "mode"),
@@ -1648,6 +1661,7 @@ def add_fee_payment():
     try:
         body = request.get_json(silent=True) or {}
         student_id = str(body.get("student_id", "")).strip()
+        fee_type = str(body.get("fee_type", "")).strip()
         amount_raw = body.get("amount_paid")
         payment_date = str(body.get("payment_date", "")).strip()
         mode = str(body.get("mode", "")).strip()
@@ -1669,6 +1683,7 @@ def add_fee_payment():
         payment_id = next_id("feePayments", "PAY")
         db.collection("feePayments").document(payment_id).set({
             "studentId": student_id,
+            "feeType": fee_type,
             "amountPaid": amount_paid,
             "paymentDate": payment_date,
             "mode": mode,
