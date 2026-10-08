@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Icon from "./Icon.jsx";
 
 const FIELDS = {
   students: [
@@ -49,7 +50,13 @@ export default function AddModal({ mode, onClose, onSave }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
-        <h2>Add {mode === "students" ? "Student" : "Employee"}</h2>
+        <div className="modal-header">
+          <h2>Add {mode === "students" ? "student" : "employee"}</h2>
+          <button type="button" className="btn-icon" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+        <div className="modal-body">
         <div className="form-grid">
           {fields.map(([key, label, type]) => (
             <label key={key}>
@@ -71,12 +78,13 @@ export default function AddModal({ mode, onClose, onSave }) {
             </label>
           ))}
         </div>
-        {error && <p className="auth-error">{error}</p>}
-        <div className="modal-actions">
-          <button type="button" className="btn-ghost" onClick={onClose}>
+        {error && <p className="field-error">{error}</p>}
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn-add" disabled={saving}>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </button>
         </div>

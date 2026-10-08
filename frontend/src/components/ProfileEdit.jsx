@@ -100,7 +100,7 @@ export default function ProfileEdit({ person, kind, onSaved, onCancel }) {
   return (
     <form className="profile-edit" onSubmit={save}>
       {kind === "students" && (
-        <p className="edit-note">
+        <p className="callout callout-neutral">
           Admission no. <strong>{person.admission_no}</strong> can’t be changed here. A later import from the ERP
           will overwrite edited fields with the ERP’s values.
         </p>
@@ -131,12 +131,12 @@ export default function ProfileEdit({ person, kind, onSaved, onCancel }) {
           </div>
         </fieldset>
       ))}
-      {error && <p className="auth-error">{error}</p>}
-      <div className="modal-actions edit-actions">
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={saving}>
+      {error && <p className="field-error">{error}</p>}
+      <div className="modal-footer modal-footer-sticky">
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
           Cancel
         </button>
-        <button type="submit" className="btn-add" disabled={saving || !dirty}>
+        <button type="submit" className="btn btn-primary" disabled={saving || !dirty}>
           {saving ? "Saving…" : "Save changes"}
         </button>
       </div>

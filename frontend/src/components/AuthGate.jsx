@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebase.js";
-import Logo from "./Logo.jsx";
+import { LogoMark } from "./Logo.jsx";
 
 const UserContext = createContext(null);
 export const useUser = () => useContext(UserContext);
@@ -49,27 +49,27 @@ export default function AuthGate({ children }) {
   return (
     <main className="auth-screen">
       <div className="auth-card">
-        <Logo />
+        <LogoMark size={44} />
         {state.status === "loading" || state.status === "checking" ? (
-          <p className="auth-text">Checking access…</p>
+          <p className="muted">Checking access…</p>
         ) : state.status === "denied" ? (
           <>
             <h1>No access</h1>
-            <p className="auth-text">
+            <p className="muted">
               {state.user.email} isn’t on the staff list. Ask an administrator to add you.
             </p>
-            <button className="btn-ghost" onClick={logOut}>
+            <button className="btn btn-secondary btn-block" onClick={logOut}>
               Use a different account
             </button>
           </>
         ) : (
           <>
-            <h1>Staff sign-in</h1>
-            <p className="auth-text">Sign in with your Google account to continue.</p>
-            <button className="btn-add" onClick={signIn}>
-              Sign in with Google
+            <h1>Sign in to Godview</h1>
+            <p className="muted">Use your school Google account. Access is limited to staff.</p>
+            <button className="btn btn-primary btn-block" onClick={signIn}>
+              Continue with Google
             </button>
-            {error && <p className="auth-error">{error}</p>}
+            {error && <p className="field-error">{error}</p>}
           </>
         )}
       </div>

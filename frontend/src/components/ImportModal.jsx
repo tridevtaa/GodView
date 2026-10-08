@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { doc, writeBatch } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { checkHeaders, planImport } from "../data/studentImport.js";
+import Icon from "./Icon.jsx";
 
 // Academic sessions start in April: Oct 2026 -> "2026-27", Feb 2027 -> "2026-27".
 function currentSession(date = new Date()) {
@@ -77,63 +78,75 @@ export default function ImportModal({ students, onClose, onDone }) {
   }
 
   const c = plan?.counts;
+  const busy = status === "saving";
   return (
-    <div className="modal-backdrop" onClick={() => status !== "saving" && onClose()}>
+    <div className="modal-backdrop" onClick={() => !busy && onClose()}>
       <section className="modal" role="dialog" aria-modal="true" aria-label="Import students" onClick={(e) => e.stopPropagation()}>
-        <h2>Import students</h2>
+        <div className="modal-header">
+          <h2>Import students</h2>
+          <button className="btn-icon" onClick={onClose} disabled={busy} aria-label="Close">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
 
         {status === "done" ? (
           <>
-            <p className="import-text">
-              Done — {c.created} added, {c.updated} updated{markLeft && c.leaving ? `, ${c.leaving} marked as left` : ""}.
-            </p>
-            <div className="modal-actions">
-              <button className="btn-add" onClick={onClose}>Close</button>
+            <div className="modal-body">
+              <div className="callout callout-success">
+                <strong>Import complete.</strong> {c.created} added, {c.updated} updated
+                {markLeft && c.leaving ? `, ${c.leaving} marked as left` : ""}.
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={onClose}>Done</button>
             </div>
           </>
         ) : (
           <>
-            <p className="import-text">
-              Upload the <strong>Student Data</strong> Excel export from the school ERP. Students are matched by
-              registration number; existing photos and fee records are kept.
-            </p>
-            <label className="import-file">
-              <input type="file" accept=".xlsx,.xls,.csv" onChange={choose} disabled={status === "saving"} />
-              <span>{file ? file.name : "Choose file…"}</span>
-            </label>
+            <div className="modal-body">
+              <p className="muted">
+                Upload the <strong>Student Data</strong> Excel export from the school ERP. Students are matched by
+                registration number; photos and fee records are kept.
+              </p>
+              <label className={`dropzone${file ? " has-file" : ""}`}>
+                <input type="file" accept=".xlsx,.xls,.csv" onChange={choose} disabled={busy} />
+                <Icon name={file ? "file" : "upload"} size={20} />
+                <span className="dropzone-title">{file ? file.name : "Choose a file"}</span>
+                <span className="dropzone-hint">{status === "reading" ? "Reading…" : ".xlsx export from the ERP"}</span>
+              </label>
 
-            {status === "reading" && <p className="import-text">Reading…</p>}
-
-            {plan && (
-              <>
-                <div className="form-grid import-options">
-                  <label>
-                    <span>Session</span>
-                    <input value={session} onChange={(e) => setSession(e.target.value)} disabled={status === "saving"} />
-                  </label>
-                </div>
-                <ul className="import-summary">
-                  <li><strong>{c.created}</strong> new students</li>
-                  <li><strong>{c.updated}</strong> existing students updated</li>
-                  {c.inactive > 0 && <li><strong>{c.inactive}</strong> marked inactive in the file’s remarks</li>}
-                  {c.skipped > 0 && <li><strong>{c.skipped}</strong> rows skipped (no registration number or name, or repeated)</li>}
-                </ul>
-                {c.leaving > 0 && (
-                  <label className="import-check">
-                    <input type="checkbox" checked={markLeft} onChange={(e) => setMarkLeft(e.target.checked)} disabled={status === "saving"} />
-                    Mark the <strong>{c.leaving}</strong> students not in this file as left (hidden, not deleted)
-                  </label>
-                )}
-              </>
-            )}
-
-            {error && <p className="auth-error">{error}</p>}
-            <div className="modal-actions">
-              <button type="button" className="btn-ghost" onClick={onClose} disabled={status === "saving"}>
+              {plan && (
+                <>
+                  <dl className="summary-list">
+                    <div><dt>New students</dt><dd>{c.created}</dd></div>
+                    <div><dt>Existing students updated</dt><dd>{c.updated}</dd></div>
+                    {c.inactive > 0 && <div><dt>Marked inactive in remarks</dt><dd>{c.inactive}</dd></div>}
+                    {c.skipped > 0 && <div><dt>Rows skipped</dt><dd>{c.skipped}</dd></div>}
+                  </dl>
+                  <div className="form-grid">
+                    <label>
+                      <span>Session</span>
+                      <input value={session} onChange={(e) => setSession(e.target.value)} disabled={busy} />
+                    </label>
+                  </div>
+                  {c.leaving > 0 && (
+                    <label className="checkbox">
+                      <input type="checkbox" checked={markLeft} onChange={(e) => setMarkLeft(e.target.checked)} disabled={busy} />
+                      <span>
+                        Mark the <strong>{c.leaving}</strong> students not in this file as left (hidden, not deleted)
+                      </span>
+                    </label>
+                  )}
+                </>
+              )}
+              {error && <p className="field-error">{error}</p>}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={busy}>
                 Cancel
               </button>
-              <button className="btn-add" onClick={confirm} disabled={status !== "ready" || writes.length === 0}>
-                {status === "saving" ? `Importing… ${progress}` : "Import"}
+              <button className="btn btn-primary" onClick={confirm} disabled={status !== "ready" || writes.length === 0}>
+                {busy ? `Importing… ${progress}` : "Import"}
               </button>
             </div>
           </>

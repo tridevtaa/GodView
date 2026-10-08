@@ -1,7 +1,5 @@
 import { usePhoto } from "../data/photos.js";
 
-const AVATAR_TINTS = ["#dbeafe", "#fce7f3", "#dcfce7", "#fef3c7", "#ede9fe", "#e0f2fe"];
-
 function initials(name = "") {
   return name
     .split(" ")
@@ -11,16 +9,29 @@ function initials(name = "") {
     .join("");
 }
 
-export function Photo({ person, kind, index }) {
+export function Photo({ person, kind, className = "" }) {
   const stored = usePhoto(kind, person);
   const src = stored || person.photo_url;
   if (src) {
-    return <img className="card-photo" src={src} alt={person.name} loading="lazy" />;
+    return <img className={`photo ${className}`} src={src} alt={person.name} loading="lazy" />;
   }
   return (
-    <div className="card-photo placeholder" style={{ background: AVATAR_TINTS[index % AVATAR_TINTS.length] }}>
+    <div className={`photo photo-placeholder ${className}`} aria-hidden="true">
       {initials(person.name)}
     </div>
+  );
+}
+
+// Badge for the fee status; nothing when it isn't recorded.
+export function FeeBadge({ person }) {
+  const fee = person.fee_status;
+  if (!fee || fee === "unknown") return null;
+  const tone = { paid: "success", due: "warning", overdue: "danger" }[fee];
+  const label = { paid: "Paid", due: "Due", overdue: "Overdue" }[fee];
+  return (
+    <span className={`badge badge-${tone}`} title={feeTitle(person)}>
+      {label}
+    </span>
   );
 }
 
@@ -50,12 +61,12 @@ export function relation(gender) {
   return "C/O";
 }
 
-export default function PersonCard({ person, mode, index, onOpen }) {
+export default function PersonCard({ person, mode, onOpen }) {
   const isStudent = mode === "students";
-  const fee = person.fee_status || "unknown";
+  const inactive = person.status === "inactive";
   return (
     <article
-      className={`card${person.status === "inactive" ? " inactive" : ""}`}
+      className={`card${inactive ? " is-inactive" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={`Open profile of ${person.name}`}
@@ -67,25 +78,21 @@ export default function PersonCard({ person, mode, index, onOpen }) {
         }
       }}
     >
-      <Photo person={person} kind={mode} index={index} />
+      <div className="card-media">
+        <Photo person={person} kind={mode} />
+        {inactive && <span className="badge badge-neutral card-flag">Inactive</span>}
+      </div>
       <div className="card-body">
-        <div className="card-row">
-          <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
-          <span className="tag">
-            {isStudent ? gradeLabel(person.class) : person.designation}
-          </span>
+        <span className="card-id">{isStudent ? person.admission_no : person.employee_no}</span>
+        <div className="card-name" title={person.name}>{person.name}</div>
+        <div className="card-sub">
+          {isStudent
+            ? person.parent_name && `${relation(person.gender)} ${person.parent_name}`
+            : person.department}
         </div>
-        {person.status === "inactive" && <span className="card-status">Inactive</span>}
-        <div className="card-name">{person.name}</div>
-        <div className="card-row">
-          <span className="card-sub">
-            {isStudent ? `${relation(person.gender)} ${person.parent_name}` : person.department}
-          </span>
-          {isStudent && (
-            <span className={`fee fee-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)}>
-              ₹
-            </span>
-          )}
+        <div className="card-meta">
+          <span className="badge badge-brand">{isStudent ? gradeLabel(person.class) : person.designation}</span>
+          {isStudent && <FeeBadge person={person} />}
         </div>
       </div>
     </article>

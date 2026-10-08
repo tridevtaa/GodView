@@ -1,6 +1,7 @@
 import { formatINR } from "./PersonCard.jsx";
 
-export default function FeeSummary({ students, scope }) {
+// Compact stat strip above the student list; follows the grade filter.
+export default function FeeSummary({ students }) {
   const due = students.filter((s) => s.fee_due > 0);
   const pending = due.reduce((sum, s) => sum + s.fee_due, 0);
   const withPayments = students.filter((s) => typeof s.fee_paid === "number");
@@ -8,27 +9,25 @@ export default function FeeSummary({ students, scope }) {
   const asOf = students.find((s) => s.fee_as_of)?.fee_as_of;
 
   return (
-    <section className="fee-summary" aria-label="Fee summary">
-      <div className="fee-stat">
-        <span className="fee-stat-label">Total pending · {scope}</span>
-        <span className="fee-stat-value pending">{formatINR(pending)}</span>
-        <span className="fee-stat-note">
-          {due.length} students{asOf ? ` · as of ${asOf}` : ""}
+    <section className="stats" aria-label="Summary">
+      <div className="stat">
+        <span className="stat-label">Students</span>
+        <span className="stat-value">{students.length.toLocaleString("en-IN")}</span>
+        <span className="stat-note">{students.filter((s) => s.status === "inactive").length} inactive</span>
+      </div>
+      <div className="stat">
+        <span className="stat-label">Fees pending</span>
+        <span className="stat-value">{formatINR(pending)}</span>
+        <span className="stat-note">
+          {due.length ? `${due.length} students${asOf ? ` · as of ${asOf}` : ""}` : "No due list imported"}
         </span>
       </div>
-      <div className="fee-stat">
-        <span className="fee-stat-label">Total received till date · {scope}</span>
-        {withPayments.length > 0 ? (
-          <>
-            <span className="fee-stat-value received">{formatINR(received)}</span>
-            <span className="fee-stat-note">{withPayments.length} students</span>
-          </>
-        ) : (
-          <>
-            <span className="fee-stat-value muted">—</span>
-            <span className="fee-stat-note">No payment records imported yet</span>
-          </>
-        )}
+      <div className="stat">
+        <span className="stat-label">Fees received</span>
+        <span className="stat-value">{withPayments.length ? formatINR(received) : "—"}</span>
+        <span className="stat-note">
+          {withPayments.length ? `${withPayments.length} students` : "No payment records yet"}
+        </span>
       </div>
     </section>
   );
