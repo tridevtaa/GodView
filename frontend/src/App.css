@@ -266,7 +266,9 @@ a:hover {
 }
 
 .topbar-inner {
-  display: flex;
+  /* logo | switch (always centred) | account */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 28px;
   max-width: var(--page-w);
@@ -317,8 +319,12 @@ a:hover {
   box-shadow: var(--shadow-sm);
 }
 
+.topbar-inner > .logo {
+  justify-self: start;
+}
+
 .topbar-inner > .popover-anchor:last-child {
-  margin-left: auto;
+  justify-self: end;
 }
 
 .avatar-btn {
