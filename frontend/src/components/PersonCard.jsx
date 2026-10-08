@@ -11,14 +11,14 @@ function initials(name = "") {
     .join("");
 }
 
-export function Photo({ person, kind, index }) {
+export function Photo({ person, kind, index = 0, className = "card-photo" }) {
   const stored = usePhoto(kind, person);
   const src = stored || person.photo_url;
   if (src) {
-    return <img className="card-photo" src={src} alt={person.name} loading="lazy" />;
+    return <img className={className} src={src} alt={person.name} loading="lazy" />;
   }
   return (
-    <div className="card-photo placeholder" style={{ background: AVATAR_TINTS[index % AVATAR_TINTS.length] }}>
+    <div className={`${className} placeholder`} style={{ background: AVATAR_TINTS[index % AVATAR_TINTS.length] }}>
       {initials(person.name)}
     </div>
   );
@@ -42,6 +42,19 @@ export const formatINR = (n) => inr.format(n);
 export function feeTitle(person) {
   const fee = person.fee_status || "unknown";
   return person.fee_due ? `${FEE_LABEL[fee]}: ${formatINR(person.fee_due)}` : FEE_LABEL[fee];
+}
+
+// Pill for the fee status in the profile; nothing when it isn't recorded.
+export function FeeBadge({ person }) {
+  const fee = person.fee_status;
+  if (!fee || fee === "unknown") return null;
+  const tone = { paid: "success", due: "warning", overdue: "danger" }[fee];
+  const label = { paid: "Paid", due: "Due", overdue: "Overdue" }[fee];
+  return (
+    <span className={`badge badge-${tone}`} title={feeTitle(person)}>
+      {label}
+    </span>
+  );
 }
 
 export function relation(gender) {

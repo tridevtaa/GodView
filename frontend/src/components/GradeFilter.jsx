@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
+import { useDismiss } from "./useDismiss.js";
+import Icon from "./Icon.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 
 // Nursery, KG 1, KG 2, then 1–12; anything unrecognised goes last.
@@ -19,20 +21,7 @@ export function gradeOptions(students) {
 
 export default function GradeFilter({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => {
-      if (e.type === "keydown" ? e.key === "Escape" : !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  const ref = useDismiss(open, useCallback(() => setOpen(false), []));
 
   function pick(next) {
     onChange(next);
@@ -40,33 +29,29 @@ export default function GradeFilter({ options, value, onChange }) {
   }
 
   return (
-    <div className="filter" ref={ref}>
+    <div className="popover-anchor" ref={ref}>
       <button
-        className={`btn-filter${value ? " active" : ""}`}
+        className={`btn btn-secondary${value ? " is-active" : ""}`}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M3 5h18l-7 8v6l-4 2v-8z" />
-        </svg>
-        {value ? gradeLabel(value) : "Filter"}
+        {value ? gradeLabel(value) : "All grades"}
+        <Icon name="chevronDown" className="icon-trailing" />
       </button>
       {open && (
-        <div className="filter-menu" role="menu">
-          <button role="menuitemradio" aria-checked={!value} className={!value ? "selected" : ""} onClick={() => pick("")}>
-            All grades
-          </button>
-          {options.map((o) => (
+        <div className="menu menu-scroll" role="menu">
+          {[{ value: "", count: null }, ...options].map((o) => (
             <button
-              key={o.value}
+              key={o.value || "all"}
               role="menuitemradio"
               aria-checked={value === o.value}
-              className={value === o.value ? "selected" : ""}
+              className="menu-item"
               onClick={() => pick(o.value)}
             >
-              {gradeLabel(o.value)}
-              <span className="filter-count">{o.count}</span>
+              <span className="menu-check">{value === o.value && <Icon name="check" />}</span>
+              <span className="menu-label">{o.value ? gradeLabel(o.value) : "All grades"}</span>
+              {o.count !== null && <span className="menu-meta">{o.count}</span>}
             </button>
           ))}
         </div>

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
 import ProfileEdit from "./ProfileEdit.jsx";
-import { Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
+import { FeeBadge, Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
+import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 
@@ -11,7 +12,7 @@ function Masked({ value }) {
   return (
     <span className="masked">
       {shown ? value : `•••• •••• ${value.slice(-4)}`}
-      <button type="button" className="masked-toggle" onClick={() => setShown((s) => !s)}>
+      <button type="button" className="link-btn" onClick={() => setShown((s) => !s)}>
         {shown ? "Hide" : "Show"}
       </button>
     </span>
@@ -20,9 +21,8 @@ function Masked({ value }) {
 
 const DETAILS = {
   students: [
-    ["Admission no.", (p) => p.admission_no],
-    ["Grade", (p) => [gradeLabel(p.class), p.stream, p.section].filter(Boolean).join(" – ")],
-    ["Status", (p) => (p.status === "inactive" ? "Inactive" : p.status === "left" ? `Left (${p.left_as_of})` : "")],
+    ["Stream", (p) => p.stream],
+    ["Left on", (p) => p.status === "left" && p.left_as_of],
     ["Remarks", (p) => p.remarks],
     ["Father", (p) => p.parent_name && `${relation(p.gender)} ${p.parent_name}`],
     ["Mother", (p) => p.mother_name],
@@ -44,9 +44,7 @@ const DETAILS = {
     ["School", (p) => p.school_id],
   ],
   employees: [
-    ["Employee no.", (p) => p.employee_no],
-    ["Designation", (p) => p.designation],
-    ["Department", (p) => p.department],
+
     ["Phone", (p) => p.phone && <a href={`tel:${p.phone}`}>{p.phone}</a>],
     ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
     ["Joined", (p) => p.joining_date],
@@ -82,19 +80,17 @@ function PhotoUpload({ person, kind, onSaved }) {
         className="photo-upload"
         onClick={() => input.current.click()}
         disabled={busy}
+        title={person.has_photo ? "Change photo" : "Upload photo"}
         aria-label={person.has_photo ? "Change photo" : "Upload photo"}
       >
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3zm3 5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9z" />
-        </svg>
-        {busy ? "Uploading…" : person.has_photo ? "Change" : "Upload photo"}
+        {busy ? <span className="spinner" /> : <Icon name="camera" />}
       </button>
-      {error && <p className="photo-error">{error}</p>}
+      {error && <p className="field-error">{error}</p>}
     </>
   );
 }
 
-export default function ProfileModal({ person, mode, index, canEdit, onUpdate, onClose }) {
+export default function ProfileModal({ person, mode, canEdit, onUpdate, onClose }) {
   const [editing, setEditing] = useState(false);
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
@@ -109,7 +105,6 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
   }, [onClose, editing]);
 
   const isStudent = mode === "students";
-  const fee = person.fee_status || "unknown";
   const rows = DETAILS[mode]
     .map(([label, get]) => [label, get(person)])
     .filter(([, value]) => value);
@@ -117,86 +112,86 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
   return (
     <div className="modal-backdrop" onClick={() => !editing && onClose()}>
       <section
-        className="modal profile"
+        className="modal modal-lg"
         role="dialog"
         aria-modal="true"
         aria-label={`${person.name} profile`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="profile-tools">
-          {canEdit && !editing && (
-            <button className="profile-edit-btn" onClick={() => setEditing(true)}>
-              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                <path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z" />
-              </svg>
-              Edit
-            </button>
-          )}
-          <button className="profile-close" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        </div>
-        <div className="profile-head">
+        <header className="profile-header">
           <div className="profile-photo">
-            <Photo person={person} kind={mode} index={index} />
+            <Photo person={person} kind={mode} className="photo-lg" />
             {canEdit && (
               <PhotoUpload person={person} kind={mode} onSaved={(patch) => onUpdate(person.id, patch)} />
             )}
           </div>
-          <div>
+          <div className="profile-heading">
             <h2>{person.name}</h2>
-            <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
-            {isStudent && (
-              <div className="profile-fee">
-                <span className={`fee fee-${fee}`} aria-hidden="true">₹</span>
-                {feeTitle(person)}
-              </div>
-            )}
-            {isStudent && person.fee_as_of && (
-              <div className="profile-fee-note">as of {person.fee_as_of}</div>
-            )}
-          </div>
-        </div>
-        {editing ? (
-          <ProfileEdit
-            person={person}
-            kind={mode}
-            onCancel={() => setEditing(false)}
-            onSaved={(changes) => {
-              onUpdate(person.id, changes);
-              setEditing(false);
-            }}
-          />
-        ) : (
-        <>
-        <dl className="profile-details">
-          {rows.map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value}</dd>
+            <p className="profile-sub">
+              {isStudent ? person.admission_no : [person.employee_no, person.department].filter(Boolean).join(" · ")}
+            </p>
+            <div className="badge-row">
+              <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
+              {isStudent && person.section && <span className="badge badge-neutral">{person.section}</span>}
+              {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
+              {person.status === "left" && <span className="badge badge-danger">Left</span>}
+              {isStudent && <FeeBadge person={person} />}
             </div>
-          ))}
-        </dl>
-        {isStudent && person.fee_due > 0 && (
-          <div className="profile-dues">
-            <h3>Pending fees</h3>
-            {person.fee_due_months?.length > 0 && <p>For {person.fee_due_months.join(", ")}</p>}
-            <dl>
-              {Object.entries(person.fee_breakdown || {}).map(([head, amount]) => (
-                <div key={head}>
-                  <dt>{head.replace(/_/g, " ")}</dt>
-                  <dd>{formatINR(amount)}</dd>
-                </div>
-              ))}
-              <div className="profile-dues-total">
-                <dt>Total</dt>
-                <dd>{formatINR(person.fee_due)}</dd>
-              </div>
-            </dl>
           </div>
-        )}
-        </>
-        )}
+          <div className="profile-tools">
+            {canEdit && !editing && (
+              <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
+                <Icon name="edit" />
+                Edit
+              </button>
+            )}
+            <button className="btn-icon" onClick={onClose} aria-label="Close">
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+        </header>
+
+        <div className="modal-body">
+          {editing ? (
+            <ProfileEdit
+              person={person}
+              kind={mode}
+              onCancel={() => setEditing(false)}
+              onSaved={(changes) => {
+                onUpdate(person.id, changes);
+                setEditing(false);
+              }}
+            />
+          ) : (
+            <>
+              {isStudent && person.fee_due > 0 && (
+                <div className="callout callout-warning">
+                  <div className="callout-head">
+                    <strong>{feeTitle(person)}</strong>
+                    {person.fee_as_of && <span>as of {person.fee_as_of}</span>}
+                  </div>
+                  {person.fee_due_months?.length > 0 && <p>For {person.fee_due_months.join(", ")}</p>}
+                  <dl className="ledger">
+                    {Object.entries(person.fee_breakdown || {}).map(([head, amount]) => (
+                      <div key={head}>
+                        <dt>{head.replace(/_/g, " ")}</dt>
+                        <dd>{formatINR(amount)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+              <dl className="details">
+                {rows.map(([label, value]) => (
+                  <div key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
+        </div>
       </section>
     </div>
   );

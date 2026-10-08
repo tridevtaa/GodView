@@ -5,7 +5,8 @@ import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import FeeSummary from "./components/FeeSummary.jsx";
 import ImportModal from "./components/ImportModal.jsx";
-import { gradeOptions } from "./components/GradeFilter.jsx";
+import GradeFilter, { gradeOptions } from "./components/GradeFilter.jsx";
+import Icon from "./components/Icon.jsx";
 import { gradeLabel } from "./components/PersonCard.jsx";
 import { usePeople } from "./data/usePeople.js";
 
@@ -42,43 +43,90 @@ export default function App() {
   const openIndex = visible.findIndex((p) => p.id === openId);
   const closeProfile = useCallback(() => setOpenId(null), []);
 
-  function switchMode() {
-    setMode((m) => (m === "students" ? "employees" : "students"));
+  function switchMode(next) {
+    if (next === mode) return;
+    setMode(next);
     setQuery("");
     setGrade("");
     setOpenId(null);
   }
 
-  return (
-    <div className="page">
-      <TopBar
-        mode={mode}
-        query={query}
-        onQuery={setQuery}
-        grades={grades}
-        grade={grade}
-        onGrade={setGrade}
-        onAdd={() => setAdding(true)}
-        onImport={mode === "students" && source !== "error" ? () => setImporting(true) : null}
-        onSwitch={switchMode}
-      />
+  const isStudents = mode === "students";
+  const title = isStudents ? "Students" : "Employees";
+  const sessions = [...new Set(current.map((p) => p.session).filter(Boolean))].sort();
+  const session = sessions[sessions.length - 1];
 
-      <main className="content">
+  return (
+    <div className="app">
+      <TopBar mode={mode} onMode={switchMode} />
+
+      <main className="page">
+        <div className="page-header">
+          <div>
+            <h1>{title}</h1>
+            <p className="page-subtitle">
+              {loading
+                ? "Loading…"
+                : `${current.length.toLocaleString("en-IN")} ${mode}${isStudents && session ? ` · Session ${session}` : ""}`}
+            </p>
+          </div>
+          <div className="page-actions">
+            {isStudents && source !== "error" && (
+              <button className="btn btn-secondary" onClick={() => setImporting(true)}>
+                <Icon name="upload" />
+                Import
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={() => setAdding(true)}>
+              <Icon name="plus" />
+              Add {isStudents ? "student" : "employee"}
+            </button>
+          </div>
+        </div>
+
         {!loading && source !== "firestore" && (
-          <p className="notice">
+          <p className={`notice${source === "error" ? " notice-error" : ""}`}>
             {source === "error"
               ? `Couldn’t load ${mode}. Check your connection or ask an administrator for access.`
-              : "Showing sample data — add records or upload to Firestore to see real ones."}
+              : "Showing sample data. Add records or import to see real ones."}
           </p>
         )}
-        {!loading && mode === "students" && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
+
+        {!loading && isStudents && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
+
+        <div className="toolbar">
+          <label className="search">
+            <Icon name="search" />
+            <input
+              type="search"
+              placeholder={isStudents ? "Search name, parent, admission no., phone…" : "Search name, role, department…"}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label={`Search ${mode}`}
+            />
+          </label>
+          {isStudents && <GradeFilter options={grades} value={grade} onChange={setGrade} />}
+          {!loading && (query || grade) && (
+            <span className="toolbar-count">
+              {visible.length} of {current.length}
+            </span>
+          )}
+        </div>
+
         {loading ? (
-          <p className="empty">Loading…</p>
+          <div className="grid" aria-busy="true">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div key={i} className="card card-skeleton" />
+            ))}
+          </div>
         ) : visible.length === 0 ? (
-          <p className="empty">
-            No {mode} match{query ? ` “${query}”` : ""}
-            {grade ? ` in ${gradeLabel(grade)}` : ""}.
-          </p>
+          <div className="empty">
+            <p className="empty-title">No {mode} found</p>
+            <p>
+              {query ? `Nothing matches “${query}”` : "Nothing here yet"}
+              {grade ? ` in ${gradeLabel(grade)}` : ""}.
+            </p>
+          </div>
         ) : (
           <div className="grid">
             {visible.map((p, i) => (
@@ -92,7 +140,6 @@ export default function App() {
         <ProfileModal
           person={visible[openIndex]}
           mode={mode}
-          index={openIndex}
           canEdit={source === "firestore"}
           onUpdate={patch}
           onClose={closeProfile}

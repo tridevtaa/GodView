@@ -1,36 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { logOut, useUser } from "./AuthGate.jsx";
+import { useDismiss } from "./useDismiss.js";
+import Icon from "./Icon.jsx";
 
 export default function AccountMenu() {
   const user = useUser();
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e) => {
-      if (e.type === "keydown" ? e.key === "Escape" : !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-    };
-  }, [open]);
+  const ref = useDismiss(open, useCallback(() => setOpen(false), []));
+  const initial = (user?.displayName || user?.email || "?")[0].toUpperCase();
 
   return (
-    <div className="account" ref={ref}>
-      <button className="account-btn" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
-          <circle cx="12" cy="7" r="5" />
-          <path d="M2 23c0-6 4.5-9 10-9s10 3 10 9z" />
-        </svg>
+    <div className="popover-anchor" ref={ref}>
+      <button className="avatar-btn" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        {user?.photoURL ? <img src={user.photoURL} alt="" referrerPolicy="no-referrer" /> : initial}
       </button>
       {open && (
-        <div className="account-menu" role="menu">
-          <div className="account-email">{user?.email}</div>
-          <button role="menuitem" onClick={logOut}>
+        <div className="menu menu-right" role="menu">
+          <div className="menu-header">
+            {user?.displayName && <div className="menu-title">{user.displayName}</div>}
+            <div className="menu-subtitle">{user?.email}</div>
+          </div>
+          <button role="menuitem" className="menu-item" onClick={logOut}>
+            <Icon name="logout" />
             Sign out
           </button>
         </div>
