@@ -131,7 +131,7 @@ export default function ProfileModal({ person, mode, canEdit, onUpdate, onClose 
               {isStudent ? person.admission_no : [person.employee_no, person.department].filter(Boolean).join(" · ")}
             </p>
             <div className="badge-row">
-              <span className="badge badge-brand">{isStudent ? gradeLabel(person.class) : person.designation}</span>
+              <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
               {isStudent && person.section && <span className="badge badge-neutral">{person.section}</span>}
               {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
               {person.status === "left" && <span className="badge badge-danger">Left</span>}

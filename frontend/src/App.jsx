@@ -92,7 +92,7 @@ export default function App() {
           </p>
         )}
 
-        {!loading && isStudents && source === "firestore" && <FeeSummary students={inGrade} />}
+        {!loading && isStudents && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
 
         <div className="toolbar">
           <label className="search">
@@ -129,8 +129,8 @@ export default function App() {
           </div>
         ) : (
           <div className="grid">
-            {visible.map((p) => (
-              <PersonCard key={p.id} person={p} mode={mode} onOpen={() => setOpenId(p.id)} />
+            {visible.map((p, i) => (
+              <PersonCard key={p.id} person={p} mode={mode} index={i} onOpen={() => setOpenId(p.id)} />
             ))}
           </div>
         )}
