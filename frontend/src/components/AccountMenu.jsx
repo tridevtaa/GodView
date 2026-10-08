@@ -21,7 +21,7 @@ export default function AccountMenu() {
 
   return (
     <div className="account" ref={ref}>
-      <button className="profile" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button className="account-btn" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
         <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
           <circle cx="12" cy="7" r="5" />
           <path d="M2 23c0-6 4.5-9 10-9s10 3 10 9z" />

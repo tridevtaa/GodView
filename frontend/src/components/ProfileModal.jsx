@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
+import ProfileEdit from "./ProfileEdit.jsx";
 import { Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
@@ -94,11 +95,18 @@ function PhotoUpload({ person, kind, onSaved }) {
 }
 
 export default function ProfileModal({ person, mode, index, canEdit, onUpdate, onClose }) {
+  const [editing, setEditing] = useState(false);
+
+  // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
-    const onKey = (e) => e.key === "Escape" && onClose();
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      if (editing) setEditing(false);
+      else onClose();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, editing]);
 
   const isStudent = mode === "students";
   const fee = person.fee_status || "unknown";
@@ -107,7 +115,7 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
     .filter(([, value]) => value);
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop" onClick={() => !editing && onClose()}>
       <section
         className="modal profile"
         role="dialog"
@@ -115,9 +123,19 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
         aria-label={`${person.name} profile`}
         onClick={(e) => e.stopPropagation()}
       >
-        <button className="profile-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
+        <div className="profile-tools">
+          {canEdit && !editing && (
+            <button className="profile-edit-btn" onClick={() => setEditing(true)}>
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z" />
+              </svg>
+              Edit
+            </button>
+          )}
+          <button className="profile-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
         <div className="profile-head">
           <div className="profile-photo">
             <Photo person={person} kind={mode} index={index} />
@@ -139,6 +157,18 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
             )}
           </div>
         </div>
+        {editing ? (
+          <ProfileEdit
+            person={person}
+            kind={mode}
+            onCancel={() => setEditing(false)}
+            onSaved={(changes) => {
+              onUpdate(person.id, changes);
+              setEditing(false);
+            }}
+          />
+        ) : (
+        <>
         <dl className="profile-details">
           {rows.map(([label, value]) => (
             <div key={label}>
@@ -164,6 +194,8 @@ export default function ProfileModal({ person, mode, index, canEdit, onUpdate, o
               </div>
             </dl>
           </div>
+        )}
+        </>
         )}
       </section>
     </div>
