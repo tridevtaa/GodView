@@ -2135,26 +2135,6 @@ a:hover {
   list-style: none;
 }
 
-.dues-list button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 10px 22px;
-  border: none;
-  border-top: 1px solid var(--border);
-  background: none;
-  text-align: left;
-}
-
-.dues-list button:hover {
-  background: var(--surface-2);
-}
-
-.dues-list button > span:first-child {
-  display: flex;
-  flex-direction: column;
-}
 
 .panel-toggle {
   display: flex;
@@ -2590,4 +2570,424 @@ a:hover {
   .receipt-meta {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================================
+   Fees: guided setup + dashboard
+   ========================================================= */
+
+.notice-success {
+  border-color: #bbf7d0;
+  background: var(--success-soft);
+  color: #14532d;
+}
+
+.btn-xl {
+  height: 52px;
+  margin-top: 20px;
+  padding: 0 32px;
+  font-size: 16px;
+}
+
+/* stepper */
+.setup {
+  padding: 0;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.stepper button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 18px 22px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--text-3);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.stepper button:disabled {
+  cursor: not-allowed;
+}
+
+.stepper-num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.stepper .is-current button {
+  border-bottom-color: var(--brand);
+  color: var(--text);
+}
+
+.stepper .is-current .stepper-num {
+  background: var(--brand);
+  color: #fff;
+}
+
+.stepper .is-done .stepper-num {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.setup-body {
+  padding: 26px 26px 8px;
+}
+
+.setup-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+
+.setup-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 26px 22px;
+}
+
+.setup-nav-right {
+  display: flex;
+  gap: 8px;
+}
+
+.setup-hint {
+  margin: -12px 26px 18px;
+  text-align: right;
+}
+
+/* step 1: fee picks */
+.head-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 20px 0 18px;
+}
+
+.head-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.head-pick:hover {
+  border-color: var(--brand);
+  transform: translateY(-1px);
+}
+
+.head-pick.on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.add-head {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.add-head .input {
+  flex: 1;
+  height: 36px;
+}
+
+/* step 2: amount cards */
+.amount-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.amount-card {
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg);
+}
+
+.amount-card header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.amount-card h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.amount-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.amount-line strong {
+  font-size: 18px;
+}
+
+.amount-line .link-btn {
+  margin-left: auto;
+}
+
+.amount-overrides {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.amount-overrides li {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px dashed var(--border-strong);
+  font-size: 14px;
+}
+
+.amount-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.amount-form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.amount-form-row .select {
+  height: 40px;
+}
+
+.rupee-input {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 140px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-field);
+  background: var(--surface);
+}
+
+.rupee-input:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.rupee-input span {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+.rupee-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pill-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.pill.on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.amount-more {
+  align-self: flex-start;
+  margin-top: 10px;
+}
+
+.amount-form .amount-more {
+  margin-top: 0;
+}
+
+.amount-more-opts label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.amount-more-opts .input-num {
+  width: 90px;
+  height: 36px;
+  min-width: 0;
+}
+
+.amount-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* step 3: review */
+.review-table {
+  width: 100%;
+  margin-top: 18px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.review-table th,
+.review-table td {
+  padding: 10px 8px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+
+.review-table thead th {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.review-table tfoot th {
+  border-top: 2px solid var(--text);
+  font-size: 15px;
+}
+
+/* dashboard list + picker */
+.dues-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 22px;
+  border-top: 1px solid var(--border);
+}
+
+.dues-row > span:first-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.picker .search {
+  max-width: none;
+}
+
+.picker-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.picker-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 12px;
+  background: none;
+  text-align: left;
+}
+
+.picker-list button:hover {
+  background: var(--surface-2);
+}
+
+.picker-list button > span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-empty {
+  padding: 10px 12px;
+}
+
+@media (max-width: 760px) {
+  .stepper button {
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 6px;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .setup-body {
+    padding: 20px 16px 4px;
+  }
+
+  .setup-nav {
+    padding: 16px;
+  }
+
+  .amount-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .dues-row {
+    flex-wrap: wrap;
+    padding: 10px 16px;
+  }
+}
+
+.icon-next {
+  rotate: -90deg;
+}
+
+.dues-row .btn {
+  flex: none;
 }

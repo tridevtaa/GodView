@@ -6,34 +6,39 @@ import {
   deleteScheduleLine,
   feeSessionSummary,
   generateInvoices,
-  importOpeningBalances,
   listFeeHeads,
   listSchedule,
 } from "../data/api.js";
 import { rupees } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeOptions } from "./GradeFilter.jsx";
+import OpeningBalances from "./OpeningBalances.jsx";
 import Icon from "./Icon.jsx";
 
-const FREQUENCIES = {
-  monthly: "Monthly (12)",
-  quarterly: "Quarterly (4)",
-  half_yearly: "Half-yearly (2)",
-  annual: "Once a year",
-  one_time: "One-time",
-};
+// Plain-language choices, stored as the database's frequency values.
+const HOW_OFTEN = [
+  ["monthly", "Every month", 12],
+  ["quarterly", "Every 3 months", 4],
+  ["half_yearly", "Twice a year", 2],
+  ["annual", "Once a year", 1],
+  ["one_time", "One time", 1],
+];
+const PER_YEAR = Object.fromEntries(HOW_OFTEN.map(([k, , n]) => [k, n]));
+const LABEL = Object.fromEntries(HOW_OFTEN.map(([k, l]) => [k, l.toLowerCase()]));
+const SUGGESTED = ["Tuition fee", "Transport", "Annual charges", "Admission fee", "Exam fee", "Computer fee", "Activity fee", "Development fee"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const PER_YEAR = { monthly: 12, quarterly: 4, half_yearly: 2, annual: 1, one_time: 1 };
+const STEPS = ["What you charge", "Amounts", "Create dues"];
 
-// Owners/admins: fee structure, dues, collection and opening balances.
+// Owners/admins. First visit: a 3-step setup. After dues exist: a simple
+// dashboard with Collect, Edit setup and Old balances.
 export default function FeesPage({ school, session, students, onOpenStudent, onChanged }) {
   const [summary, setSummary] = useState(null);
   const [heads, setHeads] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [query, setQuery] = useState("");
+  const [step, setStep] = useState(null); // null = dashboard, 0..2 = setup
+  const [dialog, setDialog] = useState(null); // "collect" | "balances"
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -43,6 +48,8 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
       setHeads(h);
       setSchedule(sch);
       setError("");
+      // No dues yet: go straight into setup.
+      setStep((cur) => (cur === null && !(Number(s?.billed) > 0) ? 0 : cur));
     } catch (err) {
       setError(
         err?.code === "PGRST205"
@@ -61,44 +68,16 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
     try {
       await fn(...args);
       await load();
+      return true;
     } catch (err) {
-      setError(
-        err?.code === "PGRST205"
-          ? "Fees aren’t set up in the database yet. The latest database update needs to be applied first."
-          : err?.code === "23505"
-            ? "That already exists."
-            : "That didn’t go through. Check the values and try again."
-      );
+      setError(err?.code === "23505" ? "That already exists." : "That didn’t go through. Check the values and try again.");
+      return false;
     }
   };
 
-  async function generate() {
-    setBusy(true);
-    setNotice("");
-    setError("");
-    try {
-      const n = await generateInvoices(session.id);
-      setNotice(n ? `Created ${n.toLocaleString("en-IN")} dues for ${session.name}.` : "All dues already exist; nothing new to create.");
-      await load();
-      onChanged();
-    } catch {
-      setError("Couldn’t generate dues.");
-    } finally {
-      setBusy(false);
-    }
-  }
+  if (!session) return <p className="notice">Import your students first; fees are set up per session.</p>;
 
-  const grades = useMemo(() => gradeOptions(students), [students]);
-  const headName = new Map(heads.map((h) => [h.id, h.name]));
-  const withDues = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return students
-      .filter((s) => s.fee_due > 0)
-      .filter((s) => !q || `${s.name} ${s.admission_no} ${s.class}`.toLowerCase().includes(q))
-      .sort((a, b) => b.fee_due - a.fee_due);
-  }, [students, query]);
-
-  if (!session) return <p className="notice">Create a session first (import students) to set up fees.</p>;
+  const hasDues = Number(summary?.billed) > 0;
 
   return (
     <>
@@ -110,99 +89,113 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
             <span className="badge badge-neutral">Session {session.name}</span>
           </div>
         </div>
+        {step === null && (
+          <div className="page-actions">
+            <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
+              <Icon name="upload" />
+              Old balances
+            </button>
+            <button className="btn btn-secondary" onClick={() => setStep(1)}>
+              <Icon name="edit" />
+              Edit fee setup
+            </button>
+            <button className="btn btn-primary" onClick={() => setDialog("collect")}>
+              <Icon name="plus" />
+              Collect a payment
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <p className="notice notice-error">{error}</p>}
-      {notice && <p className="notice">{notice}</p>}
+      {notice && <p className="notice notice-success">{notice}</p>}
 
+      {step !== null ? (
+        <Setup
+          step={step}
+          setStep={setStep}
+          session={session}
+          school={school}
+          heads={heads}
+          schedule={schedule}
+          students={students}
+          hasDues={hasDues}
+          act={act}
+          onCreated={async (n) => {
+            setNotice(n ? `Done. ${n.toLocaleString("en-IN")} dues created for ${session.name}.` : "Everything was already up to date.");
+            setStep(null);
+            await load();
+            onChanged();
+          }}
+          onCancel={hasDues ? () => setStep(null) : null}
+        />
+      ) : (
+        <Dashboard summary={summary} students={students} onCollect={(id) => onOpenStudent(id, "fees")} />
+      )}
+
+      {dialog === "collect" && (
+        <Dialog title="Collect a payment" onClose={() => setDialog(null)}>
+          <StudentPicker
+            students={students}
+            onPick={(s) => {
+              setDialog(null);
+              onOpenStudent(s.id, "fees");
+            }}
+          />
+        </Dialog>
+      )}
+      {dialog === "balances" && (
+        <Dialog title="Bring in old balances" onClose={() => setDialog(null)}>
+          <OpeningBalances
+            embedded
+            school={school}
+            session={session}
+            students={students}
+            onDone={async () => {
+              await load();
+              onChanged();
+            }}
+          />
+        </Dialog>
+      )}
+    </>
+  );
+}
+
+// ------------------------------------------------------------- dashboard ---
+
+function Dashboard({ summary, students, onCollect }) {
+  const [query, setQuery] = useState("");
+  const owing = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return students
+      .filter((s) => s.fee_due > 0)
+      .filter((s) => !q || `${s.name} ${s.admission_no}`.toLowerCase().includes(q))
+      .sort((a, b) => b.fee_due - a.fee_due);
+  }, [students, query]);
+  const collectedPct = summary && Number(summary.billed) > 0 ? Math.round((summary.collected / summary.billed) * 100) : 0;
+
+  return (
+    <>
       <section className="fee-cards">
-        <Stat label="Billed this session" value={summary?.billed} />
-        <Stat label="Collected" value={summary?.collected} tone="paid" />
-        <Stat label="Due by today" value={summary?.due_now} tone="due" note={summary ? `${summary.students_due} students` : ""} />
-        <Stat label="Outstanding (whole session)" value={summary?.outstanding} />
-      </section>
-
-      <section className="panel">
-        <h2 className="panel-title">Fee structure for {session.name}</h2>
-        <div className="fee-heads">
-          <span className="row-sub">Fee heads:</span>
-          {heads.map((h) => (
-            <span key={h.id} className="chip">
-              {h.name}
-              {!schedule.some((l) => l.head_id === h.id) && (
-                <button aria-label={`Remove ${h.name}`} onClick={act(() => deleteFeeHead(h.id))}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </span>
-          ))}
-          <AddHead onAdd={act((name) => addFeeHead(school.id, name))} />
-        </div>
-
-        {schedule.length > 0 && (
-          <table className="schedule-table">
-            <thead>
-              <tr>
-                <th>Class</th>
-                <th>Fee head</th>
-                <th className="num">Amount</th>
-                <th>How often</th>
-                <th>Starts</th>
-                <th className="num">Per year</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {schedule.map((l) => (
-                <tr key={l.id}>
-                  <td>{l.class ? gradeLabel(l.class) : "All classes"}</td>
-                  <td>{headName.get(l.head_id)}</td>
-                  <td className="num">{rupees(l.amount)}</td>
-                  <td>{FREQUENCIES[l.frequency]}</td>
-                  <td>
-                    {MONTHS[l.start_month - 1]}, due on {l.due_day}
-                  </td>
-                  <td className="num">{rupees(l.amount * PER_YEAR[l.frequency])}</td>
-                  <td className="num">
-                    <button className="link-btn link-danger" onClick={act(() => deleteScheduleLine(l.id))}>
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {heads.length > 0 ? (
-          <AddLine grades={grades} heads={heads} onAdd={act((line) => addScheduleLine(school.id, session.id, line))} />
-        ) : (
-          <p className="row-sub fee-hint">Add fee heads first (e.g. Tuition fee, Transport, Annual charges).</p>
-        )}
-
-        <div className="fee-generate">
-          <p className="row-sub">
-            Creates each enrolled student’s dues for the whole session from this structure. Safe to run again: existing
-            dues are kept, so add new lines and run it once more.
-          </p>
-          <button className="btn btn-primary btn-sm" onClick={generate} disabled={busy || schedule.length === 0}>
-            {busy ? "Generating…" : `Generate dues for ${session.name}`}
-          </button>
-        </div>
+        <Stat label="Due now" value={summary?.due_now} tone="due" note={summary ? `${summary.students_due} students` : ""} />
+        <Stat label="Collected" value={summary?.collected} tone="paid" note={summary ? `${collectedPct}% of the year` : ""} />
+        <Stat label="Expected this year" value={summary?.billed} />
+        <Stat label="Still to come" value={summary ? summary.outstanding - summary.due_now : undefined} />
       </section>
 
       <section className="panel">
         <div className="panel-title panel-title-row">
-          <h2>Students with dues</h2>
+          <h2>Who owes now</h2>
           <input className="input" placeholder="Search name or admission no." value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        {withDues.length === 0 ? (
-          <p className="row-sub panel-empty">Nobody owes anything right now.</p>
+        {owing.length === 0 ? (
+          <p className="row-sub panel-empty">{query ? "No match." : "Nobody owes anything right now. 🎉"}</p>
         ) : (
           <ul className="dues-list">
-            {withDues.slice(0, 200).map((s) => (
+            {owing.slice(0, 200).map((s) => (
               <li key={s.id}>
-                <button onClick={() => onOpenStudent(s.id, "fees")}>
+                <div className="dues-row">
                   <span>
                     <strong>{s.name}</strong>
                     <span className="row-sub">
@@ -210,25 +203,16 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
                       {s.section ? ` · ${s.section}` : ""}
                     </span>
                   </span>
-                  <span className={`badge ${s.fee_status === "overdue" ? "badge-danger" : "badge-warning"}`}>
-                    {rupees(s.fee_due)}
-                  </span>
-                </button>
+                  <span className={`badge ${s.fee_status === "overdue" ? "badge-danger" : "badge-warning"}`}>{rupees(s.fee_due)}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={() => onCollect(s.id)}>
+                    Collect
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
-
-      <OpeningBalances
-        school={school}
-        session={session}
-        students={students}
-        onDone={async () => {
-          await load();
-          onChanged();
-        }}
-      />
     </>
   );
 }
@@ -243,194 +227,378 @@ function Stat({ label, value, tone, note }) {
   );
 }
 
-function AddHead({ onAdd }) {
-  const [name, setName] = useState("");
-  return (
-    <form
-      className="add-head"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (name.trim()) onAdd(name.trim());
-        setName("");
-      }}
-    >
-      <input className="input" placeholder="New fee head" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
-      <button className="btn btn-secondary btn-sm" disabled={!name.trim()}>
-        Add
-      </button>
-    </form>
-  );
-}
+// ----------------------------------------------------------------- setup ---
 
-function AddLine({ grades, heads, onAdd }) {
-  const blank = { class: "", head_id: heads[0]?.id ?? "", amount: "", frequency: "monthly", start_month: 4, due_day: 10 };
-  const [line, setLine] = useState(blank);
-  const set = (k) => (e) => setLine({ ...line, [k]: e.target.value });
-  return (
-    <form
-      className="add-line"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onAdd(line);
-        setLine({ ...blank, head_id: line.head_id });
-      }}
-    >
-      <select className="select" value={line.class} onChange={set("class")}>
-        <option value="">All classes</option>
-        {grades.map((g) => (
-          <option key={g.value} value={g.value}>
-            {gradeLabel(g.value)}
-          </option>
-        ))}
-      </select>
-      <select className="select" value={line.head_id} onChange={set("head_id")} required>
-        {heads.map((h) => (
-          <option key={h.id} value={h.id}>
-            {h.name}
-          </option>
-        ))}
-      </select>
-      <input className="input input-num" type="number" min="1" step="0.01" placeholder="₹ Amount" value={line.amount} onChange={set("amount")} required />
-      <select className="select" value={line.frequency} onChange={set("frequency")}>
-        {Object.entries(FREQUENCIES).map(([k, v]) => (
-          <option key={k} value={k}>
-            {v}
-          </option>
-        ))}
-      </select>
-      <select className="select" value={line.start_month} onChange={set("start_month")} title="First month due">
-        {MONTHS.map((m, i) => (
-          <option key={m} value={i + 1}>
-            From {m}
-          </option>
-        ))}
-      </select>
-      <input className="input input-num" type="number" min="1" max="28" value={line.due_day} onChange={set("due_day")} title="Day of month due" />
-      <button className="btn btn-primary btn-sm" disabled={!(Number(line.amount) > 0)}>
-        <Icon name="plus" />
-        Add line
-      </button>
-    </form>
-  );
-}
-
-// Reads the "Due Fee List" export from the previous fee system: a few title
-// rows, then a header row starting with "S.No"; columns between "Due Fees"
-// and "Vehicle Route" are fee heads.
-async function readDueList(file) {
-  const XLSX = await import("xlsx");
-  const book = XLSX.read(await file.arrayBuffer());
-  const rows = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { header: 1, defval: "" });
-  const h = rows.findIndex((r) => String(r[0]).trim().toLowerCase() === "s.no");
-  if (h < 0) throw new Error("no-header");
-  const header = rows[h].map((c) => String(c).trim());
-  const adm = header.findIndex((c) => /^adm/i.test(c));
-  const due = header.findIndex((c) => /^due fees$/i.test(c));
-  const end = header.findIndex((c, i) => i > due && /route|pick ?up/i.test(c));
-  if (adm < 0 || due < 0) throw new Error("no-header");
-  const headCols = header
-    .map((c, i) => [c, i])
-    .filter(([, i]) => i > due && (end < 0 || i < end))
-    .map(([c, i]) => [c.toLowerCase().replace(/\b\w/g, (x) => x.toUpperCase()), i]);
-  return rows
-    .slice(h + 1)
-    .filter((r) => typeof r[0] === "number" || /^\d+$/.test(String(r[0])))
-    .map((r) => ({
-      admission_no: String(r[adm]).trim(),
-      total: Number(r[due]) || 0,
-      heads: headCols.map(([name, i]) => [name, Number(r[i]) || 0]).filter(([, v]) => v > 0),
-    }));
-}
-
-function OpeningBalances({ school, session, students, onDone }) {
-  const [open, setOpen] = useState(false);
-  const [plan, setPlan] = useState(null);
-  const [state, setState] = useState("idle");
-  const [error, setError] = useState("");
-
-  async function choose(e) {
-    const f = e.target.files?.[0];
-    e.target.value = "";
-    if (!f) return;
-    setError("");
-    setPlan(null);
-    try {
-      const rows = await readDueList(f);
-      const byAdm = new Map(students.map((s) => [String(s.admission_no).toUpperCase(), s]));
-      const records = [];
-      const missing = [];
-      for (const r of rows) {
-        const s = byAdm.get(r.admission_no.toUpperCase());
-        if (!s) {
-          missing.push(r.admission_no);
-          continue;
-        }
-        const heads = r.heads.length ? r.heads : r.total > 0 ? [["Previous Dues", r.total]] : [];
-        heads.forEach(([head, amount]) => records.push({ student_id: s.id, head, amount }));
-      }
-      setPlan({ file: f.name, records, students: new Set(records.map((r) => r.student_id)).size, missing, total: records.reduce((t, r) => t + r.amount, 0) });
-    } catch {
-      setError("That doesn’t look like a Due Fee List export (couldn’t find the S.No / Adm. No. / Due Fees columns).");
-    }
-  }
-
-  async function run() {
-    setState("saving");
-    setError("");
-    try {
-      await importOpeningBalances(school.id, session.id, plan.records);
-      setState("done");
-      onDone();
-    } catch {
-      setState("idle");
-      setError("Import stopped part-way. It’s safe to run the same file again.");
-    }
-  }
+function Setup({ step, setStep, session, school, heads, schedule, students, hasDues, act, onCreated, onCancel }) {
+  const canNext = step === 0 ? heads.length > 0 : step === 1 ? heads.every((h) => schedule.some((l) => l.head_id === h.id)) : true;
 
   return (
-    <section className="panel">
-      <button className="panel-title panel-toggle" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <h2>Opening balances from your previous fee system</h2>
-        <Icon name="chevronDown" className={open ? "is-open" : ""} />
-      </button>
-      {open && (
-        <div className="opening-body">
-          <p className="row-sub">
-            Upload the <strong>Due Fee List</strong> export. Each student’s outstanding amount becomes an “Opening
-            balance” due under the matching fee head for {session.name}. Re-uploading updates the amounts.
-          </p>
-          <label className="dropzone">
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={choose} disabled={state === "saving"} />
-            <Icon name="upload" size={20} />
-            <span className="dropzone-title">{plan?.file ?? "Choose the Due Fee List"}</span>
-          </label>
-          {plan && state !== "done" && (
-            <>
-              <dl className="summary-list">
-                <div>
-                  <dt>Students with a balance</dt>
-                  <dd>{plan.students}</dd>
-                </div>
-                <div>
-                  <dt>Total opening balance</dt>
-                  <dd>{rupees(plan.total)}</dd>
-                </div>
-                {plan.missing.length > 0 && (
-                  <div>
-                    <dt>Not found in this session (skipped)</dt>
-                    <dd title={plan.missing.join(", ")}>{plan.missing.length}</dd>
-                  </div>
-                )}
-              </dl>
-              <button className="btn btn-primary btn-sm" onClick={run} disabled={state === "saving" || !plan.records.length}>
-                {state === "saving" ? "Importing…" : "Import opening balances"}
-              </button>
-            </>
+    <section className="panel setup">
+      <ol className="stepper">
+        {STEPS.map((label, i) => (
+          <li key={label} className={i === step ? "is-current" : i < step ? "is-done" : ""}>
+            <button onClick={() => (i <= step || canNext) && setStep(i)} disabled={i > step && !canNext}>
+              <span className="stepper-num">{i < step ? <Icon name="check" size={14} /> : i + 1}</span>
+              {label}
+            </button>
+          </li>
+        ))}
+      </ol>
+
+      <div className="setup-body">
+        {step === 0 && <ChooseHeads school={school} heads={heads} schedule={schedule} act={act} />}
+        {step === 1 && <Amounts school={school} session={session} heads={heads} schedule={schedule} students={students} act={act} />}
+        {step === 2 && <Review heads={heads} schedule={schedule} students={students} session={session} hasDues={hasDues} onCreated={onCreated} />}
+      </div>
+
+      <div className="setup-nav">
+        {onCancel ? (
+          <button className="btn btn-secondary" onClick={onCancel}>
+            Back to fees
+          </button>
+        ) : (
+          <span />
+        )}
+        <div className="setup-nav-right">
+          {step > 0 && (
+            <button className="btn btn-secondary" onClick={() => setStep(step - 1)}>
+              Back
+            </button>
           )}
-          {state === "done" && <p className="callout callout-success">Opening balances imported.</p>}
-          {error && <p className="field-error">{error}</p>}
+          {step < 2 && (
+            <button className="btn btn-primary" onClick={() => setStep(step + 1)} disabled={!canNext}>
+              Next
+              <Icon name="chevronDown" className="icon-next" />
+            </button>
+          )}
         </div>
-      )}
+      </div>
+      {!canNext && step === 1 && <p className="row-sub setup-hint">Give every fee an amount to continue.</p>}
     </section>
+  );
+}
+
+function ChooseHeads({ school, heads, schedule, act }) {
+  const [custom, setCustom] = useState("");
+  const chosen = new Map(heads.map((h) => [h.name.toLowerCase(), h]));
+  const options = [...SUGGESTED, ...heads.map((h) => h.name).filter((n) => !SUGGESTED.some((s) => s.toLowerCase() === n.toLowerCase()))];
+
+  return (
+    <>
+      <h2 className="setup-title">What does your school charge?</h2>
+      <p className="row-sub">Tap every fee you collect. You can add your own.</p>
+      <div className="head-picks">
+        {options.map((name) => {
+          const head = chosen.get(name.toLowerCase());
+          const used = head && schedule.some((l) => l.head_id === head.id);
+          return (
+            <button
+              key={name}
+              className={`head-pick${head ? " on" : ""}`}
+              aria-pressed={Boolean(head)}
+              onClick={act(() => (head ? (used ? Promise.resolve() : deleteFeeHead(head.id)) : addFeeHead(school.id, name)))}
+              title={used ? "Has amounts set; remove them in the next step first" : ""}
+            >
+              {head && <Icon name="check" size={14} />}
+              {name}
+            </button>
+          );
+        })}
+      </div>
+      <form
+        className="add-head"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (custom.trim() && (await act(() => addFeeHead(school.id, custom.trim()))())) setCustom("");
+        }}
+      >
+        <input className="input" placeholder="Another fee, e.g. Smart class" value={custom} onChange={(e) => setCustom(e.target.value)} maxLength={60} />
+        <button className="btn btn-secondary btn-sm" disabled={!custom.trim()}>
+          <Icon name="plus" />
+          Add
+        </button>
+      </form>
+    </>
+  );
+}
+
+function Amounts({ school, session, heads, schedule, students, act }) {
+  const grades = useMemo(() => gradeOptions(students), [students]);
+  return (
+    <>
+      <h2 className="setup-title">How much, and how often?</h2>
+      <p className="row-sub">Set one amount for all classes, then add a different amount for any class that pays more or less.</p>
+      <div className="amount-cards">
+        {heads.map((h) => (
+          <AmountCard
+            key={h.id}
+            head={h}
+            lines={schedule.filter((l) => l.head_id === h.id)}
+            grades={grades}
+            onAdd={act((line) => addScheduleLine(school.id, session.id, { ...line, head_id: h.id }))}
+            onRemove={act((id) => deleteScheduleLine(id))}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AmountCard({ head, lines, grades, onAdd, onRemove }) {
+  const general = lines.find((l) => !l.class);
+  const specific = lines.filter((l) => l.class);
+  const [adding, setAdding] = useState(!general);
+
+  return (
+    <article className="amount-card">
+      <header>
+        <h3>{head.name}</h3>
+        {general && (
+          <span className="amount-line">
+            <strong>{rupees(general.amount)}</strong> {LABEL[general.frequency]} · all classes
+            <button className="link-btn" onClick={() => onRemove(general.id)}>
+              Change
+            </button>
+          </span>
+        )}
+      </header>
+
+      {specific.length > 0 && (
+        <ul className="amount-overrides">
+          {specific.map((l) => (
+            <li key={l.id}>
+              <span>
+                {gradeLabel(l.class)}: <strong>{rupees(l.amount)}</strong> {LABEL[l.frequency]}
+              </span>
+              <button className="link-btn link-danger" onClick={() => onRemove(l.id)}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!general ? (
+        <AmountForm forAll grades={grades} onSave={(line) => onAdd(line)} />
+      ) : adding ? (
+        <AmountForm grades={grades} taken={specific.map((l) => l.class)} onSave={async (line) => (await onAdd(line)) && setAdding(false)} onCancel={() => setAdding(false)} />
+      ) : (
+        <button className="link-btn amount-more" onClick={() => setAdding(true)}>
+          + Different amount for a class
+        </button>
+      )}
+    </article>
+  );
+}
+
+function AmountForm({ forAll = false, grades, taken = [], onSave, onCancel }) {
+  const [line, setLine] = useState({ class: "", amount: "", frequency: "monthly", start_month: 4, due_day: 10 });
+  const [more, setMore] = useState(false);
+  const set = (k, v) => setLine({ ...line, [k]: v });
+  const choices = grades.filter((g) => !taken.includes(g.value));
+
+  return (
+    <form
+      className="amount-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave({ ...line, class: forAll ? "" : line.class });
+      }}
+    >
+      <div className="amount-form-row">
+        {!forAll && (
+          <select className="select" value={line.class} onChange={(e) => set("class", e.target.value)} required>
+            <option value="" disabled>
+              Choose class
+            </option>
+            {choices.map((g) => (
+              <option key={g.value} value={g.value}>
+                {gradeLabel(g.value)}
+              </option>
+            ))}
+          </select>
+        )}
+        <label className="rupee-input">
+          <span>₹</span>
+          <input type="number" min="1" step="1" placeholder="Amount" value={line.amount} onChange={(e) => set("amount", e.target.value)} required autoFocus={!forAll} />
+        </label>
+      </div>
+      <div className="pill-group" role="radiogroup" aria-label="How often">
+        {HOW_OFTEN.map(([value, label]) => (
+          <button
+            type="button"
+            key={value}
+            role="radio"
+            aria-checked={line.frequency === value}
+            className={`pill${line.frequency === value ? " on" : ""}`}
+            onClick={() => set("frequency", value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {more ? (
+        <div className="amount-form-row amount-more-opts">
+          <label>
+            <span className="row-sub">First due in</span>
+            <select className="select" value={line.start_month} onChange={(e) => set("start_month", e.target.value)}>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="row-sub">Due on day</span>
+            <input className="input input-num" type="number" min="1" max="28" value={line.due_day} onChange={(e) => set("due_day", e.target.value)} />
+          </label>
+        </div>
+      ) : (
+        <button type="button" className="link-btn amount-more" onClick={() => setMore(true)}>
+          More options (first month, due day)
+        </button>
+      )}
+      <div className="amount-form-actions">
+        {onCancel && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+        <button className="btn btn-primary btn-sm" disabled={!(Number(line.amount) > 0) || (!forAll && !line.class)}>
+          Save
+          {Number(line.amount) > 0 && ` · ${rupees(line.amount * PER_YEAR[line.frequency])} a year`}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Review({ heads, schedule, students, session, hasDues, onCreated }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const grades = useMemo(() => gradeOptions(students.filter((s) => s.status !== "left")), [students]);
+
+  // Yearly fee per student for each class: class-specific amounts replace
+  // the all-classes amount for that fee (same rule as the database).
+  const rows = grades.map((g) => {
+    const perStudent = heads.reduce((sum, h) => {
+      const line = schedule.find((l) => l.head_id === h.id && l.class === g.value) ?? schedule.find((l) => l.head_id === h.id && !l.class);
+      return sum + (line ? Number(line.amount) * PER_YEAR[line.frequency] : 0);
+    }, 0);
+    return { grade: g.value, students: g.count, perStudent, total: perStudent * g.count };
+  });
+  const total = rows.reduce((s, r) => s + r.total, 0);
+
+  async function create() {
+    setBusy(true);
+    setError("");
+    try {
+      onCreated(await generateInvoices(session.id));
+    } catch {
+      setError("Couldn’t create the dues. Try again.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h2 className="setup-title">Check and create dues</h2>
+      <p className="row-sub">
+        This is what each student will owe for {session.name}. Creating dues sets up every instalment with its due date.
+        {hasDues && " Existing dues are kept; only missing ones are added."}
+      </p>
+      <table className="review-table">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th className="num">Per student, per year</th>
+            <th className="num">Students</th>
+            <th className="num">Class total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.grade}>
+              <td>{gradeLabel(r.grade)}</td>
+              <td className="num">{rupees(r.perStudent)}</td>
+              <td className="num">{r.students}</td>
+              <td className="num">{rupees(r.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Whole school</th>
+            <th />
+            <th className="num">{rows.reduce((s, r) => s + r.students, 0)}</th>
+            <th className="num">{rupees(total)}</th>
+          </tr>
+        </tfoot>
+      </table>
+      {error && <p className="field-error">{error}</p>}
+      <button className="btn btn-primary btn-xl" onClick={create} disabled={busy || total === 0}>
+        {busy ? "Creating…" : hasDues ? `Add missing dues for ${session.name}` : `Create dues for ${session.name}`}
+      </button>
+    </>
+  );
+}
+
+// --------------------------------------------------------------- dialogs ---
+
+function Dialog({ title, onClose, children }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{title}</h2>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+        <div className="modal-body">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+function StudentPicker({ students, onPick }) {
+  const [q, setQ] = useState("");
+  const matches = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return [];
+    return students
+      .filter((s) => `${s.name} ${s.admission_no} ${s.parent_name ?? ""} ${s.parent_phone ?? ""}`.toLowerCase().includes(t))
+      .slice(0, 8);
+  }, [students, q]);
+  return (
+    <div className="picker">
+      <label className="search">
+        <Icon name="search" />
+        <input autoFocus placeholder="Student name, admission no. or parent’s phone" value={q} onChange={(e) => setQ(e.target.value)} />
+      </label>
+      <ul className="picker-list">
+        {matches.map((s) => (
+          <li key={s.id}>
+            <button onClick={() => onPick(s)}>
+              <span>
+                <strong>{s.name}</strong>
+                <span className="row-sub">
+                  {s.admission_no} · {gradeLabel(s.class)}
+                  {s.section ? ` · ${s.section}` : ""}
+                </span>
+              </span>
+              {s.fee_due > 0 ? <span className="badge badge-warning">{rupees(s.fee_due)} due</span> : <span className="badge badge-success">Nothing due</span>}
+            </button>
+          </li>
+        ))}
+        {q && matches.length === 0 && <li className="row-sub picker-empty">No student found.</li>}
+      </ul>
+    </div>
   );
 }
