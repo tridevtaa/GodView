@@ -42,7 +42,7 @@ const DESIGNATIONS = [
 
 // Shown to someone signed in who isn't a member of any school yet:
 // 1) enter the school's join code, 2) details and classes, 3) sent.
-function RequestAccess({ user }) {
+function RequestAccess({ user, onSchool }) {
   const [step, setStep] = useState("code");
   const [code, setCode] = useState("");
   const [school, setSchool] = useState(null); // { school_name, session_name, classes }
@@ -67,6 +67,7 @@ function RequestAccess({ user }) {
       if (!found) setError("That code didn’t match a school. Check it with your school office.");
       else {
         setSchool(found);
+        onSchool(found);
         setStep("details");
       }
     } catch {
@@ -93,7 +94,6 @@ function RequestAccess({ user }) {
   if (step === "sent") {
     return (
       <>
-        {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
         <h1>Request sent</h1>
         <p className="muted">
           {school.school_name}’s owner will review your request. Once it’s approved, sign in again to see your classes.
@@ -137,7 +137,6 @@ function RequestAccess({ user }) {
 
   return (
     <form className="request-form request-form-wide" onSubmit={submit}>
-      {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
       <h1>{school.school_name}</h1>
       <p className="muted">Tell the school who you are and which classes you teach.</p>
       <div className="form-grid">
@@ -187,6 +186,7 @@ function RequestAccess({ user }) {
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
   const [error, setError] = useState("");
+  const [joinSchool, setJoinSchool] = useState(null); // school found by join code
 
   useEffect(() => {
     clearLegacyCaches();
@@ -239,11 +239,19 @@ export default function AuthGate({ children }) {
   return (
     <main className="auth-screen">
       <div className="auth-card">
-        <LogoMark size={44} />
+        <div className="auth-brand">
+          <LogoMark size={44} />
+          {joinSchool?.logo_path && (
+            <>
+              <span className="logo-x" aria-hidden="true">×</span>
+              <img className="auth-brand-school" src={logoUrl(joinSchool.logo_path)} alt={joinSchool.school_name} />
+            </>
+          )}
+        </div>
         {state.status === "loading" || state.status === "checking" ? (
           <p className="muted">Checking access…</p>
         ) : state.status === "denied" ? (
-          <RequestAccess user={state.user} />
+          <RequestAccess user={state.user} onSchool={setJoinSchool} />
         ) : (
           <>
             <h1>Sign in to Godview</h1>
