@@ -63,8 +63,7 @@ function PhotoUpload({ person, kind, onSaved }) {
     setBusy(true);
     setError("");
     try {
-      await savePhoto(kind, person.id, file);
-      onSaved({ has_photo: true });
+      onSaved(await savePhoto(kind, person.id, file));
     } catch (err) {
       setError(err.message === "not-an-image" ? "Please choose an image file." : "Upload failed. Try again.");
     } finally {

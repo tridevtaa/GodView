@@ -22,7 +22,7 @@ export default function App() {
   const [openId, setOpenId] = useState(null);
   const [grade, setGrade] = useState("");
   const [importing, setImporting] = useState(false);
-  const { people, loading, source, add, patch, reload } = usePeople(mode);
+  const { people, loading, source, stale, add, patch, reload } = usePeople(mode);
 
   // Students who left stay in Firestore (history) but aren't shown.
   const current = useMemo(() => people.filter((p) => p.status !== "left"), [people]);
@@ -89,6 +89,13 @@ export default function App() {
             {source === "error"
               ? `Couldn’t load ${mode}. Check your connection or ask an administrator for access.`
               : "Showing sample data. Add records or import to see real ones."}
+          </p>
+        )}
+
+        {!loading && stale && (
+          <p className="notice">
+            Showing the copy saved on this device — couldn’t check for updates right now. Changes made since may be
+            missing; try again later.
           </p>
         )}
 

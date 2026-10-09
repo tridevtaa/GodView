@@ -1,5 +1,12 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import {
+  CACHE_SIZE_UNLIMITED,
+  clearIndexedDbPersistence,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  terminate,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 // Read Firebase config from Vite env vars so local/dev/prod setup does not
@@ -25,5 +32,33 @@ if (missingKeys.length > 0) {
 }
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// Keep fetched documents in the browser (IndexedDB) so reloads read from the
+// local copy and only ask the server for what changed. Falls back to memory
+// automatically where IndexedDB isn't available (e.g. some private windows).
+export const db = initializeFirestore(app, {
+  // Unlimited so cached records are never evicted: the student list is built
+  // from this cache plus recent changes, so an evicted record would vanish.
+  localCache: persistentLocalCache({
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 export const auth = getAuth(app);
+
+// Removes every locally cached document (student data) from this browser.
+export async function clearLocalData() {
+  try {
+    await terminate(db);
+    await clearIndexedDbPersistence(db);
+  } catch {
+    // Another tab may still hold the cache; it is cleared when that tab closes.
+  }
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("godview."))
+      .forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // Storage blocked; nothing to clear.
+  }
+}

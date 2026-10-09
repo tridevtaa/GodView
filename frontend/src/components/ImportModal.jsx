@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { doc, writeBatch } from "firebase/firestore";
 import { db } from "../firebase.js";
 import { checkHeaders, planImport } from "../data/studentImport.js";
+import { stamp } from "../data/usePeople.js";
 import Icon from "./Icon.jsx";
 
 // Academic sessions start in April: Oct 2026 -> "2026-27", Feb 2027 -> "2026-27".
@@ -63,8 +64,8 @@ export default function ImportModal({ students, onClose, onDone }) {
         const batch = writeBatch(db);
         for (const w of writes.slice(i, i + 400)) {
           const ref = doc(db, "students", w.id);
-          if (w.merge) batch.set(ref, w.data, { merge: true });
-          else batch.update(ref, w.data);
+          if (w.merge) batch.set(ref, { ...w.data, ...stamp() }, { merge: true });
+          else batch.update(ref, { ...w.data, ...stamp() });
         }
         await batch.commit();
         setProgress(`${Math.min(i + 400, writes.length)} / ${writes.length}`);
