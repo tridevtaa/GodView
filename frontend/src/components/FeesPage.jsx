@@ -43,8 +43,12 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
       setHeads(h);
       setSchedule(sch);
       setError("");
-    } catch {
-      setError("Couldn’t load fees. Check your connection and try again.");
+    } catch (err) {
+      setError(
+        err?.code === "PGRST205"
+          ? "Fees aren’t set up in the database yet. The latest database update needs to be applied first."
+          : "Couldn’t load fees. Check your connection and try again."
+      );
     }
   }, [school.id, session]);
 
@@ -57,8 +61,14 @@ export default function FeesPage({ school, session, students, onOpenStudent, onC
     try {
       await fn(...args);
       await load();
-    } catch {
-      setError("That didn’t go through. Check the values and try again.");
+    } catch (err) {
+      setError(
+        err?.code === "PGRST205"
+          ? "Fees aren’t set up in the database yet. The latest database update needs to be applied first."
+          : err?.code === "23505"
+            ? "That already exists."
+            : "That didn’t go through. Check the values and try again."
+      );
     }
   };
 
