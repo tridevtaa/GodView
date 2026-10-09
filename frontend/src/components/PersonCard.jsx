@@ -29,9 +29,15 @@ export const FEE_LABEL = {
   unknown: "Fee status not recorded",
 };
 
-// "2" -> "Grade 2"; "Nursery" / "KG 1" stay as they are.
+// The school's own grade names (school_grades.label by code), set once the
+// school loads. Falls back to "Grade 2" for numbers and the code otherwise.
+let GRADE_LABELS = new Map();
+export function setGradeLabels(grades) {
+  GRADE_LABELS = new Map(grades.map((g) => [g.code, g.label]));
+}
+
 export function gradeLabel(klass = "") {
-  return /^\d+$/.test(klass) ? `Grade ${klass}` : klass;
+  return GRADE_LABELS.get(klass) ?? (/^\d+$/.test(klass) ? `Grade ${klass}` : klass);
 }
 
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });

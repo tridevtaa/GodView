@@ -688,3 +688,73 @@ export async function removeGuardianLink(guardianId, studentId) {
 export async function setNoteShared(noteId, shared) {
   must(await supabase.from("student_notes").update({ shared_with_parents: shared }).eq("id", noteId));
 }
+
+// --------------------------------------------- grades & instalment types ---
+
+export async function listGrades(schoolId) {
+  return must(await supabase.from("school_grades").select("*").eq("school_id", schoolId).order("sort").order("code"));
+}
+
+export async function addGrade(schoolId, label, sort) {
+  const name = label.trim();
+  return must(
+    await supabase.from("school_grades").insert({ school_id: schoolId, code: name, label: name, sort }).select().single()
+  );
+}
+
+export async function updateGrade(id, fields) {
+  return must(await supabase.from("school_grades").update(fields).eq("id", id).select().single());
+}
+
+export async function listPlans(schoolId) {
+  return must(await supabase.from("fee_plans").select("*").eq("school_id", schoolId).order("sort").order("name"));
+}
+
+export async function addPlan(schoolId, { name, months, due_day }) {
+  return must(
+    await supabase
+      .from("fee_plans")
+      .insert({ school_id: schoolId, name: name.trim(), months, due_day: Number(due_day) || 10, sort: 10 })
+      .select()
+      .single()
+  );
+}
+
+export async function deletePlan(id) {
+  must(await supabase.from("fee_plans").delete().eq("id", id));
+}
+
+// Sets one grade's amount and instalment type for a fee head (owner only).
+// Clearing the amount removes that grade's line.
+export async function setGradeFee(schoolId, sessionId, existing, { grade, headId, amount, planId }) {
+  const value = Number(amount);
+  if (!value) {
+    if (existing) must(await supabase.from("fee_schedule").delete().eq("id", existing.id));
+    return null;
+  }
+  if (existing) {
+    return must(
+      await supabase
+        .from("fee_schedule")
+        .update({ amount: value, plan_id: planId, frequency: null })
+        .eq("id", existing.id)
+        .select()
+        .single()
+    );
+  }
+  return must(
+    await supabase
+      .from("fee_schedule")
+      .insert({ school_id: schoolId, session_id: sessionId, class: grade, head_id: headId, amount: value, plan_id: planId })
+      .select()
+      .single()
+  );
+}
+
+export async function feeMonthlyCollection(sessionId) {
+  return must(await supabase.rpc("fee_monthly_collection", { session: sessionId }));
+}
+
+export async function feeClassSummary(sessionId) {
+  return must(await supabase.rpc("fee_class_summary", { session: sessionId }));
+}

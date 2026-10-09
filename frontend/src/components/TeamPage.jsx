@@ -17,6 +17,7 @@ import {
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
+import FeeStructure from "./FeeStructure.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -29,7 +30,16 @@ const ROLE_HINT = {
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 // Owner-only: members, roles, class assignments, access and export requests.
-export default function TeamPage({ school, session, me, onSchoolSaved }) {
+const OWNER_TABS = [
+  ["team", "Team"],
+  ["school", "School"],
+  ["fees", "Fee structure"],
+];
+
+// Owner page: Team (requests, exports, members), School (profile, join
+// code) and Fee structure.
+export default function TeamPage({ school, session, me, onSchoolSaved, grades, onGradesChanged, students, onFeesChanged }) {
+  const [tab, setTab] = useState("team");
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -83,19 +93,49 @@ export default function TeamPage({ school, session, me, onSchoolSaved }) {
     <>
       <div className="page-header">
         <div>
-          <h1 className="sr-only">Team</h1>
+          <h1 className="sr-only">Owner</h1>
           <div className="page-meta">
-            <span className="page-count">{loading ? "Loading…" : `${members.length} members`}</span>
-            {session && <span className="badge badge-neutral">Classes for {session.name}</span>}
+            <span className="page-count">Owner</span>
+            <nav className="segmented segmented-sm" aria-label="Owner sections">
+              {OWNER_TABS.map(([v, l]) => (
+                <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
+                  {l}
+                  {v === "team" && requests.length + pendingExports.length > 0 && (
+                    <span className="seg-count">{requests.length + pendingExports.length}</span>
+                  )}
+                </button>
+              ))}
+            </nav>
           </div>
         </div>
       </div>
 
       {error && <p className="notice notice-error">{error}</p>}
 
-      <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} />
+      {tab === "school" && (
+        <>
+          <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} />
+          <JoinCode school={school} />
+        </>
+      )}
 
-      <JoinCode school={school} />
+      {tab === "fees" && (
+        <FeeStructure
+          school={school}
+          session={session}
+          grades={grades}
+          onGradesChanged={onGradesChanged}
+          students={students}
+          onChanged={onFeesChanged}
+        />
+      )}
+
+      {tab === "team" && (
+      <>
+      <p className="row-sub owner-meta">
+        {loading ? "Loading…" : `${members.length} members`}
+        {session ? ` · classes shown for ${session.name}` : ""}
+      </p>
 
       {requests.length > 0 && (
         <section className="panel">
@@ -164,9 +204,11 @@ export default function TeamPage({ school, session, me, onSchoolSaved }) {
       </section>
 
       <p className="panel-foot">
-        Staff join by signing in with Google and entering the join code above. You can also add someone’s Google email
-        directly.
+        Staff join by signing in with Google and entering the school’s join code (in the School tab). You can also add
+        someone’s Google email directly.
       </p>
+      </>
+      )}
     </>
   );
 }

@@ -7,13 +7,13 @@ import FeeSummary from "./components/FeeSummary.jsx";
 import ImportModal from "./components/ImportModal.jsx";
 import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
-import { gradeLabel } from "./components/PersonCard.jsx";
+import { gradeLabel, setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import RequestsPage from "./components/RequestsPage.jsx";
-import { countOpenRequests, countPendingRequests } from "./data/api.js";
+import { countOpenRequests, countPendingRequests, listGrades } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -43,6 +43,21 @@ export default function App() {
     countOpenRequests(school.id).then(setOpenRequests, () => setOpenRequests(0));
   }, [isOwner, school.id, mode, badgeTick]);
   const { sessions, current: currentSession } = useSessions(school.id);
+
+  // The school's grade list (names and sections); grade names everywhere use it.
+  const [schoolGrades, setSchoolGrades] = useState([]);
+  const loadGrades = useCallback(() => {
+    listGrades(school.id).then(
+      (rows) => {
+        setGradeLabels(rows);
+        setSchoolGrades(rows);
+      },
+      () => setSchoolGrades([])
+    );
+  }, [school.id]);
+  useEffect(() => {
+    loadGrades();
+  }, [loadGrades]);
   const sessionId = pickedSession ?? currentSession?.id;
   // Fees, Requests and Team work on the session's students.
   const dataMode = mode === "employees" ? "employees" : "students";
@@ -116,7 +131,7 @@ export default function App() {
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Requests", openRequests],
     ...(isAdmin ? [["employees", "Employees"]] : []),
-    ...(isOwner ? [["team", "Team", pendingCount]] : []),
+    ...(isOwner ? [["team", "Owner", pendingCount]] : []),
   ];
 
   return (
@@ -125,10 +140,21 @@ export default function App() {
 
       <main className="page">
         {mode === "team" ? (
-          <TeamPage school={school} session={currentSession} me={user.email} onSchoolSaved={setSchool} />
+          <TeamPage
+            school={school}
+            session={currentSession}
+            me={user.email}
+            onSchoolSaved={setSchool}
+            grades={schoolGrades}
+            onGradesChanged={loadGrades}
+            students={current}
+            onFeesChanged={reload}
+          />
         ) : mode === "fees" ? (
           <FeesPage
             school={school}
+            role={role}
+            onSetup={() => switchMode("team")}
             session={selectedSession}
             students={current}
             onOpenStudent={openStudent}
