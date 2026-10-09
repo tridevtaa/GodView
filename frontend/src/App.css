@@ -5513,8 +5513,8 @@ button.profile-stat:hover {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 1px 4px rgba(29, 35, 102, 0.25);
-  color: var(--text-3);
-  font: 600 11px/1.2 var(--font);
+  color: var(--text-2);
+  font: 600 12px/1.2 var(--font);
   white-space: nowrap;
 }
 

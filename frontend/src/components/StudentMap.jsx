@@ -566,6 +566,10 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
   useEffect(() => {
     const m = L.map(el.current, { zoomControl: false, minZoom: 5, maxZoom: 18, center: [30.27, 77.05], zoom: 11 });
     L.control.zoom({ position: "bottomright" }).addTo(m);
+    // Ring labels sit above the village pins so the counts stay readable.
+    m.createPane("ringLabels");
+    m.getPane("ringLabels").style.zIndex = 650;
+    m.getPane("ringLabels").style.pointerEvents = "none";
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>',
@@ -675,7 +679,12 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
     const centre = L.circleMarker([home.lat, home.lng], { radius: 4, weight: 2, color: "#fff", fillColor: "#1d2366", fillOpacity: 1, interactive: false }).addTo(map.current);
     rings.current.push(centre);
     for (const km of [...RINGS].reverse()) {
-      const inside = groups.reduce((t, g) => t + (kmBetween(home, g) <= km ? g.students.length : 0), 0);
+      // Students in this band only (e.g. 5 to 10 km), not everyone inside.
+      const from = RINGS[RINGS.indexOf(km) - 1] ?? 0;
+      const inBand = groups.reduce((t, g) => {
+        const d = kmBetween(home, g);
+        return t + ((!from || d > from) && d <= km ? g.students.length : 0);
+      }, 0);
       const circle = L.circle([home.lat, home.lng], {
         radius: km * 1000,
         color: "#1d2366",
@@ -687,9 +696,9 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
         interactive: false,
       }).addTo(map.current);
       const label = L.marker([home.lat + km / 111, home.lng], {
-        icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-ring-label"><strong>${km} km</strong> ${inside}</span>`, iconSize: null }),
+        icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-ring-label" title="${inBand} student${inBand === 1 ? "" : "s"} live ${from ? `${from} to ${km}` : `within ${km}`} km of the school"><strong>${from ? `${from}–${km}` : `0–${km}`} km</strong> · ${inBand} student${inBand === 1 ? "" : "s"}</span>`, iconSize: null }),
         interactive: false,
-        zIndexOffset: -2000,
+        pane: "ringLabels",
       }).addTo(map.current);
       rings.current.push(circle, label);
     }
