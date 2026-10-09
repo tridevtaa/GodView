@@ -18,6 +18,7 @@ import {
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
 import FeeStructure from "./FeeStructure.jsx";
+import TransportRoutes from "./TransportRoutes.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -34,12 +35,15 @@ const OWNER_TABS = [
   ["team", "Team"],
   ["school", "School"],
   ["fees", "Fee structure"],
+  ["transport", "Transport"],
 ];
 
 // Owner page: Team (requests, exports, members), School (profile, join
 // code) and Fee structure.
-export default function TeamPage({ school, session, me, onSchoolSaved, grades, onGradesChanged, students, onFeesChanged }) {
-  const [tab, setTab] = useState("team");
+export default function TeamPage({ school, session, me, onSchoolSaved, grades, onGradesChanged, students, onFeesChanged, routes = [], onRoutesChanged, tab: shownTab, onTab }) {
+  const [ownTab, setOwnTab] = useState("team");
+  const tab = shownTab ?? ownTab;
+  const setTab = onTab ?? setOwnTab;
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -130,6 +134,8 @@ export default function TeamPage({ school, session, me, onSchoolSaved, grades, o
           onChanged={onFeesChanged}
         />
       )}
+
+      {tab === "transport" && <TransportRoutes school={school} routes={routes} students={students} onChanged={onRoutesChanged} />}
 
       {tab === "team" && (
       <>

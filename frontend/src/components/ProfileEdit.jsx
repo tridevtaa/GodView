@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { updateEmployee, updateStudent } from "../data/api.js";
+import PlacePicker from "./PlacePicker.jsx";
+import TransportPicker from "./TransportPicker.jsx";
+import Icon from "./Icon.jsx";
 
 // [field, label, input type or option list, required]
 const FIELDS = {
@@ -24,13 +27,6 @@ const FIELDS = {
       ["father_phone", "Father phone", "tel"],
       ["mother_phone", "Mother phone", "tel"],
       ["email", "Email", "email"],
-    ]],
-    ["Address & transport", [
-      ["address", "Address", "text"],
-      ["city", "City", "text"],
-      ["state", "State", "text"],
-      ["pickup_point", "Pick-up point", "text"],
-      ["transport_route", "Bus route", "text"],
     ]],
     ["Admission", [
       ["admission_date", "Admission date", "date"],
@@ -60,12 +56,19 @@ const GENDER_LABEL = { "": "Not set", F: "Female", M: "Male" };
 const optionLabel = (key, opt) =>
   key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "Not set";
 
-export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel }) {
+export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel, routes = [] }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);
   const initial = Object.fromEntries(
     fields.map(([key]) => [key, String(person[key] ?? (key === "status" ? "active" : ""))])
   );
   const [form, setForm] = useState(initial);
+  // Home pin and transport (students), edited with the map search and route picker.
+  const startHome =
+    person.home_lat != null || person.address
+      ? { address: [person.address, person.city, person.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", "), lat: person.home_lat ?? null, lng: person.home_lng ?? null, place_id: person.home_place_id ?? null }
+      : null;
+  const [home, setHome] = useState(startHome);
+  const [transport, setTransport] = useState({ uses_bus: Boolean(person.uses_bus), bus_stop_id: person.bus_stop_id ?? null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -74,6 +77,29 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
       .map(([k, v]) => [k, v.trim()])
       .filter(([k, v]) => v !== initial[k].trim())
   );
+  if (kind === "students") {
+    if (JSON.stringify(home) !== JSON.stringify(startHome)) {
+      Object.assign(changes, {
+        address: home?.address ?? "",
+        city: home?.city ?? (home ? person.city ?? "" : ""),
+        state: home?.state ?? (home ? person.state ?? "" : ""),
+        home_lat: home?.lat ?? null,
+        home_lng: home?.lng ?? null,
+        home_place_id: home?.place_id ?? null,
+      });
+      // A picked place carries the full address; don't repeat city and state.
+      if (home?.place_id) Object.assign(changes, { city: home.city ?? "", state: home.state ?? "" });
+    }
+    if (transport.uses_bus !== Boolean(person.uses_bus) || (transport.bus_stop_id ?? null) !== (person.bus_stop_id ?? null)) {
+      const route = routes.find((r) => r.stops.some((s) => s.id === transport.bus_stop_id));
+      Object.assign(changes, {
+        uses_bus: transport.uses_bus,
+        bus_stop_id: transport.uses_bus ? transport.bus_stop_id ?? null : null,
+        transport_route: transport.uses_bus ? route?.name ?? person.transport_route ?? "" : "",
+        pickup_point: transport.uses_bus ? route?.stops.find((s) => s.id === transport.bus_stop_id)?.name ?? person.pickup_point ?? "" : "",
+      });
+    }
+  }
   const dirty = Object.keys(changes).length > 0;
 
   async function save(e) {
@@ -124,6 +150,32 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
           </div>
         </fieldset>
       ))}
+      {kind === "students" && (
+        <fieldset>
+          <legend>Home & transport</legend>
+          <div className="ns-sections">
+            <section>
+              <h3>
+                <Icon name="pin" />
+                Home
+              </h3>
+              <PlacePicker value={home} onChange={setHome} label="Home location" />
+            </section>
+            <section>
+              <h3>
+                <Icon name="bus" />
+                Transport
+              </h3>
+              {person.transport_route && !person.bus_stop_id && (
+                <p className="row-sub">
+                  From the ERP: {[person.transport_route, person.pickup_point].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              <TransportPicker routes={routes} value={transport} onChange={setTransport} />
+            </section>
+          </div>
+        </fieldset>
+      )}
       {error && <p className="field-error">{error}</p>}
       <div className="modal-footer modal-footer-sticky">
         <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
