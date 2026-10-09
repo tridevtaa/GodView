@@ -177,20 +177,18 @@ export default function App() {
             session={currentSession}
             me={user.email}
             onSchoolSaved={setSchool}
-            grades={schoolGrades}
-            onGradesChanged={loadGrades}
             routes={routes}
             onRoutesChanged={loadRoutes}
             tab={ownerTab}
             onTab={setOwnerTab}
             students={current}
-            onFeesChanged={reload}
           />
         ) : mode === "fees" ? (
           <FeesPage
             school={school}
             role={role}
-            onSetup={() => openOwner("fees")}
+            grades={schoolGrades}
+            onGradesChanged={loadGrades}
             session={selectedSession}
             students={current}
             onOpenStudent={openStudent}

@@ -20,11 +20,13 @@ const FIELDS = [
   ["pincode", "PIN code", { inputMode: "numeric", pattern: "\\d{6}", title: "6 digits", maxLength: 6 }],
 ];
 
-// Owner-only: the school's name, logo and details.
-export default function SchoolProfile({ school, onSaved }) {
+// Owner-only: the school's name, logo and details. A one-line summary (with
+// `aside`, the join code) until the owner opens it to edit.
+export default function SchoolProfile({ school, onSaved, aside }) {
+  const [editing, setEditing] = useState(false);
   const initial = Object.fromEntries(FIELDS.map(([k]) => [k, school[k] ?? ""]));
   const [form, setForm] = useState(initial);
-  const [state, setState] = useState("idle"); // idle | saving | saved | logo
+  const [state, setState] = useState("idle"); // idle | saving | logo
   const [error, setError] = useState("");
   const file = useRef(null);
   const dirty = FIELDS.some(([k]) => (form[k] ?? "") !== (initial[k] ?? ""));
@@ -35,8 +37,8 @@ export default function SchoolProfile({ school, onSaved }) {
     setError("");
     try {
       onSaved(await updateSchool(school.id, form));
-      setState("saved");
-      setTimeout(() => setState("idle"), 1500);
+      setState("idle");
+      setEditing(false);
     } catch (err) {
       setState("idle");
       setError(
@@ -73,9 +75,29 @@ export default function SchoolProfile({ school, onSaved }) {
     }
   }
 
+  const place = [school.city, school.state].filter(Boolean).join(", ");
+  const meta = [school.board, place, school.principal_name && `Principal ${school.principal_name}`].filter(Boolean);
+  const missing = FIELDS.filter(([k]) => k !== "short_name" && !school[k]).length;
+
   return (
-    <section className="panel school-panel">
-      <h2 className="panel-title">School profile</h2>
+    <section className={`panel school-panel${editing ? " is-editing" : ""}`}>
+      <div className="school-summary">
+        <span className="school-logo">
+          {school.logo_path ? <img src={logoUrl(school.logo_path)} alt="" /> : <Icon name="camera" size={20} />}
+        </span>
+        <div className="school-id">
+          <h2 className="school-name">{school.name}</h2>
+          <p className="row-sub">
+            {meta.length ? meta.join(" · ") : "Add the board, address and contact details"}
+            {missing > 0 && meta.length > 0 && <span className="school-missing"> · {missing} details to add</span>}
+          </p>
+        </div>
+        {aside}
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => (editing ? (setForm(initial), setEditing(false)) : setEditing(true))}>
+          {editing ? "Close" : <><Icon name="edit" /> Edit details</>}
+        </button>
+      </div>
+      {editing && (
       <div className="school-body">
         <div className="logo-box">
           {school.logo_path ? (
@@ -120,11 +142,12 @@ export default function SchoolProfile({ school, onSaved }) {
               </button>
             )}
             <button className="btn btn-primary btn-sm" disabled={!dirty || state === "saving"}>
-              {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : "Save details"}
+              {state === "saving" ? "Saving…" : "Save details"}
             </button>
           </div>
         </form>
       </div>
+      )}
     </section>
   );
 }

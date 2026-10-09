@@ -17,7 +17,6 @@ import {
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
-import FeeStructure from "./FeeStructure.jsx";
 import TransportRoutes from "./TransportRoutes.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -32,15 +31,13 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numer
 
 // Owner-only: members, roles, class assignments, access and export requests.
 const OWNER_TABS = [
-  ["team", "Team"],
-  ["school", "School"],
-  ["fees", "Fee structure"],
+  ["team", "School & team"],
   ["transport", "Transport"],
 ];
 
 // Owner page: Team (requests, exports, members), School (profile, join
 // code) and Fee structure.
-export default function TeamPage({ school, session, me, onSchoolSaved, grades, onGradesChanged, students, onFeesChanged, routes = [], onRoutesChanged, tab: shownTab, onTab }) {
+export default function TeamPage({ school, session, me, onSchoolSaved, students, routes = [], onRoutesChanged, tab: shownTab, onTab }) {
   const [ownTab, setOwnTab] = useState("team");
   const tab = shownTab ?? ownTab;
   const setTab = onTab ?? setOwnTab;
@@ -112,33 +109,16 @@ export default function TeamPage({ school, session, me, onSchoolSaved, grades, o
             </nav>
           </div>
         </div>
-        {tab === "fees" && session && <span className="fc-session">{session.name}</span>}
       </div>
 
       {error && <p className="notice notice-error">{error}</p>}
-
-      {tab === "school" && (
-        <>
-          <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} />
-          <JoinCode school={school} />
-        </>
-      )}
-
-      {tab === "fees" && (
-        <FeeStructure
-          school={school}
-          session={session}
-          grades={grades}
-          onGradesChanged={onGradesChanged}
-          students={students}
-          onChanged={onFeesChanged}
-        />
-      )}
 
       {tab === "transport" && <TransportRoutes school={school} routes={routes} students={students} onChanged={onRoutesChanged} />}
 
       {tab === "team" && (
       <>
+      <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
+
       <p className="row-sub owner-meta">
         {loading ? "Loading…" : `${members.length} members`}
         {session ? ` · classes shown for ${session.name}` : ""}
@@ -211,8 +191,8 @@ export default function TeamPage({ school, session, me, onSchoolSaved, grades, o
       </section>
 
       <p className="panel-foot">
-        Staff join by signing in with Google and entering the school’s join code (in the School tab). You can also add
-        someone’s Google email directly.
+        Staff join by signing in with Google and entering the school’s join code (on the school card above). You can
+        also add someone’s Google email directly.
       </p>
       </>
       )}
@@ -254,13 +234,8 @@ function JoinCode({ school }) {
   }
 
   return (
-    <section className="panel join-panel">
-      <div>
-        <h2 className="panel-title">School join code</h2>
-        <p className="row-sub join-help">
-          Share this with your staff. They sign in with Google, enter it and request to join. You approve them below.
-        </p>
-      </div>
+    <div className="join-inline" title="Staff sign in with Google, enter this code and ask to join. You approve them below.">
+      <span className="join-label">Join code</span>
       <div className="join-code-row">
         <code className="join-code">{code}</code>
         <button className="btn btn-secondary btn-sm" onClick={copy}>
@@ -268,12 +243,11 @@ function JoinCode({ school }) {
         </button>
         {state === "confirm" ? (
           <>
-            <span className="row-sub">The old code will stop working.</span>
             <button className="btn btn-secondary btn-sm" onClick={() => setState("idle")}>
               Cancel
             </button>
-            <button className="btn btn-danger btn-sm" onClick={regenerate}>
-              Regenerate
+            <button className="btn btn-danger btn-sm" onClick={regenerate} title="The old code will stop working">
+              New code, old one stops
             </button>
           </>
         ) : (
@@ -283,7 +257,7 @@ function JoinCode({ school }) {
         )}
         {state === "error" && <span className="field-error">Couldn’t change the code.</span>}
       </div>
-    </section>
+    </div>
   );
 }
 
