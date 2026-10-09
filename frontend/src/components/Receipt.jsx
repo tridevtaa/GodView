@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { amountInWords, METHODS, rupees } from "../data/money.js";
 import { logoUrl } from "../data/api.js";
 import { gradeLabel } from "./PersonCard.jsx";
@@ -20,7 +21,8 @@ export default function Receipt({ school, person, payment, dues, onClose }) {
   const credit = Number(payment.amount) - allocated;
   const address = [school.address, school.city, school.state, school.pincode].filter(Boolean).join(", ");
 
-  return (
+  // Rendered straight into <body> so printing can drop the rest of the page.
+  return createPortal(
     <div className="modal-backdrop receipt-backdrop" onClick={onClose}>
       <section className="modal receipt-modal" onClick={(e) => e.stopPropagation()} aria-label="Fee receipt">
         <div className="receipt-tools no-print">
@@ -116,6 +118,7 @@ export default function Receipt({ school, person, payment, dues, onClose }) {
           </footer>
         </article>
       </section>
-    </div>
+    </div>,
+    document.body
   );
 }

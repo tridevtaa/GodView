@@ -9,14 +9,22 @@ function initials(name = "") {
     .join("");
 }
 
-export function Photo({ person, index = 0, className = "card-photo" }) {
+// A student's tint follows them (same colour on the tile and in the profile).
+export function tintFor(person) {
+  const key = String(person?.id ?? person?.name ?? "");
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return AVATAR_TINTS[h % AVATAR_TINTS.length];
+}
+
+export function Photo({ person, className = "card-photo" }) {
   // Uploaded photos come as short-lived signed URLs; ERP photos as plain links.
   const src = person.photo_src || person.photo_url;
   if (src) {
     return <img className={className} src={src} alt={person.name} loading="lazy" />;
   }
   return (
-    <div className={`${className} placeholder`} style={{ background: AVATAR_TINTS[index % AVATAR_TINTS.length] }}>
+    <div className={`${className} placeholder`} style={{ background: tintFor(person) }}>
       {initials(person.name)}
     </div>
   );
@@ -84,7 +92,7 @@ export default function PersonCard({ person, mode, index, showFee = true, onOpen
         }
       }}
     >
-      <Photo person={person} index={index} />
+      <Photo person={person} />
       <div className="card-body">
         <div className="card-row">
           <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
