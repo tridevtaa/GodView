@@ -1,7 +1,7 @@
-# GodView — School Management System
+# GodView: School Management System
 
 A single map page: your school is pinned. Click it, and every bus route for
-that school appears — stops, and how many students board at each stop. A
+that school appears: stops, and how many students board at each stop. A
 separate "Upload Data" page lets you push routes/buses/drivers from Excel.
 
 **Cost: $0.** Firebase Firestore free "Spark" plan (no credit card), Leaflet +
@@ -89,12 +89,12 @@ This opens two PowerShell windows:
 
 ## 5. Add your first data (via the Upload Data page)
 
-Use the templates in `sample-data/` as a starting point — open them in Excel,
+Use the templates in `sample-data/` as a starting point. Open them in Excel,
 replace with your real schools/drivers/buses/routes, keep the same column
 names, then upload each one on the **Upload Data** page in this order:
 schools → drivers → buses → routes.
 
-**Routes sheet** is one row *per stop* — rows sharing the same `route_id`
+**Routes sheet** is one row *per stop*: rows sharing the same `route_id`
 become one route with an ordered list of stops:
 
 | route_id | school_id | bus_id | stop_order | stop_name | lat | lng | students_count |
@@ -113,12 +113,12 @@ pre-filled with the logo you shared).
 
 ## 7. Deploy for free
 
-**Frontend** — Vercel or Netlify free tier:
+**Frontend**: Vercel or Netlify free tier:
 - Push this repo to GitHub, import it in Vercel, set the root directory to
   `frontend`, and add an env var `VITE_BACKEND_URL` pointing at your deployed
   backend URL (step below).
 
-**Backend** — Render.com free web service:
+**Backend**: Render.com free web service:
 - New Web Service → connect the repo → root directory `backend`
 - Build command: `pip install -r requirements.txt`
 - Start command: `gunicorn app:app`
@@ -126,7 +126,7 @@ pre-filled with the logo you shared).
   **entire contents** of your `serviceAccountKey.json` file as the value
   (this avoids uploading the file itself).
 - Free Render services sleep after ~15 minutes of no traffic and take a few
-  seconds to wake up on the next request — fine for an admin upload page that
+  seconds to wake up on the next request, which is fine for an admin upload page that
   isn't used constantly.
 
 ---
@@ -140,8 +140,8 @@ pre-filled with the logo you shared).
 
 ## Notes / next steps (not built in this MVP, add later if needed)
 
-- Firestore security rules are in "test mode" (open) — lock this down before
+- Firestore security rules are in "test mode" (open). Lock this down before
   going live, e.g. require login for the Upload page.
-- No authentication yet — anyone with the URL can currently upload data.
-- No live GPS bus tracking — this MVP shows planned routes/stops, not
+- No authentication yet: anyone with the URL can currently upload data.
+- No live GPS bus tracking. This MVP shows planned routes/stops, not
   real-time bus position.

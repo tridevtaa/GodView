@@ -25,7 +25,7 @@ export default function FeeSummary({ students, scope }) {
           </>
         ) : (
           <>
-            <span className="fee-stat-value muted">—</span>
+            <span className="fee-stat-value muted">None yet</span>
             <span className="fee-stat-note">No payment records imported yet</span>
           </>
         )}

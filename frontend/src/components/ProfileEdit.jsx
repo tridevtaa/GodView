@@ -56,9 +56,9 @@ const FIELDS = {
 };
 
 const STATUS_LABEL = { active: "Active", inactive: "Inactive", left: "Left (hidden)" };
-const GENDER_LABEL = { "": "—", F: "Female", M: "Male" };
+const GENDER_LABEL = { "": "Not set", F: "Female", M: "Male" };
 const optionLabel = (key, opt) =>
-  key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "—";
+  key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "Not set";
 
 export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);

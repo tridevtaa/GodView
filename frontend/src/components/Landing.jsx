@@ -4,7 +4,7 @@ import Icon from "./Icon.jsx";
 import "./landing.css";
 
 // Public page at godview.in for anyone not signed in. Claims are limited to
-// what Godview does today — no invented customers, numbers or certifications.
+// what Godview does today: no invented customers, numbers or certifications.
 //
 // Photos: drop files into frontend/public/landing/ with the names in PHOTOS;
 // until then each slot shows a drawn illustration instead.
@@ -30,7 +30,7 @@ const BENEFITS = [
   ["check", "Session after session", "Each academic year keeps its own classes and sections. Promote with a new import and look back any time."],
   ["file", "Fees at a glance", "See total pending dues and which students owe what, broken down by month and fee head."],
   ["edit", "Notes and results", "Teachers record exam marks and notes for their own students. Totals and percentages are worked out for you."],
-  ["camera", "Works on any device", "Phones, tablets and laptops — nothing to install. Staff sign in with their Google account."],
+  ["camera", "Works on any device", "Phones, tablets and laptops, with nothing to install. Staff sign in with their Google account."],
 ];
 
 const SPOTLIGHTS = [
@@ -38,14 +38,14 @@ const SPOTLIGHTS = [
     photo: "teacher",
     kicker: "For teachers",
     title: "Your class, ready before the bell.",
-    body: "Teachers see only the classes they teach — faces, names and roll numbers — and can add marks, notes and fresh photos in seconds. Parents’ phone numbers and addresses stay with the office.",
+    body: "Teachers see only the classes they teach (faces, names and roll numbers) and can add marks, notes and fresh photos in seconds. Parents’ phone numbers and addresses stay with the office.",
     points: ["Only assigned classes", "Marks with totals and percentages", "Notes that stay with the student"],
   },
   {
     photo: "sessions",
     kicker: "For the school year",
     title: "Every session remembered.",
-    body: "Each academic year keeps its own classes and sections. When students move up, import the new list — last year stays exactly as it was, one click away.",
+    body: "Each academic year keeps its own classes and sections. When students move up, import the new list. Last year stays exactly as it was, one click away.",
     points: ["Session switcher", "Past years are view-only", "Leavers kept as history"],
   },
   {
@@ -67,7 +67,7 @@ const JOURNEY = [
   ["upload", "Import your students", "Upload the Excel export from your current system."],
   ["plus", "Invite your staff", "Share your join code; approve each request and pick their classes."],
   ["search", "Run your school", "Everyone sees exactly what their role allows."],
-  ["check", "Celebrate results", "Marks, notes and every session’s story — all in one place."],
+  ["check", "Celebrate results", "Marks, notes and every session’s story, all in one place."],
 ];
 
 const TRUST = [
@@ -284,7 +284,7 @@ export default function Landing({ onLogin, error, busy }) {
                 at a glance.
               </h1>
               <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
-                Students, sessions, fees, teachers and results in one beautiful place — with the right access for every
+                Students, sessions, fees, teachers and results in one beautiful place, with the right access for every
                 role and your data kept in India.
               </p>
               <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
@@ -502,7 +502,7 @@ export default function Landing({ onLogin, error, busy }) {
               </div>
               <div className="lp-final-copy">
                 <h2 className="lp-h2">Every school deserves to shine.</h2>
-                <p className="lp-sub">Bring your students, staff and results together — and see your school clearly.</p>
+                <p className="lp-sub">Bring your students, staff and results together and see your school clearly.</p>
                 <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
                   Log in with Google
                 </button>

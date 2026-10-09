@@ -191,7 +191,7 @@ end
 $$;
 
 -- Owner approves: adds the member with their details and, for teachers, the
--- chosen classes for the request's session — all in one transaction.
+-- chosen classes for the request's session, all in one transaction.
 create function public.approve_access_request(request uuid, as_role public.member_role, classes jsonb)
 returns void
 language plpgsql security definer set search_path = '' as $$
