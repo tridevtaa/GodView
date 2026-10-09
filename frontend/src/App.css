@@ -62,7 +62,7 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
-/* The landing hero's light blue wash and faint grid, behind the app too. */
+/* The landing hero's light blue wash, behind the app too. */
 body {
   margin: 0;
   background:
@@ -75,19 +75,6 @@ body {
   font-size: 14px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
-}
-
-body::before {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(29, 35, 102, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(29, 35, 102, 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse at 50% 0%, #000 25%, transparent 85%);
-  pointer-events: none;
-  content: "";
 }
 
 h1,
