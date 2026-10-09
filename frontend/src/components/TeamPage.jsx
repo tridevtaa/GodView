@@ -108,6 +108,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, grades, o
             </nav>
           </div>
         </div>
+        {tab === "fees" && session && <span className="fc-session">{session.name}</span>}
       </div>
 
       {error && <p className="notice notice-error">{error}</p>}

@@ -1,5 +1,5 @@
--- Ready-made fee template: every school starts with all grades from Nursery
--- to 12 and five common fee heads, which the owner edits or removes.
+-- Ready-made grade list: every school starts with all grades from Nursery
+-- to 12, which the owner renames or removes. Fees are added by the owner.
 
 create function public.seed_school_template(school uuid) returns void
 language sql security definer set search_path = '' as $$
@@ -11,11 +11,6 @@ language sql security definer set search_path = '' as $$
     ('7', 'Grade 7'), ('8', 'Grade 8'), ('9', 'Grade 9'), ('10', 'Grade 10'), ('11', 'Grade 11'), ('12', 'Grade 12')
   ) as g(code, label)
   on conflict (school_id, code) do nothing;
-
-  insert into public.fee_heads (school_id, name, sort)
-  values (school, 'Tuition fee', 1), (school, 'Admission fee', 2), (school, 'Annual charges', 3),
-         (school, 'Exam fee', 4), (school, 'Transport', 5)
-  on conflict (school_id, name) do nothing;
 $$;
 
 select public.seed_school_template(id) from public.schools;
