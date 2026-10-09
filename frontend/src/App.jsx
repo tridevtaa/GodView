@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
@@ -22,9 +22,27 @@ const SEARCH_KEYS = {
   employees: ["name", "designation", "department", "employee_no"],
 };
 
+
+const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
   const [query, setQuery] = useState("");
+  // Students page: tiles or the map (owners/admins). Remembered per browser.
+  const [view, setViewState] = useState(() => {
+    try {
+      return localStorage.getItem("godview.studentsView") === "map" ? "map" : "tiles";
+    } catch {
+      return "tiles";
+    }
+  });
+  const setView = (v) => {
+    setViewState(v);
+    try {
+      localStorage.setItem("godview.studentsView", v);
+    } catch {
+      /* private mode: fine, just not remembered */
+    }
+  };
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
@@ -237,6 +255,18 @@ export default function App() {
         )}
 
         <div className="toolbar">
+          {isStudents && isAdmin && (
+            <nav className="segmented view-switch" aria-label="View">
+              {[
+                ["tiles", "Tiles"],
+                ["map", "Map"],
+              ].map(([v, l]) => (
+                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
+                  {l}
+                </button>
+              ))}
+            </nav>
+          )}
           <label className="search">
             <Icon name="search" />
             <input
@@ -255,7 +285,11 @@ export default function App() {
           )}
         </div>
 
-        {loading ? (
+        {isStudents && isAdmin && view === "map" && !loading ? (
+          <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
+            <StudentMap school={school} students={visible} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
+          </Suspense>
+        ) : loading ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="card card-skeleton" />

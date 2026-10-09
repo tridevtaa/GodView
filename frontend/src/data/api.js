@@ -817,3 +817,39 @@ export async function updateStop(id, fields) {
 export async function deleteStop(id) {
   must(await supabase.from("bus_stops").delete().eq("id", id));
 }
+
+// ---------------------------------------------------- villages (areas) ---
+
+export async function listAreas(schoolId) {
+  return must(await supabase.from("school_areas").select("*").eq("school_id", schoolId).order("name"));
+}
+
+export async function addAreas(schoolId, rows) {
+  if (!rows.length) return [];
+  return must(
+    await supabase
+      .from("school_areas")
+      .insert(rows.map((r) => ({ school_id: schoolId, name: r.name, aliases: r.aliases ?? [], lat: r.lat ?? null, lng: r.lng ?? null, source: r.source ?? null })))
+      .select()
+  );
+}
+
+export async function updateArea(id, fields) {
+  must(await supabase.from("school_areas").update(fields).eq("id", id));
+}
+
+export async function deleteArea(id) {
+  must(await supabase.from("school_areas").delete().eq("id", id));
+}
+
+// Folds `from` into `into`: its spellings and any students set to it.
+export async function mergeAreas(into, from) {
+  const aliases = [...new Set([...(into.aliases ?? []), ...(from.aliases ?? [])])].slice(0, 50);
+  must(await supabase.from("school_areas").update({ aliases }).eq("id", into.id));
+  must(await supabase.from("student_private").update({ area_id: into.id }).eq("area_id", from.id));
+  must(await supabase.from("school_areas").delete().eq("id", from.id));
+}
+
+export async function setSchoolLocation(schoolId, lat, lng) {
+  must(await supabase.from("schools").update({ lat, lng }).eq("id", schoolId));
+}
