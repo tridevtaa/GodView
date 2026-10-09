@@ -307,6 +307,7 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
   const [dirty, setDirty] = useState(!head);
   const [saving, setSaving] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [open, setOpen] = useState(!head); // saved fees start minimised
 
   // Pick up saved changes (and renamed grades) unless this card has edits.
   useEffect(() => {
@@ -366,7 +367,45 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
     setSaving(true);
     const ok = await onSave({ name, plan, rows: rows.map((r) => ({ ...r })) });
     setSaving(false);
-    if (ok) setDirty(false);
+    if (ok) {
+      setDirty(false);
+      setOpen(false);
+    }
+  }
+
+  if (!open && head) {
+    const amounts = shown.map((r) => Number(r.amount) || 0).filter(Boolean);
+    const lo = Math.min(...amounts);
+    const hi = Math.max(...amounts);
+    return (
+      <button type="button" className="fc fc-mini" onClick={() => setOpen(true)} aria-expanded="false">
+        <span className="fc-mini-main">
+          <strong className="fc-mini-name">{name}</strong>
+          <span className="freq-btn fc-mini-freq">
+            {plan}
+            <span className="freq-times">{times}×</span>
+          </span>
+        </span>
+        <span className="fc-mini-stats">
+          <span>
+            <span className="fc-mini-label">Grades</span>
+            <strong>{new Set(shown.filter((r) => Number(r.amount) > 0).map((r) => r.grade?.code ?? r.key)).size}</strong>
+          </span>
+          <span>
+            <span className="fc-mini-label">Per instalment</span>
+            <strong>{amounts.length ? (lo === hi ? rupees(lo) : `${rupees(lo)} to ${rupees(hi)}`) : "-"}</strong>
+          </span>
+          <span>
+            <span className="fc-mini-label">Per year</span>
+            <strong>{amounts.length ? (lo === hi ? rupees(lo * times) : `${rupees(lo * times)} to ${rupees(hi * times)}`) : "-"}</strong>
+          </span>
+        </span>
+        <span className="fc-mini-edit">
+          <Icon name="edit" size={14} />
+          Edit
+        </span>
+      </button>
+    );
   }
 
   return (
@@ -398,9 +437,16 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
                 </button>
               </span>
             ) : (
-              <button type="button" className="btn-icon fc-remove" onClick={() => setAsking(true)} aria-label={`Remove ${head.name}`} title="Remove fee">
-                <Icon name="x" size={16} />
-              </button>
+              <span className="fc-head-actions">
+                <button type="button" className="link-btn link-danger" onClick={() => setAsking(true)}>
+                  Remove fee
+                </button>
+                {!dirty && (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
+                    Minimise
+                  </button>
+                )}
+              </span>
             ))}
           {!head && (
             <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel}>

@@ -4247,3 +4247,93 @@ a:hover {
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* Saved fee, minimised */
+.fc-mini {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 32px;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 18px 28px;
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.fc-mini:hover {
+  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+}
+
+.fc-mini-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fc-mini-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.fc-mini-freq {
+  height: 30px;
+  font-size: 13px;
+  cursor: inherit;
+}
+
+.fc-mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+  margin-left: auto;
+}
+
+.fc-mini-stats > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fc-mini-label {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.fc-mini-stats strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-mini-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .fc-mini {
+    padding: 16px;
+  }
+
+  .fc-mini-stats {
+    margin-left: 0;
+  }
+}
