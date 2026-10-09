@@ -61,7 +61,7 @@ export function relation(gender) {
   return "C/O";
 }
 
-export default function PersonCard({ person, mode, index, onOpen }) {
+export default function PersonCard({ person, mode, index, showFee = true, onOpen }) {
   const isStudent = mode === "students";
   const fee = person.fee_status || "unknown";
   return (
@@ -92,7 +92,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
           <span className="card-sub">
             {isStudent ? `${relation(person.gender)} ${person.parent_name}` : person.department}
           </span>
-          {isStudent && (
+          {isStudent && showFee && (
             <span className={`fee fee-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)}>
               ₹
             </span>

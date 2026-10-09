@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships } from "../data/api.js";
+import { listMemberships, requestAccess } from "../data/api.js";
 import { LogoMark } from "./Logo.jsx";
 
 // { user: { email, displayName, photoURL }, school: { id, name, slug }, role }
@@ -33,6 +33,64 @@ const toUser = (u) => ({
   displayName: u.user_metadata?.full_name || u.user_metadata?.name || "",
   photoURL: u.user_metadata?.avatar_url || u.user_metadata?.picture || "",
 });
+
+// Shown to someone signed in who isn't a member of any school yet.
+function RequestAccess({ user }) {
+  const [code, setCode] = useState("");
+  const [note, setNote] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+
+  async function submit(e) {
+    e.preventDefault();
+    setStatus("sending");
+    try {
+      await requestAccess(code, user.displayName || user.email, note);
+      setStatus("sent");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  if (status === "sent") {
+    return (
+      <>
+        <h1>Request sent</h1>
+        <p className="muted">
+          If <strong>{code.trim()}</strong> is your school’s code, its owner will see your request. You’ll get access
+          as soon as they approve it — just sign in again.
+        </p>
+        <button className="btn btn-secondary btn-block" onClick={logOut}>
+          Sign out
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <form className="request-form" onSubmit={submit}>
+      <h1>Request access</h1>
+      <p className="muted">
+        {user.email} isn’t part of a school on Godview yet. Ask your school for its code and send a request to the
+        owner.
+      </p>
+      <label>
+        <span>School code</span>
+        <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. mavericks" required />
+      </label>
+      <label>
+        <span>Note for the owner (optional)</span>
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Class 4 teacher" maxLength={500} />
+      </label>
+      {status === "error" && <p className="field-error">Couldn’t send the request. Please try again.</p>}
+      <button className="btn btn-primary btn-block" disabled={status === "sending"}>
+        {status === "sending" ? "Sending…" : "Send request"}
+      </button>
+      <button type="button" className="btn btn-secondary btn-block" onClick={logOut}>
+        Use a different account
+      </button>
+    </form>
+  );
+}
 
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
@@ -92,15 +150,7 @@ export default function AuthGate({ children }) {
         {state.status === "loading" || state.status === "checking" ? (
           <p className="muted">Checking access…</p>
         ) : state.status === "denied" ? (
-          <>
-            <h1>No access</h1>
-            <p className="muted">
-              {state.user.email} isn’t a member of any school on Godview. Ask your school’s administrator to add you.
-            </p>
-            <button className="btn btn-secondary btn-block" onClick={logOut}>
-              Use a different account
-            </button>
-          </>
+          <RequestAccess user={state.user} />
         ) : (
           <>
             <h1>Sign in to Godview</h1>

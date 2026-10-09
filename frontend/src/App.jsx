@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
@@ -9,6 +9,9 @@ import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.j
 import Icon from "./components/Icon.jsx";
 import { gradeLabel } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
+import TeamPage from "./components/TeamPage.jsx";
+import ExportButton from "./components/ExportButton.jsx";
+import { countPendingRequests } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -26,14 +29,23 @@ export default function App() {
   const [grade, setGrade] = useState("");
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
-  const { school } = useAuth();
+  const { school, role, user } = useAuth();
+  const isOwner = role === "owner";
+  const isAdmin = role === "owner" || role === "admin";
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => setPendingCount(0));
+  }, [isOwner, school.id, mode]);
   const { sessions, current: currentSession } = useSessions(school.id);
   const sessionId = pickedSession ?? currentSession?.id;
-  const { people, loading, source, add, patch, reload } = usePeople(mode, school.id, sessionId);
+  const dataMode = mode === "team" ? "students" : mode;
+  const { people, loading, source, add, patch, reload } = usePeople(dataMode, school.id, sessionId);
 
   // Past sessions are history: shown, not edited.
   const viewOnly = mode === "students" && Boolean(currentSession) && sessionId !== currentSession.id;
-  const canEdit = source === "supabase" && !viewOnly;
+  // Records: owners/admins. Photos, notes, results: anyone who can see the student.
+  const canEdit = source === "supabase" && !viewOnly && isAdmin;
+  const canWrite = source === "supabase" && !viewOnly;
 
   // Students who left stay in the database (history) but aren't shown.
   // Ordered by grade (Nursery → 12), then section, then name.
@@ -74,6 +86,8 @@ export default function App() {
     setOpenId(null);
   }
 
+  const currentLabel = sessions.find((s) => s.id === sessionId)?.name ?? "";
+
   function switchSession(id) {
     setPickedSession(id);
     setGrade("");
@@ -82,12 +96,21 @@ export default function App() {
 
   const isStudents = mode === "students";
   const title = isStudents ? "Students" : "Employees";
+  const sections = [
+    ["students", "Students"],
+    ...(isAdmin ? [["employees", "Employees"]] : []),
+    ...(isOwner ? [["team", "Team", pendingCount]] : []),
+  ];
 
   return (
     <div className="app">
-      <TopBar mode={mode} onMode={switchMode} />
+      <TopBar mode={mode} onMode={switchMode} sections={sections} />
 
       <main className="page">
+        {mode === "team" ? (
+          <TeamPage school={school} session={currentSession} me={user.email} />
+        ) : (
+        <>
         <div className="page-header">
           <div>
             <h1 className="sr-only">{title}</h1>
@@ -107,6 +130,9 @@ export default function App() {
             </div>
           </div>
           <div className="page-actions">
+            {isStudents && isAdmin && !loading && (
+              <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />
+            )}
             {isStudents && canEdit && (
               <button className="btn btn-secondary" onClick={() => setImporting(true)}>
                 <Icon name="upload" />
@@ -128,7 +154,13 @@ export default function App() {
           </p>
         )}
 
-        {!loading && isStudents && source === "supabase" && (
+        {!loading && isStudents && !isAdmin && current.length === 0 && (
+          <p className="notice">
+            You haven’t been given any classes for this session yet. Ask the school’s owner to assign your classes.
+          </p>
+        )}
+
+        {!loading && isStudents && isAdmin && source === "supabase" && (
           <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />
         )}
 
@@ -168,9 +200,11 @@ export default function App() {
         ) : (
           <div className="grid">
             {visible.map((p, i) => (
-              <PersonCard key={p.id} person={p} mode={mode} index={i} onOpen={() => setOpenId(p.id)} />
+              <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => setOpenId(p.id)} />
             ))}
           </div>
+        )}
+        </>
         )}
       </main>
 
@@ -180,7 +214,10 @@ export default function App() {
           mode={mode}
           schoolId={school.id}
           sessionId={sessionId}
+          me={user.email}
+          isAdmin={isAdmin}
           canEdit={canEdit}
+          canWrite={canWrite}
           onUpdate={patch}
           onClose={closeProfile}
         />

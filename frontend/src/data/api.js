@@ -50,7 +50,7 @@ export async function loadStudents(schoolId, sessionId) {
     all(() =>
       supabase
         .from("student_enrolments")
-        .select("class, section, stream, roll_no, status, student:students(*)")
+        .select("class, section, stream, roll_no, status, student:students(*, private:student_private(*))")
         .eq("school_id", schoolId)
         .eq("session_id", sessionId)
         .order("student_id")
@@ -67,18 +67,24 @@ export async function loadEmployees(schoolId) {
 
 // ------------------------------------------------------------- writing ---
 
+async function savePrivate(schoolId, rows) {
+  const filled = rows.filter((r) => Object.keys(r).length > 2); // more than the two ids
+  if (filled.length) must(await supabase.from("student_private").upsert(filled, { onConflict: "student_id" }));
+}
+
 export async function addStudent(schoolId, sessionId, fields) {
-  const { student, enrolment } = splitFields(fields);
+  const { student, private: priv, enrolment } = splitFields(fields);
   const saved = must(
     await supabase.from("students").insert({ ...student, school_id: schoolId }).select().single()
   );
+  await savePrivate(schoolId, [{ student_id: saved.id, school_id: schoolId, ...priv }]);
   const enrol = { student_id: saved.id, session_id: sessionId, school_id: schoolId, class: "", ...enrolment };
   must(await supabase.from("student_enrolments").insert(enrol));
-  return toPerson(saved, enrol);
+  return toPerson({ ...saved, private: priv }, enrol);
 }
 
 export async function updateStudent(person, sessionId, changes) {
-  const { student, enrolment } = splitFields(changes);
+  const { student, private: priv, enrolment } = splitFields(changes);
   if (enrolment.status) {
     student.status = enrolment.status;
     student.left_on = enrolment.status === "left" ? new Date().toISOString().slice(0, 10) : null;
@@ -86,6 +92,7 @@ export async function updateStudent(person, sessionId, changes) {
   if (Object.keys(student).length) {
     must(await supabase.from("students").update(student).eq("id", person.id));
   }
+  await savePrivate(person.school_id, [{ student_id: person.id, school_id: person.school_id, ...priv }]);
   if (Object.keys(enrolment).length) {
     must(
       await supabase.from("student_enrolments").update(enrolment).eq("student_id", person.id).eq("session_id", sessionId)
@@ -142,6 +149,14 @@ export async function applyImport(schoolId, sessionName, { upserts, leaving }, o
         .select("id, admission_no")
     );
     const idByAdmission = new Map(saved.map((s) => [s.admission_no, s.id]));
+    await savePrivate(
+      schoolId,
+      chunk.map(({ student, private: priv }) => ({
+        student_id: idByAdmission.get(student.admission_no),
+        school_id: schoolId,
+        ...priv,
+      }))
+    );
     must(
       await supabase.from("student_enrolments").upsert(
         chunk.map(({ student, enrolment }) => ({
@@ -195,7 +210,182 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
   const path = `${schoolId}/${kind}/${person.id}.jpg`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: "image/jpeg" });
   if (error) throw error;
-  must(await supabase.from(kind).update({ photo_path: path }).eq("id", person.id));
+  // Students go through set_student_photo so their teachers can change photos
+  // without update rights on the rest of the record.
+  if (kind === "students") must(await supabase.rpc("set_student_photo", { student: person.id, path }));
+  else must(await supabase.from(kind).update({ photo_path: path }).eq("id", person.id));
   const { signedUrl } = must(await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_FOR));
   return { photo_path: path, photo_src: signedUrl };
+}
+
+// ------------------------------------------------------ notes & results ---
+
+export async function listNotes(studentId) {
+  return must(
+    await supabase.from("student_notes").select("*").eq("student_id", studentId).order("created_at", { ascending: false })
+  );
+}
+
+export async function addNote(schoolId, studentId, body) {
+  return must(
+    await supabase.from("student_notes").insert({ school_id: schoolId, student_id: studentId, body }).select().single()
+  );
+}
+
+export async function deleteNote(id) {
+  must(await supabase.from("student_notes").delete().eq("id", id));
+}
+
+export async function listResults(studentId, sessionId) {
+  return must(
+    await supabase
+      .from("exam_results")
+      .select("*")
+      .eq("student_id", studentId)
+      .eq("session_id", sessionId)
+      .order("exam")
+      .order("subject")
+  );
+}
+
+// Adds or replaces the mark for one exam + subject.
+export async function saveResult(schoolId, sessionId, studentId, { exam, subject, marks, max_marks, grade, remarks }) {
+  const num = (v) => (v === "" || v === null || v === undefined ? null : Number(v));
+  return must(
+    await supabase
+      .from("exam_results")
+      .upsert(
+        {
+          school_id: schoolId,
+          session_id: sessionId,
+          student_id: studentId,
+          exam: exam.trim(),
+          subject: subject.trim(),
+          marks: num(marks),
+          max_marks: num(max_marks),
+          grade: grade?.trim() || null,
+          remarks: remarks?.trim() || null,
+        },
+        { onConflict: "student_id,session_id,exam,subject" }
+      )
+      .select()
+      .single()
+  );
+}
+
+export async function deleteResult(id) {
+  must(await supabase.from("exam_results").delete().eq("id", id));
+}
+
+// ----------------------------------------------------- team (owner only) ---
+
+export async function listMembers(schoolId) {
+  return must(await supabase.from("school_members").select("*").eq("school_id", schoolId).order("email"));
+}
+
+export async function addMember(schoolId, email, role) {
+  must(await supabase.from("school_members").insert({ school_id: schoolId, email: email.trim().toLowerCase(), role }));
+}
+
+export async function setMemberRole(schoolId, email, role) {
+  must(await supabase.from("school_members").update({ role }).eq("school_id", schoolId).eq("email", email));
+}
+
+export async function removeMember(schoolId, email) {
+  must(await supabase.from("school_members").delete().eq("school_id", schoolId).eq("email", email));
+}
+
+export async function listAssignments(schoolId) {
+  return must(await supabase.from("teacher_classes").select("*").eq("school_id", schoolId).order("class"));
+}
+
+export async function addAssignment(schoolId, sessionId, email, klass, section) {
+  return must(
+    await supabase
+      .from("teacher_classes")
+      .insert({ school_id: schoolId, session_id: sessionId, email, class: klass, section: section || null })
+      .select()
+      .single()
+  );
+}
+
+export async function removeAssignment(id) {
+  must(await supabase.from("teacher_classes").delete().eq("id", id));
+}
+
+// ------------------------------------------------------ access requests ---
+
+export async function requestAccess(schoolCode, name, note) {
+  must(await supabase.rpc("request_access", { school_code: schoolCode, display_name: name, note }));
+}
+
+export async function listAccessRequests(schoolId) {
+  return must(
+    await supabase
+      .from("access_requests")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("status", "pending")
+      .order("created_at")
+  );
+}
+
+export async function decideAccessRequest(request, approve, role, decidedBy) {
+  if (approve) await addMember(request.school_id, request.email, role);
+  must(
+    await supabase
+      .from("access_requests")
+      .update({ status: approve ? "approved" : "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
+      .eq("id", request.id)
+  );
+}
+
+// ------------------------------------------------------ export requests ---
+
+export async function listExportRequests(schoolId) {
+  return must(
+    await supabase.from("export_requests").select("*").eq("school_id", schoolId).order("created_at", { ascending: false })
+  );
+}
+
+export async function requestExport(schoolId, reason) {
+  return must(await supabase.from("export_requests").insert({ school_id: schoolId, reason }).select().single());
+}
+
+export async function decideExport(id, approve, decidedBy) {
+  must(
+    await supabase
+      .from("export_requests")
+      .update({ status: approve ? "approved" : "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
+      .eq("id", id)
+  );
+}
+
+// Consumes an approved request; true if the export may go ahead.
+export async function consumeExportRequest(id) {
+  return must(await supabase.rpc("use_export_request", { request: id }));
+}
+
+// Distinct class/section pairs enrolled in a session, for assignment pickers.
+export async function listClassSections(schoolId, sessionId) {
+  const rows = await all(() =>
+    supabase
+      .from("student_enrolments")
+      .select("class, section")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .order("student_id")
+  );
+  const seen = new Map();
+  rows.forEach((r) => seen.set(`${r.class}|${r.section ?? ""}`, { class: r.class, section: r.section ?? "" }));
+  return [...seen.values()];
+}
+
+// Pending access + export requests, for the owner's Team badge.
+export async function countPendingRequests(schoolId) {
+  const [a, x] = await Promise.all([
+    supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
+    supabase.from("export_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
+  ]);
+  return (a.count ?? 0) + (x.count ?? 0);
 }

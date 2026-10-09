@@ -1,0 +1,94 @@
+import { useEffect, useState } from "react";
+import { addNote, deleteNote, listNotes } from "../data/api.js";
+
+const when = (iso) =>
+  new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+
+// Notes about a student from anyone who can see them; authors (and admins)
+// can delete their notes.
+export default function StudentNotes({ person, me, isAdmin, canWrite }) {
+  const [notes, setNotes] = useState(null);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    listNotes(person.id).then(
+      (rows) => !cancelled && setNotes(rows),
+      () => !cancelled && setError("Couldn’t load notes.")
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [person.id]);
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!body.trim()) return;
+    setBusy(true);
+    setError("");
+    try {
+      const saved = await addNote(person.school_id, person.id, body.trim());
+      setNotes((n) => [saved, ...(n ?? [])]);
+      setBody("");
+    } catch {
+      setError("Couldn’t save the note. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id) {
+    try {
+      await deleteNote(id);
+      setNotes((n) => n.filter((x) => x.id !== id));
+    } catch {
+      setError("Couldn’t delete the note.");
+    }
+  }
+
+  return (
+    <div className="notes">
+      {canWrite && (
+        <form className="note-form" onSubmit={submit}>
+          <textarea
+            className="textarea"
+            rows={3}
+            maxLength={4000}
+            placeholder={`Add a note about ${person.name}…`}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
+            {busy ? "Saving…" : "Add note"}
+          </button>
+        </form>
+      )}
+      {error && <p className="field-error">{error}</p>}
+      {notes === null ? (
+        <p className="row-sub">Loading…</p>
+      ) : notes.length === 0 ? (
+        <p className="row-sub">No notes yet.</p>
+      ) : (
+        <ul className="note-list">
+          {notes.map((n) => (
+            <li key={n.id}>
+              <p className="note-body">{n.body}</p>
+              <div className="note-meta">
+                <span>
+                  {n.author_email} · {when(n.created_at)}
+                </span>
+                {canWrite && (n.author_email === me || isAdmin) && (
+                  <button className="link-btn" onClick={() => remove(n.id)}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
