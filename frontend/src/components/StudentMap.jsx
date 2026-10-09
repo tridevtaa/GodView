@@ -665,9 +665,10 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
       ? `<img src="${logo}" alt="" />`
       : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`;
     schoolMarker.current = L.marker([home.lat, home.lng], {
-      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school${logo ? " has-logo" : ""}" title="${name}">${badge}</span>`, iconSize: [44, 44], iconAnchor: [-14, 58] }),
-      // On top of every pin so it shows when zoomed out, and beside its
-      // spot so the village at the school (often the biggest) stays readable.
+      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school-pin" title="${name}"><span class="smap-school${logo ? " has-logo" : ""}">${badge}</span></span>`, iconSize: [44, 54], iconAnchor: [22, 62] }),
+      // A pin pointing at the school's spot, so it stays put at any zoom.
+      // The tip stops just short of the spot so the number of a village there
+      // stays readable, and it sits above every village pin.
       zIndexOffset: 100000,
       interactive: false,
     }).addTo(map.current);
