@@ -422,6 +422,22 @@ a:hover {
   color: var(--brand);
 }
 
+.menu-box {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  color: #fff;
+}
+
+.menu-box.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
 .menu-label {
   flex: 1;
 }
