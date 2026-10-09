@@ -56,6 +56,8 @@ export async function loadStudents(schoolId, sessionId) {
         .order("student_id")
     ),
     // Fee totals: owners/admins (and parents) get rows; teachers get none.
+    // Optional: if fees can't be read, students still load (fees show as
+    // not recorded) rather than the whole list failing.
     all(() =>
       supabase
         .from("fee_student_totals")
@@ -63,7 +65,7 @@ export async function loadStudents(schoolId, sessionId) {
         .eq("school_id", schoolId)
         .eq("session_id", sessionId)
         .order("student_id")
-    ),
+    ).catch(() => []),
   ]);
   const duesBy = new Map(dues.map((d) => [d.student_id, d]));
   return enrolments.filter((e) => e.student).map((e) => toPerson(e.student, e, duesBy.get(e.student.id)));
