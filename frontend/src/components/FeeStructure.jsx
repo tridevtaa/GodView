@@ -36,6 +36,15 @@ const TEMPLATE_GRADES = [
 ].map(([code, label], sort) => ({ code, label, sort }));
 
 const amountText = (n) => (n ? String(Number(n)) : "");
+const sameStreams = (a, b) => (a ?? []).map((x) => x.toLowerCase()).sort().join("|") === (b ?? []).map((x) => x.toLowerCase()).sort().join("|");
+const inStreams = (streams, stream) => !streams || streams.some((x) => x.trim().toLowerCase() === (stream ?? "").trim().toLowerCase());
+const rank = (l) => (!l.class ? 0 : !l.streams ? 1 : 2);
+// The line a student pays for a fee: class and stream, then class, then all.
+const bestLine = (lines, s) =>
+  lines.filter((l) => (!l.class || l.class === s.class) && inStreams(l.streams, s.stream)).sort((a, b) => rank(b) - rank(a))[0];
+// Instalments due in an earlier month, e.g. "Jun with May".
+const earlyText = (p) =>
+  (p.due_months ?? []).map((d, i) => (d !== p.months[i] ? `${MONTHS[p.months[i] - 1]} with ${MONTHS[d - 1]}` : null)).filter(Boolean).join(", ");
 const monthsText = (months) =>
   months.length === 12 ? "Apr to Mar" : SESSION_ORDER.filter((m) => months.includes(m)).map((m) => MONTHS[m - 1]).join(", ");
 const timesText = (n) => (n === 1 ? "once a year" : `${n} times a year`);
@@ -85,6 +94,15 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     students.forEach((s) => m.set(s.class, (m.get(s.class) ?? 0) + 1));
     return m;
   }, [students]);
+  const streamsByGrade = useMemo(() => {
+    const m = new Map();
+    students.forEach((s) => {
+      if (!s.stream) return;
+      if (!m.has(s.class)) m.set(s.class, new Set());
+      m.get(s.class).add(s.stream);
+    });
+    return new Map([...m].map(([k, v]) => [k, [...v].sort()]));
+  }, [students]);
   const fees = heads.filter((h) => schedule.some((l) => l.head_id === h.id));
 
   if (!session) return <p className="notice">Import your students first; fees are set per session.</p>;
@@ -94,13 +112,10 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
       ? 0
       : Number(line.amount) *
         (line.plan_id ? savedPlans.find((p) => p.id === line.plan_id)?.months.length ?? 0 : OLD_PER_YEAR[line.frequency] ?? 0);
-  const total = grades.reduce((sum, g) => {
-    const t = fees.reduce((acc, h) => {
-      const line = schedule.find((l) => l.head_id === h.id && l.class === g.code) ?? schedule.find((l) => l.head_id === h.id && !l.class);
-      return acc + perYear(line);
-    }, 0);
-    return sum + t * (counts.get(g.code) ?? 0);
-  }, 0);
+  const total = students.reduce(
+    (sum, s) => sum + fees.reduce((acc, h) => acc + perYear(bestLine(schedule.filter((l) => l.head_id === h.id), s)), 0),
+    0
+  );
 
   async function addFrequency(plan) {
     setError("");
@@ -144,11 +159,11 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
 
       for (const row of rows) {
         if (!row.code) continue;
-        const own = schedule.find((l) => l.head_id === fee.id && l.class === row.code);
+        const own = schedule.find((l) => l.head_id === fee.id && l.class === row.code && sameStreams(l.streams, row.streams));
         const amount = Number(row.amount) || 0;
         if (own && Number(own.amount) === amount && own.plan_id === planId) continue;
         if (!own && !amount) continue;
-        await setGradeFee(school.id, session.id, own, { grade: row.code, headId: fee.id, amount, planId });
+        await setGradeFee(school.id, session.id, own, { grade: row.code, headId: fee.id, amount, planId, streams: row.streams ?? null });
       }
       const shared = schedule.find((l) => l.head_id === fee.id && !l.class);
       if (shared) await setGradeFee(school.id, session.id, shared, { amount: 0 });
@@ -202,7 +217,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     }
   }
 
-  const cardProps = { grades: gradeList, plans, counts, onRemoveGrade: removeGrade, onAddFrequency: addFrequency };
+  const cardProps = { grades: gradeList, plans, counts, streamsByGrade, onRemoveGrade: removeGrade, onAddFrequency: addFrequency };
 
   return (
     <>
@@ -263,12 +278,20 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   );
 }
 
-function FeeCard({ head, lines, savedPlan, grades, plans, counts, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency }) {
+function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency }) {
   const startRows = useCallback(
     () =>
-      grades.map((g) => {
-        const line = lines.find((l) => l.class === g.code) ?? lines.find((l) => !l.class);
-        return { key: g.id ?? g.code, grade: g, label: g.label, amount: amountText(line?.amount) };
+      grades.flatMap((g) => {
+        const key = g.id ?? g.code;
+        const byStream = lines.filter((l) => l.class === g.code && l.streams);
+        const plain = lines.find((l) => l.class === g.code && !l.streams) ?? lines.find((l) => !l.class);
+        if (!byStream.length) return [{ key, grade: g, label: g.label, amount: amountText(plain?.amount) }];
+        return [
+          ...byStream.map((l) => ({ key: `${key}-${l.streams.join("|")}`, grade: g, label: g.label, streams: l.streams, amount: amountText(l.amount) })),
+          ...(lines.find((l) => l.class === g.code && !l.streams)
+            ? [{ key: `${key}-other`, grade: g, label: g.label, streams: null, other: true, amount: amountText(plain.amount) }]
+            : []),
+        ];
       }),
     [grades, lines]
   );
@@ -295,8 +318,43 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, onSave, onCanc
     fn();
   };
   const setRow = (key, field, value) => edit(() => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r))));
-  const yearTotal = rows.reduce((t, r) => Math.max(t, (Number(r.amount) || 0) * times), 0);
-  const filled = rows.filter((r) => Number(r.amount) > 0).length;
+  const shown = rows.filter((r) => !r.hidden);
+  const yearTotal = shown.reduce((t, r) => Math.max(t, (Number(r.amount) || 0) * times), 0);
+  const filled = shown.filter((r) => Number(r.amount) > 0).length;
+
+  // One row per stream for a grade (the plain row is kept hidden so Save clears it).
+  const split = (row) =>
+    edit(() =>
+      setRows((rs) =>
+        rs.flatMap((r) =>
+          r.key !== row.key
+            ? [r]
+            : [
+                { ...r, hidden: true, amount: "" },
+                ...streamsByGrade.get(row.grade.code).map((st) => ({ key: `${r.key}-${st}`, grade: r.grade, label: r.label, streams: [st], amount: r.amount })),
+              ]
+        )
+      )
+    );
+  // Back to one amount for the whole grade.
+  const merge = (code) =>
+    edit(() =>
+      setRows((rs) => {
+        const group = rs.filter((r) => r.grade?.code === code);
+        const amount = group.find((r) => !r.hidden && r.amount)?.amount ?? "";
+        const out = [];
+        rs.forEach((r) => {
+          if (r.grade?.code !== code) return out.push(r);
+          if (r.streams || r.other) out.push({ ...r, hidden: true, amount: "" });
+          if (!r.streams && !r.other) out.push({ ...r, hidden: false, amount });
+        });
+        if (!group.some((r) => !r.streams && !r.other)) {
+          const g = group[0].grade;
+          out.splice(out.indexOf(group.at(-1)) + 1, 0, { key: `${g.id ?? g.code}-merged`, grade: g, label: g.label, amount });
+        }
+        return out;
+      })
+    );
 
   async function save(e) {
     e.preventDefault();
@@ -353,15 +411,35 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, onSave, onCanc
           <span>Amount per instalment</span>
           <span className="fc-right">Per year</span>
         </div>
-        {rows.map((r) => {
+        {shown.map((r, i) => {
           const students = r.grade?.id ? counts.get(r.grade.code) ?? 0 : null;
           const amount = Number(r.amount) || 0;
+          const byStream = Boolean(r.streams || r.other);
+          const firstOfGroup = byStream && shown[i - 1]?.grade?.code !== r.grade.code;
+          const canSplit = !byStream && r.grade && (streamsByGrade.get(r.grade.code)?.length ?? 0) > 1;
           return (
-            <div key={r.key} className={`fc-grid fc-row${amount > 0 ? " is-set" : ""}`}>
+            <div key={r.key} className={`fc-grid fc-row${amount > 0 ? " is-set" : ""}${byStream && !firstOfGroup ? " is-sub" : ""}`}>
               <div className="fc-grade">
-                <input className="fc-grade-input" placeholder="Grade name" value={r.label} onChange={(e) => setRow(r.key, "label", e.target.value)} maxLength={40} aria-label="Grade name" />
-                {students !== null && <span className="fc-count">{students} students</span>}
-                {r.grade?.id && students === 0 && (
+                {byStream ? (
+                  <>
+                    <span className={`fc-grade-text${firstOfGroup ? "" : " is-quiet"}`}>{r.label}</span>
+                    <span className="fc-stream">{r.other ? "Other streams" : r.streams.join(" / ")}</span>
+                    {firstOfGroup && (
+                      <button type="button" className="link-btn fc-split" onClick={() => merge(r.grade.code)}>
+                        One amount
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <input className="fc-grade-input" placeholder="Grade name" value={r.label} onChange={(e) => setRow(r.key, "label", e.target.value)} maxLength={40} aria-label="Grade name" />
+                )}
+                {!byStream && students !== null && <span className="fc-count">{students} students</span>}
+                {canSplit && (
+                  <button type="button" className="link-btn fc-split" onClick={() => split(r)}>
+                    Split by stream
+                  </button>
+                )}
+                {!byStream && r.grade?.id && students === 0 && (
                   <button type="button" className="ft-x" title={`Remove ${r.grade.label} from the school`} aria-label={`Remove ${r.grade.label} from the school`} onClick={() => onRemoveGrade(r.grade)}>
                     <Icon name="x" size={12} />
                   </button>
@@ -396,7 +474,7 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, onSave, onCanc
         </button>
         <span className="fc-foot-end">
           <span className="row-sub">
-            {dirty ? `${filled} of ${rows.length} grades filled` : "Saved"}
+            {dirty ? `${filled} of ${shown.length} rows filled` : "Saved"}
             {yearTotal > 0 && ` · up to ${rupees(yearTotal)} a year`}
           </span>
           <button className="btn btn-primary" disabled={saving || !dirty || !name.trim()}>
@@ -459,6 +537,7 @@ function FrequencyMenu({ plans, value, onChange, onAdd }) {
                 <strong>{p.name}</strong>
                 <span className="row-sub">
                   {timesText(p.months.length)} · {monthsText(p.months)}
+                  {earlyText(p) && ` · ${earlyText(p)}`}
                 </span>
               </span>
               {p.name === value && <Icon name="check" size={16} />}

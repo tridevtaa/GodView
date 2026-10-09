@@ -4207,3 +4207,36 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.fc-grade-text {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fc-grade-text.is-quiet {
+  color: transparent;
+  user-select: none;
+}
+
+.fc-stream {
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fc-row.is-sub {
+  border-top-style: dashed;
+}
+
+.fc-split {
+  flex: none;
+  font-size: 12px;
+}
+
+.fc-row:not(:hover) .fc-split {
+  opacity: 0.6;
+}
