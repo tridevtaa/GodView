@@ -906,7 +906,7 @@ export async function parentNotes(studentId) {
   return must(
     await supabase
       .from("student_notes")
-      .select("id, body, created_at")
+      .select("id, body, created_at, updated_at")
       .eq("student_id", studentId)
       .eq("shared_with_parents", true)
       .order("created_at", { ascending: false })
@@ -935,4 +935,14 @@ export async function createParentRequest(studentId, { kind, subject, body, leav
 
 export async function cancelParentRequest(id) {
   must(await supabase.rpc("cancel_request", { request: id }));
+}
+
+// Red dots: per child and section, how many things are new since the
+// parent last looked, and when that was.
+export async function parentUnread() {
+  return must(await supabase.rpc("parent_unread"));
+}
+
+export async function markParentSeen(studentId, section) {
+  must(await supabase.rpc("mark_parent_seen", { student: studentId, p_section: section }));
 }

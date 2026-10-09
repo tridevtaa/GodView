@@ -5,10 +5,12 @@ import {
   listGrades,
   listResults,
   logoUrl,
+  markParentSeen,
   parentFamily,
   parentFees,
   parentNotes,
   parentRequests,
+  parentUnread,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
@@ -36,6 +38,31 @@ export default function ParentApp({ phone }) {
   const [error, setError] = useState("");
   const [childId, setChildId] = useState(null);
   const [tab, setTab] = useState("fees");
+  // "<child>:<section>" -> { unread, seen_at }, from the database.
+  const [unread, setUnread] = useState(new Map());
+  // When the open section was last seen before this visit, to mark items New.
+  const [since, setSince] = useState(null);
+
+  const loadUnread = useCallback(
+    () =>
+      parentUnread().then(
+        (rows) => setUnread(new Map(rows.map((r) => [`${r.student_id}:${r.section}`, { unread: Number(r.unread), seen_at: r.seen_at }]))),
+        () => {}
+      ),
+    []
+  );
+
+  // Refresh the dots when the parent comes back to the app, and every minute.
+  useEffect(() => {
+    loadUnread();
+    const onShow = () => document.visibilityState === "visible" && loadUnread();
+    document.addEventListener("visibilitychange", onShow);
+    const t = setInterval(loadUnread, 60000);
+    return () => {
+      document.removeEventListener("visibilitychange", onShow);
+      clearInterval(t);
+    };
+  }, [loadUnread]);
 
   useEffect(() => {
     parentFamily()
@@ -50,6 +77,21 @@ export default function ParentApp({ phone }) {
 
   const child = children?.find((c) => c.id === childId);
   const school = child?.school ?? children?.[0]?.school;
+  const dot = (id, section) => (unread.get(`${id}:${section}`)?.unread ?? 0) > 0;
+  const childDot = (id) => TABS.some(([v]) => dot(id, v));
+
+  // Opening a section marks it seen; keep the previous time to show "New".
+  useEffect(() => {
+    if (!childId) return;
+    const key = `${childId}:${tab}`;
+    setSince(unread.get(key)?.seen_at ?? null);
+    if (!unread.has(key)) return; // dots not loaded yet
+    if (unread.get(key).unread === 0 && unread.get(key).seen_at) return;
+    markParentSeen(childId, tab).then(
+      () => setUnread((m) => new Map(m).set(key, { unread: 0, seen_at: new Date().toISOString() })),
+      () => {}
+    );
+  }, [childId, tab, unread.size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="pa">
@@ -88,6 +130,7 @@ export default function ParentApp({ phone }) {
               <button key={c.id} className={c.id === childId ? "is-on" : ""} onClick={() => setChildId(c.id)}>
                 <Photo person={c} className="pa-kid-photo" />
                 <span>{c.name.split(" ")[0]}</span>
+                {c.id !== childId && childDot(c.id) && <i className="pa-dot" aria-label="New updates" />}
               </button>
             ))}
           </nav>
@@ -115,20 +158,26 @@ export default function ParentApp({ phone }) {
               {TABS.map(([v, l]) => (
                 <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
                   {l}
+                  {tab !== v && dot(child.id, v) && <i className="pa-dot" aria-label="New" />}
                 </button>
               ))}
             </nav>
 
-            {tab === "fees" && <FeesTab key={child.id} child={child} />}
-            {tab === "results" && <ResultsTab key={child.id} child={child} />}
-            {tab === "notes" && <NotesTab key={child.id} child={child} />}
-            {tab === "requests" && <RequestsTab key={child.id} child={child} />}
+            {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
+            {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
+            {tab === "notes" && <NotesTab key={child.id} child={child} since={since} />}
+            {tab === "requests" && <RequestsTab key={child.id} child={child} since={since} />}
           </>
         )}
       </main>
     </div>
   );
 }
+
+// Newer than the parent's last visit to this section (never on a first visit,
+// when everything would be "new").
+const isNew = (when, since) => Boolean(when && since && when > since);
+const NewTag = () => <span className="pa-new-tag">New</span>;
 
 function NotLinked({ phone }) {
   return (
@@ -163,7 +212,7 @@ function useLoad(load) {
 
 // ----------------------------------------------------------------- fees ---
 
-function FeesTab({ child }) {
+function FeesTab({ child, since }) {
   const load = useCallback(() => parentFees(child.id, child.school_id), [child.id, child.school_id]);
   const { data, error } = useLoad(load);
   const [receipt, setReceipt] = useState(null);
@@ -217,7 +266,7 @@ function FeesTab({ child }) {
           <h2 className="pa-h2">Due now</h2>
           <ul className="pa-list">
             {view.dueNow.map((d) => (
-              <DueRow key={d.id} due={d} overdue={d.due_date && d.due_date < today()} />
+              <DueRow key={d.id} due={d} overdue={d.due_date && d.due_date < today()} fresh={isNew(d.created_at, since)} />
             ))}
           </ul>
           <p className="pa-hint">
@@ -231,7 +280,7 @@ function FeesTab({ child }) {
           <h2 className="pa-h2">Coming up</h2>
           <ul className="pa-list">
             {later.map((d) => (
-              <DueRow key={d.id} due={d} />
+              <DueRow key={d.id} due={d} fresh={isNew(d.created_at, since)} />
             ))}
           </ul>
           {view.upcoming.length > 3 && (
@@ -252,7 +301,9 @@ function FeesTab({ child }) {
                   <Icon name="check" size={14} />
                 </span>
                 <span className="pa-row-main">
-                  <strong>{rupees(p.amount)}</strong>
+                  <strong>
+                    {rupees(p.amount)} {isNew(p.created_at, since) && <NewTag />}
+                  </strong>
                   <span className="row-sub">
                     {dateText(p.paid_on)} · {METHODS[p.method] ?? p.method} · <span className="pa-nowrap">{p.receipt_no}</span>
                     {p.status === "cancelled" && " · Cancelled"}
@@ -274,13 +325,13 @@ function FeesTab({ child }) {
   );
 }
 
-function DueRow({ due, overdue }) {
+function DueRow({ due, overdue, fresh }) {
   return (
     <li className="pa-row">
       <span className={`pa-row-icon${overdue ? " is-overdue" : " is-due"}`}>₹</span>
       <span className="pa-row-main">
         <strong>
-          {due.head_name ?? "Fee"} · {due.label}
+          {due.head_name ?? "Fee"} · {due.label} {fresh && <NewTag />}
         </strong>
         <span className="row-sub">
           {due.due_date ? `Due ${dateText(due.due_date)}` : "Due now"}
@@ -297,7 +348,7 @@ function DueRow({ due, overdue }) {
 
 // -------------------------------------------------------------- results ---
 
-function ResultsTab({ child }) {
+function ResultsTab({ child, since }) {
   const load = useCallback(() => (child.session ? listResults(child.id, child.session.id) : Promise.resolve([])), [child.id, child.session]);
   const { data, error } = useLoad(load);
 
@@ -334,7 +385,7 @@ function ResultsTab({ child }) {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td>
-                  {r.subject}
+                  {r.subject} {isNew(r.updated_at, since) && <NewTag />}
                   {r.remarks && <span className="row-sub pa-remark">{r.remarks}</span>}
                 </td>
                 <td className="pa-num">
@@ -364,7 +415,7 @@ function ResultsTab({ child }) {
 
 // ---------------------------------------------------------------- notes ---
 
-function NotesTab({ child }) {
+function NotesTab({ child, since }) {
   const load = useCallback(() => parentNotes(child.id), [child.id]);
   const { data, error } = useLoad(load);
   if (error) return <p className="notice notice-error">{error}</p>;
@@ -374,8 +425,10 @@ function NotesTab({ child }) {
     <section className="pa-card">
       <ul className="pa-notes">
         {data.map((n) => (
-          <li key={n.id}>
-            <span className="row-sub">{dateText(n.created_at)}</span>
+          <li key={n.id} className={isNew(n.updated_at, since) ? "is-new" : ""}>
+            <span className="row-sub">
+              {dateText(n.created_at)} {isNew(n.updated_at, since) && <NewTag />}
+            </span>
             <p>{n.body}</p>
           </li>
         ))}
@@ -400,7 +453,7 @@ const STATUS = {
 };
 const CERTIFICATES = ["Bonafide certificate", "Character certificate", "Transfer certificate", "Fee certificate", "Other"];
 
-function RequestsTab({ child }) {
+function RequestsTab({ child, since }) {
   const load = useCallback(() => parentRequests(child.id), [child.id]);
   const { data, error, reload } = useLoad(load);
   const [writing, setWriting] = useState(false);
@@ -442,7 +495,9 @@ function RequestsTab({ child }) {
               return (
                 <li key={r.id} className="pa-request">
                   <div className="pa-request-head">
-                    <strong>{r.subject}</strong>
+                    <strong>
+                      {r.subject} {isNew(r.handled_at, since) && <NewTag />}
+                    </strong>
                     <span className={`badge ${tone}`}>{label}</span>
                   </div>
                   <span className="row-sub">
