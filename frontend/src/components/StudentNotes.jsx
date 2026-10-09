@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { addNote, deleteNote, listNotes } from "../data/api.js";
+import { addNote, deleteNote, listNotes, setNoteShared } from "../data/api.js";
 
 const when = (iso) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -9,6 +9,7 @@ const when = (iso) =>
 export default function StudentNotes({ person, me, isAdmin, canWrite }) {
   const [notes, setNotes] = useState(null);
   const [body, setBody] = useState("");
+  const [shared, setShared] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -29,13 +30,23 @@ export default function StudentNotes({ person, me, isAdmin, canWrite }) {
     setBusy(true);
     setError("");
     try {
-      const saved = await addNote(person.school_id, person.id, body.trim());
+      const saved = await addNote(person.school_id, person.id, body.trim(), shared);
       setNotes((n) => [saved, ...(n ?? [])]);
       setBody("");
+      setShared(false);
     } catch {
       setError("Couldn’t save the note. Try again.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function toggleShare(note) {
+    try {
+      await setNoteShared(note.id, !note.shared_with_parents);
+      setNotes((n) => n.map((x) => (x.id === note.id ? { ...x, shared_with_parents: !x.shared_with_parents } : x)));
+    } catch {
+      setError("Couldn’t change sharing.");
     }
   }
 
@@ -60,9 +71,15 @@ export default function StudentNotes({ person, me, isAdmin, canWrite }) {
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
-          <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
-            {busy ? "Saving…" : "Add note"}
-          </button>
+          <div className="note-form-actions">
+            <label className="checkbox checkbox-inline">
+              <input type="checkbox" checked={shared} onChange={(e) => setShared(e.target.checked)} />
+              <span>Share with parents</span>
+            </label>
+            <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
+              {busy ? "Saving…" : "Add note"}
+            </button>
+          </div>
         </form>
       )}
       {error && <p className="field-error">{error}</p>}
@@ -75,14 +92,20 @@ export default function StudentNotes({ person, me, isAdmin, canWrite }) {
           {notes.map((n) => (
             <li key={n.id}>
               <p className="note-body">{n.body}</p>
+              {n.shared_with_parents && <span className="badge badge-success note-shared">Shared with parents</span>}
               <div className="note-meta">
                 <span>
                   {n.author_email} · {when(n.created_at)}
                 </span>
                 {canWrite && (n.author_email === me || isAdmin) && (
-                  <button className="link-btn" onClick={() => remove(n.id)}>
-                    Delete
-                  </button>
+                  <span className="note-actions">
+                    <button className="link-btn" onClick={() => toggleShare(n)}>
+                      {n.shared_with_parents ? "Stop sharing" : "Share with parents"}
+                    </button>
+                    <button className="link-btn" onClick={() => remove(n.id)}>
+                      Delete
+                    </button>
+                  </span>
                 )}
               </div>
             </li>

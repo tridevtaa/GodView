@@ -27,7 +27,33 @@ const rename = (row) => {
   return out;
 };
 
-// student row (optionally with embedded `private`), enrolment, fee dues → person
+// Fee status for tiles and totals from a fee_student_totals row: "due" when
+// something is due by today, "overdue" when it's been due for over 15 days,
+// "paid" when everything due so far is paid.
+export function feeFields(t, today = new Date()) {
+  const dueNow = Number(t.due_now) || 0;
+  const billed = Number(t.billed) || 0;
+  const overdueSince = new Date(today);
+  overdueSince.setDate(overdueSince.getDate() - 15);
+  const status =
+    dueNow > 0
+      ? t.next_due_date && new Date(t.next_due_date) < overdueSince
+        ? "overdue"
+        : "due"
+      : billed > 0
+        ? "paid"
+        : "unknown";
+  return {
+    fee_status: status,
+    fee_due: dueNow,
+    fee_balance: Number(t.balance) || 0,
+    fee_paid: Number(t.paid) || 0,
+    fee_billed: billed,
+    fee_next_due: t.next_due_date,
+  };
+}
+
+// student row (optionally with embedded `private`), enrolment, fee totals → person
 export function toPerson(student, enrolment, dues) {
   const { private: privRow, ...base } = student;
   // PostgREST may embed a one-to-one row as an object or a one-item array.
@@ -38,15 +64,7 @@ export function toPerson(student, enrolment, dues) {
     Object.assign(person, rename(details));
   }
   if (enrolment) Object.assign(person, Object.fromEntries(ENROLMENT_FIELDS.map((f) => [f, enrolment[f]])));
-  if (dues) {
-    Object.assign(person, {
-      fee_status: dues.status,
-      fee_due: Number(dues.amount) || 0,
-      fee_due_months: dues.months,
-      fee_breakdown: dues.breakdown,
-      fee_as_of: dues.as_of,
-    });
-  }
+  if (dues) Object.assign(person, feeFields(dues));
   return person;
 }
 
