@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships, logoUrl, lookupJoinCode, requestAccess } from "../data/api.js";
+import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess } from "../data/api.js";
+import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 
@@ -42,7 +43,7 @@ const DESIGNATIONS = [
 
 // Shown to someone signed in who isn't a member of any school yet:
 // 1) enter the school's join code, 2) details and classes, 3) sent.
-function RequestAccess({ user }) {
+function RequestAccess({ user, onSchool }) {
   const [step, setStep] = useState("code");
   const [code, setCode] = useState("");
   const [school, setSchool] = useState(null); // { school_name, session_name, classes }
@@ -67,6 +68,7 @@ function RequestAccess({ user }) {
       if (!found) setError("That code didn’t match a school. Check it with your school office.");
       else {
         setSchool(found);
+        onSchool(found);
         setStep("details");
       }
     } catch {
@@ -93,7 +95,6 @@ function RequestAccess({ user }) {
   if (step === "sent") {
     return (
       <>
-        {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
         <h1>Request sent</h1>
         <p className="muted">
           {school.school_name}’s owner will review your request. Once it’s approved, sign in again to see your classes.
@@ -137,7 +138,6 @@ function RequestAccess({ user }) {
 
   return (
     <form className="request-form request-form-wide" onSubmit={submit}>
-      {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
       <h1>{school.school_name}</h1>
       <p className="muted">Tell the school who you are and which classes you teach.</p>
       <div className="form-grid">
@@ -184,9 +184,84 @@ function RequestAccess({ user }) {
   );
 }
 
+const when = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const classList = (classes = []) =>
+  classes.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ");
+
+// For someone signed in without access: their latest request's status, or
+// the join form if they haven't asked (or want to ask again / update it).
+function JoinStatus({ requests = [], user, onSchool }) {
+  const latest = requests[0];
+  const [joining, setJoining] = useState(!latest || latest.status === "approved");
+
+  useEffect(() => {
+    if (!joining && latest) onSchool(latest);
+  }, [joining, latest, onSchool]);
+
+  if (joining) return <RequestAccess user={user} onSchool={onSchool} />;
+
+  const pending = latest.status === "pending";
+  return (
+    <div className="request-form">
+      <h1>{pending ? "Waiting for approval" : "Request not approved"}</h1>
+      <p className="muted">
+        {pending
+          ? `${latest.school_name}’s owner hasn’t reviewed your request yet. You’ll get access as soon as they approve it.`
+          : `${latest.school_name} didn’t approve your request${latest.decided_at ? ` on ${when(latest.decided_at)}` : ""}. Check with the school office, then you can ask again.`}
+      </p>
+      <dl className="summary-list">
+        <div>
+          <dt>School</dt>
+          <dd>{latest.school_name}</dd>
+        </div>
+        <div>
+          <dt>Sent</dt>
+          <dd>{when(latest.created_at)}</dd>
+        </div>
+        {latest.designation && (
+          <div>
+            <dt>As</dt>
+            <dd>{latest.designation}</dd>
+          </div>
+        )}
+        {latest.requested_classes?.length > 0 && (
+          <div>
+            <dt>Classes</dt>
+            <dd className="summary-wrap">{classList(latest.requested_classes)}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span className={`badge ${pending ? "badge-warning" : "badge-danger"}`}>{pending ? "Pending" : "Not approved"}</span>
+          </dd>
+        </div>
+      </dl>
+      {pending && (
+        <button className="btn btn-primary btn-block" onClick={() => window.location.reload()}>
+          Check again
+        </button>
+      )}
+      <button
+        className={`btn btn-block ${pending ? "btn-secondary" : "btn-primary"}`}
+        onClick={() => {
+          onSchool(null);
+          setJoining(true);
+        }}
+      >
+        {pending ? "Update request" : "Request again"}
+      </button>
+      <button className="btn btn-secondary btn-block" onClick={logOut}>
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
   const [error, setError] = useState("");
+  const [joinSchool, setJoinSchool] = useState(null); // school found by join code
 
   useEffect(() => {
     clearLegacyCaches();
@@ -200,7 +275,10 @@ export default function AuthGate({ children }) {
       setState({ status: "checking" });
       try {
         const memberships = await listMemberships(u.email);
-        if (!memberships.length) return setState({ status: "denied", user: toUser(u) });
+        if (!memberships.length) {
+          const requests = await myAccessRequests().catch(() => []);
+          return setState({ status: "denied", user: toUser(u), requests });
+        }
         const { school, role } = memberships[0];
         setState({ status: "member", user: toUser(u), school, role, schools: memberships });
       } catch {
@@ -239,11 +317,19 @@ export default function AuthGate({ children }) {
   return (
     <main className="auth-screen">
       <div className="auth-card">
-        <LogoMark size={44} />
+        <div className="auth-brand">
+          <LogoMark size={44} />
+          {joinSchool?.logo_path && (
+            <>
+              <span className="logo-x" aria-hidden="true">×</span>
+              <img className="auth-brand-school" src={logoUrl(joinSchool.logo_path)} alt={joinSchool.school_name} />
+            </>
+          )}
+        </div>
         {state.status === "loading" || state.status === "checking" ? (
           <p className="muted">Checking access…</p>
         ) : state.status === "denied" ? (
-          <RequestAccess user={state.user} />
+          <JoinStatus requests={state.requests} user={state.user} onSchool={setJoinSchool} />
         ) : (
           <>
             <h1>Sign in to Godview</h1>

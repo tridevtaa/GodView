@@ -484,3 +484,8 @@ export async function removeSchoolLogo(school) {
   if (school.logo_path) await supabase.storage.from(LOGOS).remove([school.logo_path]);
   return saved;
 }
+
+// The signed-in person's own join requests (newest first), with school name/logo.
+export async function myAccessRequests() {
+  return must(await supabase.rpc("my_access_requests"));
+}
