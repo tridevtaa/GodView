@@ -5,6 +5,7 @@ import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import { BarChart, ColumnChart } from "./charts.jsx";
 import OpeningBalances from "./OpeningBalances.jsx";
+import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -21,7 +22,10 @@ function sessionMonths(session) {
 
 // Owners/admins: how fee collection is going. Setting fees up lives on the
 // Owner page (Fee structure).
-export default function FeesPage({ school, role, session, students, onOpenStudent, onChanged, onSetup }) {
+// Owners get two tabs: Overview (collection) and Structure (what each grade
+// pays). Admins see the overview only.
+export default function FeesPage({ school, role, session, students, grades, onGradesChanged, onOpenStudent, onChanged }) {
+  const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [monthly, setMonthly] = useState([]);
   const [byClass, setByClass] = useState([]);
@@ -82,22 +86,26 @@ export default function FeesPage({ school, role, session, students, onOpenStuden
 
   if (!session) return <p className="notice">Import your students first; fees are tracked per session.</p>;
 
-  const billed = Number(summary?.billed) || 0;
-  const collected = Number(summary?.collected) || 0;
-  const rate = billed > 0 ? Math.round((collected / billed) * 100) : 0;
-  const notSetUp = summary && billed === 0;
-  const list = showAll ? owing : defaulters;
-
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <h1 className="sr-only">Fees</h1>
-          <div className="page-meta">
-            <span className="page-count">Fees</span>
-            <span className="badge badge-neutral">Session {session.name}</span>
-          </div>
+  const isOwner = role === "owner";
+  const header = (
+    <div className="page-header">
+      <div>
+        <h1 className="sr-only">Fees</h1>
+        <div className="page-meta">
+          <span className="page-count">Fees</span>
+          {isOwner && (
+            <nav className="segmented segmented-sm" aria-label="Fee sections">
+              {[["overview", "Overview"], ["structure", "Fee structure"]].map(([v, l]) => (
+                <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
+                  {l}
+                </button>
+              ))}
+            </nav>
+          )}
+          <span className="badge badge-neutral">Session {session.name}</span>
         </div>
+      </div>
+      {tab === "overview" && (
         <div className="page-actions">
           <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
             <Icon name="upload" />
@@ -108,7 +116,37 @@ export default function FeesPage({ school, role, session, students, onOpenStuden
             Collect a payment
           </button>
         </div>
-      </div>
+      )}
+    </div>
+  );
+
+  if (isOwner && tab === "structure")
+    return (
+      <>
+        {header}
+        <FeeStructure
+          school={school}
+          session={session}
+          grades={grades}
+          onGradesChanged={onGradesChanged}
+          students={students}
+          onChanged={() => {
+            onChanged?.();
+            load();
+          }}
+        />
+      </>
+    );
+
+  const billed = Number(summary?.billed) || 0;
+  const collected = Number(summary?.collected) || 0;
+  const rate = billed > 0 ? Math.round((collected / billed) * 100) : 0;
+  const notSetUp = summary && billed === 0;
+  const list = showAll ? owing : defaulters;
+
+  return (
+    <>
+      {header}
 
       {error && <p className="notice notice-error">{error}</p>}
 
@@ -118,13 +156,13 @@ export default function FeesPage({ school, role, session, students, onOpenStuden
           {role === "owner" ? (
             <>
               Set the fee for each grade in{" "}
-              <button className="link-btn" onClick={onSetup}>
-                Owner → Fee structure
+              <button className="link-btn" onClick={() => setTab("structure")}>
+                Fee structure
               </button>{" "}
               and create the dues. Collection figures appear here after that.
             </>
           ) : (
-            "The school owner sets fees up on the Owner page. Collection figures appear here after that."
+            "The school owner sets up the fee structure. Collection figures appear here after that."
           )}
         </div>
       )}

@@ -1788,23 +1788,6 @@ a:hover {
   color: #fff;
 }
 
-.join-panel {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 24px;
-  padding: 8px 22px 16px;
-}
-
-.join-panel .panel-title {
-  padding: 8px 0 2px;
-}
-
-.join-help {
-  max-width: 460px;
-}
-
 .join-code-row {
   display: flex;
   flex-wrap: wrap;
@@ -1868,6 +1851,76 @@ a:hover {
 }
 
 /* ---------- School profile ---------- */
+
+/* One-line summary: logo, name and details, join code, Edit. */
+.school-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 20px;
+  padding: 18px 22px;
+}
+
+.school-logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text-3);
+}
+
+.school-logo img {
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  object-fit: contain;
+}
+
+.school-id {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.school-name {
+  margin: 0 0 2px;
+  font-size: 18px;
+}
+
+.school-id .row-sub {
+  margin: 0;
+}
+
+.school-missing {
+  color: var(--warning);
+}
+
+.join-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.join-label {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.join-inline .join-code {
+  font-size: 15px;
+}
+
+.school-panel.is-editing .school-body {
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
 
 .school-body {
   display: grid;
