@@ -5,40 +5,71 @@ import StudentNotes from "./StudentNotes.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
 import StudentParents from "./StudentParents.jsx";
-import { FeeBadge, Photo, gradeLabel, relation } from "./PersonCard.jsx";
+import { Photo, gradeLabel, relation, tintFor } from "./PersonCard.jsx";
+import { rupees } from "../data/money.js";
 import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
+const longDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
+function age(dob) {
+  if (!dob) return "";
+  const b = new Date(dob);
+  const now = new Date();
+  let y = now.getFullYear() - b.getFullYear();
+  if (now < new Date(now.getFullYear(), b.getMonth(), b.getDate())) y -= 1;
+  return y >= 0 ? `${y} yrs` : "";
+}
+const digits = (n = "") => String(n).replace(/\D/g, "").slice(-10);
 
-
-const DETAILS = {
+// Details in groups; empty rows and empty groups are left out.
+const GROUPS = {
   students: [
-    ["Stream", (p) => p.stream],
-    ["Left on", (p) => p.status === "left" && p.left_as_of],
-    ["Remarks", (p) => p.remarks],
-    ["Father", (p) => p.parent_name && `${relation(p.gender)} ${p.parent_name}`],
-    ["Mother", (p) => p.mother_name],
-    ["Parent phone", (p) => phone(p.parent_phone)],
-    ["Father phone", (p) => p.father_phone !== p.parent_phone && phone(p.father_phone)],
-    ["Mother phone", (p) => p.mother_phone !== p.parent_phone && phone(p.mother_phone)],
-    ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
-    ["Address", (p) => [p.address, p.city, p.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ")],
-    ["Roll no.", (p) => p.roll_no],
-    ["Date of birth", (p) => p.dob],
-    ["Category", (p) => p.category],
-    ["Admission date", (p) => p.admission_date],
-    ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
-    ["Religion", (p) => p.religion],
-    ["SRN", (p) => p.srn],
-    // Only the last 4 digits are stored.
-    ["Aadhaar", (p) => p.aadhaar && <span className="masked">•••• •••• {p.aadhaar}</span>],
-    ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
+    [
+      "Family",
+      [
+        ["Father", (p) => p.parent_name],
+        ["Mother", (p) => p.mother_name],
+        ["Parent phone", (p) => phone(p.parent_phone)],
+        ["Father phone", (p) => p.father_phone !== p.parent_phone && phone(p.father_phone)],
+        ["Mother phone", (p) => p.mother_phone !== p.parent_phone && phone(p.mother_phone)],
+        ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
+      ],
+    ],
+    [
+      "Personal",
+      [
+        ["Date of birth", (p) => p.dob && `${longDate(p.dob)}${age(p.dob) ? ` · ${age(p.dob)}` : ""}`],
+        ["Gender", (p) => ({ M: "Male", F: "Female" })[p.gender]],
+        ["Category", (p) => p.category],
+        ["Religion", (p) => p.religion],
+        // Only the last 4 digits are stored.
+        ["Aadhaar", (p) => p.aadhaar && <span className="masked">•••• •••• {p.aadhaar}</span>],
+        ["Address", (p) => [p.address, p.city, p.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", "), "wide"],
+      ],
+    ],
+    [
+      "School",
+      [
+        ["Roll no.", (p) => p.roll_no],
+        ["Stream", (p) => p.stream],
+        ["Admission date", (p) => longDate(p.admission_date)],
+        ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
+        ["SRN", (p) => p.srn],
+        ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
+        ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
+        ["Remarks", (p) => p.remarks, "wide"],
+      ],
+    ],
   ],
   employees: [
-
-    ["Phone", (p) => p.phone && <a href={`tel:${p.phone}`}>{p.phone}</a>],
-    ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
-    ["Joined", (p) => p.joining_date],
+    [
+      "Contact",
+      [
+        ["Phone", (p) => phone(p.phone)],
+        ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
+        ["Joined", (p) => longDate(p.joining_date)],
+      ],
+    ],
   ],
 };
 
@@ -98,44 +129,29 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   }, [onClose, editing]);
 
   const isStudent = mode === "students";
-  const rows = DETAILS[mode]
-    .map(([label, get]) => [label, get(person)])
-    .filter(([, value]) => value);
+  const groups = GROUPS[mode]
+    .map(([title, rows]) => [title, rows.map(([label, get, wide]) => [label, get(person), wide]).filter(([, v]) => v)])
+    .filter(([, rows]) => rows.length);
+  const callNo = person.parent_phone || person.father_phone || person.mother_phone || person.phone;
+  const feeKnown = isStudent && isAdmin && person.fee_status && person.fee_status !== "unknown";
+  const tabs = [
+    ["details", "Details"],
+    ...(isAdmin ? [["fees", "Fees"], ["parents", "Parents"]] : []),
+    ["notes", "Notes"],
+    ["results", "Results"],
+  ];
 
   return (
     <div className="modal-backdrop" onClick={() => !editing && onClose()}>
       <section
-        className="modal modal-lg"
+        className="modal modal-lg profile"
         role="dialog"
         aria-modal="true"
         aria-label={`${person.name} profile`}
         onClick={(e) => e.stopPropagation()}
+        style={{ "--tint": tintFor(person) }}
       >
-        <header className="profile-header">
-          <div className="profile-photo">
-            <Photo person={person} className="photo-lg" />
-            {canWrite && (
-              <PhotoUpload
-                person={person}
-                kind={mode}
-                schoolId={schoolId}
-                onSaved={(patch) => onUpdate(person.id, patch)}
-              />
-            )}
-          </div>
-          <div className="profile-heading">
-            <h2>{person.name}</h2>
-            <p className="profile-sub">
-              {isStudent ? person.admission_no : [person.employee_no, person.department].filter(Boolean).join(" · ")}
-            </p>
-            <div className="badge-row">
-              <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
-              {isStudent && person.section && <span className="badge badge-neutral">{person.section}</span>}
-              {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
-              {person.status === "left" && <span className="badge badge-danger">Left</span>}
-              {isStudent && <FeeBadge person={person} />}
-            </div>
-          </div>
+        <div className="profile-band">
           <div className="profile-tools">
             {canEdit && !editing && (
               <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
@@ -143,20 +159,73 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 Edit
               </button>
             )}
-            <button className="btn-icon" onClick={onClose} aria-label="Close">
+            <button className="btn-icon profile-close" onClick={onClose} aria-label="Close">
               <Icon name="x" size={18} />
             </button>
           </div>
+        </div>
+
+        <header className="profile-header">
+          <div className="profile-photo">
+            <Photo person={person} className="photo-lg" />
+            {canWrite && (
+              <PhotoUpload person={person} kind={mode} schoolId={schoolId} onSaved={(patch) => onUpdate(person.id, patch)} />
+            )}
+          </div>
+          <div className="profile-heading">
+            <div className="profile-chips">
+              <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
+              <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
+              {isStudent && person.section && <span className="profile-section">{person.section}</span>}
+              {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
+              {person.status === "left" && <span className="badge badge-danger">Left</span>}
+            </div>
+            <h2>{person.name}</h2>
+            <p className="profile-sub">
+              {isStudent
+                ? person.parent_name && `${relation(person.gender)} ${person.parent_name}`
+                : person.department}
+            </p>
+          </div>
         </header>
 
+        {!editing && (feeKnown || callNo) && (
+          <div className="profile-strip">
+            {feeKnown && (
+              <button className={`profile-stat is-${person.fee_status}`} onClick={() => setTab("fees")} title="Open fees">
+                <span className={`fee fee-${person.fee_status}`}>₹</span>
+                <span>
+                  <span className="profile-stat-label">{Number(person.fee_due) > 0 ? "Due now" : "Fees"}</span>
+                  <strong>{Number(person.fee_due) > 0 ? rupees(person.fee_due) : "All paid"}</strong>
+                </span>
+              </button>
+            )}
+            {feeKnown && Number(person.fee_paid) > 0 && (
+              <div className="profile-stat">
+                <span>
+                  <span className="profile-stat-label">Paid this session</span>
+                  <strong>{rupees(person.fee_paid)}</strong>
+                </span>
+              </div>
+            )}
+            {callNo && (
+              <span className="profile-actions">
+                <a className="btn btn-secondary btn-sm" href={`tel:${callNo}`}>
+                  <Icon name="phone" />
+                  Call
+                </a>
+                <a className="btn btn-secondary btn-sm" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer">
+                  <Icon name="message" />
+                  WhatsApp
+                </a>
+              </span>
+            )}
+          </div>
+        )}
+
         {isStudent && !editing && (
-          <nav className="tabs" aria-label="Profile sections">
-            {[
-              ["details", "Details"],
-              ...(isAdmin ? [["fees", "Fees"], ["parents", "Parents"]] : []),
-              ["notes", "Notes"],
-              ["results", "Results"],
-            ].map(([value, label]) => (
+          <nav className="segmented profile-tabs" aria-label="Profile sections">
+            {tabs.map(([value, label]) => (
               <button key={value} className={tab === value ? "active" : ""} onClick={() => setTab(value)}>
                 {label}
               </button>
@@ -164,7 +233,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           </nav>
         )}
 
-        <div className="modal-body">
+        <div className="modal-body profile-body">
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
           ) : isStudent && !editing && tab === "parents" ? (
@@ -184,17 +253,24 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 setEditing(false);
               }}
             />
+          ) : groups.length === 0 ? (
+            <p className="row-sub">No details recorded yet.</p>
           ) : (
-            <>
-              <dl className="details">
-                {rows.map(([label, value]) => (
-                  <div key={label}>
-                    <dt>{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </>
+            <div className="profile-groups">
+              {groups.map(([title, rows]) => (
+                <section key={title} className="profile-group">
+                  <h3>{title}</h3>
+                  <dl className="details">
+                    {rows.map(([label, value, wide]) => (
+                      <div key={label} className={wide ? "is-wide" : ""}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
           )}
         </div>
       </section>
