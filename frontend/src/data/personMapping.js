@@ -13,6 +13,7 @@ const STUDENT_FIELDS = [
 const PRIVATE_FIELDS = [
   "parent_phone", "father_phone", "mother_phone", "email", "address", "city", "state", "category", "religion",
   "srn", "aadhaar_last4", "admission_category", "transport_route", "pickup_point",
+  "home_lat", "home_lng", "home_place_id", "uses_bus", "bus_stop_id",
 ];
 const FROM_PERSON = Object.fromEntries(Object.entries(RENAMED).map(([col, field]) => [field, col]));
 

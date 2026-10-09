@@ -777,3 +777,43 @@ export async function deleteGrade(id) {
 export async function renameFeeHead(id, name) {
   must(await supabase.from("fee_heads").update({ name: name.trim() }).eq("id", id));
 }
+
+// ------------------------------------------------------------ transport ---
+
+// Routes with their stops in order.
+export async function listRoutes(schoolId) {
+  const rows = must(
+    await supabase.from("bus_routes").select("*, stops:bus_stops(*)").eq("school_id", schoolId).order("sort").order("name")
+  );
+  return rows.map((r) => ({ ...r, stops: [...(r.stops ?? [])].sort((a, b) => a.sort - b.sort || a.created_at.localeCompare(b.created_at)) }));
+}
+
+export async function addRoute(schoolId, name, sort) {
+  return must(await supabase.from("bus_routes").insert({ school_id: schoolId, name: name.trim(), sort }).select().single());
+}
+
+export async function updateRoute(id, fields) {
+  must(await supabase.from("bus_routes").update(fields).eq("id", id));
+}
+
+export async function deleteRoute(id) {
+  must(await supabase.from("bus_routes").delete().eq("id", id));
+}
+
+export async function addStop(schoolId, routeId, { name, address, place_id, lat, lng }, sort) {
+  return must(
+    await supabase
+      .from("bus_stops")
+      .insert({ school_id: schoolId, route_id: routeId, name: name.trim(), address, place_id, lat, lng, sort })
+      .select()
+      .single()
+  );
+}
+
+export async function updateStop(id, fields) {
+  must(await supabase.from("bus_stops").update(fields).eq("id", id));
+}
+
+export async function deleteStop(id) {
+  must(await supabase.from("bus_stops").delete().eq("id", id));
+}

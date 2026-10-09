@@ -7,6 +7,8 @@ import FeeLedger from "./FeeLedger.jsx";
 import StudentParents from "./StudentParents.jsx";
 import { Photo, gradeLabel, relation, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
+import { mapsLink } from "../data/maps.js";
+import { stopLabel } from "./TransportPicker.jsx";
 import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
@@ -44,7 +46,23 @@ const GROUPS = {
         ["Religion", (p) => p.religion],
         // Only the last 4 digits are stored.
         ["Aadhaar", (p) => p.aadhaar && <span className="masked">•••• •••• {p.aadhaar}</span>],
-        ["Address", (p) => [p.address, p.city, p.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", "), "wide"],
+        [
+          "Home",
+          (p) => {
+            const text = [p.address, p.city, p.state].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(", ");
+            if (p.home_lat == null) return text;
+            return (
+              <span className="home-line">
+                {text || "Pinned on the map"}
+                <a className="pin-link" href={mapsLink(p.home_lat, p.home_lng)} target="_blank" rel="noreferrer">
+                  <Icon name="pin" size={13} />
+                  Map
+                </a>
+              </span>
+            );
+          },
+          "wide",
+        ],
       ],
     ],
     [
@@ -55,7 +73,7 @@ const GROUPS = {
         ["Admission date", (p) => longDate(p.admission_date)],
         ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
         ["SRN", (p) => p.srn],
-        ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
+        ["Bus", (p, routes) => (p.uses_bus ? stopLabel(routes, p.bus_stop_id) || [p.transport_route, p.pickup_point].filter(Boolean).join(" · ") || "Uses the bus" : !p.bus_stop_id && [p.transport_route, p.pickup_point].filter(Boolean).join(" · "))],
         ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
         ["Remarks", (p) => p.remarks, "wide"],
       ],
@@ -113,7 +131,7 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 
 // canEdit: change the record (owners/admins, current session)
 // canWrite: photos, notes and results (anyone who can see the student, current session)
-export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose }) {
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [] }) {
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState(initialTab);
 
@@ -130,7 +148,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
 
   const isStudent = mode === "students";
   const groups = GROUPS[mode]
-    .map(([title, rows]) => [title, rows.map(([label, get, wide]) => [label, get(person), wide]).filter(([, v]) => v)])
+    .map(([title, rows]) => [title, rows.map(([label, get, wide]) => [label, get(person, routes), wide]).filter(([, v]) => v)])
     .filter(([, rows]) => rows.length);
   const callNo = person.parent_phone || person.father_phone || person.mother_phone || person.phone;
   const feeKnown = isStudent && isAdmin && person.fee_status && person.fee_status !== "unknown";
@@ -247,6 +265,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               person={person}
               kind={mode}
               sessionId={sessionId}
+              routes={routes}
               onCancel={() => setEditing(false)}
               onSaved={(changes) => {
                 onUpdate(person.id, changes);

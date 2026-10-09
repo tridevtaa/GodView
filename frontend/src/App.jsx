@@ -12,7 +12,7 @@ import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import RequestsPage from "./components/RequestsPage.jsx";
-import { countOpenRequests, countPendingRequests, listGrades } from "./data/api.js";
+import { countOpenRequests, countPendingRequests, listGrades, listRoutes } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -57,6 +57,21 @@ export default function App() {
   useEffect(() => {
     loadGrades();
   }, [loadGrades]);
+
+  // Bus routes with their stops (for the Add student card, profiles, Owner).
+  const [routes, setRoutes] = useState([]);
+  const [ownerTab, setOwnerTab] = useState("team");
+  const openOwner = (tab) => {
+    setOwnerTab(tab);
+    switchMode("team");
+  };
+  const loadRoutes = useCallback(
+    () => listRoutes(school.id).then(setRoutes, () => setRoutes([])),
+    [school.id]
+  );
+  useEffect(() => {
+    loadRoutes();
+  }, [loadRoutes]);
   const sessionId = pickedSession ?? currentSession?.id;
   // Fees, Requests and Team work on the session's students.
   const dataMode = mode === "employees" ? "employees" : "students";
@@ -146,6 +161,10 @@ export default function App() {
             onSchoolSaved={setSchool}
             grades={schoolGrades}
             onGradesChanged={loadGrades}
+            routes={routes}
+            onRoutesChanged={loadRoutes}
+            tab={ownerTab}
+            onTab={setOwnerTab}
             students={current}
             onFeesChanged={reload}
           />
@@ -153,7 +172,7 @@ export default function App() {
           <FeesPage
             school={school}
             role={role}
-            onSetup={() => switchMode("team")}
+            onSetup={() => openOwner("fees")}
             session={selectedSession}
             students={current}
             onOpenStudent={openStudent}
@@ -277,6 +296,8 @@ export default function App() {
           onUpdate={patch}
           onFeesChanged={reload}
           onClose={closeProfile}
+          grades={schoolGrades}
+          routes={routes}
         />
       )}
       {importing && (
@@ -287,7 +308,17 @@ export default function App() {
           onDone={reload}
         />
       )}
-      {adding && <AddModal mode={mode} onClose={() => setAdding(false)} onSave={add} />}
+      {adding && (
+        <AddModal
+          mode={mode}
+          grades={schoolGrades}
+          routes={routes}
+          students={mode === "students" ? people : []}
+          onClose={() => setAdding(false)}
+          onSave={add}
+          onManageRoutes={isOwner ? () => (setAdding(false), openOwner("transport")) : null}
+        />
+      )}
     </div>
   );
 }
