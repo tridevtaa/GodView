@@ -11,7 +11,9 @@ import { gradeLabel } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
-import { countPendingRequests } from "./data/api.js";
+import FeesPage from "./components/FeesPage.jsx";
+import RequestsPage from "./components/RequestsPage.jsx";
+import { countOpenRequests, countPendingRequests } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -26,6 +28,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
+  const [openTab, setOpenTab] = useState("details");
   const [grade, setGrade] = useState("");
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
@@ -33,16 +36,20 @@ export default function App() {
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
   const [pendingCount, setPendingCount] = useState(0);
+  const [openRequests, setOpenRequests] = useState(0);
+  const [badgeTick, setBadgeTick] = useState(0);
   useEffect(() => {
     if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => setPendingCount(0));
-  }, [isOwner, school.id, mode]);
+    countOpenRequests(school.id).then(setOpenRequests, () => setOpenRequests(0));
+  }, [isOwner, school.id, mode, badgeTick]);
   const { sessions, current: currentSession } = useSessions(school.id);
   const sessionId = pickedSession ?? currentSession?.id;
-  const dataMode = mode === "team" ? "students" : mode;
+  // Fees, Requests and Team work on the session's students.
+  const dataMode = mode === "employees" ? "employees" : "students";
   const { people, loading, source, add, patch, reload } = usePeople(dataMode, school.id, sessionId);
 
   // Past sessions are history: shown, not edited.
-  const viewOnly = mode === "students" && Boolean(currentSession) && sessionId !== currentSession.id;
+  const viewOnly = mode !== "employees" && Boolean(currentSession) && sessionId !== currentSession.id;
   // Records: owners/admins. Photos, notes, results: anyone who can see the student.
   const canEdit = source === "supabase" && !viewOnly && isAdmin;
   const canWrite = source === "supabase" && !viewOnly;
@@ -75,8 +82,15 @@ export default function App() {
     );
   }, [inGrade, query, mode]);
 
-  const openIndex = visible.findIndex((p) => p.id === openId);
+  // On the Students page the profile follows the filtered grid; elsewhere
+  // (Fees, Requests) any student in the session can be opened.
+  const profileList = mode === "students" || mode === "employees" ? visible : current;
+  const openIndex = profileList.findIndex((p) => p.id === openId);
   const closeProfile = useCallback(() => setOpenId(null), []);
+  const openStudent = useCallback((id, tab = "details") => {
+    setOpenTab(tab);
+    setOpenId(id);
+  }, []);
 
   function switchMode(next) {
     if (next === mode) return;
@@ -86,7 +100,8 @@ export default function App() {
     setOpenId(null);
   }
 
-  const currentLabel = sessions.find((s) => s.id === sessionId)?.name ?? "";
+  const selectedSession = sessions.find((s) => s.id === sessionId);
+  const currentLabel = selectedSession?.name ?? "";
 
   function switchSession(id) {
     setPickedSession(id);
@@ -98,6 +113,8 @@ export default function App() {
   const title = isStudents ? "Students" : "Employees";
   const sections = [
     ["students", "Students"],
+    ...(isAdmin ? [["fees", "Fees"]] : []),
+    ["requests", "Requests", openRequests],
     ...(isAdmin ? [["employees", "Employees"]] : []),
     ...(isOwner ? [["team", "Team", pendingCount]] : []),
   ];
@@ -109,6 +126,21 @@ export default function App() {
       <main className="page">
         {mode === "team" ? (
           <TeamPage school={school} session={currentSession} me={user.email} onSchoolSaved={setSchool} />
+        ) : mode === "fees" ? (
+          <FeesPage
+            school={school}
+            session={selectedSession}
+            students={current}
+            onOpenStudent={openStudent}
+            onChanged={reload}
+          />
+        ) : mode === "requests" ? (
+          <RequestsPage
+            school={school}
+            me={user.email}
+            onOpenStudent={(id) => openStudent(id)}
+            onChanged={() => setBadgeTick((t) => t + 1)}
+          />
         ) : (
         <>
         <div className="page-header">
@@ -200,7 +232,7 @@ export default function App() {
         ) : (
           <div className="grid">
             {visible.map((p, i) => (
-              <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => setOpenId(p.id)} />
+              <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />
             ))}
           </div>
         )}
@@ -210,8 +242,11 @@ export default function App() {
 
       {openIndex !== -1 && (
         <ProfileModal
-          person={visible[openIndex]}
-          mode={mode}
+          key={`${openId}-${openTab}`}
+          person={profileList[openIndex]}
+          mode={dataMode}
+          initialTab={openTab}
+          school={school}
           schoolId={school.id}
           sessionId={sessionId}
           me={user.email}
@@ -219,6 +254,7 @@ export default function App() {
           canEdit={canEdit}
           canWrite={canWrite}
           onUpdate={patch}
+          onFeesChanged={reload}
           onClose={closeProfile}
         />
       )}

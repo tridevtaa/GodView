@@ -3,7 +3,9 @@ import { savePhoto } from "../data/photos.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import StudentNotes from "./StudentNotes.jsx";
 import StudentResults from "./StudentResults.jsx";
-import { FeeBadge, Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
+import FeeLedger from "./FeeLedger.jsx";
+import StudentParents from "./StudentParents.jsx";
+import { FeeBadge, Photo, gradeLabel, relation } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
@@ -80,9 +82,9 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 
 // canEdit: change the record (owners/admins, current session)
 // canWrite: photos, notes and results (anyone who can see the student, current session)
-export default function ProfileModal({ person, mode, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onClose }) {
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose }) {
   const [editing, setEditing] = useState(false);
-  const [tab, setTab] = useState("details");
+  const [tab, setTab] = useState(initialTab);
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
@@ -151,6 +153,7 @@ export default function ProfileModal({ person, mode, schoolId, sessionId, me, is
           <nav className="tabs" aria-label="Profile sections">
             {[
               ["details", "Details"],
+              ...(isAdmin ? [["fees", "Fees"], ["parents", "Parents"]] : []),
               ["notes", "Notes"],
               ["results", "Results"],
             ].map(([value, label]) => (
@@ -162,7 +165,11 @@ export default function ProfileModal({ person, mode, schoolId, sessionId, me, is
         )}
 
         <div className="modal-body">
-          {isStudent && !editing && tab === "notes" ? (
+          {isStudent && !editing && tab === "fees" ? (
+            <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
+          ) : isStudent && !editing && tab === "parents" ? (
+            <StudentParents person={person} canEdit={canEdit} />
+          ) : isStudent && !editing && tab === "notes" ? (
             <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} />
           ) : isStudent && !editing && tab === "results" ? (
             <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} />
@@ -179,23 +186,6 @@ export default function ProfileModal({ person, mode, schoolId, sessionId, me, is
             />
           ) : (
             <>
-              {isStudent && person.fee_due > 0 && (
-                <div className="callout callout-warning">
-                  <div className="callout-head">
-                    <strong>{feeTitle(person)}</strong>
-                    {person.fee_as_of && <span>as of {person.fee_as_of}</span>}
-                  </div>
-                  {person.fee_due_months?.length > 0 && <p>For {person.fee_due_months.join(", ")}</p>}
-                  <dl className="ledger">
-                    {Object.entries(person.fee_breakdown || {}).map(([head, amount]) => (
-                      <div key={head}>
-                        <dt>{head.replace(/_/g, " ")}</dt>
-                        <dd>{formatINR(amount)}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              )}
               <dl className="details">
                 {rows.map(([label, value]) => (
                   <div key={label}>

@@ -55,7 +55,15 @@ export async function loadStudents(schoolId, sessionId) {
         .eq("session_id", sessionId)
         .order("student_id")
     ),
-    all(() => supabase.from("fee_dues").select("*").eq("school_id", schoolId).eq("session_id", sessionId).order("student_id")),
+    // Fee totals: owners/admins (and parents) get rows; teachers get none.
+    all(() =>
+      supabase
+        .from("fee_student_totals")
+        .select("student_id, billed, paid, balance, due_now, next_due_date")
+        .eq("school_id", schoolId)
+        .eq("session_id", sessionId)
+        .order("student_id")
+    ),
   ]);
   const duesBy = new Map(dues.map((d) => [d.student_id, d]));
   return enrolments.filter((e) => e.student).map((e) => toPerson(e.student, e, duesBy.get(e.student.id)));
@@ -226,9 +234,13 @@ export async function listNotes(studentId) {
   );
 }
 
-export async function addNote(schoolId, studentId, body) {
+export async function addNote(schoolId, studentId, body, shared = false) {
   return must(
-    await supabase.from("student_notes").insert({ school_id: schoolId, student_id: studentId, body }).select().single()
+    await supabase
+      .from("student_notes")
+      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared })
+      .select()
+      .single()
   );
 }
 
@@ -488,4 +500,189 @@ export async function removeSchoolLogo(school) {
 // The signed-in person's own join requests (newest first), with school name/logo.
 export async function myAccessRequests() {
   return must(await supabase.rpc("my_access_requests"));
+}
+
+// ------------------------------------------------------------------ fees ---
+
+export async function listFeeHeads(schoolId) {
+  return must(await supabase.from("fee_heads").select("*").eq("school_id", schoolId).order("sort").order("name"));
+}
+
+export async function addFeeHead(schoolId, name) {
+  return must(await supabase.from("fee_heads").insert({ school_id: schoolId, name: name.trim() }).select().single());
+}
+
+export async function ensureFeeHead(schoolId, name, heads) {
+  const found = heads.find((h) => h.name.toLowerCase() === name.trim().toLowerCase());
+  return found ?? (await addFeeHead(schoolId, name));
+}
+
+export async function deleteFeeHead(id) {
+  must(await supabase.from("fee_heads").delete().eq("id", id));
+}
+
+export async function listSchedule(sessionId) {
+  return must(await supabase.from("fee_schedule").select("*").eq("session_id", sessionId).order("created_at"));
+}
+
+export async function addScheduleLine(schoolId, sessionId, line) {
+  return must(
+    await supabase
+      .from("fee_schedule")
+      .insert({
+        school_id: schoolId,
+        session_id: sessionId,
+        class: line.class || null,
+        head_id: line.head_id,
+        amount: Number(line.amount),
+        frequency: line.frequency,
+        start_month: Number(line.start_month) || 4,
+        due_day: Number(line.due_day) || 10,
+      })
+      .select()
+      .single()
+  );
+}
+
+export async function deleteScheduleLine(id) {
+  must(await supabase.from("fee_schedule").delete().eq("id", id));
+}
+
+export async function generateInvoices(sessionId) {
+  return must(await supabase.rpc("generate_invoices", { session: sessionId }));
+}
+
+export async function feeSessionSummary(sessionId) {
+  const rows = must(await supabase.rpc("fee_session_summary", { session: sessionId }));
+  return rows?.[0] ?? null;
+}
+
+// Every due and payment for one student (all sessions), newest first.
+export async function studentLedger(studentId) {
+  const [dues, payments] = await Promise.all([
+    all(() => supabase.from("fee_invoice_balances").select("*").eq("student_id", studentId).order("due_date")),
+    all(() =>
+      supabase
+        .from("fee_payments")
+        .select("*, allocations:fee_allocations(amount, invoice_id)")
+        .eq("student_id", studentId)
+        .order("paid_on", { ascending: false })
+    ),
+  ]);
+  return { dues, payments };
+}
+
+export async function recordPayment(studentId, { amount, method, reference, paid_on, note }) {
+  const rows = must(
+    await supabase.rpc("record_payment", {
+      p_student: studentId,
+      p_amount: Number(amount),
+      p_method: method,
+      p_reference: reference || null,
+      p_paid_on: paid_on || null,
+      p_note: note || null,
+    })
+  );
+  return rows?.[0];
+}
+
+export async function cancelPayment(id) {
+  must(await supabase.rpc("cancel_payment", { payment: id }));
+}
+
+export async function setConcession(invoiceId, amount, note) {
+  must(
+    await supabase
+      .from("fee_invoices")
+      .update({ concession: Number(amount) || 0, note: note || null })
+      .eq("id", invoiceId)
+  );
+}
+
+// Opening balances from the old fee system: one due per fee head per
+// student (period "opening"); re-importing updates the amounts.
+export async function importOpeningBalances(schoolId, sessionId, rows) {
+  const heads = await listFeeHeads(schoolId);
+  const headId = new Map();
+  for (const name of [...new Set(rows.map((r) => r.head))]) headId.set(name, (await ensureFeeHead(schoolId, name, heads)).id);
+  const today = new Date().toISOString().slice(0, 10);
+  const records = rows.map((r) => ({
+    school_id: schoolId,
+    session_id: sessionId,
+    student_id: r.student_id,
+    head_id: headId.get(r.head),
+    period: "opening",
+    label: "Opening balance",
+    amount: r.amount,
+    due_date: today,
+  }));
+  for (let i = 0; i < records.length; i += 500) {
+    must(
+      await supabase
+        .from("fee_invoices")
+        .upsert(records.slice(i, i + 500), { onConflict: "student_id,session_id,head_id,period" })
+    );
+  }
+  return records.length;
+}
+
+// -------------------------------------------------------------- requests ---
+
+export async function listRequests(schoolId, { status } = {}) {
+  let q = supabase
+    .from("parent_requests")
+    .select("*, student:students(id, name, admission_no, photo_url, photo_path), guardian:guardians(name, phone)")
+    .eq("school_id", schoolId)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (status === "open") q = q.eq("status", "open");
+  return must(await q);
+}
+
+export async function answerRequest(id, status, response, me) {
+  must(
+    await supabase
+      .from("parent_requests")
+      .update({ status, response: response?.trim() || null, handled_by: me, handled_at: new Date().toISOString() })
+      .eq("id", id)
+  );
+}
+
+export async function countOpenRequests(schoolId) {
+  const { count } = await supabase
+    .from("parent_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("school_id", schoolId)
+    .eq("status", "open");
+  return count ?? 0;
+}
+
+// --------------------------------------------------------------- parents ---
+
+export async function listGuardians(studentId) {
+  return must(
+    await supabase
+      .from("guardian_students")
+      .select("relation, source, removed, guardian:guardians(id, name, phone)")
+      .eq("student_id", studentId)
+      .eq("removed", false)
+  );
+}
+
+export async function addGuardian(studentId, { phone, name, relation }) {
+  must(
+    await supabase.rpc("add_guardian", { p_student: studentId, p_phone: phone, p_name: name || null, p_relation: relation })
+  );
+}
+
+export async function removeGuardianLink(guardianId, studentId) {
+  must(
+    await supabase.from("guardian_students").update({ removed: true }).eq("guardian_id", guardianId).eq("student_id", studentId)
+  );
+}
+
+// ------------------------------------------------------------ note sharing ---
+
+export async function setNoteShared(noteId, shared) {
+  must(await supabase.from("student_notes").update({ shared_with_parents: shared }).eq("id", noteId));
 }
