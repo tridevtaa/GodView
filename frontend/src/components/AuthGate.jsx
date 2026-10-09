@@ -4,6 +4,7 @@ import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAcce
 import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
+import Landing from "./Landing.jsx";
 
 // { user: { email, displayName, photoURL }, school, role, setSchool }
 const AuthContext = createContext(null);
@@ -314,6 +315,17 @@ export default function AuthGate({ children }) {
     );
   }
 
+  // Visitors (and anyone signed out) get the public landing page.
+  if (state.status === "signed-out") {
+    return <Landing onLogin={signIn} error={error} />;
+  }
+
+  // Signed-in session still resolving: a quiet screen rather than a flash of
+  // the landing page.
+  if (state.status === "loading") {
+    return <main className="auth-screen" aria-busy="true" />;
+  }
+
   return (
     <main className="auth-screen">
       <div className="auth-card">
@@ -326,19 +338,10 @@ export default function AuthGate({ children }) {
             </>
           )}
         </div>
-        {state.status === "loading" || state.status === "checking" ? (
+        {state.status === "checking" ? (
           <p className="muted">Checking access…</p>
-        ) : state.status === "denied" ? (
-          <JoinStatus requests={state.requests} user={state.user} onSchool={setJoinSchool} />
         ) : (
-          <>
-            <h1>Sign in to Godview</h1>
-            <p className="muted">Use your school Google account. Access is limited to staff.</p>
-            <button className="btn btn-primary btn-block" onClick={signIn}>
-              Continue with Google
-            </button>
-            {error && <p className="field-error">{error}</p>}
-          </>
+          <JoinStatus requests={state.requests} user={state.user} onSchool={setJoinSchool} />
         )}
       </div>
     </main>
