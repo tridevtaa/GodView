@@ -19,41 +19,55 @@ export function gradeOptions(students) {
     .map(([value, count]) => ({ value, count }));
 }
 
+// Pick any number of grades; none picked means all grades. The menu stays
+// open while picking.
+export function gradesText(value) {
+  if (!value.length) return "All grades";
+  if (value.length <= 2) return value.map(gradeLabel).join(", ");
+  return `${value.length} grades`;
+}
+
 export default function GradeFilter({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, useCallback(() => setOpen(false), []));
+  const picked = new Set(value);
 
-  function pick(next) {
-    onChange(next);
-    setOpen(false);
+  function toggle(grade) {
+    if (!grade) return onChange([]);
+    const next = picked.has(grade) ? value.filter((g) => g !== grade) : [...value, grade];
+    // Keep the grades in school order.
+    onChange(options.map((o) => o.value).filter((g) => next.includes(g)));
   }
 
   return (
     <div className="popover-anchor" ref={ref}>
       <button
-        className={`btn btn-secondary${value ? " is-active" : ""}`}
+        className={`btn btn-secondary${value.length ? " is-active" : ""}`}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={open}
       >
-        {value ? gradeLabel(value) : "All grades"}
+        {gradesText(value)}
         <Icon name="chevronDown" className="icon-trailing" />
       </button>
       {open && (
         <div className="menu menu-scroll" role="menu">
-          {[{ value: "", count: null }, ...options].map((o) => (
-            <button
-              key={o.value || "all"}
-              role="menuitemradio"
-              aria-checked={value === o.value}
-              className="menu-item"
-              onClick={() => pick(o.value)}
-            >
-              <span className="menu-check">{value === o.value && <Icon name="check" />}</span>
-              <span className="menu-label">{o.value ? gradeLabel(o.value) : "All grades"}</span>
-              {o.count !== null && <span className="menu-meta">{o.count}</span>}
-            </button>
-          ))}
+          {[{ value: "", count: null }, ...options].map((o) => {
+            const on = o.value ? picked.has(o.value) : !value.length;
+            return (
+              <button
+                key={o.value || "all"}
+                role="menuitemcheckbox"
+                aria-checked={on}
+                className="menu-item"
+                onClick={() => toggle(o.value)}
+              >
+                <span className={`menu-box${on ? " is-on" : ""}`}>{on && <Icon name="check" size={12} />}</span>
+                <span className="menu-label">{o.value ? gradeLabel(o.value) : "All grades"}</span>
+                {o.count !== null && <span className="menu-meta">{o.count}</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

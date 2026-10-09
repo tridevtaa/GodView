@@ -13,14 +13,13 @@ export function LogoMark({ size = 28 }) {
   );
 }
 
-// "Godview × <school>": the school's logo if it has one, else its name.
+// Godview mark × the school's logo if it has one, else its name.
 export default function Logo() {
   const school = useAuth()?.school;
   const label = school?.short_name || school?.name;
   return (
     <a className="logo" href="/" aria-label={`Godview${label ? ` for ${label}` : ""} home`}>
       <LogoMark size={26} />
-      <span className="logo-word">Godview</span>
       {school && (
         <>
           <span className="logo-x" aria-hidden="true">×</span>
