@@ -5371,9 +5371,9 @@ button.profile-stat:hover {
   gap: 6px;
 }
 
-/* Students per village: light (few) to deep indigo (many). */
-.tier-1 { --tier: #c9cef3; --tier-ink: var(--brand-edge); }
-.tier-2 { --tier: #98a1e3; --tier-ink: var(--brand-edge); }
+/* Students per village: red (few), amber, then indigo to navy (many). */
+.tier-1 { --tier: #e5533d; --tier-ink: #fff; }
+.tier-2 { --tier: #f0b429; --tier-ink: #3d2a00; }
 .tier-3 { --tier: #5b68c4; --tier-ink: #fff; }
 .tier-4 { --tier: #3a46a0; --tier-ink: #fff; }
 .tier-5 { --tier: #1d2366; --tier-ink: #fff; }
@@ -5417,8 +5417,35 @@ button.profile-stat:hover {
 .smap-dot.is-home {
   width: 10px;
   height: 10px;
-  background: #e5533d;
-  box-shadow: 0 0 0 1px #e5533d;
+  border: 3px solid var(--brand-edge);
+  background: #fff;
+  box-shadow: none;
+}
+
+.smap-ring {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1.5px dashed var(--brand-edge);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.smap-ring-label {
+  display: inline-flex;
+  gap: 5px;
+  padding: 3px 9px;
+  translate: -50% -50%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(29, 35, 102, 0.25);
+  color: var(--text-3);
+  font: 600 11px/1.2 var(--font);
+  white-space: nowrap;
+}
+
+.smap-ring-label strong {
+  color: var(--brand-edge);
 }
 
 /* Markers */
@@ -5469,9 +5496,9 @@ button.profile-stat:hover {
   display: block;
   width: 100%;
   height: 100%;
-  border: 2.5px solid #fff;
+  border: 4px solid var(--brand-edge);
   border-radius: 50%;
-  background: #e5533d;
+  background: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   cursor: pointer;
 }
@@ -5485,11 +5512,26 @@ button.profile-stat:hover {
   place-items: center;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   border: 2.5px solid #fff;
-  border-radius: 10px 10px 10px 2px;
-  background: #111;
+  border-radius: 12px 12px 12px 3px;
+  background: var(--brand-edge);
   color: #fff;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.smap-school.has-logo {
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--border), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Leaflet resets marker images to width: auto and no padding. */
+.leaflet-container .leaflet-marker-pane .smap-school img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 3px;
+  object-fit: contain;
 }
 
 .smap-map.is-placing .smap-leaflet {

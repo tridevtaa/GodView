@@ -3,14 +3,14 @@ import L from "../data/leaflet.js";
 import "leaflet.markercluster";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
-import { addAreas, deleteArea, listAreas, mergeAreas, setSchoolLocation, updateArea } from "../data/api.js";
+import { addAreas, deleteArea, listAreas, logoUrl, mergeAreas, setSchoolLocation, updateArea } from "../data/api.js";
 import { aliasIndex, areaKey, buildAreas, locate } from "../data/areas.js";
-import { findPlace, placesAround } from "../data/osm.js";
+import { findPlace, kmBetween, placesAround } from "../data/osm.js";
 import { findOnGoogle, hasMaps } from "../data/googlePlaces.js";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
-// Pins shade from light to deep indigo as a village sends more students.
+// Pins run from red (a few students) through amber to deep indigo (many).
 // Fixed steps, so a village keeps its colour when filters change.
 const TIERS = [
   { min: 50, label: "50+" },
@@ -20,6 +20,9 @@ const TIERS = [
   { min: 1, label: "1–4" },
 ];
 const tierOf = (n) => TIERS.length - TIERS.findIndex((t) => n >= t.min); // 1 (few) to 5 (many)
+
+// Distance rings around the school.
+const RINGS = [5, 10, 15];
 
 const BUS = [
   ["all", "Everyone"],
@@ -209,6 +212,11 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
           <span>
             <i className="smap-dot is-home" /> Pinned home
           </span>
+          {home && (
+            <span>
+              <i className="smap-ring" /> 5, 10, 15 km
+            </span>
+          )}
         </div>
       </div>
 
@@ -643,18 +651,48 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
     if (g) map.current.flyTo([g.lat, g.lng], Math.max(map.current.getZoom(), 14), { duration: 0.6 });
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The school.
+  // The school: its logo beside the spot, and distance rings around it with
+  // how many students live inside each.
+  const rings = useRef([]);
   useEffect(() => {
     schoolMarker.current?.remove();
+    rings.current.forEach((r) => r.remove());
+    rings.current = [];
     if (!home) return;
+    const name = school.name.replace(/[<>"&]/g, "");
+    const logo = school.logo_path ? logoUrl(school.logo_path) : "";
+    const badge = logo
+      ? `<img src="${logo}" alt="" />`
+      : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`;
     schoolMarker.current = L.marker([home.lat, home.lng], {
-      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school" title="${school.name.replace(/[<>"&]/g, "")}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>`, iconSize: [30, 30], iconAnchor: [-6, 38] }),
+      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school${logo ? " has-logo" : ""}" title="${name}">${badge}</span>`, iconSize: [44, 44], iconAnchor: [-14, 58] }),
       // Beside its spot and under the numbers, so a village at the school
       // (often the biggest) stays readable.
       zIndexOffset: -1000,
       interactive: false,
     }).addTo(map.current);
-  }, [home, school.name]);
+    const centre = L.circleMarker([home.lat, home.lng], { radius: 4, weight: 2, color: "#fff", fillColor: "#1d2366", fillOpacity: 1, interactive: false }).addTo(map.current);
+    rings.current.push(centre);
+    for (const km of [...RINGS].reverse()) {
+      const inside = groups.reduce((t, g) => t + (kmBetween(home, g) <= km ? g.students.length : 0), 0);
+      const circle = L.circle([home.lat, home.lng], {
+        radius: km * 1000,
+        color: "#1d2366",
+        weight: 1.5,
+        opacity: 0.55,
+        dashArray: "6 6",
+        fillColor: "#5b68c4",
+        fillOpacity: 0.05,
+        interactive: false,
+      }).addTo(map.current);
+      const label = L.marker([home.lat + km / 111, home.lng], {
+        icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-ring-label"><strong>${km} km</strong> ${inside}</span>`, iconSize: null }),
+        interactive: false,
+        zIndexOffset: -2000,
+      }).addTo(map.current);
+      rings.current.push(circle, label);
+    }
+  }, [home, school.name, school.logo_path, groups]);
 
   return <div ref={el} className="smap-leaflet" style={{ cursor: placing ? "crosshair" : undefined }} />;
 }
