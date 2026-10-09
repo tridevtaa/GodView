@@ -1,10 +1,14 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { Suspense, createContext, lazy, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
 import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess } from "../data/api.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 import Landing from "./Landing.jsx";
+import ParentSignIn from "./ParentSignIn.jsx";
+
+// Parents get their own, separate screens (loaded only for them).
+const ParentApp = lazy(() => import("./ParentApp.jsx"));
 
 // { user: { email, displayName, photoURL }, school, role, setSchool }
 const AuthContext = createContext(null);
@@ -263,6 +267,11 @@ export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
   const [error, setError] = useState("");
   const [joinSchool, setJoinSchool] = useState(null); // school found by join code
+  const [parentLogin, setParentLogin] = useState(() => window.location.pathname.startsWith("/parent"));
+  const showParentLogin = (on) => {
+    setParentLogin(on);
+    window.history.replaceState(null, "", on ? "/parent" : "/");
+  };
 
   useEffect(() => {
     clearLegacyCaches();
@@ -273,6 +282,8 @@ export default function AuthGate({ children }) {
       if (!u) return setState({ status: "signed-out" });
       if (current === u.id) return; // token refreshes re-fire this
       current = u.id;
+      // Parents sign in with a phone number and no email.
+      if (u.phone && !u.email) return setState({ status: "parent", phone: u.phone });
       setState({ status: "checking" });
       try {
         const memberships = await listMemberships(u.email);
@@ -315,9 +326,19 @@ export default function AuthGate({ children }) {
     );
   }
 
-  // Visitors (and anyone signed out) get the public landing page.
+  if (state.status === "parent") {
+    return (
+      <Suspense fallback={<main className="auth-screen" aria-busy="true" />}>
+        <ParentApp phone={state.phone} />
+      </Suspense>
+    );
+  }
+
+  // Visitors (and anyone signed out) get the public landing page, or the
+  // parent sign-in (godview.in/parent or the landing page's Parent login).
   if (state.status === "signed-out") {
-    return <Landing onLogin={signIn} error={error} />;
+    if (parentLogin) return <ParentSignIn onBack={() => showParentLogin(false)} />;
+    return <Landing onLogin={signIn} onParentLogin={() => showParentLogin(true)} error={error} />;
   }
 
   // Signed-in session still resolving: a quiet screen rather than a flash of

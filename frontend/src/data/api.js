@@ -853,3 +853,86 @@ export async function mergeAreas(into, from) {
 export async function setSchoolLocation(schoolId, lat, lng) {
   must(await supabase.rpc("set_school_location", { school: schoolId, lat, lng }));
 }
+
+// --------------------------------------------------------------- parents ---
+// Parents sign in with their mobile number; the database only shows them
+// their own children (and only notes the school chose to share).
+
+const toIndian = (ten) => `+91${String(ten).replace(/\D/g, "").slice(-10)}`;
+
+// Sends a sign-in code. Delivery is WhatsApp, through the Supabase Auth
+// "Send SMS" hook; only numbers linked to a student get a message.
+export async function sendParentCode(ten) {
+  const { error } = await supabase.auth.signInWithOtp({ phone: toIndian(ten), options: { shouldCreateUser: true } });
+  if (error) throw error;
+}
+
+export async function verifyParentCode(ten, token) {
+  const { error } = await supabase.auth.verifyOtp({ phone: toIndian(ten), token: token.trim(), type: "sms" });
+  if (error) throw error;
+}
+
+// The signed-in parent's children with their school, latest class and photo.
+export async function parentFamily() {
+  const kids = must(
+    await supabase
+      .from("students")
+      .select("id, name, admission_no, photo_path, school_id, enrolments:student_enrolments(class, section, status, session:academic_sessions(id, name, starts_on, ends_on))")
+      .order("name")
+  );
+  const schoolIds = [...new Set(kids.map((k) => k.school_id))];
+  const schools = schoolIds.length
+    ? must(await supabase.from("schools").select("id, name, short_name, logo_path, address, city, state, pincode, phone, email").in("id", schoolIds))
+    : [];
+  const bySchool = new Map(schools.map((s) => [s.id, s]));
+  const children = kids.map((k) => {
+    // The newest session they're enrolled in.
+    const e = [...(k.enrolments ?? [])].sort((a, b) => String(b.session?.name).localeCompare(String(a.session?.name)))[0];
+    return { ...k, class: e?.class ?? "", section: e?.section ?? "", session: e?.session ?? null, school: bySchool.get(k.school_id) };
+  });
+  return withPhotoUrls(children).catch(() => children);
+}
+
+export async function parentFees(studentId, schoolId) {
+  const [{ dues, payments }, heads] = await Promise.all([
+    studentLedger(studentId),
+    supabase.from("fee_heads").select("id, name").eq("school_id", schoolId).then(must),
+  ]);
+  const name = new Map(heads.map((h) => [h.id, h.name]));
+  return { dues: dues.map((d) => ({ ...d, head_name: name.get(d.head_id) })), payments };
+}
+
+export async function parentNotes(studentId) {
+  return must(
+    await supabase
+      .from("student_notes")
+      .select("id, body, created_at")
+      .eq("student_id", studentId)
+      .eq("shared_with_parents", true)
+      .order("created_at", { ascending: false })
+  );
+}
+
+export async function parentRequests(studentId) {
+  return must(
+    await supabase.from("parent_requests").select("*").eq("student_id", studentId).order("created_at", { ascending: false })
+  );
+}
+
+export async function createParentRequest(studentId, { kind, subject, body, leave_from, leave_to, certificate_type }) {
+  return must(
+    await supabase.rpc("create_request", {
+      p_student: studentId,
+      p_kind: kind,
+      p_subject: subject,
+      p_body: body || null,
+      p_leave_from: leave_from || null,
+      p_leave_to: leave_to || null,
+      p_certificate_type: certificate_type || null,
+    })
+  );
+}
+
+export async function cancelParentRequest(id) {
+  must(await supabase.rpc("cancel_request", { request: id }));
+}

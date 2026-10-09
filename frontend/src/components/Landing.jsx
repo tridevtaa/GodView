@@ -211,7 +211,7 @@ function PhotoSlot({ name, className = "" }) {
 
 // --------------------------------------------------------------- page ---
 
-export default function Landing({ onLogin, error, busy }) {
+export default function Landing({ onLogin, onParentLogin, error, busy }) {
   const root = useRef(null);
   const preview = useRef(null);
   useReveal(root);
@@ -252,9 +252,14 @@ export default function Landing({ onLogin, error, busy }) {
             <a href="#journey">How it works</a>
             <a href="#privacy">Privacy</a>
           </nav>
-          <button className="btn btn-primary lp-login" onClick={onLogin} disabled={busy}>
-            Log in
-          </button>
+          <div className="lp-nav-actions">
+            <button className="btn btn-secondary lp-parent" onClick={onParentLogin}>
+              Parent login
+            </button>
+            <button className="btn btn-primary lp-login" onClick={onLogin} disabled={busy}>
+              Log in
+            </button>
+          </div>
         </div>
       </header>
 
@@ -282,13 +287,15 @@ export default function Landing({ onLogin, error, busy }) {
                   Log in with Google
                   <Icon name="chevronDown" className="lp-arrow" />
                 </button>
-                <button className="btn btn-secondary lp-btn-lg" onClick={onLogin} disabled={busy}>
-                  Join with a school code
+                <button className="btn btn-secondary lp-btn-lg" onClick={onParentLogin}>
+                  <Icon name="phone" />
+                  I’m a parent
                 </button>
               </div>
               {error && <p className="field-error">{error}</p>}
               <p className="lp-note lp-enter" style={{ "--d": "320ms" }}>
-                Staff: sign in with Google, then enter the join code from your school office.
+                Staff: sign in with Google, then enter the join code from your school office. Parents: log in with the
+                mobile number the school has on record.
               </p>
             </div>
 

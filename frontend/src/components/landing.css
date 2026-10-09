@@ -146,6 +146,11 @@
   transform: scaleX(1);
 }
 
+.lp-nav-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .lp-login {
   padding: 0 24px;
 }
@@ -1791,8 +1796,12 @@
     display: none;
   }
 
-  .lp-nav-inner .lp-login {
+  .lp-nav-actions {
     margin-left: auto;
+  }
+
+  .lp-nav-actions .btn {
+    padding: 0 14px;
   }
 
   .lp-hero {
