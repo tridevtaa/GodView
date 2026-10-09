@@ -1,3 +1,6 @@
+import { useAuth } from "./AuthGate.jsx";
+import { logoUrl } from "../data/api.js";
+
 export function LogoMark({ size = 28 }) {
   return (
     <svg viewBox="0 0 100 86" width={size} height={(size * 86) / 100} aria-hidden="true">
@@ -10,14 +13,24 @@ export function LogoMark({ size = 28 }) {
   );
 }
 
-// "Godview × Mav.school" co-brand lockup for the header.
+// "Godview × <school>" — the school's logo if it has one, else its name.
 export default function Logo() {
+  const school = useAuth()?.school;
+  const label = school?.short_name || school?.name;
   return (
-    <a className="logo" href="/" aria-label="Godview for Mav.school — home">
+    <a className="logo" href="/" aria-label={`Godview${label ? ` for ${label}` : ""} — home`}>
       <LogoMark size={26} />
       <span className="logo-word">Godview</span>
-      <span className="logo-x" aria-hidden="true">×</span>
-      <img className="logo-partner" src="/mav-school.svg" alt="Mav.school" width="128" height="16" />
+      {school && (
+        <>
+          <span className="logo-x" aria-hidden="true">×</span>
+          {school.logo_path ? (
+            <img className="logo-partner" src={logoUrl(school.logo_path)} alt={label} />
+          ) : (
+            <span className="logo-school">{label}</span>
+          )}
+        </>
+      )}
     </a>
   );
 }

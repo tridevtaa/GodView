@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships, requestAccess } from "../data/api.js";
+import { listMemberships, logoUrl, lookupJoinCode, requestAccess } from "../data/api.js";
+import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 
-// { user: { email, displayName, photoURL }, school: { id, name, slug }, role }
+// { user: { email, displayName, photoURL }, school, role, setSchool }
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 export const useUser = () => useContext(AuthContext)?.user;
@@ -34,30 +35,68 @@ const toUser = (u) => ({
   photoURL: u.user_metadata?.avatar_url || u.user_metadata?.picture || "",
 });
 
-// Shown to someone signed in who isn't a member of any school yet.
-function RequestAccess({ user }) {
-  const [code, setCode] = useState("");
-  const [note, setNote] = useState("");
-  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+const DESIGNATIONS = [
+  "Teacher", "Class teacher", "Subject teacher", "Coordinator", "Vice principal", "Principal",
+  "Office staff", "Accountant", "Librarian", "Counsellor",
+];
 
-  async function submit(e) {
+// Shown to someone signed in who isn't a member of any school yet:
+// 1) enter the school's join code, 2) details and classes, 3) sent.
+function RequestAccess({ user }) {
+  const [step, setStep] = useState("code");
+  const [code, setCode] = useState("");
+  const [school, setSchool] = useState(null); // { school_name, session_name, classes }
+  const [form, setForm] = useState({
+    fullName: user.displayName || "",
+    designation: "Teacher",
+    phone: "",
+    subjects: "",
+    note: "",
+    classes: [],
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+
+  async function findSchool(e) {
     e.preventDefault();
-    setStatus("sending");
+    setBusy(true);
+    setError("");
     try {
-      await requestAccess(code, user.displayName || user.email, note);
-      setStatus("sent");
+      const found = await lookupJoinCode(code);
+      if (!found) setError("That code didn’t match a school. Check it with your school office.");
+      else {
+        setSchool(found);
+        setStep("details");
+      }
     } catch {
-      setStatus("error");
+      setError("Couldn’t check the code. Please try again.");
+    } finally {
+      setBusy(false);
     }
   }
 
-  if (status === "sent") {
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await requestAccess(code, form);
+      setStep("sent");
+    } catch {
+      setError("Couldn’t send the request. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (step === "sent") {
     return (
       <>
+        {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
         <h1>Request sent</h1>
         <p className="muted">
-          If <strong>{code.trim()}</strong> is your school’s code, its owner will see your request. You’ll get access
-          as soon as they approve it — just sign in again.
+          {school.school_name}’s owner will review your request. Once it’s approved, sign in again to see your classes.
         </p>
         <button className="btn btn-secondary btn-block" onClick={logOut}>
           Sign out
@@ -66,27 +105,80 @@ function RequestAccess({ user }) {
     );
   }
 
+  if (step === "code") {
+    return (
+      <form className="request-form" onSubmit={findSchool}>
+        <h1>Join your school</h1>
+        <p className="muted">
+          {user.email} isn’t part of a school on Godview yet. Enter the join code from your school office.
+        </p>
+        <label>
+          <span>School join code</span>
+          <input
+            className="code-input"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder="e.g. MAV-7K2Q-9XPD"
+            autoComplete="off"
+            spellCheck={false}
+            required
+          />
+        </label>
+        {error && <p className="field-error">{error}</p>}
+        <button className="btn btn-primary btn-block" disabled={busy || code.replace(/[^a-z0-9]/gi, "").length < 8}>
+          {busy ? "Checking…" : "Continue"}
+        </button>
+        <button type="button" className="btn btn-secondary btn-block" onClick={logOut}>
+          Use a different account
+        </button>
+      </form>
+    );
+  }
+
   return (
-    <form className="request-form" onSubmit={submit}>
-      <h1>Request access</h1>
-      <p className="muted">
-        {user.email} isn’t part of a school on Godview yet. Ask your school for its code and send a request to the
-        owner.
-      </p>
+    <form className="request-form request-form-wide" onSubmit={submit}>
+      {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
+      <h1>{school.school_name}</h1>
+      <p className="muted">Tell the school who you are and which classes you teach.</p>
+      <div className="form-grid">
+        <label>
+          <span>Full name *</span>
+          <input value={form.fullName} onChange={set("fullName")} required maxLength={120} autoComplete="name" />
+        </label>
+        <label>
+          <span>Designation *</span>
+          <input list="designations" value={form.designation} onChange={set("designation")} required maxLength={80} />
+          <datalist id="designations">
+            {DESIGNATIONS.map((d) => (
+              <option key={d} value={d} />
+            ))}
+          </datalist>
+        </label>
+        <label>
+          <span>Phone</span>
+          <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
+        </label>
+        <label>
+          <span>Subjects you teach</span>
+          <input value={form.subjects} onChange={set("subjects")} maxLength={200} placeholder="e.g. Maths, EVS" />
+        </label>
+      </div>
+      <div className="field-block">
+        <span className="field-label">
+          Your classes{school.session_name ? ` for ${school.session_name}` : ""}
+        </span>
+        <ClassPicker options={school.classes ?? []} value={form.classes} onChange={(classes) => setForm({ ...form, classes })} />
+      </div>
       <label>
-        <span>School code</span>
-        <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. mavericks" required />
+        <span>Anything else the owner should know</span>
+        <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
       </label>
-      <label>
-        <span>Note for the owner (optional)</span>
-        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Class 4 teacher" maxLength={500} />
-      </label>
-      {status === "error" && <p className="field-error">Couldn’t send the request. Please try again.</p>}
-      <button className="btn btn-primary btn-block" disabled={status === "sending"}>
-        {status === "sending" ? "Sending…" : "Send request"}
+      {error && <p className="field-error">{error}</p>}
+      <button className="btn btn-primary btn-block" disabled={busy || !form.fullName.trim() || !form.designation.trim()}>
+        {busy ? "Sending…" : "Send request"}
       </button>
-      <button type="button" className="btn btn-secondary btn-block" onClick={logOut}>
-        Use a different account
+      <button type="button" className="btn btn-secondary btn-block" onClick={() => setStep("code")}>
+        Back
       </button>
     </form>
   );
@@ -136,8 +228,9 @@ export default function AuthGate({ children }) {
   }
 
   if (state.status === "member") {
+    const setSchool = (school) => setState((s) => ({ ...s, school }));
     return (
-      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role }}>
+      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role, setSchool }}>
         {children}
       </AuthContext.Provider>
     );

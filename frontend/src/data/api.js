@@ -31,7 +31,7 @@ export async function listMemberships(email) {
   const rows = must(
     await supabase
       .from("school_members")
-      .select("role, school:schools(id, name, slug)")
+      .select("role, full_name, school:schools(*)")
       .eq("email", email.toLowerCase())
   );
   return rows.filter((r) => r.school);
@@ -283,8 +283,13 @@ export async function listMembers(schoolId) {
   return must(await supabase.from("school_members").select("*").eq("school_id", schoolId).order("email"));
 }
 
-export async function addMember(schoolId, email, role) {
-  must(await supabase.from("school_members").insert({ school_id: schoolId, email: email.trim().toLowerCase(), role }));
+export async function addMember(schoolId, email, role, details = {}) {
+  const clean = Object.fromEntries(Object.entries(details).map(([k, v]) => [k, v?.trim() || null]));
+  must(
+    await supabase
+      .from("school_members")
+      .insert({ school_id: schoolId, email: email.trim().toLowerCase(), role, ...clean })
+  );
 }
 
 export async function setMemberRole(schoolId, email, role) {
@@ -315,8 +320,24 @@ export async function removeAssignment(id) {
 
 // ------------------------------------------------------ access requests ---
 
-export async function requestAccess(schoolCode, name, note) {
-  must(await supabase.rpc("request_access", { school_code: schoolCode, display_name: name, note }));
+// School name, current session and class list for a join code; null if unknown.
+export async function lookupJoinCode(code) {
+  const rows = must(await supabase.rpc("lookup_join_code", { code }));
+  return rows?.[0] ?? null;
+}
+
+export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes }) {
+  must(
+    await supabase.rpc("request_access", {
+      p_code: code,
+      p_full_name: fullName,
+      p_designation: designation,
+      p_phone: phone,
+      p_subjects: subjects,
+      p_note: note,
+      p_classes: classes,
+    })
+  );
 }
 
 export async function listAccessRequests(schoolId) {
@@ -330,14 +351,26 @@ export async function listAccessRequests(schoolId) {
   );
 }
 
-export async function decideAccessRequest(request, approve, role, decidedBy) {
-  if (approve) await addMember(request.school_id, request.email, role);
+// Approve: member + class assignments in one transaction (owner only).
+export async function approveAccessRequest(id, role, classes) {
+  must(await supabase.rpc("approve_access_request", { request: id, as_role: role, classes }));
+}
+
+export async function rejectAccessRequest(id, decidedBy) {
   must(
     await supabase
       .from("access_requests")
-      .update({ status: approve ? "approved" : "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
-      .eq("id", request.id)
+      .update({ status: "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
+      .eq("id", id)
   );
+}
+
+export async function regenerateJoinCode(schoolId) {
+  return must(await supabase.rpc("regenerate_join_code", { school: schoolId }));
+}
+
+export async function updateMemberDetails(schoolId, email, details) {
+  must(await supabase.from("school_members").update(details).eq("school_id", schoolId).eq("email", email));
 }
 
 // ------------------------------------------------------ export requests ---
@@ -388,4 +421,66 @@ export async function countPendingRequests(schoolId) {
     supabase.from("export_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
   ]);
   return (a.count ?? 0) + (x.count ?? 0);
+}
+
+// ------------------------------------------------------- school profile ---
+
+const LOGOS = "school-logos";
+
+export const logoUrl = (path) => (path ? supabase.storage.from(LOGOS).getPublicUrl(path).data.publicUrl : "");
+
+export const SCHOOL_FIELDS = [
+  "name", "short_name", "board", "affiliation_no", "udise_code", "principal_name",
+  "address", "city", "state", "pincode", "phone", "email", "website",
+];
+
+// Owner only (enforced by RLS and column grants). Returns the saved school.
+export async function updateSchool(schoolId, fields) {
+  const row = Object.fromEntries(
+    SCHOOL_FIELDS.filter((k) => k in fields).map((k) => [k, fields[k]?.trim?.() || (k === "name" ? fields[k] : null)])
+  );
+  return must(await supabase.from("schools").update(row).eq("id", schoolId).select().single());
+}
+
+// Any image (incl. SVG) → PNG no larger than 512px, transparent background kept.
+async function toLogoPng(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = url;
+    });
+    const w = img.naturalWidth || 512;
+    const h = img.naturalHeight || 512;
+    const scale = Math.min(1, 512 / Math.max(w, h));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("encode-failed"))), "image/png")
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+// Uploads a new logo (new file name each time so browsers don't show a stale
+// copy) and points the school at it. Returns the saved school.
+export async function uploadSchoolLogo(school, file) {
+  if (!file.type.startsWith("image/")) throw new Error("not-an-image");
+  const path = `${school.id}/logo-${Date.now()}.png`;
+  const { error } = await supabase.storage.from(LOGOS).upload(path, await toLogoPng(file), { contentType: "image/png" });
+  if (error) throw error;
+  const saved = must(await supabase.from("schools").update({ logo_path: path }).eq("id", school.id).select().single());
+  if (school.logo_path) await supabase.storage.from(LOGOS).remove([school.logo_path]); // best effort
+  return saved;
+}
+
+export async function removeSchoolLogo(school) {
+  const saved = must(await supabase.from("schools").update({ logo_path: null }).eq("id", school.id).select().single());
+  if (school.logo_path) await supabase.storage.from(LOGOS).remove([school.logo_path]);
+  return saved;
 }

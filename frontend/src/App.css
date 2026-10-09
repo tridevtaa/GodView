@@ -1691,3 +1691,241 @@ a:hover {
   font-size: 11px;
   font-weight: 600;
 }
+
+/* ---------- Join flow ---------- */
+
+.auth-card:has(.request-form-wide) {
+  max-width: 560px;
+}
+
+.code-input {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-form .form-grid input {
+  box-shadow: none;
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.class-picker {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-field);
+}
+
+.class-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.class-row + .class-row {
+  border-top: 1px solid var(--border);
+}
+
+.class-name {
+  flex: none;
+  width: 72px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.class-row .chips {
+  margin-top: 0;
+}
+
+.chip-toggle {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.chip-toggle.on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.join-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 8px 22px 16px;
+}
+
+.join-panel .panel-title {
+  padding: 8px 0 2px;
+}
+
+.join-help {
+  max-width: 460px;
+}
+
+.join-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.join-code {
+  padding: 6px 14px;
+  border-radius: var(--r-field);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.row-request {
+  align-items: flex-start;
+}
+
+.request-classes {
+  margin-top: 6px;
+}
+
+.request-classes .class-picker {
+  margin-top: 8px;
+}
+
+.row-add .input {
+  min-width: 140px;
+}
+
+.logo-partner {
+  max-width: 180px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.logo-school {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.join-logo {
+  display: block;
+  max-width: 200px;
+  max-height: 64px;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+@media (max-width: 760px) {
+  .logo-school {
+    max-width: 120px;
+    font-size: 14px;
+  }
+
+  .logo-partner {
+    max-width: 110px;
+    height: 22px;
+  }
+}
+
+/* ---------- School profile ---------- */
+
+.school-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
+  padding: 8px 22px 16px;
+}
+
+.logo-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.logo-box img,
+.logo-box > .row-sub:first-child {
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 100px;
+  padding: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-field);
+  object-fit: contain;
+}
+
+.logo-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.school-form .form-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.school-form .span-2 {
+  grid-column: span 2;
+}
+
+.school-form input:invalid:not(:placeholder-shown) {
+  border-color: var(--danger);
+}
+
+.school-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .school-body {
+    grid-template-columns: 1fr;
+  }
+
+  .school-form .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .school-body {
+    padding: 8px 16px 16px;
+  }
+
+  .school-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .school-form .span-2 {
+    grid-column: auto;
+  }
+}
