@@ -3,7 +3,6 @@ import {
   addFeeHead,
   addGrade,
   addPlan,
-  deleteFeeHead,
   deletePlan,
   generateInvoices,
   listFeeHeads,
@@ -102,13 +101,31 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
 
   if (!session) return <p className="notice">Import your students first; fees are set per session.</p>;
 
-  const total = grades.reduce((sum, g) => {
-    const perYear = heads.reduce((t, h) => {
-      const line = schedule.find((l) => l.head_id === h.id && l.class === g.code) ?? schedule.find((l) => l.head_id === h.id && !l.class);
-      return t + (line ? Number(line.amount) * instalments(line, plansById) : 0);
-    }, 0);
-    return sum + perYear * (counts.get(g.code) ?? 0);
-  }, 0);
+  // The fee lines that apply to a grade: its own line for a fee, else the
+  // all-grades line (from older setups).
+  const linesFor = (code) =>
+    heads
+      .map((h) => {
+        const own = schedule.find((l) => l.head_id === h.id && l.class === code);
+        const all = schedule.find((l) => l.head_id === h.id && !l.class);
+        return own || all ? { head: h, own, inherited: own ? null : all } : null;
+      })
+      .filter(Boolean);
+  const yearOf = (l) => (l ? Number(l.amount) * instalments(l, plansById) : 0);
+  const total = grades.reduce(
+    (sum, g) => sum + linesFor(g.code).reduce((t, x) => t + yearOf(x.own ?? x.inherited), 0) * (counts.get(g.code) ?? 0),
+    0
+  );
+
+  // Adds a fee to one grade or to every grade, creating the fee name if new.
+  async function addFee({ name, amount, planId, everyGrade }, grade) {
+    const head = heads.find((h) => h.name.toLowerCase() === name.trim().toLowerCase()) ?? (await addFeeHead(school.id, name.trim()));
+    const targets = everyGrade ? grades : [grade];
+    for (const g of targets) {
+      const own = schedule.find((l) => l.head_id === head.id && l.class === g.code);
+      await setGradeFee(school.id, session.id, own, { grade: g.code, headId: head.id, amount, planId });
+    }
+  }
 
   return (
     <>
@@ -116,107 +133,11 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
       {notice && <p className="notice notice-success">{notice}</p>}
 
       <section className="panel fs-panel">
-        <h2 className="panel-title">Instalment types</h2>
-        <p className="row-sub fs-help">When each fee falls due. Pick one for every fee below.</p>
-        <div className="fs-plans">
-          {plans.map((p) => (
-            <span key={p.id} className="fs-plan">
-              <strong>{p.name}</strong>
-              <span className="row-sub">
-                {p.months.length} × · {monthsText(p.months)} · due on {p.due_day}
-              </span>
-              {p.is_standard ? (
-                <span className="badge badge-neutral">Standard</span>
-              ) : (
-                <button className="btn-icon" aria-label={`Remove ${p.name}`} onClick={act(() => deletePlan(p.id))}>
-                  <Icon name="x" size={14} />
-                </button>
-              )}
-            </span>
-          ))}
-          <NewPlan onSave={act((plan) => addPlan(school.id, plan))} />
-        </div>
-      </section>
-
-      <section className="panel fs-panel">
-        <h2 className="panel-title">Fee heads</h2>
-        <div className="fs-heads">
-          {heads.map((h) => (
-            <span key={h.id} className="chip">
-              {h.name}
-              {!schedule.some((l) => l.head_id === h.id) && (
-                <button aria-label={`Remove ${h.name}`} onClick={act(() => deleteFeeHead(h.id))}>
-                  <Icon name="x" size={12} />
-                </button>
-              )}
-            </span>
-          ))}
-          <InlineAdd placeholder="New fee head, e.g. Tuition fee" onAdd={act((name) => addFeeHead(school.id, name))} />
-        </div>
-      </section>
-
-      <section className="panel fs-panel">
-        <div className="panel-title panel-title-row">
-          <h2>Fees by grade · {session.name}</h2>
-          <span className="row-sub">Changes save as you go</span>
-        </div>
-        {heads.length === 0 ? (
-          <p className="row-sub panel-empty">Add a fee head above to start.</p>
-        ) : (
-          <div className="fs-scroll">
-            <table className="fs-table">
-              <thead>
-                <tr>
-                  <th className="fs-grade-col">Grade and sections</th>
-                  <th className="num">Students</th>
-                  {heads.map((h) => (
-                    <th key={h.id}>{h.name}</th>
-                  ))}
-                  <th className="num">Per student, per year</th>
-                </tr>
-              </thead>
-              <tbody>
-                {grades.map((g) => {
-                  let perYear = 0;
-                  return (
-                    <tr key={g.id}>
-                      <td className="fs-grade-col">
-                        <GradeCell grade={g} onSave={async (fields) => (await act(() => updateGrade(g.id, fields))()) && onGradesChanged()} />
-                      </td>
-                      <td className="num">{counts.get(g.code) ?? 0}</td>
-                      {heads.map((h) => {
-                        const own = schedule.find((l) => l.head_id === h.id && l.class === g.code);
-                        const all = schedule.find((l) => l.head_id === h.id && !l.class);
-                        const line = own ?? all;
-                        perYear += line ? Number(line.amount) * instalments(line, plansById) : 0;
-                        return (
-                          <td key={h.id}>
-                            <FeeCell
-                              line={own}
-                              inherited={own ? null : all}
-                              plans={plans}
-                              plansById={plansById}
-                              defaultPlanId={defaultPlan?.id}
-                              onSave={act((v) => setGradeFee(school.id, session.id, own, { grade: g.code, headId: h.id, ...v }))}
-                            />
-                          </td>
-                        );
-                      })}
-                      <td className="num">
-                        <strong>{rupees(perYear)}</strong>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        <div className="fs-top">
+          <div>
+            <h2 className="fs-title">Fee structure · {session.name}</h2>
+            <p className="row-sub">Changes save as you go.</p>
           </div>
-        )}
-        <div className="fs-foot">
-          <InlineAdd
-            placeholder="Add a grade, e.g. Pre-Nursery"
-            onAdd={async (name) => (await act(() => addGrade(school.id, name, (grades.at(-1)?.sort ?? 0) + 1))()) && onGradesChanged()}
-          />
           <div className="fs-create">
             <span className="row-sub">Whole school: {rupees(total)} a year</span>
             <button className="btn btn-primary" onClick={createDues} disabled={busy || schedule.length === 0}>
@@ -224,12 +145,147 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
             </button>
           </div>
         </div>
+
+        <div className="fs-plans-bar">
+          <span className="fs-plans-label">Instalment types</span>
+          <div className="fs-plans">
+            {plans.map((p) => (
+              <span key={p.id} className="fs-plan" title={`${p.months.length} instalments: ${monthsText(p.months)}, due on day ${p.due_day}`}>
+                <strong>{p.name}</strong>
+                <span className="row-sub">
+                  {p.months.length}× · {monthsText(p.months)}
+                </span>
+                {!p.is_standard && (
+                  <button className="btn-icon" aria-label={`Remove ${p.name}`} onClick={act(() => deletePlan(p.id))}>
+                    <Icon name="x" size={12} />
+                  </button>
+                )}
+              </span>
+            ))}
+            <NewPlan onSave={act((plan) => addPlan(school.id, plan))} />
+          </div>
+        </div>
+
+        <ul className="fs-list">
+          {grades.map((g) => {
+            const lines = linesFor(g.code);
+            const perYear = lines.reduce((t, x) => t + yearOf(x.own ?? x.inherited), 0);
+            return (
+              <li key={g.id} className="fs-row">
+                <div className="fs-row-grade">
+                  <GradeCell grade={g} onSave={async (fields) => (await act(() => updateGrade(g.id, fields))()) && onGradesChanged()} />
+                  <span className="row-sub">{counts.get(g.code) ?? 0} students</span>
+                </div>
+                <div className="fs-row-fees">
+                  {lines.map(({ head, own, inherited }) => (
+                    <FeeLine
+                      key={head.id}
+                      name={head.name}
+                      line={own}
+                      inherited={inherited}
+                      plans={plans}
+                      plansById={plansById}
+                      defaultPlanId={defaultPlan?.id}
+                      onSave={act((v) => setGradeFee(school.id, session.id, own, { grade: g.code, headId: head.id, ...v }))}
+                      onRemove={own ? act(() => setGradeFee(school.id, session.id, own, { amount: 0 })) : null}
+                    />
+                  ))}
+                  <AddFee heads={heads} plans={plans} defaultPlanId={defaultPlan?.id} onAdd={(v) => act(() => addFee(v, g))()} />
+                </div>
+                <div className="fs-row-total">
+                  <strong>{rupees(perYear)}</strong>
+                  <span className="row-sub">per student, per year</span>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        <div className="fs-foot">
+          <InlineAdd
+            placeholder="Add a grade, e.g. Pre-Nursery"
+            onAdd={async (name) => (await act(() => addGrade(school.id, name, (grades.at(-1)?.sort ?? 0) + 1))()) && onGradesChanged()}
+          />
+        </div>
         <p className="row-sub fs-note">
           Creating dues adds every instalment with its due date for each student. Running it again only adds what’s
-          missing, so after changing an amount, dues already created keep their old amount.
+          missing, so dues already created keep their amount if you change it later.
         </p>
       </section>
     </>
+  );
+}
+
+// One fee in a grade's row: name, amount, instalment type, yearly amount.
+function FeeLine({ name, line, inherited, plans, plansById, defaultPlanId, onSave, onRemove }) {
+  const current = line ?? inherited;
+  return (
+    <div className="fs-line">
+      <span className="fs-line-name">
+        {name}
+        {inherited && <span className="badge badge-neutral">All grades</span>}
+      </span>
+      <FeeCell line={line} inherited={inherited} plans={plans} plansById={plansById} defaultPlanId={defaultPlanId} onSave={onSave} />
+      <span className="fs-line-year">{current ? `${rupees(Number(current.amount) * instalments(current, plansById))}/yr` : ""}</span>
+      {onRemove ? (
+        <button className="btn-icon" aria-label={`Remove ${name}`} onClick={onRemove}>
+          <Icon name="x" size={14} />
+        </button>
+      ) : (
+        <span className="fs-line-spacer" />
+      )}
+    </div>
+  );
+}
+
+function AddFee({ heads, plans, defaultPlanId, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", amount: "", planId: defaultPlanId ?? "", everyGrade: false });
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value });
+
+  if (!open) {
+    return (
+      <button className="link-btn fs-add-fee" onClick={() => setOpen(true)}>
+        + Add fee
+      </button>
+    );
+  }
+  return (
+    <form
+      className="fs-add-form"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (await onAdd({ ...form, planId: form.planId || defaultPlanId })) {
+          setOpen(false);
+          setForm({ name: "", amount: "", planId: defaultPlanId ?? "", everyGrade: false });
+        }
+      }}
+    >
+      <input className="input" list="fee-names" placeholder="Fee, e.g. Tuition fee" value={form.name} onChange={set("name")} required maxLength={60} autoFocus />
+      <datalist id="fee-names">
+        {heads.map((h) => (
+          <option key={h.id} value={h.name} />
+        ))}
+      </datalist>
+      <input className="input input-num" type="number" min="1" placeholder="₹ Amount" value={form.amount} onChange={set("amount")} required />
+      <select className="select" value={form.planId} onChange={set("planId")}>
+        {plans.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <label className="checkbox checkbox-inline">
+        <input type="checkbox" checked={form.everyGrade} onChange={set("everyGrade")} />
+        <span>Add to every grade</span>
+      </label>
+      <button className="btn btn-primary btn-sm" disabled={!form.name.trim() || !(Number(form.amount) > 0)}>
+        Add
+      </button>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
   );
 }
 
@@ -303,7 +359,7 @@ function FeeCell({ line, inherited, plans, plansById, defaultPlanId, onSave }) {
   };
 
   const placeholder = inherited
-    ? `${Number(inherited.amount)} (all)`
+    ? `${Number(inherited.amount)}`
     : "₹";
 
   return (
@@ -334,11 +390,6 @@ function FeeCell({ line, inherited, plans, plansById, defaultPlanId, onSave }) {
           </option>
         ))}
       </select>
-      {line && Number(line.amount) > 0 && (
-        <span className="fs-cell-year">
-          {rupees(Number(line.amount) * instalments(line, plansById))}/yr
-        </span>
-      )}
     </div>
   );
 }

@@ -3357,3 +3357,177 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Fee structure as a grade list --- */
+
+.fs-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px 14px;
+}
+
+.fs-title {
+  margin: 0;
+  font-size: 17px;
+}
+
+.fs-top .row-sub {
+  margin: 2px 0 0;
+}
+
+.fs-plans-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.fs-plans-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fs-plans-bar .fs-plans {
+  padding: 0;
+}
+
+.fs-plans-bar .fs-plan {
+  padding: 4px 6px 4px 12px;
+  background: var(--surface);
+}
+
+.fs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fs-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 130px;
+  gap: 20px;
+  align-items: start;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fs-row-grade {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fs-row-fees {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fs-row-total {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.fs-row-total strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-line {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(220px, 1.4fr) 100px 28px;
+  align-items: center;
+  gap: 10px;
+}
+
+.fs-line-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.fs-line .fs-cell {
+  flex-direction: row;
+  min-width: 0;
+}
+
+.fs-line .fs-cell input {
+  width: 110px;
+  min-width: 0;
+}
+
+.fs-line .fs-cell select {
+  flex: 1;
+  min-width: 0;
+}
+
+.fs-line-year {
+  color: var(--text-3);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-line-spacer {
+  width: 28px;
+}
+
+.fs-add-fee {
+  align-self: flex-start;
+}
+
+.fs-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 12px;
+}
+
+.fs-add-form .input {
+  min-width: 160px;
+  height: 32px;
+}
+
+.fs-add-form .input-num {
+  width: 110px;
+  min-width: 0;
+}
+
+.fs-add-form .select {
+  height: 32px;
+}
+
+@media (max-width: 900px) {
+  .fs-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .fs-row-total {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .fs-line {
+    grid-template-columns: 1fr;
+  }
+
+  .fs-line-year {
+    text-align: left;
+  }
+}
