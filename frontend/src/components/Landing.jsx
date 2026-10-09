@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
+import { BusMock, FeeMock, MapMock, ProfileMock } from "./LandingMocks.jsx";
 import "./landing.css";
 
 // Public page at godview.in for anyone not signed in. Claims are limited to
@@ -11,79 +12,91 @@ import "./landing.css";
 
 const PHOTOS = {
   hero: { src: "/landing/hero.jpg", alt: "Students learning together in a classroom", art: "classroom" },
-  teacher: { src: "/landing/teacher.jpg", alt: "A teacher checking a class on a tablet", art: "tablet" },
-  sessions: { src: "/landing/graduation.jpg", alt: "Students celebrating graduation", art: "cap" },
-  office: { src: "/landing/office.jpg", alt: "The school office at work", art: "shield" },
   success: { src: "/landing/success.jpg", alt: "Students cheering together", art: "trophy" },
 };
 
-const ROTATING = ["student", "teacher", "fee", "result", "session"];
+const ROTATING = ["student", "fee", "village", "bus stop", "result"];
 
 const MARQUEE = [
-  "Photo tiles", "Instant search", "Grade filters", "Academic sessions", "Fee dues", "Exam results",
-  "Teacher notes", "Owner · Admin · Teacher", "School join codes", "Excel import", "Data in India",
+  "Photo tiles", "Instant search", "Fee structure", "Printed receipts", "Fee analytics", "Student map",
+  "Bus routes", "Call and WhatsApp", "Academic sessions", "Exam results", "Excel import",
+  "Owner · Admin · Teacher", "Data in India",
 ];
 
 const BENEFITS = [
   ["search", "Every student, one tap away", "Photo tiles for the whole school. Search by name, parent, admission number or phone, and filter by grade in a second."],
-  ["upload", "Bring your data in minutes", "Import the student export from your current ERP. Classes, parents, photos and admission details come across in one go."],
-  ["check", "Session after session", "Each academic year keeps its own classes and sections. Promote with a new import and look back any time."],
-  ["file", "Fees at a glance", "See total pending dues and which students owe what, broken down by month and fee head."],
+  ["upload", "Bring your data in minutes", "Import the student export and the pending dues list from your current system. Classes, parents, photos and balances come across in one go."],
+  ["file", "Fees that add up", "Pending dues by month, collection by grade and the families who owe the most, on one page for the owner."],
+  ["check", "Session after session", "Each academic year keeps its own classes, sections and fees. Promote with a new import and look back any time."],
   ["edit", "Notes and results", "Teachers record exam marks and notes for their own students. Totals and percentages are worked out for you."],
   ["camera", "Works on any device", "Phones, tablets and laptops, with nothing to install. Staff sign in with their Google account."],
 ];
 
 const SPOTLIGHTS = [
   {
-    photo: "teacher",
-    kicker: "For teachers",
-    title: "Your class, ready before the bell.",
-    body: "Teachers see only the classes they teach (faces, names and roll numbers) and can add marks, notes and fresh photos in seconds. Parents’ phone numbers and addresses stay with the office.",
-    points: ["Only assigned classes", "Marks with totals and percentages", "Notes that stay with the student"],
+    mock: FeeMock,
+    kicker: "Fees",
+    title: "Set your fees once. Dues follow.",
+    body: "Add a fee, choose how often it falls due (monthly, bi-annually, one time or your own months) and fill in an amount for each grade, split by stream for 11th and 12th. One click creates every student’s dues.",
+    points: ["Grades from Nursery to 12 ready to fill", "Record payments and print one-page receipts", "Bring last year’s pending dues across"],
   },
   {
-    photo: "sessions",
-    kicker: "For the school year",
-    title: "Every session remembered.",
-    body: "Each academic year keeps its own classes and sections. When students move up, import the new list. Last year stays exactly as it was, one click away.",
-    points: ["Session switcher", "Past years are view-only", "Leavers kept as history"],
+    mock: MapMock,
+    kicker: "Student map",
+    title: "See where your students come from.",
+    body: "Every student is placed by their village. Numbers show how many come from each place, coloured from a few to many, with rings at 5, 10 and 15 km around the school. Click a village to see exactly who lives there.",
+    points: ["Villages merge into clusters as you zoom out", "Filter by bus or no bus", "Only owners and admins can see it"],
   },
   {
-    photo: "office",
-    kicker: "For the owner",
-    title: "You decide who sees what.",
-    body: "Share one join code with your staff. Each person asks to join with their designation and classes; you approve them and choose their role. Admin exports wait for your approval.",
-    points: ["Owner-approved staff", "Owner-approved exports", "Rules enforced by the database"],
+    mock: BusMock,
+    kicker: "Transport",
+    title: "Bus routes, stop by stop.",
+    body: "Set up each route with its stops in order. When you add a student, choose their route and stop, and see how many children board at every stop.",
+    points: ["Routes with ordered stops", "Students per stop and per route", "Picked right in the Add student steps"],
+  },
+  {
+    mock: ProfileMock,
+    kicker: "For the office",
+    title: "Every family, one tap away.",
+    body: "Open a student to see family, school and fee details on one card. Call or WhatsApp a parent straight from it, and record a payment without leaving.",
+    points: ["Call and WhatsApp buttons", "Due now and paid this session", "Teachers see their classes, not phone numbers"],
   },
 ];
 
 const ROLES = [
-  ["Owner", "Approves staff, assigns classes, edits the school profile and approves exports."],
-  ["Admin", "Manages students, imports, fees and employees. Exports need the owner’s approval."],
+  ["Owner", "Sets the fee structure, approves staff, assigns classes, edits the school profile and approves exports."],
+  ["Admin", "Manages students, fees and receipts, bus routes and the student map. Exports need the owner’s approval."],
   ["Teacher", "Sees only their classes, without parents’ phone numbers or addresses. Adds photos, notes and results."],
 ];
 
 const JOURNEY = [
   ["upload", "Import your students", "Upload the Excel export from your current system."],
+  ["file", "Set your fees", "Add each fee once; dues are created for every student."],
   ["plus", "Invite your staff", "Share your join code; approve each request and pick their classes."],
-  ["search", "Run your school", "Everyone sees exactly what their role allows."],
-  ["check", "Celebrate results", "Marks, notes and every session’s story, all in one place."],
+  ["check", "Run your school", "Fees, maps and results, with everyone seeing what their role allows."],
+];
+
+const NEXT = [
+  ["message", "Parent app", "Parents see results, shared notes and dues, and send leave or certificate requests to the school."],
+  ["bus", "Live bus tracking", "Parents and the school see where the bus is and when it will reach each stop."],
+  ["phone", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
 ];
 
 const TRUST = [
   "Data stored in India (Mumbai)",
   "Encrypted in transit and at rest",
   "Only the last 4 digits of Aadhaar are kept",
+  "Home locations seen only by owners and admins",
   "Each school’s data is walled off from every other",
 ];
 
 const PREVIEW = [
-  ["AS", "Aarav Sharma", "Grade 3", "#dbeafe"],
-  ["IK", "Ishita Kaur", "Grade 3", "#fce7f3"],
-  ["RV", "Rohan Verma", "Grade 4", "#dcfce7"],
-  ["MJ", "Meera Joshi", "Grade 4", "#fef3c7"],
-  ["KS", "Kabir Singh", "Grade 5", "#ede9fe"],
-  ["AN", "Anaya Negi", "Grade 5", "#e0f2fe"],
+  ["AS", "Aarav Sharma", "Grade 3", "#dbeafe", "paid"],
+  ["IK", "Ishita Kaur", "Grade 3", "#fce7f3", "due"],
+  ["RV", "Rohan Verma", "Grade 4", "#dcfce7", "paid"],
+  ["MJ", "Meera Joshi", "Grade 4", "#fef3c7", "paid"],
+  ["KS", "Kabir Singh", "Grade 5", "#ede9fe", "overdue"],
+  ["AN", "Anaya Negi", "Grade 5", "#e0f2fe", "paid"],
 ];
 
 // ------------------------------------------------------------- motion ---
@@ -168,29 +181,6 @@ function Art({ kind }) {
         <path d="M44 162c4-12 28-12 32 0M84 162c4-12 28-12 32 0M124 162c4-12 28-12 32 0" {...common} />
       </>
     ),
-    tablet: (
-      <>
-        <rect x="55" y="34" width="90" height="128" rx="12" {...common} />
-        {[0, 1, 2].map((r) =>
-          [0, 1].map((c) => <rect key={`${r}${c}`} x={68 + c * 34} y={50 + r * 34} width="28" height="26" rx="5" {...common} />)
-        )}
-      </>
-    ),
-    cap: (
-      <>
-        <path d="M100 48 30 78l70 30 70-30-70-30Z" {...common} />
-        <path d="M62 92v28c0 10 76 10 76 0V92" {...common} />
-        <path d="M170 78v40" {...common} />
-        <circle cx="170" cy="124" r="5" {...common} />
-        <path d="M40 150l12-8M150 40l8-10M28 50l10 4" {...common} />
-      </>
-    ),
-    shield: (
-      <>
-        <path d="M100 30 46 50v40c0 34 24 58 54 70 30-12 54-36 54-70V50L100 30Z" {...common} />
-        <path d="m76 98 16 16 34-34" {...common} />
-      </>
-    ),
     trophy: (
       <>
         <path d="M70 40h60v30c0 22-14 36-30 36S70 92 70 70V40Z" {...common} />
@@ -258,8 +248,8 @@ export default function Landing({ onLogin, error, busy }) {
           </a>
           <nav className="lp-links" aria-label="Page">
             <a href="#benefits">Why Godview</a>
+            <a href="#features">Features</a>
             <a href="#journey">How it works</a>
-            <a href="#roles">Roles</a>
             <a href="#privacy">Privacy</a>
           </nav>
           <button className="btn btn-primary lp-login" onClick={onLogin} disabled={busy}>
@@ -284,8 +274,8 @@ export default function Landing({ onLogin, error, busy }) {
                 at a glance.
               </h1>
               <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
-                Students, sessions, fees, teachers and results in one beautiful place, with the right access for every
-                role and your data kept in India.
+                Students, fees, bus routes and results in one beautiful place, with a map of where your students come
+                from, the right access for every role and your data kept in India.
               </p>
               <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
                 <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
@@ -315,10 +305,11 @@ export default function Landing({ onLogin, error, busy }) {
                   <span className="lp-pill">Session 2026-27</span>
                 </div>
                 <div className="lp-preview-grid">
-                  {PREVIEW.map(([ini, name, grade, tint], i) => (
+                  {PREVIEW.map(([ini, name, grade, tint, fee], i) => (
                     <div key={name} className="lp-tile" style={{ "--i": i }}>
                       <div className="lp-tile-photo" style={{ background: tint }}>
                         {ini}
+                        <i className={`lp-tile-fee is-${fee}`} />
                       </div>
                       <div className="lp-tile-body">
                         <span className="lp-tile-tag">{grade}</span>
@@ -333,17 +324,17 @@ export default function Landing({ onLogin, error, busy }) {
                   <Icon name="check" size={14} />
                 </span>
                 <div>
-                  <strong>Result saved</strong>
-                  <span>Grade 5 · Maths 46 / 50</span>
+                  <strong>Payment recorded</strong>
+                  <span>₹7,200 · Receipt printed</span>
                 </div>
               </div>
               <div className="lp-toast lp-toast-2" aria-hidden="true">
                 <span className="lp-toast-icon">
-                  <Icon name="plus" size={14} />
+                  <Icon name="pin" size={14} />
                 </span>
                 <div>
-                  <strong>Teacher approved</strong>
-                  <span>Classes 3-A, 3-B assigned</span>
+                  <strong>Saha · 27 students</strong>
+                  <span>19 travel by school bus</span>
                 </div>
               </div>
               <span className="lp-float-cap" aria-hidden="true">🎓</span>
@@ -396,12 +387,12 @@ export default function Landing({ onLogin, error, busy }) {
         </section>
 
         {/* ------------------------------------------------- spotlights */}
-        <section className="lp-section lp-spotlights">
+        <section id="features" className="lp-section lp-spotlights">
           <div className="lp-wrap">
             {SPOTLIGHTS.map((s, i) => (
               <div key={s.title} className={`lp-spot${i % 2 ? " is-flipped" : ""}`}>
                 <div className="lp-spot-media" data-reveal>
-                  <PhotoSlot name={s.photo} />
+                  <s.mock />
                 </div>
                 <div className="lp-spot-copy" data-reveal style={{ "--d": "120ms" }}>
                   <span className="lp-kicker">{s.kicker}</span>
@@ -426,7 +417,7 @@ export default function Landing({ onLogin, error, busy }) {
           <div className="lp-wrap">
             <div className="lp-head" data-reveal>
               <span className="lp-kicker">How it works</span>
-              <h2 className="lp-h2">From first import to proud results.</h2>
+              <h2 className="lp-h2">From first import to a school that runs itself.</h2>
             </div>
             <div className="lp-journey" data-reveal>
               <svg className="lp-journey-path" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
@@ -461,6 +452,29 @@ export default function Landing({ onLogin, error, busy }) {
                   <span className="tag">{role}</span>
                   <p>{text}</p>
                 </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------- next */}
+        <section className="lp-section lp-next-section">
+          <div className="lp-wrap">
+            <div className="lp-head" data-reveal>
+              <span className="lp-kicker">On the way</span>
+              <h2 className="lp-h2">Bringing parents in next.</h2>
+              <p className="lp-sub">What we’re building now, on top of the routes, fees and notes your school already keeps.</p>
+            </div>
+            <div className="lp-next">
+              {NEXT.map(([icon, title, text], i) => (
+                <article key={title} className="lp-next-card" data-reveal style={{ "--d": `${i * 100}ms` }}>
+                  <span className="lp-next-icon">
+                    <Icon name={icon} size={18} />
+                  </span>
+                  <span className="lp-soon">In development</span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
               ))}
             </div>
           </div>
@@ -502,7 +516,7 @@ export default function Landing({ onLogin, error, busy }) {
               </div>
               <div className="lp-final-copy">
                 <h2 className="lp-h2">Every school deserves to shine.</h2>
-                <p className="lp-sub">Bring your students, staff and results together and see your school clearly.</p>
+                <p className="lp-sub">Bring your students, fees, buses and results together and see your school clearly.</p>
                 <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
                   Log in with Google
                 </button>

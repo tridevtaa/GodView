@@ -217,6 +217,7 @@
 
 .lp-rotator {
   display: inline-block;
+  white-space: nowrap;
   height: 1.08em;
   overflow: visible;
 }
@@ -577,17 +578,8 @@
   padding: 12%;
 }
 
-.lp-photo-teacher {
-  background: linear-gradient(135deg, #dff3ff 0%, #e9e4ff 100%);
-}
 
-.lp-photo-sessions {
-  background: linear-gradient(135deg, #fff1d6 0%, #ffe0ea 100%);
-}
 
-.lp-photo-office {
-  background: linear-gradient(135deg, #e3fbe9 0%, #dff0ff 100%);
-}
 
 .lp-photo-success {
   background: linear-gradient(135deg, #1d2366 0%, #5b68c4 60%, #8b5cf6 100%);
@@ -1071,6 +1063,691 @@
 
 .lp-footer .logo {
   font-size: 14px;
+}
+
+/* ------------------------------------------- tile fee dots */
+
+.lp-tile-photo {
+  position: relative;
+}
+
+.lp-tile-fee {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+
+.lp-tile-fee.is-paid { background: var(--fee-paid); }
+.lp-tile-fee.is-due { background: var(--fee-due); }
+.lp-tile-fee.is-overdue { background: var(--fee-overdue); }
+
+/* ------------------------------------- product mock-ups (lpm) */
+
+.lpm {
+  position: relative;
+  padding: 28px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #e3e8ff 0%, #f4ecff 55%, #fff1dc 100%);
+  box-shadow: 0 30px 60px rgba(29, 35, 102, 0.14);
+  font-size: 13px;
+}
+
+.lpm-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 14px 30px rgba(29, 35, 102, 0.12);
+}
+
+.lpm-pill,
+.lpm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lpm-pill {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.lpm-btn {
+  background: var(--brand);
+  color: #fff;
+}
+
+.lpm-float {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 16px 32px rgba(29, 35, 102, 0.18);
+  animation: lp-bob 6s ease-in-out infinite;
+}
+
+.lpm-float strong {
+  display: block;
+  font-size: 13px;
+}
+
+.lpm-float span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.lpm-float-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.lpm-float-icon.lpm-ok {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.lpm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lpm-chips span {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* fee card */
+.lpm-fee .lpm-card {
+  padding: 18px 18px 0;
+}
+
+.lpm-fee-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 15px;
+}
+
+.lpm-fee-cols,
+.lpm-fee-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.lpm-fee-cols {
+  padding: 0 4px 8px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lpm-fee-row {
+  padding: 7px 4px;
+  border-top: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.lpm-fee-row em {
+  margin-left: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.lpm-amount {
+  justify-self: start;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.lpm-year {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.lpm-fee-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px -18px 0;
+  padding: 14px 18px;
+  background: var(--brand-edge);
+  color: #fff;
+}
+
+.lpm-fee-total small {
+  display: block;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 11px;
+}
+
+.lpm-fee-total .lpm-btn {
+  background: #fff;
+  color: var(--brand-edge);
+}
+
+.lpm-receipt {
+  right: -18px;
+  bottom: -22px;
+}
+
+/* map */
+.lpm-map {
+  padding: 0;
+  overflow: visible;
+}
+
+.lpm-map-canvas {
+  position: relative;
+  aspect-ratio: 5 / 4;
+  overflow: hidden;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 80% 15%, #d9ecd2 0 12%, transparent 13%),
+    radial-gradient(circle at 12% 85%, #d9ecd2 0 9%, transparent 10%),
+    #f2efe9;
+}
+
+.lpm-roads {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: #f1d3ae;
+}
+
+.lpm-roads path {
+  stroke-width: 6px;
+  vector-effect: non-scaling-stroke;
+}
+
+.lpm-roads .is-minor {
+  stroke: #fff;
+  stroke-width: 3px;
+}
+
+.lpm-roads .is-river {
+  stroke: #a9d2ef;
+  stroke-width: 3px;
+}
+
+.lpm-ring {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  aspect-ratio: 1;
+  border: 1.5px dashed rgba(29, 35, 102, 0.5);
+  border-radius: 50%;
+  background: rgba(91, 104, 196, 0.06);
+  translate: -50% -50%;
+}
+
+.lpm-ring-5 { width: 26%; }
+.lpm-ring-10 { width: 52%; }
+.lpm-ring-15 { width: 74%; }
+
+.lpm-ring-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(29, 35, 102, 0.2);
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  translate: -50% -50%;
+}
+
+.lpm-ring-label strong {
+  color: var(--brand-edge);
+}
+
+.lpm-tier-1 { --t: #e5533d; --ink: #fff; }
+.lpm-tier-2 { --t: #f0b429; --ink: #3d2a00; }
+.lpm-tier-3 { --t: #5b68c4; --ink: #fff; }
+.lpm-tier-4 { --t: #3a46a0; --ink: #fff; }
+.lpm-tier-5 { --t: #1d2366; --ink: #fff; }
+
+.lpm-bubble {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: var(--s);
+  height: var(--s);
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: var(--t);
+  box-shadow: 0 3px 10px rgba(29, 35, 102, 0.3);
+  color: var(--ink);
+  font-weight: 700;
+  translate: -50% -50%;
+  animation: lpm-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: calc(var(--i) * 70ms + 200ms);
+}
+
+@keyframes lpm-pop {
+  from {
+    opacity: 0;
+    scale: 0.3;
+  }
+}
+
+.lpm-school {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2.5px solid #fff;
+  border-radius: 10px;
+  background: var(--brand-edge);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+  color: #fff;
+  translate: -50% calc(-100% - 22px);
+}
+
+.lpm-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 2px 8px rgba(29, 35, 102, 0.12);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.lpm-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.lpm-step i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--t);
+}
+
+.lpm-village {
+  right: -22px;
+  bottom: -26px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.lpm-village .lpm-chips {
+  margin-top: 4px;
+}
+
+/* bus route */
+.lpm-bus .lpm-card {
+  padding: 18px;
+}
+
+.lpm-bus-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.lpm-bus-head strong {
+  display: block;
+  font-size: 15px;
+}
+
+.lpm-bus-head span {
+  color: var(--text-3);
+}
+
+.lpm-bus-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.lpm-stops {
+  position: relative;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lpm-stops::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 13px;
+  border-left: 2px dashed var(--brand);
+  opacity: 0.45;
+  content: "";
+}
+
+.lpm-stops li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.lpm-stop-no {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 1px var(--brand-soft);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lpm-stops .is-school .lpm-stop-no {
+  background: var(--brand-edge);
+}
+
+.lpm-stop-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.lpm-stop-n {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lpm-pick {
+  top: -18px;
+  right: -18px;
+}
+
+/* profile */
+.lpm-profile .lpm-card {
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.lpm-band {
+  height: 74px;
+  background: linear-gradient(135deg, #fce7f3 0%, #ede9fe 100%);
+}
+
+.lpm-avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  margin: -40px 0 0 20px;
+  border: 4px solid #fff;
+  border-radius: 22px;
+  background: #fbcfe8;
+  box-shadow: 0 6px 14px rgba(29, 35, 102, 0.15);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.lpm-profile-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px 20px 20px;
+}
+
+.lpm-name {
+  font-size: 18px;
+}
+
+.lpm-chips .is-id {
+  background: var(--brand-edge);
+  color: #fff;
+}
+
+.lpm-chips .is-tag {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.lpm-feestrip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lpm-feestrip div {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.lpm-feestrip span {
+  display: block;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+.lpm-feestrip strong {
+  font-size: 16px;
+}
+
+.lpm-feestrip .is-due {
+  color: var(--warning);
+}
+
+.lpm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.lpm-actions .lpm-btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.lpm-actions .lpm-wa {
+  background: #1f9d55;
+}
+
+.lpm-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.lpm-tabs span {
+  flex: 1;
+  padding: 6px;
+  border-radius: 999px;
+  color: var(--text-3);
+  font-weight: 600;
+  text-align: center;
+}
+
+.lpm-tabs .is-on {
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+}
+
+.lpm-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+}
+
+.lpm-rows span {
+  color: var(--text-3);
+}
+
+/* ------------------------------------------------ on the way */
+
+.lp-next-section {
+  background: var(--surface);
+}
+
+.lp-next {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.lp-next-card {
+  position: relative;
+  padding: 28px;
+  border: 1.5px dashed color-mix(in srgb, var(--brand) 35%, transparent);
+  border-radius: 24px;
+  background: linear-gradient(180deg, var(--brand-soft) 0%, var(--surface) 100%);
+}
+
+.lp-next-card h3 {
+  margin: 18px 0 8px;
+  font-size: 18px;
+}
+
+.lp-next-card p {
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.lp-next-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--brand);
+}
+
+.lp-soon {
+  position: absolute;
+  top: 28px;
+  right: 24px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .lp-next {
+    grid-template-columns: 1fr;
+  }
+
+  .lpm-village,
+  .lpm-receipt,
+  .lpm-pick {
+    right: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lpm {
+    padding: 16px;
+  }
+
+  .lpm-map {
+    padding: 0;
+  }
+
+  .lpm-fee-cols,
+  .lpm-fee-row {
+    grid-template-columns: 1.3fr 1fr;
+  }
+
+  .lpm-year,
+  .lpm-fee-cols span:last-child {
+    display: none;
+  }
+
+  .lpm-fee-total {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lpm-village {
+    top: auto;
+    right: 8px;
+    bottom: -30px;
+  }
+
+  .lpm-legend {
+    display: none;
+  }
+
+  .lpm-receipt {
+    bottom: -34px;
+  }
 }
 
 /* ---------------------------------------------- responsive */

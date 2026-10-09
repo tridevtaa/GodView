@@ -7,9 +7,9 @@ illustration until its file exists. Use photos you have the rights to
 | File             | Where it appears                        | Suggested subject                         | Size / shape        |
 |------------------|-----------------------------------------|-------------------------------------------|---------------------|
 | `hero.jpg`       | Hero, behind the product preview        | Students learning together in a classroom | 1200×900, landscape |
-| `teacher.jpg`    | "Your class, ready before the bell"     | Teacher with a tablet or at the board     | 1000×800, 5:4       |
-| `graduation.jpg` | "Every session remembered"              | Graduation / end-of-year celebration      | 1000×800, 5:4       |
-| `office.jpg`     | "You decide who sees what"              | Principal or school office at work        | 1000×800, 5:4       |
 | `success.jpg`    | Final "Every school deserves to shine"  | Students cheering / prize day             | 1600×700, wide      |
+
+The feature sections (fees, student map, transport, profile) use drawn
+product previews from `src/components/LandingMocks.jsx`, not photos.
 
 Keep each file under ~300 KB (JPG, quality ~75) so the page stays fast.
