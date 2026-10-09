@@ -758,3 +758,25 @@ export async function feeMonthlyCollection(sessionId) {
 export async function feeClassSummary(sessionId) {
   return must(await supabase.rpc("fee_class_summary", { session: sessionId }));
 }
+
+// One instalment type per fee: switch every grade's line for a fee at once.
+export async function setFeePlan(sessionId, headId, planId) {
+  must(
+    await supabase
+      .from("fee_schedule")
+      .update({ plan_id: planId, frequency: null })
+      .eq("session_id", sessionId)
+      .eq("head_id", headId)
+  );
+}
+
+// Removes a fee from the structure (all grades). The fee name itself is
+// kept if dues were already created with it.
+export async function removeFeeFromStructure(sessionId, headId) {
+  must(await supabase.from("fee_schedule").delete().eq("session_id", sessionId).eq("head_id", headId));
+  await supabase.from("fee_heads").delete().eq("id", headId); // fails quietly if dues use it
+}
+
+export async function deleteGrade(id) {
+  must(await supabase.from("school_grades").delete().eq("id", id));
+}
