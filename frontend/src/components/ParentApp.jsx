@@ -77,8 +77,15 @@ export default function ParentApp({ phone }) {
 
   const child = children?.find((c) => c.id === childId);
   const school = child?.school ?? children?.[0]?.school;
-  const dot = (id, section) => (unread.get(`${id}:${section}`)?.unread ?? 0) > 0;
-  const childDot = (id) => TABS.some(([v]) => dot(id, v));
+  // New-item counts, shown like the Owner page's red number badges.
+  const count = (id, section) => unread.get(`${id}:${section}`)?.unread ?? 0;
+  const childCount = (id) => TABS.reduce((t, [v]) => t + count(id, v), 0);
+  const badge = (n, label) =>
+    n > 0 && (
+      <span className="seg-count" aria-label={`${n} new ${label}`}>
+        {n > 99 ? "99+" : n}
+      </span>
+    );
 
   // Opening a section marks it seen; keep the previous time to show "New".
   useEffect(() => {
@@ -130,7 +137,7 @@ export default function ParentApp({ phone }) {
               <button key={c.id} className={c.id === childId ? "is-on" : ""} onClick={() => setChildId(c.id)}>
                 <Photo person={c} className="pa-kid-photo" />
                 <span>{c.name.split(" ")[0]}</span>
-                {c.id !== childId && childDot(c.id) && <i className="pa-dot" aria-label="New updates" />}
+                {c.id !== childId && badge(childCount(c.id), "updates")}
               </button>
             ))}
           </nav>
@@ -158,7 +165,7 @@ export default function ParentApp({ phone }) {
               {TABS.map(([v, l]) => (
                 <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
                   {l}
-                  {tab !== v && dot(child.id, v) && <i className="pa-dot" aria-label="New" />}
+                  {tab !== v && badge(count(child.id, v), l.toLowerCase())}
                 </button>
               ))}
             </nav>
