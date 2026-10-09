@@ -3,7 +3,6 @@ import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
-import FeeSummary from "./components/FeeSummary.jsx";
 import ImportModal from "./components/ImportModal.jsx";
 import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
@@ -216,10 +215,6 @@ export default function App() {
           <p className="notice">
             You haven’t been given any classes for this session yet. Ask the school’s owner to assign your classes.
           </p>
-        )}
-
-        {!loading && isStudents && isAdmin && source === "supabase" && (
-          <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />
         )}
 
         <div className="toolbar">
