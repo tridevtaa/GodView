@@ -6,18 +6,6 @@ import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 
-// Shows only the last 4 digits until staff choose to reveal the number.
-function Masked({ value }) {
-  const [shown, setShown] = useState(false);
-  return (
-    <span className="masked">
-      {shown ? value : `•••• •••• ${value.slice(-4)}`}
-      <button type="button" className="link-btn" onClick={() => setShown((s) => !s)}>
-        {shown ? "Hide" : "Show"}
-      </button>
-    </span>
-  );
-}
 
 const DETAILS = {
   students: [
@@ -34,14 +22,13 @@ const DETAILS = {
     ["Roll no.", (p) => p.roll_no],
     ["Date of birth", (p) => p.dob],
     ["Category", (p) => p.category],
-    ["Session", (p) => p.session],
     ["Admission date", (p) => p.admission_date],
     ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
     ["Religion", (p) => p.religion],
     ["SRN", (p) => p.srn],
-    ["Aadhaar", (p) => p.aadhaar && <Masked value={p.aadhaar} />],
+    // Only the last 4 digits are stored.
+    ["Aadhaar", (p) => p.aadhaar && <span className="masked">•••• •••• {p.aadhaar}</span>],
     ["Bus route", (p) => [p.transport_route, p.pickup_point].filter(Boolean).join(" · ")],
-    ["School", (p) => p.school_id],
   ],
   employees: [
 
@@ -51,7 +38,7 @@ const DETAILS = {
   ],
 };
 
-function PhotoUpload({ person, kind, onSaved }) {
+function PhotoUpload({ person, kind, schoolId, onSaved }) {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -63,7 +50,7 @@ function PhotoUpload({ person, kind, onSaved }) {
     setBusy(true);
     setError("");
     try {
-      onSaved(await savePhoto(kind, person.id, file));
+      onSaved(await savePhoto(schoolId, kind, person, file));
     } catch (err) {
       setError(err.message === "not-an-image" ? "Please choose an image file." : "Upload failed. Try again.");
     } finally {
@@ -89,7 +76,7 @@ function PhotoUpload({ person, kind, onSaved }) {
   );
 }
 
-export default function ProfileModal({ person, mode, canEdit, onUpdate, onClose }) {
+export default function ProfileModal({ person, mode, schoolId, sessionId, canEdit, onUpdate, onClose }) {
   const [editing, setEditing] = useState(false);
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
@@ -119,9 +106,14 @@ export default function ProfileModal({ person, mode, canEdit, onUpdate, onClose 
       >
         <header className="profile-header">
           <div className="profile-photo">
-            <Photo person={person} kind={mode} className="photo-lg" />
+            <Photo person={person} className="photo-lg" />
             {canEdit && (
-              <PhotoUpload person={person} kind={mode} onSaved={(patch) => onUpdate(person.id, patch)} />
+              <PhotoUpload
+                person={person}
+                kind={mode}
+                schoolId={schoolId}
+                onSaved={(patch) => onUpdate(person.id, patch)}
+              />
             )}
           </div>
           <div className="profile-heading">
@@ -155,6 +147,7 @@ export default function ProfileModal({ person, mode, canEdit, onUpdate, onClose 
             <ProfileEdit
               person={person}
               kind={mode}
+              sessionId={sessionId}
               onCancel={() => setEditing(false)}
               onSaved={(changes) => {
                 onUpdate(person.id, changes);

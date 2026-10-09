@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "firebase": "^10.12.0",
+    "@supabase/supabase-js": "2.117.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"

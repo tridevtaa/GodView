@@ -442,7 +442,7 @@ a:hover {
 
 .page-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
@@ -1301,4 +1301,51 @@ a:hover {
   .details {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Page meta: count + session ---------- */
+
+.page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+/* Visually hidden, still read by screen readers. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.page-count {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--brand);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.session-btn:hover:not(:disabled) {
+  background: var(--brand-soft);
 }

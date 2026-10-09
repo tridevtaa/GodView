@@ -1,5 +1,3 @@
-import { usePhoto } from "../data/photos.js";
-
 const AVATAR_TINTS = ["#dbeafe", "#fce7f3", "#dcfce7", "#fef3c7", "#ede9fe", "#e0f2fe"];
 
 function initials(name = "") {
@@ -11,9 +9,9 @@ function initials(name = "") {
     .join("");
 }
 
-export function Photo({ person, kind, index = 0, className = "card-photo" }) {
-  const stored = usePhoto(kind, person);
-  const src = stored || person.photo_url;
+export function Photo({ person, index = 0, className = "card-photo" }) {
+  // Uploaded photos come as short-lived signed URLs; ERP photos as plain links.
+  const src = person.photo_src || person.photo_url;
   if (src) {
     return <img className={className} src={src} alt={person.name} loading="lazy" />;
   }
@@ -80,7 +78,7 @@ export default function PersonCard({ person, mode, index, onOpen }) {
         }
       }}
     >
-      <Photo person={person} kind={mode} index={index} />
+      <Photo person={person} index={index} />
       <div className="card-body">
         <div className="card-row">
           <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>

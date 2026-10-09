@@ -5,10 +5,13 @@ import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import FeeSummary from "./components/FeeSummary.jsx";
 import ImportModal from "./components/ImportModal.jsx";
-import GradeFilter, { gradeOptions } from "./components/GradeFilter.jsx";
+import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
 import { gradeLabel } from "./components/PersonCard.jsx";
+import SessionSelect from "./components/SessionSelect.jsx";
+import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
+import { useSessions } from "./data/useSessions.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -22,10 +25,30 @@ export default function App() {
   const [openId, setOpenId] = useState(null);
   const [grade, setGrade] = useState("");
   const [importing, setImporting] = useState(false);
-  const { people, loading, source, stale, add, patch, reload } = usePeople(mode);
+  const [pickedSession, setPickedSession] = useState(null);
+  const { school } = useAuth();
+  const { sessions, current: currentSession } = useSessions(school.id);
+  const sessionId = pickedSession ?? currentSession?.id;
+  const { people, loading, source, add, patch, reload } = usePeople(mode, school.id, sessionId);
 
-  // Students who left stay in Firestore (history) but aren't shown.
-  const current = useMemo(() => people.filter((p) => p.status !== "left"), [people]);
+  // Past sessions are history: shown, not edited.
+  const viewOnly = mode === "students" && Boolean(currentSession) && sessionId !== currentSession.id;
+  const canEdit = source === "supabase" && !viewOnly;
+
+  // Students who left stay in the database (history) but aren't shown.
+  // Ordered by grade (Nursery → 12), then section, then name.
+  const current = useMemo(
+    () =>
+      people
+        .filter((p) => p.status !== "left")
+        .sort(
+          (a, b) =>
+            gradeRank(a.class ?? "") - gradeRank(b.class ?? "") ||
+            String(a.section ?? "").localeCompare(String(b.section ?? "")) ||
+            String(a.name ?? "").localeCompare(String(b.name ?? ""))
+        ),
+    [people]
+  );
   const grades = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
   const inGrade = useMemo(
     () => (mode === "students" && grade ? current.filter((p) => p.class === grade) : current),
@@ -51,10 +74,14 @@ export default function App() {
     setOpenId(null);
   }
 
+  function switchSession(id) {
+    setPickedSession(id);
+    setGrade("");
+    setOpenId(null);
+  }
+
   const isStudents = mode === "students";
   const title = isStudents ? "Students" : "Employees";
-  const sessions = [...new Set(current.map((p) => p.session).filter(Boolean))].sort();
-  const session = sessions[sessions.length - 1];
 
   return (
     <div className="app">
@@ -63,43 +90,47 @@ export default function App() {
       <main className="page">
         <div className="page-header">
           <div>
-            <h1>{title}</h1>
-            <p className="page-subtitle">
-              {loading
-                ? "Loading…"
-                : `${current.length.toLocaleString("en-IN")} ${mode}${isStudents && session ? ` · Session ${session}` : ""}`}
-            </p>
+            <h1 className="sr-only">{title}</h1>
+            <div className="page-meta">
+              <span className="page-count">
+                {loading ? "Loading…" : `${current.length.toLocaleString("en-IN")} ${mode}`}
+              </span>
+              {isStudents && (
+                <SessionSelect
+                  sessions={sessions}
+                  value={sessionId}
+                  current={currentSession}
+                  onChange={switchSession}
+                />
+              )}
+              {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+            </div>
           </div>
           <div className="page-actions">
-            {isStudents && source !== "error" && (
+            {isStudents && canEdit && (
               <button className="btn btn-secondary" onClick={() => setImporting(true)}>
                 <Icon name="upload" />
                 Import
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => setAdding(true)}>
-              <Icon name="plus" />
-              Add {isStudents ? "student" : "employee"}
-            </button>
+            {canEdit && (
+              <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                <Icon name="plus" />
+                Add {isStudents ? "student" : "employee"}
+              </button>
+            )}
           </div>
         </div>
 
-        {!loading && source !== "firestore" && (
-          <p className={`notice${source === "error" ? " notice-error" : ""}`}>
-            {source === "error"
-              ? `Couldn’t load ${mode}. Check your connection or ask an administrator for access.`
-              : "Showing sample data. Add records or import to see real ones."}
+        {!loading && source === "error" && (
+          <p className="notice notice-error">
+            Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
           </p>
         )}
 
-        {!loading && stale && (
-          <p className="notice">
-            Showing the copy saved on this device — couldn’t check for updates right now. Changes made since may be
-            missing; try again later.
-          </p>
+        {!loading && isStudents && source === "supabase" && (
+          <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />
         )}
-
-        {!loading && isStudents && source === "firestore" && <FeeSummary students={inGrade} scope={grade ? gradeLabel(grade) : "All grades"} />}
 
         <div className="toolbar">
           <label className="search">
@@ -147,14 +178,17 @@ export default function App() {
         <ProfileModal
           person={visible[openIndex]}
           mode={mode}
-          canEdit={source === "firestore"}
+          schoolId={school.id}
+          sessionId={sessionId}
+          canEdit={canEdit}
           onUpdate={patch}
           onClose={closeProfile}
         />
       )}
       {importing && (
         <ImportModal
-          students={source === "firestore" ? people : []}
+          schoolId={school.id}
+          students={people}
           onClose={() => setImporting(false)}
           onDone={reload}
         />
