@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships, lookupJoinCode, requestAccess } from "../data/api.js";
+import { listMemberships, logoUrl, lookupJoinCode, requestAccess } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 
-// { user: { email, displayName, photoURL }, school: { id, name, slug }, role }
+// { user: { email, displayName, photoURL }, school, role, setSchool }
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 export const useUser = () => useContext(AuthContext)?.user;
@@ -93,6 +93,7 @@ function RequestAccess({ user }) {
   if (step === "sent") {
     return (
       <>
+        {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
         <h1>Request sent</h1>
         <p className="muted">
           {school.school_name}’s owner will review your request. Once it’s approved, sign in again to see your classes.
@@ -136,6 +137,7 @@ function RequestAccess({ user }) {
 
   return (
     <form className="request-form request-form-wide" onSubmit={submit}>
+      {school.logo_path && <img className="join-logo" src={logoUrl(school.logo_path)} alt="" />}
       <h1>{school.school_name}</h1>
       <p className="muted">Tell the school who you are and which classes you teach.</p>
       <div className="form-grid">
@@ -226,8 +228,9 @@ export default function AuthGate({ children }) {
   }
 
   if (state.status === "member") {
+    const setSchool = (school) => setState((s) => ({ ...s, school }));
     return (
-      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role }}>
+      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role, setSchool }}>
         {children}
       </AuthContext.Provider>
     );

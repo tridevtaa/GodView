@@ -29,7 +29,7 @@ export default function App() {
   const [grade, setGrade] = useState("");
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
-  const { school, role, user } = useAuth();
+  const { school, role, user, setSchool } = useAuth();
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
   const [pendingCount, setPendingCount] = useState(0);
@@ -108,7 +108,7 @@ export default function App() {
 
       <main className="page">
         {mode === "team" ? (
-          <TeamPage school={school} session={currentSession} me={user.email} />
+          <TeamPage school={school} session={currentSession} me={user.email} onSchoolSaved={setSchool} />
         ) : (
         <>
         <div className="page-header">

@@ -16,6 +16,7 @@ import {
   setMemberRole,
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
+import SchoolProfile from "./SchoolProfile.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -28,7 +29,7 @@ const ROLE_HINT = {
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 // Owner-only: members, roles, class assignments, access and export requests.
-export default function TeamPage({ school, session, me }) {
+export default function TeamPage({ school, session, me, onSchoolSaved }) {
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -91,6 +92,8 @@ export default function TeamPage({ school, session, me }) {
       </div>
 
       {error && <p className="notice notice-error">{error}</p>}
+
+      <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} />
 
       <JoinCode school={school} />
 
