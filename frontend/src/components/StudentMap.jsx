@@ -10,6 +10,17 @@ import { findOnGoogle, hasMaps } from "../data/googlePlaces.js";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
+// Pins shade from light to deep indigo as a village sends more students.
+// Fixed steps, so a village keeps its colour when filters change.
+const TIERS = [
+  { min: 50, label: "50+" },
+  { min: 20, label: "20–49" },
+  { min: 10, label: "10–19" },
+  { min: 5, label: "5–9" },
+  { min: 1, label: "1–4" },
+];
+const tierOf = (n) => TIERS.length - TIERS.findIndex((t) => n >= t.min); // 1 (few) to 5 (many)
+
 const BUS = [
   ["all", "Everyone"],
   ["bus", "Bus"],
@@ -183,8 +194,14 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
           )}
         </div>
         <div className="smap-legend">
-          <span>
-            <i className="smap-dot" /> Village
+          <span className="smap-scale" title="Students per village">
+            Students
+            {[...TIERS].reverse().map((t, i) => (
+              <span key={t.min} className="smap-step">
+                <i className={`tier-${i + 1}`} />
+                {t.label}
+              </span>
+            ))}
           </span>
           <span>
             <i className="smap-dot is-cluster" /> Several villages
@@ -362,7 +379,7 @@ function Overview({ groups, onMap, total, unpinnedAreas, unplaced, newPlaces, ha
                 <button className="smap-row" onClick={() => onSelect(g)}>
                   <span className="smap-row-name">{g.name}</span>
                   <span className="smap-row-bar">
-                    <span style={{ width: `${Math.max(4, (g.students.length / max) * 100)}%` }} />
+                    <span className={`tier-${tierOf(g.students.length)}`} style={{ width: `${Math.max(4, (g.students.length / max) * 100)}%` }} />
                   </span>
                   <span className="smap-count">{g.students.length}</span>
                 </button>
@@ -553,7 +570,7 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
       iconCreateFunction: (c) => {
         const n = c.getAllChildMarkers().reduce((t, mk) => t + mk.options.count, 0);
         const size = Math.round(40 + Math.min(28, Math.sqrt(n) * 2.2));
-        return L.divIcon({ className: "smap-icon", html: `<span class="smap-cluster">${n}</span>`, iconSize: [size, size] });
+        return L.divIcon({ className: "smap-icon", html: `<span class="smap-cluster tier-${tierOf(n)}">${n}</span>`, iconSize: [size, size] });
       },
     });
     cluster.on("clusterclick", (e) => {
@@ -595,7 +612,7 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
     const markers = groups.map((g) => {
       const n = g.students.length;
       const size = g.exact ? 18 : Math.round(30 + Math.min(22, Math.sqrt(n) * 2.4));
-      const html = g.exact ? `<span class="smap-home${sel.has(g.id) ? " is-on" : ""}"></span>` : `<span class="smap-pin${sel.has(g.id) ? " is-on" : ""}">${n}</span>`;
+      const html = g.exact ? `<span class="smap-home${sel.has(g.id) ? " is-on" : ""}"></span>` : `<span class="smap-pin tier-${tierOf(n)}${sel.has(g.id) ? " is-on" : ""}">${n}</span>`;
       const mk = L.marker([g.lat, g.lng], {
         icon: L.divIcon({ className: "smap-icon", html, iconSize: [size, size] }),
         count: n,

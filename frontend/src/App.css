@@ -5371,6 +5371,34 @@ button.profile-stat:hover {
   gap: 6px;
 }
 
+/* Students per village: light (few) to deep indigo (many). */
+.tier-1 { --tier: #c9cef3; --tier-ink: var(--brand-edge); }
+.tier-2 { --tier: #98a1e3; --tier-ink: var(--brand-edge); }
+.tier-3 { --tier: #5b68c4; --tier-ink: #fff; }
+.tier-4 { --tier: #3a46a0; --tier-ink: #fff; }
+.tier-5 { --tier: #1d2366; --tier-ink: #fff; }
+
+.smap-scale {
+  font-weight: 600;
+}
+
+.smap-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.smap-step i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tier);
+  box-shadow: 0 0 0 1px rgba(29, 35, 102, 0.25);
+}
+
 .smap-dot {
   display: inline-block;
   width: 12px;
@@ -5418,6 +5446,12 @@ button.profile-stat:hover {
 .smap-pin:hover,
 .smap-cluster:hover {
   transform: scale(1.1);
+}
+
+.smap-pin[class*="tier-"],
+.smap-cluster[class*="tier-"] {
+  background: var(--tier);
+  color: var(--tier-ink);
 }
 
 .smap-pin.is-on {
@@ -5643,7 +5677,7 @@ button.profile-stat:hover {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand) 70%, transparent);
+  background: var(--tier, var(--brand));
 }
 
 .smap-count {
