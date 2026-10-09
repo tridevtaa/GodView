@@ -851,5 +851,5 @@ export async function mergeAreas(into, from) {
 }
 
 export async function setSchoolLocation(schoolId, lat, lng) {
-  must(await supabase.from("schools").update({ lat, lng }).eq("id", schoolId));
+  must(await supabase.rpc("set_school_location", { school: schoolId, lat, lng }));
 }
