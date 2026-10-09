@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import ImportModal from "./components/ImportModal.jsx";
-import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.jsx";
+import GradeFilter, { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
-import { gradeLabel, setGradeLabels } from "./components/PersonCard.jsx";
+import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
@@ -22,13 +22,31 @@ const SEARCH_KEYS = {
   employees: ["name", "designation", "department", "employee_no"],
 };
 
+
+const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
   const [query, setQuery] = useState("");
+  // Students page: tiles or the map (owners/admins). Remembered per browser.
+  const [view, setViewState] = useState(() => {
+    try {
+      return localStorage.getItem("godview.studentsView") === "map" ? "map" : "tiles";
+    } catch {
+      return "tiles";
+    }
+  });
+  const setView = (v) => {
+    setViewState(v);
+    try {
+      localStorage.setItem("godview.studentsView", v);
+    } catch {
+      /* private mode: fine, just not remembered */
+    }
+  };
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
-  const [grade, setGrade] = useState("");
+  const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
@@ -97,10 +115,10 @@ export default function App() {
         ),
     [people]
   );
-  const grades = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
+  const gradeChoices = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
   const inGrade = useMemo(
-    () => (mode === "students" && grade ? current.filter((p) => p.class === grade) : current),
-    [current, mode, grade]
+    () => (mode === "students" && pickedGrades.length ? current.filter((p) => pickedGrades.includes(p.class)) : current),
+    [current, mode, pickedGrades]
   );
 
   const visible = useMemo(() => {
@@ -125,7 +143,7 @@ export default function App() {
     if (next === mode) return;
     setMode(next);
     setQuery("");
-    setGrade("");
+    setPickedGrades([]);
     setOpenId(null);
   }
 
@@ -134,7 +152,7 @@ export default function App() {
 
   function switchSession(id) {
     setPickedSession(id);
-    setGrade("");
+    setPickedGrades([]);
     setOpenId(null);
   }
 
@@ -237,6 +255,18 @@ export default function App() {
         )}
 
         <div className="toolbar">
+          {isStudents && isAdmin && (
+            <nav className="segmented view-switch" aria-label="View">
+              {[
+                ["tiles", "Tiles"],
+                ["map", "Map"],
+              ].map(([v, l]) => (
+                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
+                  {l}
+                </button>
+              ))}
+            </nav>
+          )}
           <label className="search">
             <Icon name="search" />
             <input
@@ -247,15 +277,19 @@ export default function App() {
               aria-label={`Search ${mode}`}
             />
           </label>
-          {isStudents && <GradeFilter options={grades} value={grade} onChange={setGrade} />}
-          {!loading && (query || grade) && (
+          {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
+          {!loading && (query || pickedGrades.length > 0) && (
             <span className="toolbar-count">
               {visible.length} of {current.length}
             </span>
           )}
         </div>
 
-        {loading ? (
+        {isStudents && isAdmin && view === "map" && !loading ? (
+          <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
+            <StudentMap school={school} students={visible} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
+          </Suspense>
+        ) : loading ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="card card-skeleton" />
@@ -266,7 +300,7 @@ export default function App() {
             <p className="empty-title">No {mode} found</p>
             <p>
               {query ? `Nothing matches “${query}”` : "Nothing here yet"}
-              {grade ? ` in ${gradeLabel(grade)}` : ""}.
+              {pickedGrades.length ? ` in ${gradesText(pickedGrades)}` : ""}.
             </p>
           </div>
         ) : (
