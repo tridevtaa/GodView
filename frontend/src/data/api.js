@@ -695,10 +695,14 @@ export async function listGrades(schoolId) {
   return must(await supabase.from("school_grades").select("*").eq("school_id", schoolId).order("sort").order("code"));
 }
 
-export async function addGrade(schoolId, label, sort) {
+export async function addGrade(schoolId, label, sort, code) {
   const name = label.trim();
   return must(
-    await supabase.from("school_grades").insert({ school_id: schoolId, code: name, label: name, sort }).select().single()
+    await supabase
+      .from("school_grades")
+      .insert({ school_id: schoolId, code: (code ?? name).trim(), label: name, sort })
+      .select()
+      .single()
   );
 }
 

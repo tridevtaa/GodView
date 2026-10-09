@@ -5,7 +5,7 @@
 -- see ("Class 1") and can be renamed; `sections` lists the sections offered.
 --
 -- fee_plans: instalment types, i.e. which months a fee falls due. Every
--- school starts with Monthly (Apr to Mar), Bi-yearly (Apr, Oct) and One time
+-- school starts with Monthly (Apr to Mar), Bi-annually (Apr, Oct) and One time
 -- (Apr); the owner can add more (e.g. Quarterly: Apr, Jul, Oct, Jan).
 --
 -- Fee structure (fee heads, plans, amounts per grade) becomes owner-only to
@@ -70,7 +70,7 @@ create function public.seed_fee_plans(school uuid) returns void
 language sql security definer set search_path = '' as $$
   insert into public.fee_plans (school_id, name, months, is_standard, sort) values
     (school, 'Monthly', array[4,5,6,7,8,9,10,11,12,1,2,3], true, 1),
-    (school, 'Bi-yearly', array[4,10], true, 2),
+    (school, 'Bi-annually', array[4,10], true, 2),
     (school, 'One time', array[4], true, 3)
   on conflict (school_id, name) do nothing
 $$;
