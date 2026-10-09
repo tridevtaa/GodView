@@ -1,0 +1,307 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  addAssignment,
+  addMember,
+  decideAccessRequest,
+  decideExport,
+  listAccessRequests,
+  listAssignments,
+  listClassSections,
+  listExportRequests,
+  listMembers,
+  removeAssignment,
+  removeMember,
+  setMemberRole,
+} from "../data/api.js";
+import { gradeLabel } from "./PersonCard.jsx";
+import { gradeRank } from "./GradeFilter.jsx";
+import Icon from "./Icon.jsx";
+
+const ROLE_LABEL = { owner: "Owner", admin: "Admin", teacher: "Teacher" };
+const ROLE_HINT = {
+  admin: "Everything except managing users; exports need your approval",
+  teacher: "Only assigned classes; no personal details; photos, notes and results",
+};
+const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+// Owner-only: members, roles, class assignments, access and export requests.
+export default function TeamPage({ school, session, me }) {
+  const [members, setMembers] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [exports, setExports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const [m, a, r, x, c] = await Promise.all([
+        listMembers(school.id),
+        listAssignments(school.id),
+        listAccessRequests(school.id),
+        listExportRequests(school.id),
+        session ? listClassSections(school.id, session.id) : [],
+      ]);
+      setMembers(m);
+      setAssignments(a);
+      setRequests(r);
+      setExports(x);
+      setClasses(
+        c.sort((p, q) => gradeRank(p.class) - gradeRank(q.class) || p.section.localeCompare(q.section))
+      );
+      setError("");
+    } catch {
+      setError("Couldn’t load the team. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, [school.id, session]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Every action reloads; errors surface in one place.
+  const act = (fn) => async (...args) => {
+    try {
+      await fn(...args);
+      await load();
+    } catch {
+      setError("That didn’t go through. Check your connection and try again.");
+    }
+  };
+
+  const pendingExports = exports.filter((x) => x.status === "pending");
+  const sessionAssignments = assignments.filter((a) => a.session_id === session?.id);
+
+  return (
+    <>
+      <div className="page-header">
+        <div>
+          <h1 className="sr-only">Team</h1>
+          <div className="page-meta">
+            <span className="page-count">{loading ? "Loading…" : `${members.length} members`}</span>
+            {session && <span className="badge badge-neutral">Classes for {session.name}</span>}
+          </div>
+        </div>
+      </div>
+
+      {error && <p className="notice notice-error">{error}</p>}
+
+      {requests.length > 0 && (
+        <section className="panel">
+          <h2 className="panel-title">
+            Access requests <span className="badge badge-warning">{requests.length}</span>
+          </h2>
+          {requests.map((r) => (
+            <AccessRequestRow
+              key={r.id}
+              request={r}
+              onApprove={act((role) => decideAccessRequest(r, true, role, me))}
+              onReject={act(() => decideAccessRequest(r, false, null, me))}
+            />
+          ))}
+        </section>
+      )}
+
+      {pendingExports.length > 0 && (
+        <section className="panel">
+          <h2 className="panel-title">
+            Export requests <span className="badge badge-warning">{pendingExports.length}</span>
+          </h2>
+          {pendingExports.map((x) => (
+            <div key={x.id} className="row">
+              <div className="row-main">
+                <div className="row-title">{x.requested_by}</div>
+                <div className="row-sub">
+                  Wants to export {x.scope} · {fmtDate(x.created_at)}
+                  {x.reason ? ` · “${x.reason}”` : ""}
+                </div>
+              </div>
+              <div className="row-actions">
+                <button className="btn btn-secondary btn-sm" onClick={act(() => decideExport(x.id, false, me))}>
+                  Reject
+                </button>
+                <button className="btn btn-primary btn-sm" onClick={act(() => decideExport(x.id, true, me))}>
+                  Approve once
+                </button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <section className="panel">
+        <h2 className="panel-title">Members</h2>
+        {members.map((m) => (
+          <MemberRow
+            key={m.email}
+            member={m}
+            isMe={m.email === me}
+            classes={classes}
+            assignments={sessionAssignments.filter((a) => a.email === m.email)}
+            onRole={act((role) => setMemberRole(school.id, m.email, role))}
+            onRemove={act(() => removeMember(school.id, m.email))}
+            onAssign={act((k, s) => addAssignment(school.id, session.id, m.email, k, s))}
+            onUnassign={act((id) => removeAssignment(id))}
+            canAssign={Boolean(session)}
+          />
+        ))}
+        <AddMember onAdd={act((email, role) => addMember(school.id, email, role))} existing={members} />
+      </section>
+
+      <p className="panel-foot">
+        People join by signing in with Google and entering the school code <strong>{school.slug}</strong>, or you can
+        add their Google email above.
+      </p>
+    </>
+  );
+}
+
+function RolePicker({ value, onChange, disabled }) {
+  return (
+    <select className="select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
+      <option value="teacher">Teacher</option>
+      <option value="admin">Admin</option>
+    </select>
+  );
+}
+
+function AccessRequestRow({ request, onApprove, onReject }) {
+  const [role, setRole] = useState("teacher");
+  return (
+    <div className="row">
+      <div className="row-main">
+        <div className="row-title">{request.name || request.email}</div>
+        <div className="row-sub">
+          {request.email} · {fmtDate(request.created_at)}
+          {request.message ? ` · “${request.message}”` : ""}
+        </div>
+      </div>
+      <div className="row-actions">
+        <RolePicker value={role} onChange={setRole} />
+        <button className="btn btn-secondary btn-sm" onClick={onReject}>
+          Reject
+        </button>
+        <button className="btn btn-primary btn-sm" onClick={() => onApprove(role)}>
+          Approve
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAssign, onUnassign, canAssign }) {
+  const [confirming, setConfirming] = useState(false);
+  const [pick, setPick] = useState("");
+  const isOwner = member.role === "owner";
+  const taken = new Set(assignments.map((a) => `${a.class}|${a.section ?? ""}`));
+  const options = useMemo(() => {
+    const byClass = new Map();
+    classes.forEach((c) => byClass.set(c.class, [...(byClass.get(c.class) ?? []), c.section]));
+    return [...byClass].flatMap(([k, sections]) => [
+      { value: `${k}|`, label: `${gradeLabel(k)} · all sections` },
+      ...sections.filter(Boolean).map((s) => ({ value: `${k}|${s}`, label: `${gradeLabel(k)} · ${s}` })),
+    ]);
+  }, [classes]);
+
+  return (
+    <div className="row row-member">
+      <div className="row-main">
+        <div className="row-title">
+          {member.email} {isMe && <span className="badge badge-neutral">You</span>}
+        </div>
+        <div className="row-sub">{isOwner ? "Full control, manages users" : ROLE_HINT[member.role]}</div>
+        {member.role === "teacher" && (
+          <div className="chips">
+            {assignments.map((a) => (
+              <span key={a.id} className="chip">
+                {gradeLabel(a.class)}
+                {a.section ? ` · ${a.section}` : " · all"}
+                <button aria-label="Remove class" onClick={() => onUnassign(a.id)}>
+                  <Icon name="x" size={12} />
+                </button>
+              </span>
+            ))}
+            {canAssign && (
+              <select
+                className="select select-sm"
+                value={pick}
+                onChange={(e) => {
+                  const [k, s] = e.target.value.split("|");
+                  if (k) onAssign(k, s);
+                  setPick("");
+                }}
+              >
+                <option value="">+ Assign class</option>
+                {options
+                  .filter((o) => !taken.has(o.value))
+                  .map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+              </select>
+            )}
+            {!assignments.length && <span className="row-sub">No classes yet — they’ll see no students.</span>}
+          </div>
+        )}
+      </div>
+      <div className="row-actions">
+        {isOwner ? (
+          <span className="badge badge-brand">Owner</span>
+        ) : confirming ? (
+          <>
+            <span className="row-sub">Remove access?</span>
+            <button className="btn btn-secondary btn-sm" onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={onRemove}>
+              Remove
+            </button>
+          </>
+        ) : (
+          <>
+            <RolePicker value={member.role} onChange={onRole} />
+            <button className="btn btn-secondary btn-sm" onClick={() => setConfirming(true)}>
+              Remove
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddMember({ onAdd, existing }) {
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("teacher");
+  const duplicate = existing.some((m) => m.email === email.trim().toLowerCase());
+  return (
+    <form
+      className="row row-add"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (duplicate) return;
+        onAdd(email, role);
+        setEmail("");
+      }}
+    >
+      <input
+        className="input"
+        type="email"
+        required
+        placeholder="Google email to add"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <RolePicker value={role} onChange={setRole} />
+      <button className="btn btn-primary btn-sm" disabled={!email || duplicate}>
+        <Icon name="plus" />
+        Add member
+      </button>
+      {duplicate && <span className="row-sub">Already a member.</span>}
+    </form>
+  );
+}

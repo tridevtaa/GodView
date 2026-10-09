@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
 import ProfileEdit from "./ProfileEdit.jsx";
+import StudentNotes from "./StudentNotes.jsx";
+import StudentResults from "./StudentResults.jsx";
 import { FeeBadge, Photo, feeTitle, formatINR, gradeLabel, relation } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
@@ -76,8 +78,11 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
   );
 }
 
-export default function ProfileModal({ person, mode, schoolId, sessionId, canEdit, onUpdate, onClose }) {
+// canEdit: change the record (owners/admins, current session)
+// canWrite: photos, notes and results (anyone who can see the student, current session)
+export default function ProfileModal({ person, mode, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onClose }) {
   const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState("details");
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
@@ -107,7 +112,7 @@ export default function ProfileModal({ person, mode, schoolId, sessionId, canEdi
         <header className="profile-header">
           <div className="profile-photo">
             <Photo person={person} className="photo-lg" />
-            {canEdit && (
+            {canWrite && (
               <PhotoUpload
                 person={person}
                 kind={mode}
@@ -142,8 +147,26 @@ export default function ProfileModal({ person, mode, schoolId, sessionId, canEdi
           </div>
         </header>
 
+        {isStudent && !editing && (
+          <nav className="tabs" aria-label="Profile sections">
+            {[
+              ["details", "Details"],
+              ["notes", "Notes"],
+              ["results", "Results"],
+            ].map(([value, label]) => (
+              <button key={value} className={tab === value ? "active" : ""} onClick={() => setTab(value)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
+
         <div className="modal-body">
-          {editing ? (
+          {isStudent && !editing && tab === "notes" ? (
+            <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} />
+          ) : isStudent && !editing && tab === "results" ? (
+            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} />
+          ) : editing ? (
             <ProfileEdit
               person={person}
               kind={mode}
