@@ -263,7 +263,12 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
         <section className="fc-dues">
           <div>
             <span className="fc-dues-label">Whole school, per year</span>
-            <strong>{rupees(total)}</strong>
+            <strong>
+              {rupees(total)}
+              {students.length > 0 && (
+                <span className="fc-dues-avg"> (avg {rupees(Math.round(total / students.length))}/student/y)</span>
+              )}
+            </strong>
           </div>
           <p className="row-sub">
             When the fees look right, create the dues: every student gets each instalment with its due date. Running it

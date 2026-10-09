@@ -4240,3 +4240,10 @@ a:hover {
 .fc-row:not(:hover) .fc-split {
   opacity: 0.6;
 }
+
+.fc-dues-avg {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+}
