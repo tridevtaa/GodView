@@ -1,12 +1,18 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../firebase.js";
+import { auth, clearLocalData, db } from "../firebase.js";
 import { LogoMark } from "./Logo.jsx";
 
 const UserContext = createContext(null);
 export const useUser = () => useContext(UserContext);
-export const logOut = () => signOut(auth);
+// Signing out also wipes the cached student data from this browser, so it
+// isn't left behind on shared school computers.
+export async function logOut() {
+  await signOut(auth);
+  await clearLocalData();
+  window.location.reload();
+}
 
 // Staff access is an allowlist: a document in "staff" whose id is the
 // lowercased email. Firestore rules enforce the same check server-side.
