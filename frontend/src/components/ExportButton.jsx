@@ -65,7 +65,7 @@ export default function ExportButton({ school, role, people, label }) {
             else setError("That approval was already used.");
           })
         }
-        title="Approved by the owner — works once"
+        title="Approved by the owner. Works once."
       >
         <Icon name="file" />
         Download export

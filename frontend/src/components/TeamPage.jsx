@@ -209,7 +209,7 @@ function JoinCode({ school }) {
       <div>
         <h2 className="panel-title">School join code</h2>
         <p className="row-sub join-help">
-          Share this with your staff. They sign in with Google, enter it, and request to join — you approve below.
+          Share this with your staff. They sign in with Google, enter it and request to join. You approve them below.
         </p>
       </div>
       <div className="join-code-row">
@@ -334,7 +334,7 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
                   ))}
               </select>
             )}
-            {!assignments.length && <span className="row-sub">No classes yet — they’ll see no students.</span>}
+            {!assignments.length && <span className="row-sub">No classes yet, so they’ll see no students.</span>}
           </div>
         )}
       </div>

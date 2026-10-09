@@ -91,7 +91,7 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
                     <tr key={r.id}>
                       <th scope="row">{r.subject}</th>
                       <td>
-                        {r.marks ?? "—"}
+                        {r.marks ?? "Not entered"}
                         {r.max_marks ? ` / ${r.max_marks}` : ""}
                       </td>
                       <td className="result-pct">{pct(r) !== null ? `${pct(r)}%` : ""}</td>

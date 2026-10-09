@@ -150,7 +150,7 @@ function studentRow(schoolId, d) {
 // --------------------------------------------------------------- run ---
 
 const [school] = await sb(`schools?slug=eq.${slug}&select=id,name`);
-if (!school) throw new Error(`No school with slug "${slug}" in Supabase — create it first.`);
+if (!school) throw new Error(`No school with slug "${slug}" in Supabase. Create it first.`);
 const sessions = await sb(`academic_sessions?school_id=eq.${school.id}&select=id,name`);
 const sessionId = Object.fromEntries(sessions.map((s) => [s.name, s.id]));
 for (const s of ["2025-26", CURRENT_SESSION]) if (!sessionId[s]) throw new Error(`Session ${s} missing for ${slug}`);

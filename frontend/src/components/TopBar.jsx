@@ -1,7 +1,7 @@
 import Logo from "./Logo.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 
-// sections: [[value, label, badgeCount?], …] — already filtered by role.
+// sections: [[value, label, badgeCount?], …], already filtered by role.
 export default function TopBar({ mode, onMode, sections }) {
   return (
     <header className="topbar">
