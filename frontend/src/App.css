@@ -46,6 +46,8 @@
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.14);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.18);
+  --control-sm: 34px; /* small buttons, inputs and selects share one height */
+  --btn-shadow: 0 1px 2px rgba(29, 35, 102, 0.06);
 
   --control-h: 38px;
   --page-w: 1280px;
@@ -131,36 +133,49 @@ a:hover {
   justify-content: center;
   gap: 8px;
   height: var(--control-h);
-  padding: 0 14px;
+  padding: 0 18px;
   border: 1px solid transparent;
   border-radius: var(--r);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
-  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+  vertical-align: middle;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s, box-shadow 0.12s;
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
+  box-shadow: none;
 }
 
+.btn:active:not(:disabled) {
+  translate: 0 1px;
+}
+
+/* Primary: solid brand with a soft brand glow. */
 .btn-primary {
   background: var(--brand);
   color: #fff;
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 2px 8px rgba(91, 104, 196, 0.28);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--brand-hover);
+  box-shadow: 0 4px 12px rgba(91, 104, 196, 0.34);
 }
 
+/* Secondary: white with a hairline border instead of a floating shadow, so it
+   sits cleanly on white cards and on the tinted page alike. */
 .btn-secondary {
+  border-color: var(--border);
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--btn-shadow);
 }
 
 .btn-secondary:hover:not(:disabled) {
+  border-color: var(--border-strong);
   background: var(--surface-2);
 }
 
@@ -171,8 +186,8 @@ a:hover {
 }
 
 .btn-sm {
-  height: 30px;
-  padding: 0 10px;
+  height: var(--control-sm);
+  padding: 0 14px;
   font-size: 13px;
   gap: 6px;
 }
@@ -1511,25 +1526,39 @@ a:hover {
   background: rgba(91, 104, 196, 0.15);
 }
 
+/* Inputs and selects match small buttons: same height, pill shape. */
 .select,
 .input {
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-field);
+  height: var(--control-sm);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
   background: var(--surface);
+  box-shadow: var(--btn-shadow);
   font-size: 13px;
+}
+
+.select {
+  padding-right: 32px;
+  appearance: none;
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6b6b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.select:hover:not(:disabled) {
+  border-color: var(--border-strong);
 }
 
 .input {
   flex: 1;
   min-width: 200px;
-  height: 32px;
 }
 
 .select-sm {
-  height: 26px;
-  border-radius: 999px;
+  height: 28px;
+  padding: 0 28px 0 10px;
+  background-position: right 9px center;
   font-size: 12px;
 }
 
@@ -1901,8 +1930,8 @@ a:hover {
 
 .join-inline {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 12px;
 }
 
 .join-label {
@@ -1914,7 +1943,12 @@ a:hover {
 }
 
 .join-inline .join-code {
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-sm);
+  padding: 0 14px;
+  border-radius: var(--r);
+  font-size: 14px;
 }
 
 .school-panel.is-editing .school-body {
