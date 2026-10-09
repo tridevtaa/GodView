@@ -1948,3 +1948,12 @@ a:hover {
     height: 32px;
   }
 }
+
+.request-form .summary-list {
+  margin: 4px 0 8px;
+}
+
+.summary-wrap {
+  max-width: 60%;
+  text-align: right;
+}

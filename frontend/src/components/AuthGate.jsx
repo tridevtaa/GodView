@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships, logoUrl, lookupJoinCode, requestAccess } from "../data/api.js";
+import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess } from "../data/api.js";
+import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 
@@ -183,6 +184,80 @@ function RequestAccess({ user, onSchool }) {
   );
 }
 
+const when = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const classList = (classes = []) =>
+  classes.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ");
+
+// For someone signed in without access: their latest request's status, or
+// the join form if they haven't asked (or want to ask again / update it).
+function JoinStatus({ requests = [], user, onSchool }) {
+  const latest = requests[0];
+  const [joining, setJoining] = useState(!latest || latest.status === "approved");
+
+  useEffect(() => {
+    if (!joining && latest) onSchool(latest);
+  }, [joining, latest, onSchool]);
+
+  if (joining) return <RequestAccess user={user} onSchool={onSchool} />;
+
+  const pending = latest.status === "pending";
+  return (
+    <div className="request-form">
+      <h1>{pending ? "Waiting for approval" : "Request not approved"}</h1>
+      <p className="muted">
+        {pending
+          ? `${latest.school_name}’s owner hasn’t reviewed your request yet. You’ll get access as soon as they approve it.`
+          : `${latest.school_name} didn’t approve your request${latest.decided_at ? ` on ${when(latest.decided_at)}` : ""}. Check with the school office, then you can ask again.`}
+      </p>
+      <dl className="summary-list">
+        <div>
+          <dt>School</dt>
+          <dd>{latest.school_name}</dd>
+        </div>
+        <div>
+          <dt>Sent</dt>
+          <dd>{when(latest.created_at)}</dd>
+        </div>
+        {latest.designation && (
+          <div>
+            <dt>As</dt>
+            <dd>{latest.designation}</dd>
+          </div>
+        )}
+        {latest.requested_classes?.length > 0 && (
+          <div>
+            <dt>Classes</dt>
+            <dd className="summary-wrap">{classList(latest.requested_classes)}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span className={`badge ${pending ? "badge-warning" : "badge-danger"}`}>{pending ? "Pending" : "Not approved"}</span>
+          </dd>
+        </div>
+      </dl>
+      {pending && (
+        <button className="btn btn-primary btn-block" onClick={() => window.location.reload()}>
+          Check again
+        </button>
+      )}
+      <button
+        className={`btn btn-block ${pending ? "btn-secondary" : "btn-primary"}`}
+        onClick={() => {
+          onSchool(null);
+          setJoining(true);
+        }}
+      >
+        {pending ? "Update request" : "Request again"}
+      </button>
+      <button className="btn btn-secondary btn-block" onClick={logOut}>
+        Sign out
+      </button>
+    </div>
+  );
+}
+
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
   const [error, setError] = useState("");
@@ -200,7 +275,10 @@ export default function AuthGate({ children }) {
       setState({ status: "checking" });
       try {
         const memberships = await listMemberships(u.email);
-        if (!memberships.length) return setState({ status: "denied", user: toUser(u) });
+        if (!memberships.length) {
+          const requests = await myAccessRequests().catch(() => []);
+          return setState({ status: "denied", user: toUser(u), requests });
+        }
         const { school, role } = memberships[0];
         setState({ status: "member", user: toUser(u), school, role, schools: memberships });
       } catch {
@@ -251,7 +329,7 @@ export default function AuthGate({ children }) {
         {state.status === "loading" || state.status === "checking" ? (
           <p className="muted">Checking access…</p>
         ) : state.status === "denied" ? (
-          <RequestAccess user={state.user} onSchool={setJoinSchool} />
+          <JoinStatus requests={state.requests} user={state.user} onSchool={setJoinSchool} />
         ) : (
           <>
             <h1>Sign in to Godview</h1>
