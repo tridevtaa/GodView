@@ -35,19 +35,21 @@ export default function FeesPage({ school, role, session, students, grades, onGr
 
   const load = useCallback(async () => {
     if (!session) return;
-    try {
-      const [s, m, c] = await Promise.all([feeSessionSummary(session.id), feeMonthlyCollection(session.id), feeClassSummary(session.id)]);
-      setSummary(s);
-      setMonthly(m);
-      setByClass(c);
-      setError("");
-    } catch (err) {
-      setError(
-        err?.code === "PGRST205" || err?.code === "PGRST202"
+    // Each part loads on its own, so one slow chart doesn't blank the page.
+    const [s, m, c] = await Promise.allSettled([feeSessionSummary(session.id), feeMonthlyCollection(session.id), feeClassSummary(session.id)]);
+    if (s.status === "fulfilled") setSummary(s.value);
+    if (m.status === "fulfilled") setMonthly(m.value);
+    if (c.status === "fulfilled") setByClass(c.value);
+    const err = [s, m, c].find((r) => r.status === "rejected")?.reason;
+    setError(
+      !err
+        ? ""
+        : err.code === "PGRST205" || err.code === "PGRST202"
           ? "Fee analytics aren’t set up in the database yet. The latest database update needs to be applied first."
-          : "Couldn’t load fees. Check your connection and try again."
-      );
-    }
+          : err.code === "57014"
+            ? "Some fee figures took too long to work out. Reload to try again."
+            : `Couldn’t load some fee figures (${err.code || err.message || "network"}). Reload to try again.`
+    );
   }, [session]);
 
   useEffect(() => {
