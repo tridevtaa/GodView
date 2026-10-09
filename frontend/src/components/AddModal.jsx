@@ -5,13 +5,11 @@ const FIELDS = {
   students: [
     ["name", "Full name", "text"],
     ["gender", "Gender", ["F", "M"]],
-    ["parent_name", "Parent name", "text"],
+    ["parent_name", "Father's name", "text"],
     ["class", "Grade", "text"],
     ["section", "Section", "text"],
     ["admission_no", "Admission no.", "text"],
     ["parent_phone", "Parent phone", "tel"],
-    ["fee_status", "Fee status", ["paid", "due", "overdue"]],
-    ["photo_url", "Photo URL (optional)", "url"],
   ],
   employees: [
     ["name", "Full name", "text"],
@@ -20,11 +18,10 @@ const FIELDS = {
     ["employee_no", "Employee no.", "text"],
     ["phone", "Phone", "tel"],
     ["email", "Email", "email"],
-    ["photo_url", "Photo URL (optional)", "url"],
   ],
 };
 
-const OPTIONAL = new Set(["photo_url", "parent_phone", "phone", "email"]);
+const OPTIONAL = new Set(["parent_phone", "phone", "email", "section", "employee_no", "department"]);
 
 export default function AddModal({ mode, onClose, onSave }) {
   const fields = FIELDS[mode];

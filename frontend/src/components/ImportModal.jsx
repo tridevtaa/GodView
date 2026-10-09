@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import { doc, writeBatch } from "firebase/firestore";
-import { db } from "../firebase.js";
-import { checkHeaders, planImport } from "../data/studentImport.js";
-import { stamp } from "../data/usePeople.js";
+import { checkHeaders, planImport, studentId } from "../data/studentImport.js";
+import { applyImport } from "../data/api.js";
 import Icon from "./Icon.jsx";
 
 // Academic sessions start in April: Oct 2026 -> "2026-27", Feb 2027 -> "2026-27".
@@ -22,7 +20,9 @@ async function readRows(file) {
   return rows;
 }
 
-export default function ImportModal({ students, onClose, onDone }) {
+// `students` are the people in the session being viewed; anyone among them who
+// isn't in the file can be marked as left.
+export default function ImportModal({ schoolId, students, onClose, onDone }) {
   const [file, setFile] = useState(null);
   const [rows, setRows] = useState(null);
   const [session, setSession] = useState(currentSession);
@@ -53,28 +53,30 @@ export default function ImportModal({ students, onClose, onDone }) {
     }
   }
 
-  const plan = rows ? planImport(rows, students, { session, today: today() }) : null;
-  const writes = plan ? [...plan.upserts.map((w) => ({ ...w, merge: true })), ...(markLeft ? plan.leaving : [])] : [];
+  // planImport matches by registration number, so key existing students the
+  // same way and keep their database ids to mark leavers.
+  const existing = students.map((p) => ({ id: studentId(p.admission_no), uuid: p.id, status: p.status }));
+  const uuidOf = new Map(existing.map((e) => [e.id, e.uuid]));
+  const plan = rows ? planImport(rows, existing, { session, today: today() }) : null;
+  const leaving = plan && markLeft ? plan.leaving.map((l) => ({ id: uuidOf.get(l.id) })) : [];
+  const writes = plan ? [...plan.upserts, ...leaving] : [];
 
   async function confirm() {
     setStatus("saving");
     setError("");
     try {
-      for (let i = 0; i < writes.length; i += 400) {
-        const batch = writeBatch(db);
-        for (const w of writes.slice(i, i + 400)) {
-          const ref = doc(db, "students", w.id);
-          if (w.merge) batch.set(ref, { ...w.data, ...stamp() }, { merge: true });
-          else batch.update(ref, { ...w.data, ...stamp() });
-        }
-        await batch.commit();
-        setProgress(`${Math.min(i + 400, writes.length)} / ${writes.length}`);
-      }
+      await applyImport(schoolId, session, { upserts: plan.upserts, leaving }, (done, total) =>
+        setProgress(`${done} / ${total}`)
+      );
       setStatus("done");
       onDone();
-    } catch {
+    } catch (err) {
       setStatus("ready");
-      setError("Import stopped part-way. It’s safe to run the same file again.");
+      setError(
+        /academic_sessions/.test(err?.message ?? "") || err?.code === "42501"
+          ? `Session ${session} doesn’t exist yet and only a school admin can create it.`
+          : "Import stopped part-way. It’s safe to run the same file again."
+      );
     }
   }
 

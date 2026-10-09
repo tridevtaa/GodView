@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { auth, db } from "../firebase.js";
+import { updateEmployee, updateStudent } from "../data/api.js";
 
 // [field, label, input type or option list, required]
 const FIELDS = {
@@ -17,7 +16,6 @@ const FIELDS = {
       ["section", "Section", "text"],
       ["stream", "Stream", "text"],
       ["roll_no", "Roll no.", "text"],
-      ["session", "Session", "text"],
     ]],
     ["Family", [
       ["parent_name", "Father", "text"],
@@ -41,7 +39,7 @@ const FIELDS = {
       ["category", "Category", "text"],
       ["religion", "Religion", "text"],
       ["srn", "SRN", "text"],
-      ["aadhaar", "Aadhaar", "text"],
+      ["aadhaar", "Aadhaar (last 4 digits)", "text"],
     ]],
   ],
   employees: [
@@ -62,7 +60,7 @@ const GENDER_LABEL = { "": "—", F: "Female", M: "Male" };
 const optionLabel = (key, opt) =>
   key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "—";
 
-export default function ProfileEdit({ person, kind, onSaved, onCancel }) {
+export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);
   const initial = Object.fromEntries(
     fields.map(([key]) => [key, String(person[key] ?? (key === "status" ? "active" : ""))])
@@ -83,14 +81,9 @@ export default function ProfileEdit({ person, kind, onSaved, onCancel }) {
     setSaving(true);
     setError("");
     try {
-      const extra = changes.status === "left" ? { left_as_of: new Date().toISOString().slice(0, 10) } : {};
-      await updateDoc(doc(db, kind, person.id), {
-        ...changes,
-        ...extra,
-        updated_at: serverTimestamp(),
-        updated_by: auth.currentUser?.email ?? "",
-      });
-      onSaved({ ...changes, ...extra });
+      const saved =
+        kind === "students" ? await updateStudent(person, sessionId, changes) : await updateEmployee(person, changes);
+      onSaved(saved);
     } catch {
       setError("Couldn’t save. Check your connection and that you have access, then try again.");
       setSaving(false);

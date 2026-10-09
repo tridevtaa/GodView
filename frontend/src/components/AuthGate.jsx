@@ -1,55 +1,88 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, clearLocalData, db } from "../firebase.js";
+import { supabase } from "../supabase.js";
+import { listMemberships } from "../data/api.js";
 import { LogoMark } from "./Logo.jsx";
 
-const UserContext = createContext(null);
-export const useUser = () => useContext(UserContext);
-// Signing out also wipes the cached student data from this browser, so it
-// isn't left behind on shared school computers.
-export async function logOut() {
-  await signOut(auth);
-  await clearLocalData();
-  window.location.reload();
-}
+// { user: { email, displayName, photoURL }, school: { id, name, slug }, role }
+const AuthContext = createContext(null);
+export const useAuth = () => useContext(AuthContext);
+export const useUser = () => useContext(AuthContext)?.user;
 
-// Staff access is an allowlist: a document in "staff" whose id is the
-// lowercased email. Firestore rules enforce the same check server-side.
-async function isStaff(user) {
-  if (!user.emailVerified || !user.email) return false;
+// The Firebase version of the app cached student records in IndexedDB
+// ("firestore/…" databases). Remove them so no copy lingers on shared computers.
+async function clearLegacyCaches() {
   try {
-    return (await getDoc(doc(db, "staff", user.email.toLowerCase()))).exists();
+    const dbs = (await indexedDB.databases?.()) ?? [];
+    dbs.filter((d) => d.name?.startsWith("firestore/")).forEach((d) => indexedDB.deleteDatabase(d.name));
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("godview.") || k.startsWith("firebase:"))
+      .forEach((k) => localStorage.removeItem(k));
   } catch {
-    return false;
+    // Storage blocked; nothing to clear.
   }
 }
+
+export async function logOut() {
+  await supabase.auth.signOut();
+  await clearLegacyCaches();
+  window.location.assign("/");
+}
+
+const toUser = (u) => ({
+  email: u.email,
+  displayName: u.user_metadata?.full_name || u.user_metadata?.name || "",
+  photoURL: u.user_metadata?.avatar_url || u.user_metadata?.picture || "",
+});
 
 export default function AuthGate({ children }) {
   const [state, setState] = useState({ status: "loading" });
   const [error, setError] = useState("");
 
-  useEffect(
-    () =>
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) return setState({ status: "signed-out" });
-        setState({ status: "checking" });
-        setState((await isStaff(user)) ? { status: "staff", user } : { status: "denied", user });
-      }),
-    []
-  );
+  useEffect(() => {
+    clearLegacyCaches();
+    let current = null;
+
+    async function resolve(session) {
+      const u = session?.user;
+      if (!u) return setState({ status: "signed-out" });
+      if (current === u.id) return; // token refreshes re-fire this
+      current = u.id;
+      setState({ status: "checking" });
+      try {
+        const memberships = await listMemberships(u.email);
+        if (!memberships.length) return setState({ status: "denied", user: toUser(u) });
+        const { school, role } = memberships[0];
+        setState({ status: "member", user: toUser(u), school, role, schools: memberships });
+      } catch {
+        current = null;
+        setState({ status: "signed-out" });
+        setError("Couldn’t check your access. Please try again.");
+      }
+    }
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) current = null;
+      // Defer: Supabase must not be called from inside this callback.
+      setTimeout(() => resolve(session), 0);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   async function signIn() {
     setError("");
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (e) {
-      if (e.code !== "auth/popup-closed-by-user") setError("Sign-in failed. Please try again.");
-    }
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin, queryParams: { prompt: "select_account" } },
+    });
+    if (err) setError("Sign-in failed. Please try again.");
   }
 
-  if (state.status === "staff") {
-    return <UserContext.Provider value={state.user}>{children}</UserContext.Provider>;
+  if (state.status === "member") {
+    return (
+      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role }}>
+        {children}
+      </AuthContext.Provider>
+    );
   }
 
   return (
@@ -62,7 +95,7 @@ export default function AuthGate({ children }) {
           <>
             <h1>No access</h1>
             <p className="muted">
-              {state.user.email} isn’t on the staff list. Ask an administrator to add you.
+              {state.user.email} isn’t a member of any school on Godview. Ask your school’s administrator to add you.
             </p>
             <button className="btn btn-secondary btn-block" onClick={logOut}>
               Use a different account

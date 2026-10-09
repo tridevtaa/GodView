@@ -1302,3 +1302,38 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Page meta: count + session ---------- */
+
+.page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 8px;
+}
+
+.page-count {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: var(--brand);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.session-btn:hover:not(:disabled) {
+  background: var(--brand-soft);
+}
