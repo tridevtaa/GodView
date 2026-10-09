@@ -4,7 +4,7 @@ import Icon from "./Icon.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 
 // Nursery, KG 1, KG 2, then 1–12; anything unrecognised goes last.
-function gradeRank(klass) {
+export function gradeRank(klass) {
   if (/^nursery$/i.test(klass)) return -3;
   const kg = /^kg\s*(\d)$/i.exec(klass);
   if (kg) return -3 + Number(kg[1]);

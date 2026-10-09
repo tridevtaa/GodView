@@ -5,7 +5,7 @@ import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import FeeSummary from "./components/FeeSummary.jsx";
 import ImportModal from "./components/ImportModal.jsx";
-import GradeFilter, { gradeOptions } from "./components/GradeFilter.jsx";
+import GradeFilter, { gradeOptions, gradeRank } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
 import { gradeLabel } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
@@ -36,7 +36,19 @@ export default function App() {
   const canEdit = source === "supabase" && !viewOnly;
 
   // Students who left stay in the database (history) but aren't shown.
-  const current = useMemo(() => people.filter((p) => p.status !== "left"), [people]);
+  // Ordered by grade (Nursery → 12), then section, then name.
+  const current = useMemo(
+    () =>
+      people
+        .filter((p) => p.status !== "left")
+        .sort(
+          (a, b) =>
+            gradeRank(a.class ?? "") - gradeRank(b.class ?? "") ||
+            String(a.section ?? "").localeCompare(String(b.section ?? "")) ||
+            String(a.name ?? "").localeCompare(String(b.name ?? ""))
+        ),
+    [people]
+  );
   const grades = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
   const inGrade = useMemo(
     () => (mode === "students" && grade ? current.filter((p) => p.class === grade) : current),
@@ -78,7 +90,7 @@ export default function App() {
       <main className="page">
         <div className="page-header">
           <div>
-            <h1>{title}</h1>
+            <h1 className="sr-only">{title}</h1>
             <div className="page-meta">
               <span className="page-count">
                 {loading ? "Loading…" : `${current.length.toLocaleString("en-IN")} ${mode}`}
