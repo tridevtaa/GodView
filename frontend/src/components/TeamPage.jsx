@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addAssignment,
   addMember,
-  decideAccessRequest,
+  approveAccessRequest,
   decideExport,
   listAccessRequests,
   listAssignments,
   listClassSections,
   listExportRequests,
   listMembers,
+  regenerateJoinCode,
+  rejectAccessRequest,
   removeAssignment,
   removeMember,
   setMemberRole,
 } from "../data/api.js";
+import ClassPicker from "./ClassPicker.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -89,6 +92,8 @@ export default function TeamPage({ school, session, me }) {
 
       {error && <p className="notice notice-error">{error}</p>}
 
+      <JoinCode school={school} />
+
       {requests.length > 0 && (
         <section className="panel">
           <h2 className="panel-title">
@@ -98,8 +103,9 @@ export default function TeamPage({ school, session, me }) {
             <AccessRequestRow
               key={r.id}
               request={r}
-              onApprove={act((role) => decideAccessRequest(r, true, role, me))}
-              onReject={act(() => decideAccessRequest(r, false, null, me))}
+              classOptions={classes}
+              onApprove={act((role, picked) => approveAccessRequest(r.id, role, picked))}
+              onReject={act(() => rejectAccessRequest(r.id, me))}
             />
           ))}
         </section>
@@ -148,12 +154,15 @@ export default function TeamPage({ school, session, me }) {
             canAssign={Boolean(session)}
           />
         ))}
-        <AddMember onAdd={act((email, role) => addMember(school.id, email, role))} existing={members} />
+        <AddMember
+          onAdd={act((email, role, details) => addMember(school.id, email, role, details))}
+          existing={members}
+        />
       </section>
 
       <p className="panel-foot">
-        People join by signing in with Google and entering the school code <strong>{school.slug}</strong>, or you can
-        add their Google email above.
+        Staff join by signing in with Google and entering the join code above. You can also add someone’s Google email
+        directly.
       </p>
     </>
   );
@@ -168,23 +177,98 @@ function RolePicker({ value, onChange, disabled }) {
   );
 }
 
-function AccessRequestRow({ request, onApprove, onReject }) {
-  const [role, setRole] = useState("teacher");
+function JoinCode({ school }) {
+  const [code, setCode] = useState(school.join_code);
+  const [state, setState] = useState("idle"); // idle | copied | confirm | busy | error
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setState("copied");
+      setTimeout(() => setState("idle"), 1500);
+    } catch {
+      setState("idle");
+    }
+  }
+
+  async function regenerate() {
+    setState("busy");
+    try {
+      setCode(await regenerateJoinCode(school.id));
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  }
+
   return (
-    <div className="row">
+    <section className="panel join-panel">
+      <div>
+        <h2 className="panel-title">School join code</h2>
+        <p className="row-sub join-help">
+          Share this with your staff. They sign in with Google, enter it, and request to join — you approve below.
+        </p>
+      </div>
+      <div className="join-code-row">
+        <code className="join-code">{code}</code>
+        <button className="btn btn-secondary btn-sm" onClick={copy}>
+          {state === "copied" ? "Copied" : "Copy"}
+        </button>
+        {state === "confirm" ? (
+          <>
+            <span className="row-sub">The old code will stop working.</span>
+            <button className="btn btn-secondary btn-sm" onClick={() => setState("idle")}>
+              Cancel
+            </button>
+            <button className="btn btn-danger btn-sm" onClick={regenerate}>
+              Regenerate
+            </button>
+          </>
+        ) : (
+          <button className="btn btn-secondary btn-sm" onClick={() => setState("confirm")} disabled={state === "busy"}>
+            New code
+          </button>
+        )}
+        {state === "error" && <span className="field-error">Couldn’t change the code.</span>}
+      </div>
+    </section>
+  );
+}
+
+function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
+  const [role, setRole] = useState("teacher");
+  const [picked, setPicked] = useState(request.requested_classes ?? []);
+  const [showClasses, setShowClasses] = useState(false);
+  const facts = [request.designation, request.phone, request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  const summary = picked.length
+    ? picked.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ")
+    : "No classes chosen";
+
+  return (
+    <div className="row row-request">
       <div className="row-main">
         <div className="row-title">{request.name || request.email}</div>
         <div className="row-sub">
           {request.email} · {fmtDate(request.created_at)}
-          {request.message ? ` · “${request.message}”` : ""}
         </div>
+        {facts.length > 0 && <div className="row-sub">{facts.join(" · ")}</div>}
+        {request.message && <div className="row-sub">“{request.message}”</div>}
+        {role === "teacher" && (
+          <div className="request-classes">
+            <button type="button" className="link-btn" onClick={() => setShowClasses((v) => !v)}>
+              {showClasses ? "Done" : "Classes:"}
+            </button>{" "}
+            {!showClasses && <span className="row-sub">{summary}</span>}
+            {showClasses && <ClassPicker options={classOptions} value={picked} onChange={setPicked} />}
+          </div>
+        )}
       </div>
       <div className="row-actions">
         <RolePicker value={role} onChange={setRole} />
         <button className="btn btn-secondary btn-sm" onClick={onReject}>
           Reject
         </button>
-        <button className="btn btn-primary btn-sm" onClick={() => onApprove(role)}>
+        <button className="btn btn-primary btn-sm" onClick={() => onApprove(role, role === "teacher" ? picked : [])}>
           Approve
         </button>
       </div>
@@ -210,7 +294,10 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
     <div className="row row-member">
       <div className="row-main">
         <div className="row-title">
-          {member.email} {isMe && <span className="badge badge-neutral">You</span>}
+          {member.full_name || member.email} {isMe && <span className="badge badge-neutral">You</span>}
+        </div>
+        <div className="row-sub">
+          {[member.full_name && member.email, member.designation, member.phone].filter(Boolean).join(" · ")}
         </div>
         <div className="row-sub">{isOwner ? "Full control, manages users" : ROLE_HINT[member.role]}</div>
         {member.role === "teacher" && (
@@ -276,6 +363,8 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
 
 function AddMember({ onAdd, existing }) {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [designation, setDesignation] = useState("");
   const [role, setRole] = useState("teacher");
   const duplicate = existing.some((m) => m.email === email.trim().toLowerCase());
   return (
@@ -284,18 +373,15 @@ function AddMember({ onAdd, existing }) {
       onSubmit={(e) => {
         e.preventDefault();
         if (duplicate) return;
-        onAdd(email, role);
+        onAdd(email, role, { full_name: fullName, designation });
         setEmail("");
+        setFullName("");
+        setDesignation("");
       }}
     >
-      <input
-        className="input"
-        type="email"
-        required
-        placeholder="Google email to add"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      <input className="input" type="email" required placeholder="Google email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={120} />
+      <input className="input" placeholder="Designation" value={designation} onChange={(e) => setDesignation(e.target.value)} maxLength={80} />
       <RolePicker value={role} onChange={setRole} />
       <button className="btn btn-primary btn-sm" disabled={!email || duplicate}>
         <Icon name="plus" />

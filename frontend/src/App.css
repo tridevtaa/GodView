@@ -1691,3 +1691,129 @@ a:hover {
   font-size: 11px;
   font-weight: 600;
 }
+
+/* ---------- Join flow ---------- */
+
+.auth-card:has(.request-form-wide) {
+  max-width: 560px;
+}
+
+.code-input {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-form .form-grid input {
+  box-shadow: none;
+}
+
+.field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.class-picker {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-field);
+}
+
+.class-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+}
+
+.class-row + .class-row {
+  border-top: 1px solid var(--border);
+}
+
+.class-name {
+  flex: none;
+  width: 72px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.class-row .chips {
+  margin-top: 0;
+}
+
+.chip-toggle {
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.chip-toggle.on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.join-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 8px 22px 16px;
+}
+
+.join-panel .panel-title {
+  padding: 8px 0 2px;
+}
+
+.join-help {
+  max-width: 460px;
+}
+
+.join-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.join-code {
+  padding: 6px 14px;
+  border-radius: var(--r-field);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.row-request {
+  align-items: flex-start;
+}
+
+.request-classes {
+  margin-top: 6px;
+}
+
+.request-classes .class-picker {
+  margin-top: 8px;
+}
+
+.row-add .input {
+  min-width: 140px;
+}

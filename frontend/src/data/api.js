@@ -31,7 +31,7 @@ export async function listMemberships(email) {
   const rows = must(
     await supabase
       .from("school_members")
-      .select("role, school:schools(id, name, slug)")
+      .select("role, full_name, school:schools(id, name, slug, join_code)")
       .eq("email", email.toLowerCase())
   );
   return rows.filter((r) => r.school);
@@ -283,8 +283,13 @@ export async function listMembers(schoolId) {
   return must(await supabase.from("school_members").select("*").eq("school_id", schoolId).order("email"));
 }
 
-export async function addMember(schoolId, email, role) {
-  must(await supabase.from("school_members").insert({ school_id: schoolId, email: email.trim().toLowerCase(), role }));
+export async function addMember(schoolId, email, role, details = {}) {
+  const clean = Object.fromEntries(Object.entries(details).map(([k, v]) => [k, v?.trim() || null]));
+  must(
+    await supabase
+      .from("school_members")
+      .insert({ school_id: schoolId, email: email.trim().toLowerCase(), role, ...clean })
+  );
 }
 
 export async function setMemberRole(schoolId, email, role) {
@@ -315,8 +320,24 @@ export async function removeAssignment(id) {
 
 // ------------------------------------------------------ access requests ---
 
-export async function requestAccess(schoolCode, name, note) {
-  must(await supabase.rpc("request_access", { school_code: schoolCode, display_name: name, note }));
+// School name, current session and class list for a join code; null if unknown.
+export async function lookupJoinCode(code) {
+  const rows = must(await supabase.rpc("lookup_join_code", { code }));
+  return rows?.[0] ?? null;
+}
+
+export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes }) {
+  must(
+    await supabase.rpc("request_access", {
+      p_code: code,
+      p_full_name: fullName,
+      p_designation: designation,
+      p_phone: phone,
+      p_subjects: subjects,
+      p_note: note,
+      p_classes: classes,
+    })
+  );
 }
 
 export async function listAccessRequests(schoolId) {
@@ -330,14 +351,26 @@ export async function listAccessRequests(schoolId) {
   );
 }
 
-export async function decideAccessRequest(request, approve, role, decidedBy) {
-  if (approve) await addMember(request.school_id, request.email, role);
+// Approve: member + class assignments in one transaction (owner only).
+export async function approveAccessRequest(id, role, classes) {
+  must(await supabase.rpc("approve_access_request", { request: id, as_role: role, classes }));
+}
+
+export async function rejectAccessRequest(id, decidedBy) {
   must(
     await supabase
       .from("access_requests")
-      .update({ status: approve ? "approved" : "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
-      .eq("id", request.id)
+      .update({ status: "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
+      .eq("id", id)
   );
+}
+
+export async function regenerateJoinCode(schoolId) {
+  return must(await supabase.rpc("regenerate_join_code", { school: schoolId }));
+}
+
+export async function updateMemberDetails(schoolId, email, details) {
+  must(await supabase.from("school_members").update(details).eq("school_id", schoolId).eq("email", email));
 }
 
 // ------------------------------------------------------ export requests ---
