@@ -178,7 +178,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const tabs = [
     ["details", "Details"],
     ...(isAdmin ? [["fees", "Fees"], ["parents", "Parents"]] : []),
-    ["notes", "Notes"],
+    ["notes", "Diary"],
     ["results", "Results"],
   ];
 
@@ -303,7 +303,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               {isStudent && canWrite && (
                 <div className="profile-quick">
                   <button className="btn btn-secondary btn-sm" onClick={() => addTo("notes")}>
-                    <Icon name="edit" /> Add note
+                    <Icon name="edit" /> Write in diary
                   </button>
                   <button className="btn btn-secondary btn-sm" onClick={() => addTo("results")}>
                     <Icon name="plus" /> Add result

@@ -323,7 +323,7 @@
 .segmented.pa-tabs {
   align-self: stretch;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, minmax(0, auto));
 }
 
 .segmented.pa-tabs button {
@@ -721,3 +721,59 @@
   white-space: nowrap;
 }
 
+
+/* Diary and homework */
+.pa-diary .diary-page {
+  box-shadow: var(--shadow-sm);
+}
+
+.pa-hw {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pa-hw-item.is-new {
+  box-shadow: inset 3px 0 0 var(--fee-overdue), var(--shadow-sm);
+}
+
+.pa-hw-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-hw-due {
+  margin-left: auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pa-hw-due.is-soon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.pa-hw-body {
+  margin: 8px 0 6px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.segmented.pa-tabs {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+@media (max-width: 420px) {
+  .segmented.pa-tabs button {
+    font-size: 12px;
+  }
+}

@@ -241,16 +241,21 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
 
 export async function listNotes(studentId) {
   return must(
-    await supabase.from("student_notes").select("*").eq("student_id", studentId).order("created_at", { ascending: false })
+    await supabase
+      .from("student_notes")
+      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false })
   );
 }
 
-export async function addNote(schoolId, studentId, body, shared = false) {
+// A diary page. kind: remark | appreciation | concern | reminder.
+export async function addNote(schoolId, studentId, body, shared = false, kind = "remark") {
   return must(
     await supabase
       .from("student_notes")
-      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared })
-      .select()
+      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared, kind })
+      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
       .single()
   );
 }
@@ -915,7 +920,7 @@ export async function parentNotes(studentId) {
   return must(
     await supabase
       .from("student_notes")
-      .select("id, body, created_at, updated_at")
+      .select("id, body, kind, author_name, author_role, created_at, updated_at, signature:diary_signatures(signed_by, signed_at, reply)")
       .eq("student_id", studentId)
       .eq("shared_with_parents", true)
       .order("created_at", { ascending: false })
@@ -954,4 +959,56 @@ export async function parentUnread() {
 
 export async function markParentSeen(studentId, section) {
   must(await supabase.rpc("mark_parent_seen", { student: studentId, p_section: section }));
+}
+
+// A parent signs a diary page, optionally with a short reply.
+export async function signDiary(noteId, reply) {
+  must(await supabase.rpc("sign_diary", { note: noteId, p_reply: reply || null }));
+}
+
+// ------------------------------------------------------------- homework ---
+
+// Homework the signed-in staff member can see this session (their classes;
+// everything for owners and admins), newest first.
+export async function listHomework(schoolId, sessionId) {
+  return must(
+    await supabase
+      .from("homework")
+      .select("*, students:homework_students(student_id)")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(300)
+  );
+}
+
+// Sets homework for a class (section null = every section), or only for
+// `studentIds` in it.
+export async function addHomework(schoolId, sessionId, { klass, section, subject, body, due_date }, studentIds = []) {
+  const saved = must(
+    await supabase
+      .from("homework")
+      .insert({ school_id: schoolId, session_id: sessionId, class: klass, section: section || null, subject: subject?.trim() || null, body: body.trim(), due_date: due_date || null })
+      .select()
+      .single()
+  );
+  if (studentIds.length) {
+    const { error } = await supabase
+      .from("homework_students")
+      .insert(studentIds.map((id) => ({ homework_id: saved.id, student_id: id, school_id: schoolId })));
+    if (error) {
+      await supabase.from("homework").delete().eq("id", saved.id); // don't leave it set for the whole class
+      throw error;
+    }
+  }
+  return { ...saved, students: studentIds.map((student_id) => ({ student_id })) };
+}
+
+export async function deleteHomework(id) {
+  must(await supabase.from("homework").delete().eq("id", id));
+}
+
+// One child's homework (for their parents, and staff who can see them).
+export async function childHomework(studentId) {
+  return must(await supabase.rpc("child_homework", { student: studentId }));
 }
