@@ -823,6 +823,7 @@ a:hover {
   width: 100%;
   max-width: 560px;
   max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px); /* the visible screen on phones, not behind Safari's bars */
   overflow: hidden;
   background: var(--surface);
   border-radius: var(--r-xl);
@@ -6288,4 +6289,14 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--danger);
   font-size: 12px;
   text-align: left;
+}
+
+/* Pop-ups: scrolling inside never spills over to the page behind. */
+.modal-backdrop {
+  overscroll-behavior: contain;
+}
+
+.modal-backdrop,
+.modal-backdrop * {
+  overscroll-behavior: contain;
 }
