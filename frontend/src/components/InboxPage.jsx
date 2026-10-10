@@ -78,7 +78,7 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
           <h1 className="page-count">Inbox</h1>
           {!readOnly && (
             <button className="btn btn-primary btn-sm" onClick={() => setPicking((p) => !p)}>
-              <Icon name="edit" /> New
+              <Icon name="plus" /> New
             </button>
           )}
         </div>
