@@ -7995,3 +7995,27 @@ input[type="date"]::-webkit-date-and-time-value {
     gap: 6px;
   }
 }
+
+/* Phones: the student page sits straight on the page (no card), so the
+   content gets the full width inside the page gutter. */
+@media (max-width: 760px) {
+  .profile.profile-full {
+    margin: 0;
+    overflow: visible;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .profile-full .ig-hero {
+    padding: 4px 0 4px;
+  }
+
+  .profile-full .profile-body {
+    padding: 16px 0 24px;
+  }
+
+  .profile-full .profile-group {
+    background: var(--surface);
+  }
+}
