@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
@@ -137,11 +137,42 @@ export default function App() {
   // (Fees, Requests) any student in the session can be opened.
   const profileList = mode === "students" || mode === "employees" ? visible : current;
   const openIndex = profileList.findIndex((p) => p.id === openId);
-  const closeProfile = useCallback(() => setOpenId(null), []);
-  const openStudent = useCallback((id, tab = "details") => {
-    setOpenTab(tab);
-    setOpenId(id);
+  // Students open as a full page at /students/<id>: the browser's (or
+  // phone's) Back button returns to the list, at the same scroll position.
+  const listScroll = useRef(0);
+  const closeProfile = useCallback(() => {
+    if (window.history.state?.student) window.history.back();
+    else {
+      setOpenId(null);
+      if (window.location.pathname.startsWith("/students/")) window.history.replaceState(null, "", "/");
+    }
   }, []);
+  const openStudent = useCallback(
+    (id, tab = "details") => {
+      setOpenTab(tab);
+      if (dataMode === "students") {
+        if (!window.history.state?.student) listScroll.current = window.scrollY;
+        const url = `/students/${id}`;
+        if (window.history.state?.student) window.history.replaceState({ student: id }, "", url);
+        else window.history.pushState({ student: id }, "", url);
+      }
+      setOpenId(id);
+    },
+    [dataMode]
+  );
+  useEffect(() => {
+    const onPop = (e) => setOpenId(e.state?.student ?? null);
+    window.addEventListener("popstate", onPop);
+    // A link straight to /students/<id> (e.g. after a reload).
+    const m = /^\/students\/([0-9a-f-]{36})$/.exec(window.location.pathname);
+    if (m) setOpenId(m[1]);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  const studentPage = openIndex !== -1 && dataMode === "students";
+  // Top of the page when a student opens; back where you were when it closes.
+  useLayoutEffect(() => {
+    window.scrollTo(0, studentPage ? 0 : listScroll.current);
+  }, [studentPage, openId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function switchMode(next) {
     if (next === mode) return;
@@ -188,7 +219,30 @@ export default function App() {
       <InstallPrompt />
 
       <main className="page">
-        {mode === "team" ? (
+        {studentPage ? (
+          <ProfileModal
+            asPage
+            key={`${openId}-${openTab}`}
+            person={profileList[openIndex]}
+            mode={dataMode}
+            initialTab={openTab}
+            school={school}
+            schoolId={school.id}
+            sessionId={sessionId}
+            me={user.email}
+            isAdmin={isAdmin}
+            canEdit={canEdit}
+            canWrite={canWrite}
+            onUpdate={patch}
+            onFeesChanged={reload}
+            onClose={closeProfile}
+            grades={schoolGrades}
+            routes={routes}
+            position={`${openIndex + 1} of ${profileList.length}`}
+            onPrev={openIndex > 0 ? () => openStudent(profileList[openIndex - 1].id) : undefined}
+            onNext={openIndex < profileList.length - 1 ? () => openStudent(profileList[openIndex + 1].id) : undefined}
+          />
+        ) : mode === "team" ? (
           <TeamPage
             school={school}
             session={currentSession}
@@ -333,7 +387,7 @@ export default function App() {
         )}
       </main>
 
-      {openIndex !== -1 && (
+      {openIndex !== -1 && !studentPage && (
         <ProfileModal
           key={`${openId}-${openTab}`}
           person={profileList[openIndex]}
