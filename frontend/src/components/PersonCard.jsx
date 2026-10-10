@@ -26,7 +26,8 @@ export function Photo({ person, className = "card-photo" }) {
   const src = person.photo_src || (isImageUrl(person.photo_url) ? person.photo_url : "");
   const [failed, setFailed] = useState(null); // the src that didn't load
   if (src && failed !== src) {
-    return <img className={className} src={src} alt={person.name} loading="lazy" decoding="async" onError={() => setFailed(src)} />;
+    // crossOrigin lets the app keep a copy of the photo on the device.
+    return <img className={className} src={src} alt={person.name} loading="lazy" decoding="async" crossOrigin="anonymous" onError={() => setFailed(src)} />;
   }
   return (
     <div className={`${className} placeholder`} style={{ background: tintFor(person) }}>
