@@ -1072,3 +1072,26 @@ export async function attendanceOverview(sessionId, day) {
 export async function attendanceMonth(studentId, day) {
   return must(await supabase.rpc("attendance_month", { student: studentId, month: day }));
 }
+
+// Parent login with mobile + password. Parents who set their own password
+// sign in with it directly. Otherwise the starting password (a child's first
+// name + birth year) is checked by the parent-password-login server function,
+// which locks a number after 5 wrong tries and hands back a one-time key to
+// sign in with. Throws Error("wrong" | "locked" | "custom" | "error").
+export async function parentPasswordLogin(ten, password) {
+  const phone = toIndian(ten);
+  const direct = await supabase.auth.signInWithPassword({ phone, password });
+  if (!direct.error) return;
+  const { data, error } = await supabase.functions.invoke("parent-password-login", { body: { phone, password } });
+  if (error || !data) throw new Error("error");
+  if (data.result !== "ok") throw new Error(data.result);
+  const { error: e } = await supabase.auth.signInWithPassword({ phone: data.phone, password: data.key });
+  if (e) throw new Error("error");
+}
+
+// A parent chooses their own password (after which the starting one stops
+// working for them).
+export async function setParentPassword(password) {
+  const { error } = await supabase.auth.updateUser({ password, data: { custom_password: true } });
+  if (error) throw error;
+}
