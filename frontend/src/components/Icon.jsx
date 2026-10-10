@@ -95,8 +95,8 @@ const PARENTS = {
   father: (duo) => (
     <>
       {duo && <path d="M128 132a44 44 0 1 0 0-88 44 44 0 0 0 0 88Z M32 232c4-44 44-76 96-76s92 32 96 76Z" opacity="0.2" />}
-      <circle cx="128" cy="88" r="44" fill="none" stroke="currentColor" strokeWidth="18" />
-      <path d="M32 232c4-44 44-76 96-76s92 32 96 76" fill="none" stroke="currentColor" strokeWidth="18" strokeLinecap="round" />
+      <circle cx="128" cy="88" r="44" fill="none" stroke="currentColor" strokeWidth="16" />
+      <path d="M32 232c4-44 44-76 96-76s92 32 96 76" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
       <path d="M128 160l-16 18 16 54 16-54Z" fill="currentColor" />
     </>
   ),
@@ -104,9 +104,9 @@ const PARENTS = {
   mother: (duo) => (
     <>
       {duo && <path d="M70 150c-20-30-20-76 6-104a72 72 0 0 1 104 0c26 28 26 74 6 104Z M40 232l18-38c12-24 40-38 70-38s58 14 70 38l18 38Z" opacity="0.2" />}
-      <path d="M70 150c-20-30-20-76 6-104a72 72 0 0 1 104 0c26 28 26 74 6 104" fill="none" stroke="currentColor" strokeWidth="18" strokeLinecap="round" />
-      <circle cx="128" cy="96" r="38" fill="none" stroke="currentColor" strokeWidth="18" />
-      <path d="M40 232l18-38c12-24 40-38 70-38s58 14 70 38l18 38" fill="none" stroke="currentColor" strokeWidth="18" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M70 150c-20-30-20-76 6-104a72 72 0 0 1 104 0c26 28 26 74 6 104" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" />
+      <circle cx="128" cy="96" r="38" fill="none" stroke="currentColor" strokeWidth="16" />
+      <path d="M40 232l18-38c12-24 40-38 70-38s58 14 70 38l18 38" fill="none" stroke="currentColor" strokeWidth="16" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
 };

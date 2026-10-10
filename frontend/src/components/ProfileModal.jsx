@@ -85,7 +85,6 @@ const GROUPS = {
               </span>
             );
           },
-          "wide",
         ],
       ],
     ],
@@ -547,7 +546,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                       <li key={label} className={wide ? "is-wide" : ""} title={label}>
                         {FACT_ICON[label] ? (
                           <span className="fact-icon" role="img" aria-label={label}>
-                            <Icon name={FACT_ICON[label]} size={21} weight="duotone" />
+                            <Icon name={FACT_ICON[label]} size={18} />
                           </span>
                         ) : (
                           <span className="fact-label">{label}</span>
