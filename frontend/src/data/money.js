@@ -7,6 +7,7 @@ export const rupees = (n) => inr.format(Number(n) || 0).replace(/\.00$/, "");
 export function rupeesShort(n) {
   const v = Number(n) || 0;
   if (Math.abs(v) >= 1e7) return `₹${(v / 1e7).toFixed(2).replace(/\.?0+$/, "")} Cr`;
+  if (Math.abs(v) >= 1e5) return `₹${(v / 1e5).toFixed(1).replace(/\.0$/, "")} L`;
   return rupees(v);
 }
 

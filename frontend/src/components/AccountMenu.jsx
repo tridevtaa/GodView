@@ -3,7 +3,7 @@ import { logOut, useAuth } from "./AuthGate.jsx";
 import { useDismiss } from "./useDismiss.js";
 import Icon from "./Icon.jsx";
 
-export default function AccountMenu() {
+export default function AccountMenu({ onSettings }) {
   const { user, school, role } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, useCallback(() => setOpen(false), []));
@@ -23,6 +23,19 @@ export default function AccountMenu() {
               {{ owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" }[role]} · {school?.name}
             </div>
           </div>
+          {onSettings && (
+            <button
+              role="menuitem"
+              className="menu-item"
+              onClick={() => {
+                setOpen(false);
+                onSettings();
+              }}
+            >
+              <Icon name="settings" />
+              School settings
+            </button>
+          )}
           <button role="menuitem" className="menu-item" onClick={logOut}>
             <Icon name="logout" />
             Sign out

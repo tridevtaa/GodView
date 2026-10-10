@@ -25,24 +25,26 @@ import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
+// What each role can do, shown when picking one.
 const ROLE_HINT = {
-  admin: "Everything except managing users; exports need your approval",
-  principal: "Sees students, attendance, homework, requests and staff; can’t change anything",
-  teacher: "Only assigned classes; no personal details; photos, notes and results",
+  teacher: "Their classes only",
+  admin: "Everything except users",
+  principal: "Sees everything, changes nothing",
 };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-// Owner-only: members, roles, class assignments, access and export requests.
-const OWNER_TABS = [
-  ["team", "School & team"],
+const SCHOOL_TABS = [
+  ["profile", "Profile"],
   ["transport", "Transport"],
 ];
 
-// Owner page: Team (requests, exports, members), School (profile, join
-// code) and Fee structure.
-export default function TeamPage({ school, session, me, onSchoolSaved, students, routes = [], onRoutesChanged, tab: shownTab, onTab }) {
-  const [ownTab, setOwnTab] = useState("team");
-  const tab = shownTab ?? ownTab;
+// Owner only, in two places:
+// view "school": School settings (profile and join code, transport).
+// view "access": Staff > App access (join requests, export requests, who
+// can sign in and with what role, class assignments).
+export default function TeamPage({ view = "access", school, session, me, onSchoolSaved, students, routes = [], onRoutesChanged, tab: shownTab, onTab, onCount }) {
+  const [ownTab, setOwnTab] = useState("profile");
+  const tab = shownTab === "transport" ? "transport" : shownTab ? "profile" : ownTab;
   const setTab = onTab ?? setOwnTab;
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
@@ -54,6 +56,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
+    if (view !== "access") return setLoading(false);
     try {
       const [m, a, r, x, c] = await Promise.all([
         listMembers(school.id),
@@ -75,7 +78,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
     } finally {
       setLoading(false);
     }
-  }, [school.id, session]);
+  }, [school.id, session, view]);
 
   useEffect(() => {
     load();
@@ -93,40 +96,38 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
 
   const pendingExports = exports.filter((x) => x.status === "pending");
   const sessionAssignments = assignments.filter((a) => a.session_id === session?.id);
+  const waiting = requests.length + pendingExports.length;
+  useEffect(() => {
+    if (!loading) onCount?.(waiting);
+  }, [waiting, loading, onCount]);
 
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <h1 className="sr-only">Owner</h1>
+  if (view === "school") {
+    return (
+      <>
+        <div className="page-header">
           <div className="page-meta">
-            <span className="page-count">Owner</span>
-            <nav className="segmented segmented-sm" aria-label="Owner sections">
-              {OWNER_TABS.map(([v, l]) => (
+            <h1 className="page-count">School</h1>
+            <nav className="segmented segmented-sm" aria-label="School settings">
+              {SCHOOL_TABS.map(([v, l]) => (
                 <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
                   {l}
-                  {v === "team" && requests.length + pendingExports.length > 0 && (
-                    <span className="seg-count">{requests.length + pendingExports.length}</span>
-                  )}
                 </button>
               ))}
             </nav>
           </div>
         </div>
-      </div>
+        {tab === "transport" ? (
+          <TransportRoutes school={school} routes={routes} students={students} onChanged={onRoutesChanged} />
+        ) : (
+          <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
+        )}
+      </>
+    );
+  }
 
+  return (
+    <>
       {error && <p className="notice notice-error">{error}</p>}
-
-      {tab === "transport" && <TransportRoutes school={school} routes={routes} students={students} onChanged={onRoutesChanged} />}
-
-      {tab === "team" && (
-      <>
-      <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
-
-      <p className="row-sub owner-meta">
-        {loading ? "Loading…" : `${members.length} members`}
-        {session ? ` · classes shown for ${session.name}` : ""}
-      </p>
 
       {requests.length > 0 && (
         <section className="panel">
@@ -174,7 +175,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
 
       <section className="panel">
         <div className="members-head">
-          <h2 className="panel-title">Members</h2>
+          <h2 className="panel-title">Who can sign in</h2>
           <nav className="segmented members-tabs" aria-label="Member groups">
             {MEMBER_GROUPS.map(([group, title, short]) => (
               <button key={group} className={memberTab === group ? "active" : ""} onClick={() => setMemberTab(group)}>
@@ -185,9 +186,10 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
             ))}
           </nav>
         </div>
+        {memberTab === "teachers" && <p className="row-sub members-hint">★ marks the class teacher, who takes attendance.</p>}
         {MEMBER_GROUPS.filter(([group]) => group === memberTab).map(([group, title]) => {
           const list = members.filter((m) => memberGroup(m) === group).sort((x, y) => (x.full_name || x.email).localeCompare(y.full_name || y.email));
-          if (!list.length) return <p key={group} className="row-sub members-empty">No {title.toLowerCase()} yet.</p>;
+          if (!list.length) return <p key={group} className="row-sub members-empty">{loading ? "Loading…" : `No ${title.toLowerCase()} yet.`}</p>;
           return (
             <div key={group} className="member-group">
         {list.map((m) => (
@@ -225,13 +227,6 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
           defaultDesignation={memberTab === "teachers" ? "Teacher" : ""}
         />
       </section>
-
-      <p className="panel-foot">
-        Staff join by signing in with Google and entering the school’s join code (on the school card above). You can
-        also add someone’s Google email directly.
-      </p>
-      </>
-      )}
     </>
   );
 }
@@ -253,10 +248,12 @@ const memberGroup = (m) => {
 
 function RolePicker({ value, onChange, disabled }) {
   return (
-    <select className="select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-      <option value="teacher">Teacher</option>
-      <option value="admin">Admin</option>
-      <option value="principal">Principal</option>
+    <select className="select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} title={ROLE_HINT[value]}>
+      {["teacher", "admin", "principal"].map((r) => (
+        <option key={r} value={r} title={ROLE_HINT[r]}>
+          {ROLE_LABEL[r]}
+        </option>
+      ))}
     </select>
   );
 }
@@ -286,7 +283,7 @@ function JoinCode({ school }) {
   }
 
   return (
-    <div className="join-inline" title="Staff sign in with Google, enter this code and ask to join. You approve them below.">
+    <div className="join-inline" title="Staff sign in with Google and enter this code. You approve them in Staff, App access.">
       <span className="join-label">Join code</span>
       <div className="join-code-row">
         <code className="join-code">{code}</code>
@@ -378,7 +375,6 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
         <div className="row-sub">
           {[member.full_name && member.email, member.designation, member.phone].filter(Boolean).join(" · ")}
         </div>
-        <div className="row-sub">{isOwner ? "Full control, manages users" : ROLE_HINT[member.role]}</div>
         {member.role === "teacher" && (
           <div className="chips">
             {assignments.map((a) => (
@@ -420,10 +416,7 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
                   ))}
               </select>
             )}
-            {!assignments.length && <span className="row-sub">No classes yet, so they’ll see no students.</span>}
-            {assignments.length > 0 && !assignments.some((a) => a.is_class_teacher) && (
-              <span className="row-sub ct-hint">Tap ☆ to make them a class’s class teacher (they mark its daily attendance).</span>
-            )}
+            {!assignments.length && <span className="row-sub">No classes yet</span>}
           </div>
         )}
       </div>
@@ -453,12 +446,24 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
   );
 }
 
+// A button first; the form opens when needed.
 function AddMember({ onAdd, existing, defaultRole = "teacher", defaultDesignation = "" }) {
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [designation, setDesignation] = useState(defaultDesignation);
   const [role, setRole] = useState(defaultRole);
   const duplicate = existing.some((m) => m.email === email.trim().toLowerCase());
+  if (!open) {
+    return (
+      <div className="row row-add">
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>
+          <Icon name="plus" />
+          Add someone
+        </button>
+      </div>
+    );
+  }
   return (
     <form
       className="row row-add"
@@ -469,15 +474,18 @@ function AddMember({ onAdd, existing, defaultRole = "teacher", defaultDesignatio
         setEmail("");
         setFullName("");
         setDesignation("");
+        setOpen(false);
       }}
     >
-      <input className="input" type="email" required placeholder="Google email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input className="input" type="email" required autoFocus placeholder="Google email" value={email} onChange={(e) => setEmail(e.target.value)} />
       <input className="input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={120} />
       <input className="input" placeholder="Designation" value={designation} onChange={(e) => setDesignation(e.target.value)} maxLength={80} />
       <RolePicker value={role} onChange={setRole} />
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
+        Cancel
+      </button>
       <button className="btn btn-primary btn-sm" disabled={!email || duplicate}>
-        <Icon name="plus" />
-        Add member
+        Add
       </button>
       {duplicate && <span className="row-sub">Already a member.</span>}
     </form>

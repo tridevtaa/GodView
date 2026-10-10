@@ -264,10 +264,11 @@ function Overview({ session, day, onOpen }) {
   if (error) return <p className="notice notice-error">{error}</p>;
   if (!rows) return <div className="card card-skeleton att-skeleton" />;
 
-  const total = rows.reduce((t, r) => t + Number(r.students), 0);
   const present = rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0);
   const marked = rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0);
   const notMarked = rows.filter((r) => Number(r.unmarked) === Number(r.students));
+  const onLeave = rows.reduce((t, r) => t + Number(r.on_leave), 0);
+  const noTeacher = rows.filter((r) => !r.class_teacher).length;
 
   return (
     <>
@@ -276,27 +277,23 @@ function Overview({ session, day, onOpen }) {
           <span>Present</span>
           <strong className="is-paid">{marked ? `${Math.round((present / marked) * 100)}%` : "–"}</strong>
           <span className="row-sub">
-            {present} of {marked} marked
+            {present} of {marked}
           </span>
         </div>
         <div className="fee-card">
           <span>Absent</span>
           <strong className="is-due">{rows.reduce((t, r) => t + Number(r.absent), 0)}</strong>
-          <span className="row-sub">{rows.reduce((t, r) => t + Number(r.on_leave), 0)} on leave</span>
+          {onLeave > 0 && <span className="row-sub">{onLeave} on leave</span>}
         </div>
         <div className="fee-card">
-          <span>Classes not marked</span>
-          <strong className={notMarked.length ? "is-overdue" : "is-paid"}>{notMarked.length}</strong>
-          <span className="row-sub">of {rows.length} classes</span>
-        </div>
-        <div className="fee-card">
-          <span>Students</span>
-          <strong>{total}</strong>
-          <span className="row-sub">{total - marked} not marked</span>
+          <span>Not marked</span>
+          <strong className={notMarked.length ? "is-overdue" : "is-paid"}>{notMarked.length ? notMarked.length : "All done"}</strong>
+          <span className="row-sub">{notMarked.length ? `of ${rows.length} classes` : `${rows.length} classes`}</span>
         </div>
       </section>
       <section className="panel">
         <h2 className="panel-title">Classes</h2>
+        {noTeacher > 0 && <p className="row-sub att-ov-hint">{noTeacher} without a class teacher. Star one in Staff, App access.</p>}
         <ul className="att-overview">
           {rows.map((r) => {
             const m = Number(r.students) - Number(r.unmarked);
@@ -306,7 +303,7 @@ function Overview({ session, day, onOpen }) {
                 <button onClick={() => onOpen(`${r.class}|${r.section}`)}>
                   <span className="att-ov-name">
                     {classText(r.class, r.section)}
-                    <span className="row-sub">{r.class_teacher || "No class teacher"}</span>
+                    {r.class_teacher && <span className="row-sub">{r.class_teacher}</span>}
                   </span>
                   {m === 0 ? (
                     <span className="badge badge-danger">Not marked</span>
