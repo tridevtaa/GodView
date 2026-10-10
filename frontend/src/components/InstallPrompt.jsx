@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { canPrompt, isIOS, isPhone, isStandalone, onInstallChange, promptInstall } from "../pwa/install.js";
-import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
 
 const KEY = "godview.installDismissed";
@@ -40,7 +39,7 @@ export default function InstallPrompt() {
   return (
     <aside className="install" role="dialog" aria-label="Install Godview">
       <span className="install-icon">
-        <LogoMark size={26} />
+        <img src="/icon-192.png?v=3" alt="" width="44" height="44" />
       </span>
       {steps ? (
         <ol className="install-steps">
