@@ -172,7 +172,15 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
 
       <section className="panel">
         <h2 className="panel-title">Members</h2>
-        {members.map((m) => (
+        {MEMBER_GROUPS.map(([group, title]) => {
+          const list = members.filter((m) => memberGroup(m) === group).sort((x, y) => (x.full_name || x.email).localeCompare(y.full_name || y.email));
+          if (!list.length) return null;
+          return (
+            <div key={group} className="member-group">
+              <h3 className="member-group-title">
+                {title} <span className="member-group-count">{list.length}</span>
+              </h3>
+        {list.map((m) => (
           <MemberRow
             key={m.email}
             member={m}
@@ -196,6 +204,9 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
             canAssign={Boolean(session)}
           />
         ))}
+            </div>
+          );
+        })}
         <AddMember
           onAdd={act((email, role, details) => addMember(school.id, email, role, details))}
           existing={members}
@@ -211,6 +222,21 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
     </>
   );
 }
+
+// Members are listed in three groups: teachers, the school's leadership
+// (owner, admins, principal, director), and other staff (front desk,
+// accounts, library…). Teachers with no designation count as teachers.
+const MEMBER_GROUPS = [
+  ["teachers", "Teachers"],
+  ["lead", "Admin & principal"],
+  ["others", "Other staff"],
+];
+const memberGroup = (m) => {
+  const d = m.designation ?? "";
+  if (m.role === "owner" || m.role === "admin" || /principal|director|vice/i.test(d)) return "lead";
+  if (!d.trim() || /teach|coordinator|hod|pgt|tgt|prt|lecturer|faculty|incharge|in-charge/i.test(d)) return "teachers";
+  return "others";
+};
 
 function RolePicker({ value, onChange, disabled }) {
   return (
