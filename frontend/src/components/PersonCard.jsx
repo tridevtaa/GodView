@@ -101,8 +101,7 @@ export default function PersonCard({ person, mode, index, showFee = true, onOpen
     >
       <Photo person={person} />
       <div className="card-body">
-        <div className="card-row">
-          <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
+        <div className="card-row card-row-tag">
           <span className="tag">
             {isStudent ? gradeLabel(person.class) : person.designation}
           </span>
@@ -111,7 +110,7 @@ export default function PersonCard({ person, mode, index, showFee = true, onOpen
         <div className="card-name">{person.name}</div>
         <div className="card-row">
           <span className="card-sub">
-            {isStudent ? `${relation(person.gender)} ${person.parent_name}` : person.department}
+            {isStudent ? (person.parent_name ? `${relation(person.gender)} ${person.parent_name}` : "") : person.department}
           </span>
           {isStudent && showFee && (
             <span className={`fee fee-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)}>

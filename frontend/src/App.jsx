@@ -85,7 +85,9 @@ export default function App() {
 
   // Bus routes with their stops (for the Add student card, profiles, Owner).
   const [routes, setRoutes] = useState([]);
-  const [ownerTab, setOwnerTab] = useState("team");
+  const [ownerTab, setOwnerTab] = useState("profile");
+  // Staff: the people (employees) and, for the owner, who can sign in.
+  const [staffTab, setStaffTab] = useState("people");
   const openOwner = (tab) => {
     setOwnerTab(tab);
     switchMode("team");
@@ -203,20 +205,34 @@ export default function App() {
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
-  const title = isStudents ? "Students" : "Employees";
+  const title = isStudents ? "Students" : "Staff";
+  // The school's work, in the order of a school day. School settings live in
+  // the account menu (owner only).
   const sections = [
     ["students", "Students"],
     ["attendance", "Attendance"],
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Requests", openRequests],
-    ...(isAdmin || isPrincipal ? [["employees", "Employees"]] : []),
-    ...(isOwner ? [["team", "Owner", pendingCount]] : []),
+    ...(isAdmin || isPrincipal ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
   ];
+  const staffTabs = isOwner && (
+    <nav className="segmented segmented-sm" aria-label="Staff">
+      {[
+        ["people", "People"],
+        ["access", "App access", pendingCount],
+      ].map(([v, l, n]) => (
+        <button key={v} className={staffTab === v ? "active" : ""} onClick={() => setStaffTab(v)}>
+          {l}
+          {n > 0 && <span className="seg-count">{n}</span>}
+        </button>
+      ))}
+    </nav>
+  );
 
   return (
     <div className="app">
-      <TopBar mode={mode} onMode={switchMode} sections={sections} />
+      <TopBar mode={mode} onMode={switchMode} sections={sections} onSettings={isOwner ? () => openOwner("profile") : null} />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
@@ -245,8 +261,19 @@ export default function App() {
             onPrev={openIndex > 0 ? () => openStudent(profileList[openIndex - 1].id) : undefined}
             onNext={openIndex < profileList.length - 1 ? () => openStudent(profileList[openIndex + 1].id) : undefined}
           />
+        ) : mode === "employees" && isOwner && staffTab === "access" ? (
+          <>
+            <div className="page-header">
+              <div className="page-meta">
+                <h1 className="page-count">Staff</h1>
+                {staffTabs}
+              </div>
+            </div>
+            <TeamPage view="access" school={school} session={currentSession} me={user.email} onCount={setPendingCount} />
+          </>
         ) : mode === "team" ? (
           <TeamPage
+            view="school"
             school={school}
             session={currentSession}
             me={user.email}
@@ -264,6 +291,7 @@ export default function App() {
             grades={schoolGrades}
             onGradesChanged={loadGrades}
             session={selectedSession}
+            pastSession={Boolean(currentSession) && sessionId !== currentSession.id}
             students={current}
             onOpenStudent={openStudent}
             onChanged={reload}
@@ -298,6 +326,7 @@ export default function App() {
                 />
               )}
               {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+              {!isStudents && staffTabs}
             </div>
           </div>
           <div className="page-actions">
@@ -305,15 +334,15 @@ export default function App() {
               <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />
             )}
             {isStudents && canEdit && (
-              <button className="btn btn-secondary" onClick={() => setImporting(true)}>
+              <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
                 <Icon name="upload" />
-                Import
+                <span className="btn-label">Import</span>
               </button>
             )}
             {canEdit && (
               <button className="btn btn-primary" onClick={() => setAdding(true)}>
                 <Icon name="plus" />
-                Add {isStudents ? "student" : "employee"}
+                Add {isStudents ? "student" : "staff"}
               </button>
             )}
           </div>

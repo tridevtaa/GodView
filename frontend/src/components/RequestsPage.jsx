@@ -48,7 +48,7 @@ export default function RequestsPage({ school, me, onOpenStudent, onChanged, rea
         <div>
           <h1 className="sr-only">Requests</h1>
           <div className="page-meta">
-            <span className="page-count">Requests from parents</span>
+            <span className="page-count">Requests</span>
             <nav className="segmented segmented-sm" aria-label="Filter">
               {[
                 ["open", "Open"],
@@ -70,7 +70,7 @@ export default function RequestsPage({ school, me, onOpenStudent, onChanged, rea
       ) : requests.length === 0 ? (
         <div className="empty">
           <p className="empty-title">{filter === "open" ? "No open requests" : "No requests yet"}</p>
-          <p>Parents send leave, certificate and other requests from the Godview app.</p>
+          <p>Leave and certificate requests from parents land here.</p>
         </div>
       ) : (
         <div className="request-list">
@@ -98,20 +98,20 @@ function RequestCard({ request: r, onAnswer, onOpenStudent, readOnly }) {
 
   return (
     <article className="request-card">
+      {/* Who and when on one line; the kind only when the subject doesn't say it. */}
       <header>
-        <span className="badge badge-brand">{KIND[r.kind]}</span>
-        <span className={`badge ${tone}`}>{label}</span>
-        <span className="row-sub">{fmt(r.created_at)}</span>
-      </header>
-      <h3>{r.subject}</h3>
-      <p className="row-sub">
-        For{" "}
-        <button className="link-btn" onClick={() => onOpenStudent(r.student?.id)}>
-          {r.student?.name ?? "student"}
+        <button className="link-btn request-student" onClick={() => onOpenStudent(r.student?.id)}>
+          {r.student?.name ?? "Student"}
         </button>
-        {r.student?.admission_no ? ` (${r.student.admission_no})` : ""}
-        {r.guardian ? ` · from ${r.guardian.name || showPhone(r.guardian.phone)}` : ""}
-      </p>
+        <span className="row-sub">
+          {r.guardian ? `${r.guardian.name || showPhone(r.guardian.phone)} · ` : ""}
+          {fmt(r.created_at)}
+        </span>
+        {r.status !== "open" && <span className={`badge ${tone}`}>{label}</span>}
+      </header>
+      <h3>
+        {r.subject?.trim().toLowerCase() === KIND[r.kind].toLowerCase() || !r.subject ? KIND[r.kind] : `${KIND[r.kind]}: ${r.subject}`}
+      </h3>
       {r.kind === "leave" && r.leave_from && (
         <p className="request-dates">
           {fmt(r.leave_from)}
@@ -133,7 +133,7 @@ function RequestCard({ request: r, onAnswer, onOpenStudent, readOnly }) {
         <div className="request-actions">
           <input
             className="input"
-            placeholder="Reply to the parent (optional)"
+            placeholder="Reply (optional)"
             value={reply}
             onChange={(e) => setReply(e.target.value)}
             maxLength={2000}

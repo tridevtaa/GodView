@@ -32,9 +32,10 @@ const GROUPS = {
       [
         ["Father", (p) => p.parent_name],
         ["Mother", (p) => p.mother_name],
-        ["Parent phone", (p) => phone(p.parent_phone)],
-        ["Father phone", (p) => p.father_phone !== p.parent_phone && phone(p.father_phone)],
-        ["Mother phone", (p) => p.mother_phone !== p.parent_phone && phone(p.mother_phone)],
+        // Owners and admins see the numbers under Parent app instead.
+        ["Parent phone", (p) => phone(p.parent_phone), null, "staff"],
+        ["Father phone", (p) => p.father_phone !== p.parent_phone && phone(p.father_phone), null, "staff"],
+        ["Mother phone", (p) => p.mother_phone !== p.parent_phone && phone(p.mother_phone), null, "staff"],
         ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
       ],
     ],
@@ -68,7 +69,6 @@ const GROUPS = {
     [
       "School",
       [
-        ["Roll no.", (p) => p.roll_no],
         ["Stream", (p) => p.stream],
         // Office details: teachers don't need them.
         ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
@@ -93,7 +93,7 @@ const GROUPS = {
 };
 
 // This month's attendance: a dot per marked day and the totals.
-export function MonthAttendance({ studentId, title = "Attendance this month" }) {
+export function MonthAttendance({ studentId, title = "This month" }) {
   const [days, setDays] = useState(null);
   useEffect(() => {
     const d = new Date();
@@ -124,11 +124,11 @@ export function MonthAttendance({ studentId, title = "Attendance this month" }) 
   );
 }
 
-const TAB_ICONS = { details: "file", fees: "rupee", parents: "users", notes: "book", results: "chart" };
+const TAB_ICONS = { details: "file", fees: "rupee", notes: "book", results: "chart" };
 
-// The student page header, kept minimal: photo, name and three numbers,
-// a few lines about the student, the main actions, and shortcuts.
-function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onAdd, onFees }) {
+// The student page header, kept minimal: photo, name and three numbers
+// (each opens its tab), a line about the student, and the main actions.
+function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
   const [pages, setPages] = useState(null);
@@ -168,11 +168,11 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
   const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
   const bus = person.uses_bus ? stopLabel(routes, person.bus_stop_id) || [person.transport_route, person.pickup_point].filter(Boolean).join(" · ") : "";
   const stats = [
-    ["Attendance", att === null ? "–" : `${att}%`, "this month"],
-    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet"],
+    ["Attendance", att === null ? "–" : `${att}%`, "this month", "", () => onTab("details")],
+    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "", () => onTab("results")],
     isAdmin
-      ? ["Fees", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "is-due" : "", onFees]
-      : ["Diary", pages === null ? "–" : pages, "pages"],
+      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "is-due" : "", () => onTab("fees")]
+      : ["Diary", pages === null ? "–" : pages, "pages", "", () => onTab("notes")],
   ];
 
   return (
@@ -214,7 +214,7 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
       <div className="ig-bio">
         <p className="ig-bio-main">
           {gradeLabel(person.class)}
-          {person.section ? ` · Section ${person.section}` : ""}
+          {person.section ? ` · ${person.section}` : ""}
           {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
           <span className="ig-id">#{person.admission_no}</span>
           {person.status === "left" && <span className="badge badge-danger">Left</span>}
@@ -247,30 +247,6 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
         </div>
       )}
 
-      {!editing && canWrite && (
-        <div className="ig-highlights">
-          <button type="button" onClick={() => onAdd("notes")}>
-            <span className="ig-hl">
-              <Icon name="book" size={22} />
-            </span>
-            Diary
-          </button>
-          <button type="button" onClick={() => onAdd("results")}>
-            <span className="ig-hl">
-              <Icon name="chart" size={22} />
-            </span>
-            Add result
-          </button>
-          {isAdmin && (
-            <button type="button" onClick={onFees}>
-              <span className="ig-hl">
-                <Icon name="rupee" size={22} />
-              </span>
-              Fees
-            </button>
-          )}
-        </div>
-      )}
     </header>
   );
 }
@@ -354,7 +330,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
     .map(([title, rows]) => [
       title,
       rows
-        .filter(([, , , only]) => only !== "admin" || isAdmin)
+        .filter(([, , , only]) => (only !== "admin" || isAdmin) && (only !== "staff" || !isAdmin))
         .map(([label, get, wide]) => [label, get(person, routes), wide])
         .filter(([, v]) => v),
     ])
@@ -363,7 +339,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const feeKnown = isStudent && isAdmin && person.fee_status && person.fee_status !== "unknown";
   const tabs = [
     ["details", "Details"],
-    ...(isAdmin ? [["fees", "Fees"], ["parents", "Parents"]] : []),
+    ...(isAdmin ? [["fees", "Fees"]] : []),
     ["notes", "Diary"],
     ["results", "Results"],
   ];
@@ -389,8 +365,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             callNo={callNo}
             onEdit={() => setEditing(true)}
             onUpdate={onUpdate}
-            onAdd={addTo}
-            onFees={() => setTab("fees")}
+            onTab={setTab}
           />
         ) : (
         <>
@@ -497,8 +472,6 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
         <div className="modal-body profile-body">
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
-          ) : isStudent && !editing && tab === "parents" ? (
-            <StudentParents person={person} canEdit={canEdit} />
           ) : isStudent && !editing && tab === "notes" ? (
             <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={startAdding === "notes"} />
           ) : isStudent && !editing && tab === "results" ? (
@@ -540,8 +513,15 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                       </div>
                     ))}
                   </dl>
+                  {title === "Family" && isStudent && isAdmin && <StudentParents person={person} canEdit={canEdit} />}
                 </section>
               ))}
+              {isStudent && isAdmin && !groups.some(([t]) => t === "Family") && (
+                <section className="profile-group">
+                  <h3>Family</h3>
+                  <StudentParents person={person} canEdit={canEdit} />
+                </section>
+              )}
             </div>
           )}
         </div>

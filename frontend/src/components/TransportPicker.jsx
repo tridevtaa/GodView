@@ -27,10 +27,10 @@ export default function TransportPicker({ routes, value, onChange, onManage }) {
             No bus routes yet.{" "}
             {onManage ? (
               <button type="button" className="link-btn" onClick={onManage}>
-                Add routes in Owner → Transport
+                Add routes in School settings, Transport
               </button>
             ) : (
-              "The school owner adds routes in Owner → Transport."
+              "The school owner adds routes in School settings."
             )}{" "}
             You can pick the stop later.
           </p>

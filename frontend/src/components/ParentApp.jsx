@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useDismiss } from "./useDismiss.js";
 import {
   cancelParentRequest,
   createParentRequest,
@@ -128,15 +129,7 @@ export default function ParentApp({ phone }) {
               </>
             )}
           </span>
-          <span className="pa-me">
-            <span className="row-sub">{showPhone(phone)}</span>
-            <button className="btn btn-secondary btn-sm" onClick={() => setPwOpen((o) => !o)}>
-              Password
-            </button>
-            <button className="btn btn-secondary btn-sm" onClick={logOut}>
-              Log out
-            </button>
-          </span>
+          <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} />
         </div>
       </header>
 
@@ -165,15 +158,7 @@ export default function ParentApp({ phone }) {
               <Photo person={child} className="pa-hero-photo" />
               <div className="pa-hero-text">
                 <h1>{child.name}</h1>
-                <div className="pa-chips">
-                  {child.class && <span className="is-tag">{gradeLabel(child.class)}</span>}
-                  {child.section && <span>Section {child.section}</span>}
-                  {child.admission_no && <span>#{child.admission_no}</span>}
-                </div>
-                <p className="row-sub">
-                  {child.school?.name}
-                  {child.session ? ` · Session ${child.session.name}` : ""}
-                </p>
+                <p className="pa-class">{[child.class && gradeLabel(child.class), child.section].filter(Boolean).join(" · ")}</p>
                 <TodayAttendance key={child.id} child={child} />
               </div>
             </section>
@@ -219,8 +204,43 @@ function TodayAttendance({ child }) {
       <span className={`pa-att-today is-${t?.status ?? "none"}`}>Today: {t ? MARK_TEXT[t.status] : "Not marked yet"}</span>
       {days.length > 0 && (
         <span className="row-sub">
-          This month {present} of {days.length} days
+          {present}/{days.length} days this month
         </span>
+      )}
+    </div>
+  );
+}
+
+// Top right: the parent's number, Change password and Log out, in one menu.
+function ParentMenu({ phone, onPassword }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, useCallback(() => setOpen(false), []));
+  return (
+    <div className="popover-anchor" ref={ref}>
+      <button className="avatar-btn" aria-label="Account" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <Icon name="settings" size={18} />
+      </button>
+      {open && (
+        <div className="menu menu-right" role="menu">
+          <div className="menu-header">
+            <div className="menu-title">{showPhone(phone)}</div>
+          </div>
+          <button
+            role="menuitem"
+            className="menu-item"
+            onClick={() => {
+              setOpen(false);
+              onPassword();
+            }}
+          >
+            <Icon name="edit" />
+            Change password
+          </button>
+          <button role="menuitem" className="menu-item" onClick={logOut}>
+            <Icon name="logout" />
+            Log out
+          </button>
+        </div>
       )}
     </div>
   );
@@ -342,7 +362,6 @@ function FeesTab({ child, since }) {
       payments: data.payments,
       dueTotal: dueNow.reduce((t, d) => t + Number(d.balance), 0),
       paidTotal: paid.filter((p) => inSession(p.paid_on)).reduce((t, p) => t + Number(p.amount), 0),
-      next: upcoming[0],
     };
   }, [data, child.session]);
 
@@ -352,35 +371,24 @@ function FeesTab({ child, since }) {
   const later = showAll ? view.upcoming : view.upcoming.slice(0, 3);
   return (
     <>
-      <section className="pa-stats">
-        <div className={view.dueTotal > 0 ? "is-due" : "is-clear"}>
-          <span>Due now</span>
-          <strong>{rupees(view.dueTotal)}</strong>
-          <small>{view.dueTotal > 0 ? `${view.dueNow.length} item${view.dueNow.length === 1 ? "" : "s"}` : "All clear"}</small>
-        </div>
-        <div>
-          <span>Paid this session</span>
-          <strong>{rupees(view.paidTotal)}</strong>
-          <small>{view.payments.filter((p) => p.status === "success").length} payments</small>
-        </div>
-        <div>
-          <span>Next due</span>
-          <strong>{view.next ? rupees(view.next.balance) : "Nothing"}</strong>
-          <small>{view.next ? dateText(view.next.due_date, { day: "numeric", month: "short" }) : "No upcoming dues"}</small>
-        </div>
-      </section>
-
-      {view.dueNow.length > 0 && (
+      {/* Each card carries its own total, so there's no separate summary. */}
+      {view.dueNow.length > 0 ? (
         <section className="pa-card">
-          <h2 className="pa-h2">Due now</h2>
+          <h2 className="pa-h2 pa-h2-total">
+            Due now <strong className="is-due">{rupees(view.dueTotal)}</strong>
+          </h2>
           <ul className="pa-list">
             {view.dueNow.map((d) => (
               <DueRow key={d.id} due={d} overdue={d.due_date && d.due_date < today()} fresh={isNew(d.created_at, since)} />
             ))}
           </ul>
           <p className="pa-hint">
-            <Icon name="check" size={14} /> Pay at the school office for now. Paying online in the app is coming soon.
+            <Icon name="check" size={14} /> Pay at the school office for now.
           </p>
+        </section>
+      ) : (
+        <section className="pa-card pa-clear">
+          <Icon name="check" size={16} /> Nothing due right now
         </section>
       )}
 
@@ -401,7 +409,9 @@ function FeesTab({ child, since }) {
       )}
 
       <section className="pa-card">
-        <h2 className="pa-h2">Payments and receipts</h2>
+        <h2 className="pa-h2 pa-h2-total">
+          Paid {view.paidTotal > 0 && <strong className="is-paid">{rupees(view.paidTotal)}</strong>}
+        </h2>
         {view.payments.length ? (
           <ul className="pa-list">
             {view.payments.map((p) => (
@@ -440,7 +450,7 @@ function DueRow({ due, overdue, fresh }) {
       <span className={`pa-row-icon${overdue ? " is-overdue" : " is-due"}`}>₹</span>
       <span className="pa-row-main">
         <strong>
-          {due.head_name ?? "Fee"} · {due.label} {fresh && <NewTag />}
+          {[due.head_name ?? "Fee", due.label].filter(Boolean).join(" · ")} {fresh && <NewTag />}
         </strong>
         <span className="row-sub">
           {due.due_date ? `Due ${dateText(due.due_date)}` : "Due now"}

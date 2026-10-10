@@ -5,8 +5,10 @@ const RELATIONS = { father: "Father", mother: "Mother", guardian: "Guardian" };
 const show = (phone) => phone.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2");
 
 // Parents who can see this student in the parent app (they sign in with
-// these mobile numbers). Owners/admins manage the links.
+// these mobile numbers). Owners/admins manage the links. Shown inside the
+// student's Details, under Family.
 export default function StudentParents({ person, canEdit }) {
+  const [adding, setAdding] = useState(false);
   const [links, setLinks] = useState(null);
   const [form, setForm] = useState({ phone: "", name: "", relation: "guardian" });
   const [error, setError] = useState("");
@@ -32,6 +34,7 @@ export default function StudentParents({ person, canEdit }) {
     try {
       await addGuardian(person.id, form);
       setForm({ phone: "", name: "", relation: "guardian" });
+      setAdding(false);
       await load();
     } catch (err) {
       setError(/10-digit/.test(err?.message ?? "") ? "Enter a 10-digit Indian mobile number." : "Couldn’t add that parent.");
@@ -52,23 +55,26 @@ export default function StudentParents({ person, canEdit }) {
 
   return (
     <div className="parents-view">
-      <p className="row-sub">
-        These mobile numbers can sign in to the Godview parent app and see {person.name}’s details, results, shared
-        notes and fees. Numbers from the student record are linked automatically.
-      </p>
+      <div className="parents-head">
+        <h4 title="These numbers sign in to the Godview parent app">Parent app</h4>
+        {canEdit && !adding && (
+          <button type="button" className="link-btn" onClick={() => setAdding(true)}>
+            + Add number
+          </button>
+        )}
+      </div>
       {links === null ? (
         <p className="row-sub">Loading…</p>
       ) : links.length === 0 ? (
-        <p className="row-sub">No parent numbers linked yet.</p>
+        <p className="row-sub">No numbers yet</p>
       ) : (
         <ul className="parent-list">
           {links.map((l) => (
             <li key={l.guardian.id}>
               <div>
-                <strong>{l.guardian.name || RELATIONS[l.relation]}</strong>
+                <a href={`tel:${l.guardian.phone}`}>{show(l.guardian.phone)}</a>
                 <span className="row-sub">
-                  {show(l.guardian.phone)} · {RELATIONS[l.relation]}
-                  {l.source === "auto" ? " · from record" : " · added by staff"}
+                  {[l.guardian.name, RELATIONS[l.relation]].filter(Boolean).join(" · ")}
                 </span>
               </div>
               {canEdit &&
@@ -91,7 +97,7 @@ export default function StudentParents({ person, canEdit }) {
           ))}
         </ul>
       )}
-      {canEdit && (
+      {canEdit && adding && (
         <form className="parent-add" onSubmit={add}>
           <input
             className="input"
@@ -100,6 +106,7 @@ export default function StudentParents({ person, canEdit }) {
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             required
+            autoFocus
           />
           <input className="input" placeholder="Name (optional)" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <select className="select" value={form.relation} onChange={(e) => setForm({ ...form, relation: e.target.value })}>
@@ -109,8 +116,11 @@ export default function StudentParents({ person, canEdit }) {
               </option>
             ))}
           </select>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAdding(false)}>
+            Cancel
+          </button>
           <button className="btn btn-primary btn-sm" disabled={busy}>
-            Add parent
+            Add
           </button>
         </form>
       )}
