@@ -7,7 +7,7 @@ import { LogoMark } from "./Logo.jsx";
 import Landing from "./Landing.jsx";
 import ParentSignIn from "./ParentSignIn.jsx";
 import Icon from "./Icon.jsx";
-import { isStandalone } from "../pwa/install.js";
+import { isStandalone, parentLoginLive } from "../pwa/install.js";
 
 // Parents get their own, separate screens (loaded only for them).
 const ParentApp = lazy(() => import("./ParentApp.jsx"));
@@ -383,12 +383,14 @@ function AppWelcome({ onStaff, onParent, error }) {
         </span>
         <h1>Welcome to Godview</h1>
         <p className="muted">Your school, in your pocket.</p>
-        <button className="btn btn-primary btn-block app-welcome-btn" onClick={onParent}>
-          <Icon name="phone" />
-          I’m a parent
-        </button>
-        <button className="btn btn-secondary btn-block app-welcome-btn" onClick={onStaff}>
-          School staff: log in with Google
+        {parentLoginLive && (
+          <button className="btn btn-primary btn-block app-welcome-btn" onClick={onParent}>
+            <Icon name="phone" />
+            I’m a parent
+          </button>
+        )}
+        <button className={`btn btn-block app-welcome-btn ${parentLoginLive ? "btn-secondary" : "btn-primary"}`} onClick={onStaff}>
+          {parentLoginLive ? "School staff: log in with Google" : "Log in with Google"}
         </button>
         {error && <p className="field-error">{error}</p>}
       </div>
