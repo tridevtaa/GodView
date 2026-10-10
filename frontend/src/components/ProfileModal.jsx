@@ -39,7 +39,8 @@ const FACT_ICON = {
   Aadhaar: "idcard",
   Home: "pin",
   Stream: "book",
-  Admission: "register",
+  "Admission date": "register",
+  "Admission type": "newAdmission",
   SRN: "hash",
   "Left on": "logout",
   Remarks: "note",
@@ -93,7 +94,8 @@ const GROUPS = {
       [
         ["Stream", (p) => p.stream],
         // Office details: teachers don't need them. (The bus is in the header.)
-        ["Admission", (p) => [longDate(p.admission_date), p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
+        ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
+        ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
         ["SRN", (p) => p.srn],
         ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
         ["Remarks", (p) => p.remarks, "wide"],
