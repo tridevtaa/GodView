@@ -199,10 +199,13 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
       <div className="ig-top">
         <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
         <div className="ig-head">
-          <h2 className="ig-name">
-            {person.name}
-            <GenderMark gender={person.gender} />
-          </h2>
+          <div>
+            <h2 className="ig-name">
+              {person.name}
+              <GenderMark gender={person.gender} />
+            </h2>
+            {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
+          </div>
           <ul className="ig-stats">
             {stats.map(([label, value, note, tone, onClick]) => {
               const inner = (
@@ -230,10 +233,13 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
       <div className="ig-bio-row">
       <div className="ig-bio">
         <p className="ig-bio-main">
-          {gradeLabel(person.class)}
-          {person.section ? ` · ${person.section}` : ""}
-          {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
-          <span className="ig-id">#{person.admission_no}</span>
+          <span>
+            {gradeLabel(person.class)}
+            <span className="ig-section">
+              {person.section ? ` · ${person.section}` : ""}
+              {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
+            </span>
+          </span>
           {person.status === "left" && <span className="badge badge-danger">Left</span>}
         </p>
         {bus && (
