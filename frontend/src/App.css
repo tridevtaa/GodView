@@ -2115,7 +2115,7 @@ a:hover {
 
 .fee-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -2124,6 +2124,7 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
   padding: 18px 20px;
   background: var(--surface);
   border-radius: var(--r-lg);
@@ -2136,7 +2137,8 @@ a:hover {
 }
 
 .fee-card strong {
-  font-size: 24px;
+  white-space: nowrap;
+  font-size: clamp(18px, 5.4vw, 24px);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -2680,7 +2682,7 @@ a:hover {
 
 @media (max-width: 900px) {
   .fee-cards {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -6240,4 +6242,20 @@ button.profile-stat:hover {
 .app-welcome-btn {
   height: 48px;
   font-size: 15px;
+}
+
+/* ---------- Phones: nothing wider than the screen, no zoom on typing ----------
+   iPhone zooms into any text box under 16px and stays zoomed, so on touch
+   screens every field uses 16px. The page itself never scrolls sideways. */
+html,
+body {
+  overflow-x: clip;
+}
+
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

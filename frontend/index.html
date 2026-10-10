@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
+    <script>
+      // iPhone only: stop the automatic zoom when a text box is tapped. Pinch
+      // zoom still works there; Android keeps its default.
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        document.querySelector('meta[name="viewport"]').content += ", maximum-scale=1";
+      }
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
