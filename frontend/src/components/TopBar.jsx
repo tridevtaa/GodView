@@ -17,7 +17,7 @@ export default function TopBar({ mode, onMode, sections, onSettings }) {
           aria-current={mode === value ? "page" : undefined}
           onClick={() => onMode(value)}
         >
-          <Icon name={ICONS[value] ?? "file"} size={20} className="tab-icon" />
+          <Icon name={ICONS[value] ?? "file"} size={22} className="tab-icon" weight={mode === value ? "fill" : "regular"} />
           <span className="tab-label">{label}</span>
           {count > 0 && <span className="seg-count">{count > 99 ? "99+" : count}</span>}
         </button>

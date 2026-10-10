@@ -35,14 +35,14 @@ const FACT_ICON = {
   Email: "mail",
   "Date of birth": "cake",
   Category: "tag",
-  Religion: "star",
+  Religion: "religion",
   Aadhaar: "idcard",
   Home: "pin",
   Stream: "book",
   Admission: "register",
   SRN: "hash",
   "Left on": "logout",
-  Remarks: "file",
+  Remarks: "note",
   Phone: "phone",
   Joined: "register",
 };
@@ -501,7 +501,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           <nav className="ig-tabs" aria-label="Profile sections">
             {tabs.map(([value, label]) => (
               <button key={value} className={tab === value ? "is-on" : ""} onClick={() => setTab(value)} aria-current={tab === value ? "page" : undefined}>
-                <Icon name={TAB_ICONS[value]} size={18} />
+                <Icon name={TAB_ICONS[value]} size={18} weight={tab === value ? "fill" : "regular"} />
                 <span>{label}</span>
               </button>
             ))}
@@ -547,7 +547,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                       <li key={label} className={wide ? "is-wide" : ""} title={label}>
                         {FACT_ICON[label] ? (
                           <span className="fact-icon" role="img" aria-label={label}>
-                            <Icon name={FACT_ICON[label]} size={18} />
+                            <Icon name={FACT_ICON[label]} size={21} weight="duotone" />
                           </span>
                         ) : (
                           <span className="fact-label">{label}</span>
