@@ -17,6 +17,7 @@ import { logOut } from "./AuthGate.jsx";
 import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
+import InstallPrompt from "./InstallPrompt.jsx";
 import Icon from "./Icon.jsx";
 import "./parent.css";
 
@@ -126,6 +127,7 @@ export default function ParentApp({ phone }) {
         </div>
       </header>
 
+      <InstallPrompt />
       <main className="pa-main">
         {error && <p className="notice notice-error">{error}</p>}
         {!children && !error && <div className="pa-hero pa-skeleton" aria-busy="true" />}

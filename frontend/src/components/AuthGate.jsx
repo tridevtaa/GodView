@@ -6,6 +6,8 @@ import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 import Landing from "./Landing.jsx";
 import ParentSignIn from "./ParentSignIn.jsx";
+import Icon from "./Icon.jsx";
+import { isStandalone } from "../pwa/install.js";
 
 // Parents get their own, separate screens (loaded only for them).
 const ParentApp = lazy(() => import("./ParentApp.jsx"));
@@ -338,6 +340,8 @@ export default function AuthGate({ children }) {
   // parent sign-in (godview.in/parent or the landing page's Parent login).
   if (state.status === "signed-out") {
     if (parentLogin) return <ParentSignIn onBack={() => showParentLogin(false)} />;
+    // Opened from the home screen: an app sign-in, not the marketing page.
+    if (isStandalone()) return <AppWelcome onStaff={signIn} onParent={() => showParentLogin(true)} error={error} />;
     return <Landing onLogin={signIn} onParentLogin={() => showParentLogin(true)} error={error} />;
   }
 
@@ -364,6 +368,29 @@ export default function AuthGate({ children }) {
         ) : (
           <JoinStatus requests={state.requests} user={state.user} onSchool={setJoinSchool} />
         )}
+      </div>
+    </main>
+  );
+}
+
+// First screen of the installed app for someone signed out.
+function AppWelcome({ onStaff, onParent, error }) {
+  return (
+    <main className="auth-screen app-welcome">
+      <div className="auth-card">
+        <span className="app-welcome-mark">
+          <LogoMark size={44} />
+        </span>
+        <h1>Welcome to Godview</h1>
+        <p className="muted">Your school, in your pocket.</p>
+        <button className="btn btn-primary btn-block app-welcome-btn" onClick={onParent}>
+          <Icon name="phone" />
+          I’m a parent
+        </button>
+        <button className="btn btn-secondary btn-block app-welcome-btn" onClick={onStaff}>
+          School staff: log in with Google
+        </button>
+        {error && <p className="field-error">{error}</p>}
       </div>
     </main>
   );

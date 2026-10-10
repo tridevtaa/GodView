@@ -6041,3 +6041,203 @@ button.profile-stat:hover {
     border-left: none;
   }
 }
+
+/* =========================================================
+   Phone app (installed from the browser on iOS and Android)
+   ========================================================= */
+
+.topbar {
+  padding-top: env(safe-area-inset-top);
+}
+
+.topbar-tabs .tab-icon {
+  display: none;
+}
+
+.topbar-tabs button {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Bottom tab bar: phones only. */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .topbar-tabs {
+    display: none;
+  }
+
+  .topbar-inner {
+    justify-content: space-between;
+    height: 56px;
+  }
+
+  .logo-partner {
+    height: 22px;
+  }
+
+  .tabbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    display: flex;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 -1px 0 var(--border), 0 -6px 18px rgba(29, 35, 102, 0.06);
+  }
+
+  .tabbar button {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 6px 2px;
+    border: none;
+    border-radius: 14px;
+    background: none;
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tabbar button.active {
+    color: var(--brand);
+  }
+
+  .tabbar button.active .tab-icon {
+    padding: 2px 12px;
+    width: 46px;
+    border-radius: 999px;
+    background: var(--brand-soft);
+  }
+
+  .tabbar .tab-icon {
+    box-sizing: content-box;
+    width: 22px;
+    height: 22px;
+    padding: 2px 12px;
+  }
+
+  .tab-label {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .tabbar .seg-count {
+    position: absolute;
+    top: 2px;
+    left: calc(50% + 8px);
+    margin: 0;
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  /* Room for the bar under the last row of content. */
+  .app {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Install prompt */
+.install {
+  position: fixed;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 8px 12px 12px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(29, 35, 102, 0.22), 0 0 0 1px var(--border);
+  animation: install-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes install-up {
+  from {
+    opacity: 0;
+    translate: 0 20px;
+  }
+}
+
+@media (max-width: 760px) {
+  .app .install {
+    bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+.install-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+}
+
+.install-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.install-text span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.install-steps {
+  flex: 1;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.install-share {
+  vertical-align: -3px;
+  color: #0a84ff;
+}
+
+.install-close {
+  flex: none;
+}
+
+/* Installed app, signed out */
+.app-welcome .auth-card {
+  gap: 10px;
+}
+
+.app-welcome-mark {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  background: var(--brand-soft);
+}
+
+.app-welcome h1 {
+  margin-top: 10px;
+}
+
+.app-welcome-btn {
+  height: 48px;
+  font-size: 15px;
+}
