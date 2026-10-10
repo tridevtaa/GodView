@@ -7363,3 +7363,37 @@ input[type="date"]::-webkit-date-and-time-value {
     grid-template-columns: 64px 1fr;
   }
 }
+
+/* Members grouped: Teachers, Admin & principal, Other staff */
+.member-group + .member-group,
+.member-group + .row-add {
+  margin-top: 6px;
+}
+
+.member-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 22px 6px;
+  border-top: 1px solid var(--border);
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.member-group:first-of-type .member-group-title {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.member-group-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0;
+}
