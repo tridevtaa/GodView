@@ -1,66 +1,38 @@
-import { useEffect, useRef, useState } from "react";
-import { sendParentCode, verifyParentCode } from "../data/api.js";
+import { useState } from "react";
+import { parentPasswordLogin } from "../data/api.js";
 import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
 import "./parent.css";
 
-const RESEND_AFTER = 30; // seconds
+const MESSAGES = {
+  wrong: "That number and password didn’t match. Use the mobile number the school has, and your child’s first name and birth year, like ishita2016.",
+  locked: "Too many tries for this number. Please wait 15 minutes and try again.",
+  custom: "You’ve set your own password for this number. Use that one, or ask the school office for help.",
+  error: "Couldn’t log in right now. Check your connection and try again.",
+};
 
-// Parents sign in with the mobile number the school has on record: we send a
-// 6-digit code on WhatsApp, they type it in. No password, no Google account.
+// Parents log in with the mobile number the school has on record and a
+// password: to start with, their child's first name and birth year (e.g.
+// ishita2016). They can choose their own password inside the app.
 export default function ParentSignIn({ onBack }) {
-  const [step, setStep] = useState("phone"); // phone | code
   const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [wait, setWait] = useState(0);
-  const codeInput = useRef(null);
-  const digits = phone.replace(/\D/g, "");
-  const valid = /^[6-9]\d{9}$/.test(digits);
+  const digits = phone.replace(/\D/g, "").slice(-10);
+  const valid = /^[6-9]\d{9}$/.test(digits) && password.trim().length >= 5;
 
-  useEffect(() => {
-    if (!wait) return;
-    const t = setTimeout(() => setWait((w) => w - 1), 1000);
-    return () => clearTimeout(t);
-  }, [wait]);
-
-  useEffect(() => {
-    if (step === "code") codeInput.current?.focus();
-  }, [step]);
-
-  async function send(e) {
-    e?.preventDefault();
-    if (!valid) return setError("Enter your 10-digit mobile number.");
-    setBusy(true);
-    setError("");
-    try {
-      await sendParentCode(digits);
-      setStep("code");
-      setCode("");
-      setWait(RESEND_AFTER);
-    } catch (err) {
-      setError(
-        /rate|seconds|too many/i.test(err?.message ?? "")
-          ? "Please wait a little before asking for another code."
-          : /phone.*(disabled|provider)|unsupported/i.test(err?.message ?? "")
-            ? "Parent sign-in isn’t switched on for this school yet. Please check with the school office."
-            : "Couldn’t send the code. Check the number and try again."
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verify(e) {
+  async function submit(e) {
     e.preventDefault();
+    if (!valid) return;
     setBusy(true);
     setError("");
     try {
-      await verifyParentCode(digits, code);
+      await parentPasswordLogin(digits, password);
       // AuthGate picks up the new session and opens the parent home.
     } catch (err) {
-      setError(/expired/i.test(err?.message ?? "") ? "That code has expired. Ask for a new one." : "That code didn’t match. Check it and try again.");
+      setError(MESSAGES[err.message] ?? MESSAGES.error);
       setBusy(false);
     }
   }
@@ -71,58 +43,51 @@ export default function ParentSignIn({ onBack }) {
         <div className="pa-signin-mark">
           <LogoMark size={40} />
         </div>
-        {step === "phone" ? (
-          <form onSubmit={send} className="pa-signin-form">
-            <h1>Parent login</h1>
-            <p className="muted">Use the mobile number your child’s school has on record. We’ll send a code on WhatsApp.</p>
-            <label className="pa-phone">
-              <span className="pa-cc">+91</span>
-              <input
-                inputMode="numeric"
-                autoComplete="tel-national"
-                placeholder="98765 43210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/[^\d ]/g, "").slice(0, 11))}
-                aria-label="Mobile number"
-                autoFocus
-              />
-            </label>
-            {error && <p className="field-error">{error}</p>}
-            <button className="btn btn-primary btn-block pa-wa" disabled={busy || !valid}>
-              <Icon name="message" />
-              {busy ? "Sending…" : "Send code on WhatsApp"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="pa-signin-form">
-            <h1>Enter the code</h1>
-            <p className="muted">
-              We sent a 6-digit code on WhatsApp to <strong>+91 {digits.slice(0, 5)} {digits.slice(5)}</strong>.
-            </p>
+        <form onSubmit={submit} className="pa-signin-form">
+          <h1>Parent login</h1>
+          <p className="muted">Use the mobile number your child’s school has on record.</p>
+          <label className="pa-field-label" htmlFor="pa-phone">
+            Mobile number
+          </label>
+          <label className="pa-phone">
+            <span className="pa-cc">+91</span>
             <input
-              ref={codeInput}
-              className="pa-code"
+              id="pa-phone"
               inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="••••••"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              aria-label="Sign-in code"
+              autoComplete="username"
+              placeholder="98765 43210"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d ]/g, "").slice(0, 11))}
+              autoFocus
             />
-            {error && <p className="field-error">{error}</p>}
-            <button className="btn btn-primary btn-block" disabled={busy || code.length !== 6}>
-              {busy ? "Checking…" : "Log in"}
+          </label>
+          <label className="pa-field-label" htmlFor="pa-password">
+            Password
+          </label>
+          <span className="pa-password">
+            <input
+              id="pa-password"
+              type={show ? "text" : "password"}
+              autoComplete="current-password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder="e.g. ishita2016"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button type="button" className="link-btn" onClick={() => setShow((s) => !s)}>
+              {show ? "Hide" : "Show"}
             </button>
-            <div className="pa-signin-links">
-              <button type="button" className="link-btn" onClick={() => (setStep("phone"), setError(""))}>
-                Change number
-              </button>
-              <button type="button" className="link-btn" onClick={send} disabled={busy || wait > 0}>
-                {wait > 0 ? `Resend in ${wait}s` : "Resend code"}
-              </button>
-            </div>
-          </form>
-        )}
+          </span>
+          <p className="pa-hint-text">
+            <Icon name="check" size={13} /> First time? Your password is your child’s first name and the year they were born, like <strong>ishita2016</strong>.
+          </p>
+          {error && <p className="field-error">{error}</p>}
+          <button className="btn btn-primary btn-block" disabled={busy || !valid}>
+            {busy ? "Logging in…" : "Log in"}
+          </button>
+        </form>
         <button type="button" className="link-btn pa-back" onClick={onBack}>
           <Icon name="arrowLeft" size={14} /> Back
         </button>

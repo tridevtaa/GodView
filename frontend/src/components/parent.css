@@ -800,3 +800,65 @@
 .pa-att-today.is-absent { background: var(--danger-soft); color: var(--danger); }
 .pa-att-today.is-late { background: var(--warning-soft); color: var(--warning); }
 .pa-att-today.is-leave { background: var(--brand-soft); color: var(--brand); }
+
+/* Password login */
+.pa-field-label {
+  margin: 4px 0 -4px;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.pa-password {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  padding-right: 14px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.pa-password:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.pa-password input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 14px;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: 17px;
+}
+
+.pa-password input:focus-visible {
+  box-shadow: none;
+}
+
+.pa-hint-text {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.pa-hint-text .icon {
+  vertical-align: -2px;
+  color: var(--success);
+}
+
+.pa-pw-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--success);
+  font-weight: 600;
+}
