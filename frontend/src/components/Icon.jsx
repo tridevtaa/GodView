@@ -20,6 +20,13 @@ const PATHS = {
   table: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 15h18M9 10v10" /></>,
   whatsapp: <><path d="M3.5 20.5 5 16a8.5 8.5 0 1 1 3.2 3.1z" /><path d="M9.2 8.6c.2-.5.5-.5.8-.5h.5l.9 2-.6.8c.5 1 1.3 1.8 2.3 2.3l.8-.6 2 .9v.5c0 .3 0 .6-.5.8-.5.3-1.6.5-3-.3a8 8 0 0 1-3.1-3.1c-.8-1.4-.6-2.5-.1-2.8z" /></>,
   chevronLeft: <path d="m15 18-6-6 6-6" />,
+  // Parents: man and woman figures, like signs.
+  father: <><circle cx="12" cy="4.5" r="2.2" /><path d="M9.5 21v-7H8V9.6A1.6 1.6 0 0 1 9.6 8h4.8A1.6 1.6 0 0 1 16 9.6V14h-1.5v7M12 14v7" /></>,
+  mother: <><circle cx="12" cy="4.5" r="2.2" /><path d="M10.2 8h3.6l2.7 8.5H7.5zM10.5 16.5V21M13.5 16.5V21" /></>,
+  tag: <><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z" /><circle cx="7.5" cy="7.5" r="1.5" /></>,
+  star: <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />,
+  idcard: <><rect x="2" y="5" width="20" height="14" rx="2" /><circle cx="8" cy="12" r="2.2" /><path d="M14 10h4M14 14h4" /></>,
+  hash: <path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />,
   pin: <><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z" /><circle cx="12" cy="10" r="3" /></>,
   bus: <><path d="M8 6v6M16 6v6M2 12h20" /><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3" /><circle cx="7" cy="18" r="2" /><path d="M9 18h5" /><circle cx="16" cy="18" r="2" /></>,
   arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,

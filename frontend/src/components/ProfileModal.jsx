@@ -27,18 +27,24 @@ const digits = (n = "") => String(n).replace(/\D/g, "").slice(-10);
 // Facts shown as an icon and the value (the label is the tooltip); facts
 // without an icon keep a small label.
 const FACT_ICON = {
-  Father: "male",
-  Mother: "female",
+  Father: "father",
+  Mother: "mother",
   "Parent phone": "phone",
   "Father phone": "phone",
   "Mother phone": "phone",
   Email: "mail",
   "Date of birth": "cake",
+  Category: "tag",
+  Religion: "star",
+  Aadhaar: "idcard",
   Home: "pin",
+  Stream: "book",
   Admission: "register",
+  SRN: "hash",
+  "Left on": "logout",
+  Remarks: "file",
   Phone: "phone",
   Joined: "register",
-  Remarks: "file",
 };
 
 // Details in groups; empty rows and empty groups are left out.
@@ -541,7 +547,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                       <li key={label} className={wide ? "is-wide" : ""} title={label}>
                         {FACT_ICON[label] ? (
                           <span className="fact-icon" role="img" aria-label={label}>
-                            <Icon name={FACT_ICON[label]} size={16} />
+                            <Icon name={FACT_ICON[label]} size={18} />
                           </span>
                         ) : (
                           <span className="fact-label">{label}</span>
