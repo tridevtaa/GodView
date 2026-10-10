@@ -48,6 +48,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
   const [classes, setClasses] = useState([]);
   const [requests, setRequests] = useState([]);
   const [exports, setExports] = useState([]);
+  const [memberTab, setMemberTab] = useState("teachers");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -171,15 +172,23 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
       )}
 
       <section className="panel">
-        <h2 className="panel-title">Members</h2>
-        {MEMBER_GROUPS.map(([group, title]) => {
+        <div className="members-head">
+          <h2 className="panel-title">Members</h2>
+          <nav className="segmented members-tabs" aria-label="Member groups">
+            {MEMBER_GROUPS.map(([group, title, short]) => (
+              <button key={group} className={memberTab === group ? "active" : ""} onClick={() => setMemberTab(group)}>
+                <span className="tab-full">{title}</span>
+                <span className="tab-short">{short}</span>
+                <span className="members-tab-count">{members.filter((m) => memberGroup(m) === group).length}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+        {MEMBER_GROUPS.filter(([group]) => group === memberTab).map(([group, title]) => {
           const list = members.filter((m) => memberGroup(m) === group).sort((x, y) => (x.full_name || x.email).localeCompare(y.full_name || y.email));
-          if (!list.length) return null;
+          if (!list.length) return <p key={group} className="row-sub members-empty">No {title.toLowerCase()} yet.</p>;
           return (
             <div key={group} className="member-group">
-              <h3 className="member-group-title">
-                {title} <span className="member-group-count">{list.length}</span>
-              </h3>
         {list.map((m) => (
           <MemberRow
             key={m.email}
@@ -208,8 +217,11 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
           );
         })}
         <AddMember
+          key={memberTab}
           onAdd={act((email, role, details) => addMember(school.id, email, role, details))}
           existing={members}
+          defaultRole={memberTab === "lead" ? "admin" : "teacher"}
+          defaultDesignation={memberTab === "teachers" ? "Teacher" : ""}
         />
       </section>
 
@@ -227,9 +239,9 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
 // (owner, admins, principal, director), and other staff (front desk,
 // accounts, library…). Teachers with no designation count as teachers.
 const MEMBER_GROUPS = [
-  ["teachers", "Teachers"],
-  ["lead", "Admin & principal"],
-  ["others", "Other staff"],
+  ["teachers", "Teachers", "Teachers"],
+  ["lead", "Admin & principal", "Admin"],
+  ["others", "Other staff", "Others"],
 ];
 const memberGroup = (m) => {
   const d = m.designation ?? "";
@@ -439,11 +451,11 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
   );
 }
 
-function AddMember({ onAdd, existing }) {
+function AddMember({ onAdd, existing, defaultRole = "teacher", defaultDesignation = "" }) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [designation, setDesignation] = useState("");
-  const [role, setRole] = useState("teacher");
+  const [designation, setDesignation] = useState(defaultDesignation);
+  const [role, setRole] = useState(defaultRole);
   const duplicate = existing.some((m) => m.email === email.trim().toLowerCase());
   return (
     <form
