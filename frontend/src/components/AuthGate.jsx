@@ -373,7 +373,7 @@ export default function AuthGate({ children }) {
 
   if (state.status === "parent") {
     return (
-      <Suspense fallback={<main className="auth-screen" aria-busy="true" />}>
+      <Suspense fallback={<main data-clarity-mask="True" className="auth-screen" aria-busy="true" />}>
         <ParentApp phone={state.phone} />
       </Suspense>
     );
@@ -391,11 +391,11 @@ export default function AuthGate({ children }) {
   // Signed-in session still resolving: a quiet screen rather than a flash of
   // the landing page.
   if (state.status === "loading") {
-    return <main className="auth-screen" aria-busy="true" />;
+    return <main data-clarity-mask="True" className="auth-screen" aria-busy="true" />;
   }
 
   return (
-    <main className="auth-screen">
+    <main data-clarity-mask="True" className="auth-screen">
       <div className="auth-card">
         <div className="auth-brand">
           <LogoMark size={44} />
@@ -419,7 +419,7 @@ export default function AuthGate({ children }) {
 // First screen of the installed app for someone signed out.
 function AppWelcome({ onStaff, onParent, error }) {
   return (
-    <main className="auth-screen app-welcome">
+    <main data-clarity-mask="True" className="auth-screen app-welcome">
       <div className="auth-card">
         <span className="app-welcome-mark">
           <LogoMark size={44} />

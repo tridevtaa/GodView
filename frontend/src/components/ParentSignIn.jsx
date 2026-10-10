@@ -38,7 +38,7 @@ export default function ParentSignIn({ onBack }) {
   }
 
   return (
-    <main className="auth-screen pa-auth">
+    <main data-clarity-mask="True" className="auth-screen pa-auth">
       <div className="auth-card pa-signin">
         <div className="pa-signin-mark">
           <LogoMark size={40} />
