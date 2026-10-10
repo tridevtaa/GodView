@@ -7996,7 +7996,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 }
 
-/* =========================================================
+/* ==================================================
    Conversations: one chat per child (staff inbox, student page,
    parent app). Bubbles, request cards and a sticky message box.
    ========================================================= */
@@ -8464,6 +8464,12 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .inbox-list,
   .inbox-chat {
+=======
+/* Phones: the student page sits straight on the page (no card), so the
+   content gets the full width inside the page gutter. */
+@media (max-width: 760px) {
+  .profile.profile-full {
+    margin: 0;
     overflow: visible;
     border-radius: 0;
     background: none;
@@ -8522,5 +8528,16 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .bubble {
     max-width: 84%;
+
+  .profile-full .ig-hero {
+    padding: 4px 0 4px;
+  }
+
+  .profile-full .profile-body {
+    padding: 16px 0 24px;
+  }
+
+  .profile-full .profile-group {
+    background: var(--surface);
   }
 }
