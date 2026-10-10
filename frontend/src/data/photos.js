@@ -1,4 +1,4 @@
-import { uploadPhoto } from "./api.js";
+import { uploadJoinPhoto, uploadPhoto } from "./api.js";
 
 const SIZE = 400; // square, px: sharp on tiles and profiles, even on phones
 // WebP at this quality averages about 11 KB per photo (JPEG about 22 KB, the
@@ -39,4 +39,10 @@ export async function copyHostedPhoto(schoolId, kind, person) {
   const blob = await res.blob();
   if (!blob.type.startsWith("image/")) throw new Error("not-an-image");
   return uploadPhoto(schoolId, kind, person, await toThumbnail(blob));
+}
+
+// A staff member's own photo for their join request.
+export async function saveJoinPhoto(file) {
+  if (!file.type.startsWith("image/")) throw new Error("not-an-image");
+  return uploadJoinPhoto(await toThumbnail(file));
 }
