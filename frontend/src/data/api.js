@@ -218,13 +218,22 @@ export async function withPhotoUrls(people) {
 // Uploads a JPEG blob as the person's photo; returns the fields to update.
 export async function uploadPhoto(schoolId, kind, person, blob) {
   const path = `${schoolId}/${kind}/${person.id}.jpg`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+  // The file keeps its .jpg name (the database expects it); the content type
+  // says what it really is (WebP or JPEG).
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
   if (error) throw error;
   // Students go through set_student_photo so their teachers can change photos
   // without update rights on the rest of the record.
   if (kind === "students") must(await supabase.rpc("set_student_photo", { student: person.id, path }));
   else must(await supabase.from(kind).update({ photo_path: path }).eq("id", person.id));
   const { signedUrl } = must(await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_FOR));
+  // Drop the device's stored copy of the old photo so the new one shows.
+  try {
+    const u = new URL(signedUrl);
+    await (await caches.open("godview-photos-v1")).delete(u.origin + u.pathname);
+  } catch {
+    // No cache storage here (e.g. a private window): nothing to drop.
+  }
   return { photo_path: path, photo_src: signedUrl };
 }
 

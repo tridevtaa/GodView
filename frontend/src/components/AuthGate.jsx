@@ -33,6 +33,8 @@ async function clearLegacyCaches() {
 
 export async function logOut() {
   await supabase.auth.signOut();
+  // Photos kept on this device go with the session (shared computers).
+  await globalThis.caches?.delete("godview-photos-v1").catch(() => {});
   await clearLegacyCaches();
   window.location.assign("/");
 }

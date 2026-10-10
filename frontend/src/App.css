@@ -888,7 +888,7 @@ a:hover {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 16px;
 }
 
@@ -1178,7 +1178,7 @@ a:hover {
 
 .details {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px 24px;
   margin: 0;
 }
@@ -2013,7 +2013,7 @@ a:hover {
   }
 
   .school-form .form-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2457,7 +2457,7 @@ a:hover {
 
 .receipt-meta {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 24px;
   margin: 0 0 18px;
 }
@@ -2566,7 +2566,7 @@ a:hover {
   }
 
   .receipt-backdrop .receipt-meta {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .no-print {
@@ -4864,7 +4864,7 @@ button.profile-stat:hover {
 
 .ns-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px 18px;
 }
 
@@ -5356,7 +5356,7 @@ button.profile-stat:hover {
   }
 
   .tr-summary {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .tr-body,
@@ -6258,4 +6258,69 @@ body {
   textarea {
     font-size: 16px !important;
   }
+}
+
+/* Copying full-size ERP photos into small ones */
+.photo-upgrade {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.photo-upgrade-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.photo-upgrade-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.photo-upgrade-bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.photo-upgrade-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+  transition: width 0.3s;
+}
+
+@media (max-width: 760px) {
+  .photo-upgrade {
+    flex-wrap: wrap;
+  }
+}
+
+/* Date fields: iPhone gives them a fixed minimum width and centred text, so
+   they burst out of their column. Make them fill it like any other field. */
+input[type="date"] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  text-align: left;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.4em;
+  text-align: left;
 }

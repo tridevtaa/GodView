@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
+import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import ImportModal from "./components/ImportModal.jsx";
@@ -247,6 +248,8 @@ export default function App() {
             Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
           </p>
         )}
+
+        {!loading && isStudents && isAdmin && <PhotoUpgrade schoolId={school.id} students={current} onPhoto={patch} />}
 
         {!loading && isStudents && !isAdmin && current.length === 0 && (
           <p className="notice">
