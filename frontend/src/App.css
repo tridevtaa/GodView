@@ -6826,6 +6826,8 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .hw-form .input {
   flex: none;
+}
+
 /* Join request: the applicant's own photo (required) */
 .join-photo {
   display: flex;
