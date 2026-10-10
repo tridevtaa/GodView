@@ -171,6 +171,8 @@ export default function App() {
   return (
     <div className="app">
       <TopBar mode={mode} onMode={switchMode} sections={sections} />
+      {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
+      {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
 
       <main className="page">
@@ -248,8 +250,6 @@ export default function App() {
             Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
           </p>
         )}
-
-        {!loading && isStudents && isAdmin && <PhotoUpgrade schoolId={school.id} students={current} onPhoto={patch} />}
 
         {!loading && isStudents && !isAdmin && current.length === 0 && (
           <p className="notice">
