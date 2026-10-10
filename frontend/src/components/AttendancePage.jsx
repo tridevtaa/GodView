@@ -3,6 +3,7 @@ import { attendanceOverview, leaveOn, listAssignments, loadAttendance, saveAtten
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import ClassSwitcher from "./ClassSwitcher.jsx";
 
 export const MARKS = [
   ["present", "P", "Present"],
@@ -94,19 +95,13 @@ export default function AttendancePage({ school, session, students, isAdmin, me 
       {!groups.length ? (
         <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>
       ) : (
-        <nav className="hw-filter" aria-label="Class">
-          {isAdmin && (
-            <button className={!open ? "is-on" : ""} onClick={() => setOpen("")}>
-              All classes
-            </button>
-          )}
-          {groups.map((g) => (
-            <button key={g.key} className={open === g.key ? "is-on" : ""} onClick={() => setOpen(g.key)}>
-              {!isAdmin && canMark(g) && "★ "}
-              {classText(g.klass, g.section)}
-            </button>
-          ))}
-        </nav>
+        <ClassSwitcher
+          groups={groups}
+          value={open ?? ""}
+          onChange={setOpen}
+          allLabel={isAdmin ? "All classes" : undefined}
+          starred={new Set(isAdmin ? [] : groups.filter(canMark).map((g) => g.key))}
+        />
       )}
 
       {group ? (
