@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { attendanceOverview, leaveOn, loadAttendance, saveAttendance } from "../data/api.js";
+import { attendanceOverview, leaveOn, listAssignments, loadAttendance, saveAttendance } from "../data/api.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
@@ -23,8 +23,19 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // The morning register. Teachers open their class, everyone starts Present
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
-export default function AttendancePage({ school, session, students, isAdmin }) {
+export default function AttendancePage({ school, session, students, isAdmin, me }) {
   const [day, setDay] = useState(todayIso());
+  // Classes this person is class teacher of (only they mark attendance;
+  // owners and admins can mark any class).
+  const [mine, setMine] = useState(null);
+  useEffect(() => {
+    if (isAdmin || !session) return setMine([]);
+    listAssignments(school.id).then(
+      (rows) => setMine(rows.filter((a) => a.session_id === session.id && a.email === me && a.is_class_teacher)),
+      () => setMine([])
+    );
+  }, [school.id, session, me, isAdmin]);
+  const canMark = (g) => isAdmin || (mine ?? []).some((a) => a.class === g.klass && (!a.section || a.section === g.section));
   const groups = useMemo(() => {
     const m = new Map();
     for (const s of students) {
@@ -45,11 +56,13 @@ export default function AttendancePage({ school, session, students, isAdmin }) {
         kids: kids.sort((x, y) => (Number(x.roll_no) || 999) - (Number(y.roll_no) || 999) || x.name.localeCompare(y.name)),
       }));
   }, [students]);
-  // Teachers land on their (first) class; admins on the overview.
-  const [open, setOpen] = useState(isAdmin ? "" : groups[0]?.key ?? "");
+  // Teachers land on the class they're class teacher of (else their first
+  // class); admins on the overview.
+  const [open, setOpen] = useState(isAdmin ? "" : null);
   useEffect(() => {
-    if (!isAdmin && !open && groups[0]) setOpen(groups[0].key);
-  }, [groups, isAdmin, open]);
+    if (isAdmin || open !== null || mine === null || !groups.length) return;
+    setOpen((groups.find((g) => canMark(g)) ?? groups[0]).key);
+  }, [groups, isAdmin, open, mine]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!session) return <p className="notice">Import your students first; attendance is kept per session.</p>;
   const group = groups.find((g) => g.key === open);
@@ -89,6 +102,7 @@ export default function AttendancePage({ school, session, students, isAdmin }) {
           )}
           {groups.map((g) => (
             <button key={g.key} className={open === g.key ? "is-on" : ""} onClick={() => setOpen(g.key)}>
+              {!isAdmin && canMark(g) && "★ "}
               {classText(g.klass, g.section)}
             </button>
           ))}
@@ -96,7 +110,7 @@ export default function AttendancePage({ school, session, students, isAdmin }) {
       )}
 
       {group ? (
-        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} />
+        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} />
       ) : isAdmin && groups.length > 0 ? (
         <Overview session={session} day={day} onOpen={setOpen} />
       ) : null}
@@ -104,7 +118,7 @@ export default function AttendancePage({ school, session, students, isAdmin }) {
   );
 }
 
-function Register({ school, session, day, group }) {
+function Register({ school, session, day, group, canMark }) {
   const [marks, setMarks] = useState(null); // student id -> status
   const [saved, setSaved] = useState(null); // { by, at } when already marked
   const [dirty, setDirty] = useState(false);
@@ -123,7 +137,7 @@ function Register({ school, session, day, group }) {
         let last = null;
         for (const k of group.kids) {
           const r = got.get(k.id);
-          m[k.id] = r?.status ?? (leave.has(k.id) ? "leave" : "present");
+          m[k.id] = r?.status ?? (leave.has(k.id) ? "leave" : canMark ? "present" : "");
           if (r && (!last || r.marked_at > last.marked_at)) last = r;
         }
         setMarks(m);
@@ -134,11 +148,11 @@ function Register({ school, session, day, group }) {
     return () => {
       cancelled = true;
     };
-  }, [session.id, day, group]);
+  }, [session.id, day, group, canMark]);
 
   const counts = useMemo(() => {
     const c = { present: 0, absent: 0, late: 0, leave: 0 };
-    for (const v of Object.values(marks ?? {})) c[v] += 1;
+    for (const v of Object.values(marks ?? {})) if (v) c[v] += 1;
     return c;
   }, [marks]);
 
@@ -172,9 +186,15 @@ function Register({ school, session, day, group }) {
         <div>
           <h2>{classText(group.klass, group.section)}</h2>
           <p className="row-sub">
-            {saved ? `Marked by ${saved.by} at ${timeText(saved.at)}` : "Not marked yet: everyone starts as present. Tap anyone who isn’t."}
+            {saved
+              ? `Marked by ${saved.by} at ${timeText(saved.at)}`
+              : canMark
+                ? "Not marked yet: everyone starts as present. Tap anyone who isn’t."
+                : "Not marked yet."}
           </p>
+          {!canMark && <p className="att-readonly">Only this class’s class teacher marks attendance. You can see it here.</p>}
         </div>
+        {canMark && (
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => {
@@ -184,6 +204,7 @@ function Register({ school, session, day, group }) {
         >
           All present
         </button>
+        )}
       </div>
 
       <ul className="att-list">
@@ -196,7 +217,7 @@ function Register({ school, session, day, group }) {
             </span>
             <span className="att-marks" role="radiogroup" aria-label={`${k.name} attendance`}>
               {MARKS.map(([v, short, label]) => (
-                <button key={v} role="radio" aria-checked={marks[k.id] === v} aria-label={label} title={label} className={`att-mark att-${v}${marks[k.id] === v ? " is-on" : ""}`} onClick={() => set(k.id, v)}>
+                <button key={v} role="radio" aria-checked={marks[k.id] === v} aria-label={label} title={label} disabled={!canMark} className={`att-mark att-${v}${marks[k.id] === v ? " is-on" : ""}`} onClick={() => set(k.id, v)}>
                   {short}
                 </button>
               ))}
@@ -205,6 +226,7 @@ function Register({ school, session, day, group }) {
         ))}
       </ul>
 
+      {canMark && (
       <div className="att-save">
         <span className="att-tally">
           <b className="t-present">{counts.present}</b> present · <b className="t-absent">{counts.absent}</b> absent
@@ -227,6 +249,7 @@ function Register({ school, session, day, group }) {
           {busy ? "Saving…" : done ? "Saved" : saved && !dirty ? "Saved" : "Save attendance"}
         </button>
       </div>
+      )}
     </section>
   );
 }
@@ -285,7 +308,10 @@ function Overview({ session, day, onOpen }) {
             return (
               <li key={`${r.class}|${r.section}`}>
                 <button onClick={() => onOpen(`${r.class}|${r.section}`)}>
-                  <span className="att-ov-name">{classText(r.class, r.section)}</span>
+                  <span className="att-ov-name">
+                    {classText(r.class, r.section)}
+                    <span className="row-sub">{r.class_teacher || "No class teacher"}</span>
+                  </span>
                   {m === 0 ? (
                     <span className="badge badge-danger">Not marked</span>
                   ) : (

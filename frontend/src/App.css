@@ -7195,3 +7195,63 @@ input[type="date"]::-webkit-date-and-time-value {
 .att-save .btn {
   margin-left: auto;
 }
+
+/* Class teacher star on the Owner page */
+.chip-star {
+  margin-right: 2px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #c79a10;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip.chip-ct {
+  border-color: #e7c14b;
+  background: #fff7dc;
+}
+
+.chip-ct-label {
+  margin-left: 6px;
+  color: #8a6a05;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ct-hint {
+  flex-basis: 100%;
+}
+
+.att-readonly {
+  margin: 6px 0 0;
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.att-mark:disabled {
+  cursor: default;
+}
+
+.att-ov-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.att-ov-name .row-sub {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip .chip-star,
+.chip .chip-star:hover {
+  width: auto;
+  height: auto;
+  background: none;
+  color: #c79a10;
+}

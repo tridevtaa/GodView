@@ -353,6 +353,11 @@ export async function addAssignment(schoolId, sessionId, email, klass, section) 
   );
 }
 
+// Owner: make (or stop making) this assignment the class's class teacher.
+export async function setClassTeacher(id, on) {
+  must(await supabase.from("teacher_classes").update({ is_class_teacher: on }).eq("id", id));
+}
+
 export async function removeAssignment(id) {
   must(await supabase.from("teacher_classes").delete().eq("id", id));
 }

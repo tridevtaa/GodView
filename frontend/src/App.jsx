@@ -212,7 +212,7 @@ export default function App() {
             onChanged={reload}
           />
         ) : mode === "attendance" ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin} me={user.email} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} />
         ) : mode === "requests" ? (
