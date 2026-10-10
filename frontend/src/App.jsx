@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import InstallPrompt from "./components/InstallPrompt.jsx";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import AddModal from "./components/AddModal.jsx";
@@ -169,6 +170,7 @@ export default function App() {
   return (
     <div className="app">
       <TopBar mode={mode} onMode={switchMode} sections={sections} />
+      <InstallPrompt />
 
       <main className="page">
         {mode === "team" ? (
