@@ -862,3 +862,30 @@
   color: var(--success);
   font-weight: 600;
 }
+
+/* Lighter parent app: one class line, totals in card titles */
+.pa-class {
+  margin: 2px 0 6px;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.pa-h2-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pa-h2-total strong {
+  font-size: 18px;
+}
+
+.pa-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--success);
+  font-weight: 600;
+}

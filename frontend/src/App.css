@@ -1303,10 +1303,23 @@ a:hover {
 
   .page-actions {
     width: 100%;
+    flex-wrap: nowrap;
   }
 
+  /* One row: the main action stretches, the rest become icons. */
   .page-actions .btn {
     flex: 1;
+  }
+
+  .page-actions .btn-secondary:has(.btn-label) {
+    flex: none;
+    width: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .page-actions .btn-label {
+    display: none;
   }
 
 
@@ -2167,7 +2180,7 @@ a:hover {
 
 .fee-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -2732,9 +2745,17 @@ a:hover {
   gap: 12px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 760px) {
   .fee-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .fee-cards .fee-card {
+    padding: 12px;
+  }
+
+  .fee-cards .fee-card strong {
+    font-size: 19px;
   }
 }
 
@@ -6475,7 +6496,7 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .diary-sign::before {
-  content: "— ";
+  content: "";
 }
 
 .diary-foot {
@@ -7868,5 +7889,109 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .members-tabs .tab-short {
     display: inline;
+  }
+}
+
+/* Lighter app: parents inside Details, quieter diary, one-line requests */
+.profile-group .parents-view {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+
+.parents-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.parents-head h4 {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.profile-group .parent-list {
+  margin: 6px 0 0;
+}
+
+.profile-group .parent-list li {
+  padding: 6px 0;
+  border-top: 0;
+}
+
+.profile-group .parent-list a {
+  font-weight: 500;
+}
+
+.profile-group .parent-add {
+  margin-top: 8px;
+  border-top: 0;
+}
+
+.diary-write.is-closed {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.diary-write.is-closed .diary-lines {
+  min-height: 0;
+  resize: none;
+}
+
+.request-card header {
+  flex-wrap: wrap;
+}
+
+.request-student {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.request-card header .badge {
+  margin-left: auto;
+}
+
+.members-hint,
+.att-ov-hint {
+  margin: 0 0 8px;
+}
+
+.att-ov-hint,
+.members-hint {
+  padding: 0 22px;
+}
+
+@media (max-width: 760px) {
+  .members-hint {
+    padding: 0 16px;
+  }
+}
+
+.card-row-tag {
+  justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  /* Reply on its own line, then the answers side by side. */
+  .request-actions .input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .request-actions .btn {
+    flex: 1;
+  }
+
+  .panel-title-row {
+    flex-wrap: wrap;
+  }
+
+  .join-inline {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
   }
 }

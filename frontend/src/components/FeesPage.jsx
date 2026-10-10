@@ -24,7 +24,8 @@ function sessionMonths(session) {
 // Owner page (Fee structure).
 // Owners get two tabs: Overview (collection) and Structure (what each grade
 // pays). Admins see the overview only.
-export default function FeesPage({ school, role, session, students, grades, onGradesChanged, onOpenStudent, onChanged }) {
+// pastSession: a past session is open (picked on Students); say which.
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [monthly, setMonthly] = useState([]);
@@ -104,7 +105,7 @@ export default function FeesPage({ school, role, session, students, grades, onGr
               ))}
             </nav>
           )}
-          <span className="badge badge-neutral">Session {session.name}</span>
+          {pastSession && <span className="badge badge-neutral">Session {session.name}</span>}
         </div>
       </div>
       {tab === "overview" && (
@@ -115,7 +116,7 @@ export default function FeesPage({ school, role, session, students, grades, onGr
           </button>
           <button className="btn btn-primary" onClick={() => setDialog("collect")}>
             <Icon name="plus" />
-            Collect a payment
+            Collect fee
           </button>
         </div>
       )}
@@ -170,33 +171,31 @@ export default function FeesPage({ school, role, session, students, grades, onGr
       )}
 
       <section className="fee-cards">
-        <Stat label="Collected so far" value={summary?.collected} tone="paid" note={billed ? `${rate}% of the year’s fees` : ""} />
-        <Stat label="Total dues now" value={summary?.due_now} tone="due" note={summary ? `${summary.students_due} students` : ""} />
-        <Stat label="Expected this year" value={summary?.billed} />
-        <Stat label="Still to come" value={summary ? summary.outstanding - summary.due_now : undefined} note="Not due yet" />
+        <Stat label="Collected" value={summary?.collected} tone="paid" note={billed ? `${rate}% of ${rupeesShort(billed)}` : ""} />
+        <Stat label="Due now" value={summary?.due_now} tone="due" note={summary ? `${summary.students_due} students` : ""} />
+        <Stat label="Due later" value={summary ? summary.outstanding - summary.due_now : undefined} note="this session" />
       </section>
 
       <div className="fees-charts">
         <section className="panel chart-panel">
-          <ColumnChart title="Collection, month by month" subtitle={`Payments received, Apr to Mar, ${session.name}`} data={months} />
+          <ColumnChart title="Collected by month" data={months} />
         </section>
         <section className="panel chart-panel">
-          <BarChart title="Dues by class" subtitle="Amount due by today, per class" data={classes} valueLabel="Due now" />
+          <BarChart title="Due by class" data={classes} valueLabel="Due now" />
         </section>
       </div>
 
       <section className="panel">
         <div className="panel-title panel-title-row">
           <h2>
-            {showAll ? "Everyone who owes" : "Full-fee defaulters"} <span className="badge badge-danger">{list.length}</span>
+            {showAll ? "Everyone who owes" : "Paid nothing yet"} <span className="badge badge-danger">{list.length}</span>
           </h2>
           <button className="link-btn" onClick={() => setShowAll((v) => !v)}>
-            {showAll ? "Show full-fee defaulters only" : `Show everyone who owes (${owing.length})`}
+            {showAll ? "Paid nothing yet" : `Everyone who owes (${owing.length})`}
           </button>
         </div>
-        {!showAll && <p className="row-sub panel-help">Students with fees due who haven’t paid anything this session.</p>}
         {list.length === 0 ? (
-          <p className="row-sub panel-empty">{showAll ? "Nobody owes anything right now. 🎉" : "No full-fee defaulters. 🎉"}</p>
+          <p className="row-sub panel-empty">{showAll ? "Nobody owes anything right now. 🎉" : "Everyone has paid something. 🎉"}</p>
         ) : (
           <ul className="dues-list">
             {list.slice(0, 300).map((s) => (

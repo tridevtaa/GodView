@@ -26,6 +26,8 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
   const [staffOnly, setStaffOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Stamps and starters appear once the teacher starts writing.
+  const [writing, setWriting] = useState(Boolean(autoFocus));
   const box = useRef(null);
   const first = person.name.split(" ")[0];
 
@@ -55,6 +57,7 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
       setBody("");
       setKind("remark");
       setStaffOnly(false);
+      setWriting(false);
     } catch {
       setError("Couldn’t write in the diary. Try again.");
     } finally {
@@ -83,7 +86,9 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
   return (
     <div className="diary">
       {canWrite && (
-        <form className="diary-page diary-write" onSubmit={submit}>
+        <form className={`diary-page diary-write${writing ? "" : " is-closed"}`} onSubmit={submit}>
+          {writing && (
+          <>
           <div className="diary-date">{day(new Date().toISOString())}</div>
           <div className="diary-stamps" role="radiogroup" aria-label="Stamp">
             {Object.entries(STAMPS).map(([k, label]) => (
@@ -99,32 +104,37 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
               </button>
             ))}
           </div>
+          </>
+          )}
           <textarea
             ref={box}
             className="diary-lines"
-            rows={4}
+            rows={writing ? 4 : 1}
+            onFocus={() => setWriting(true)}
             maxLength={4000}
-            placeholder={staffOnly ? `A note about ${first} for school staff only…` : `Dear Parent, …`}
+            placeholder={staffOnly ? `A note about ${first} for staff…` : writing ? "Dear Parent, …" : `Write in ${first}’s diary…`}
             value={body}
             onChange={(e) => setBody(e.target.value)}
           />
+          {writing && (
           <div className="diary-write-foot">
-            <label className="checkbox checkbox-inline">
+            <label className="checkbox checkbox-inline" title="Parents won’t see it">
               <input type="checkbox" checked={staffOnly} onChange={(e) => setStaffOnly(e.target.checked)} />
-              <span>Staff only (parents won’t see it)</span>
+              <span>Staff only</span>
             </label>
             <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
               <Icon name="edit" />
-              {busy ? "Writing…" : "Write in diary"}
+              {busy ? "Writing…" : "Write"}
             </button>
           </div>
+          )}
         </form>
       )}
       {error && <p className="field-error">{error}</p>}
       {notes === null ? (
         <p className="row-sub">Loading…</p>
       ) : notes.length === 0 ? (
-        <p className="row-sub diary-empty">The diary is empty. Pages written here reach {first}’s parents in the Godview app, and they sign them.</p>
+        <p className="row-sub diary-empty">No pages yet. Parents read and sign them in their app.</p>
       ) : (
         <ul className="diary-list">
           {notes.map((n) => {
@@ -133,7 +143,7 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
               <li key={n.id} className={`diary-page${n.shared_with_parents ? "" : " is-private"}`}>
                 <div className="diary-page-head">
                   <span className="diary-date">{day(n.created_at)}</span>
-                  {n.kind && n.kind !== "remark" && <span className={`stamp stamp-${n.kind} is-on`}>{STAMPS[n.kind]}</span>}
+                  {STAMPS[n.kind] && n.kind !== "remark" && <span className={`stamp stamp-${n.kind} is-on`}>{STAMPS[n.kind]}</span>}
                 </div>
                 <p className="diary-body">{n.body}</p>
                 <p className="diary-sign">
@@ -148,12 +158,12 @@ export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus 
                       <Icon name="check" size={14} /> Signed by parent · {short(sig.signed_at)}
                     </span>
                   ) : (
-                    <span className="diary-waiting">Waiting for parent’s signature</span>
+                    <span className="diary-waiting">Not signed yet</span>
                   )}
                   {canWrite && (n.author_email === me || isAdmin) && (
                     <span className="note-actions">
                       <button className="link-btn" onClick={() => toggleShare(n)}>
-                        {n.shared_with_parents ? "Make staff only" : "Send to parents"}
+                        {n.shared_with_parents ? "Hide from parents" : "Send to parents"}
                       </button>
                       <button className="link-btn" onClick={() => remove(n.id)}>
                         Remove

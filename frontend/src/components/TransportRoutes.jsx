@@ -32,12 +32,6 @@ export default function TransportRoutes({ school, routes, students, onChanged })
   return (
     <>
       {error && <p className="notice notice-error">{error}</p>}
-      {!hasMaps && (
-        <p className="callout callout-neutral">
-          Map search isn’t switched on yet: the Google Maps key still needs adding. Routes and stops can be added by
-          name meanwhile.
-        </p>
-      )}
 
       <section className="tr-summary">
         <div>
@@ -115,7 +109,7 @@ function RouteCard({ school, route, riders, act }) {
             </button>
           )}
           <span className="freq-btn fc-mini-freq">
-            {route.stops.length} stops · {total} students
+            {route.stops.length} stop{route.stops.length === 1 ? "" : "s"} · {total} students
           </span>
         </div>
         <div className="fc-head-end">

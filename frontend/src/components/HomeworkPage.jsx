@@ -78,7 +78,6 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           <h1 className="sr-only">Homework</h1>
           <div className="page-meta">
             <span className="page-count">Homework</span>
-            <span className="badge badge-neutral">Session {session.name}</span>
           </div>
         </div>
         {groups.length > 0 && !writing && !readOnly && (
