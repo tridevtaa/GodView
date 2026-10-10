@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, listNotes, listResults } from "../data/api.js";
+import { attendanceMonth, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
-import StudentNotes from "./StudentNotes.jsx";
+import Chat from "./Chat.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
 import StudentParents from "./StudentParents.jsx";
@@ -124,14 +124,13 @@ export function MonthAttendance({ studentId, title = "This month" }) {
   );
 }
 
-const TAB_ICONS = { details: "file", fees: "rupee", notes: "book", results: "chart" };
+const TAB_ICONS = { details: "file", fees: "rupee", messages: "message", results: "chart" };
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
 function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
-  const [pages, setPages] = useState(null);
 
   useEffect(() => {
     let off = false;
@@ -158,11 +157,10 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
         () => {}
       );
     }
-    if (!isAdmin) listNotes(person.id).then((n) => !off && setPages(n.length), () => {});
     return () => {
       off = true;
     };
-  }, [person.id, sessionId, isAdmin]);
+  }, [person.id, sessionId]);
 
   const due = Number(person.fee_due) || 0;
   const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
@@ -172,8 +170,8 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
     ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "", () => onTab("results")],
     isAdmin
       ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "is-due" : "", () => onTab("fees")]
-      : ["Diary", pages === null ? "–" : pages, "pages", "", () => onTab("notes")],
-  ];
+      : null,
+  ].filter(Boolean);
 
   return (
     <header className="ig-hero">
@@ -307,12 +305,6 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [], asPage = false, onPrev, onNext, position }) {
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState(initialTab);
-  // "Add note" / "Add result" on Details open that tab ready to type.
-  const [startAdding, setStartAdding] = useState(null);
-  const addTo = (t) => {
-    setStartAdding(t);
-    setTab(t);
-  };
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
@@ -340,7 +332,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const tabs = [
     ["details", "Details"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
-    ["notes", "Diary"],
+    ["messages", "Messages"],
     ["results", "Results"],
   ];
 
@@ -472,10 +464,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
         <div className="modal-body profile-body">
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
-          ) : isStudent && !editing && tab === "notes" ? (
-            <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={startAdding === "notes"} />
+          ) : isStudent && !editing && tab === "messages" ? (
+            <Chat studentId={person.id} viewer="staff" me={me} canSend={canWrite} canAnswer={canWrite} />
           ) : isStudent && !editing && tab === "results" ? (
-            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={startAdding === "results"} />
+            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} />
           ) : editing ? (
             <ProfileEdit
               person={person}
@@ -490,16 +482,6 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             />
           ) : (
             <div className="profile-groups">
-              {isStudent && canWrite && !asPage && (
-                <div className="profile-quick">
-                  <button className="btn btn-secondary btn-sm" onClick={() => addTo("notes")}>
-                    <Icon name="edit" /> Write in diary
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => addTo("results")}>
-                    <Icon name="plus" /> Add result
-                  </button>
-                </div>
-              )}
               {isStudent && <MonthAttendance studentId={person.id} />}
               {groups.length === 0 && <p className="row-sub">No details recorded yet.</p>}
               {groups.map(([title, rows]) => (

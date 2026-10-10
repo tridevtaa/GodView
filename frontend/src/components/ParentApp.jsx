@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import {
-  cancelParentRequest,
   createParentRequest,
   listGrades,
   listResults,
@@ -9,9 +8,6 @@ import {
   markParentSeen,
   parentFamily,
   parentFees,
-  parentNotes,
-  parentRequests,
-  signDiary,
   childHomework,
   parentUnread,
   attendanceMonth,
@@ -24,14 +20,14 @@ import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
 import Icon from "./Icon.jsx";
+import Chat from "./Chat.jsx";
 import "./parent.css";
 
 const TABS = [
   ["fees", "Fees"],
   ["results", "Results"],
-  ["notes", "Diary"],
   ["homework", "Homework"],
-  ["requests", "Requests"],
+  ["inbox", "Messages"],
 ];
 // Local date (India), not UTC: before 5:30 am UTC is still yesterday.
 const today = () => {
@@ -174,9 +170,8 @@ export default function ParentApp({ phone }) {
 
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
-            {tab === "notes" && <NotesTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
-            {tab === "requests" && <RequestsTab key={child.id} child={child} since={since} />}
+            {tab === "inbox" && <MessagesTab key={child.id} child={child} phone={phone} />}
           </>
         )}
       </main>
@@ -532,92 +527,6 @@ function ResultsTab({ child, since }) {
   });
 }
 
-// ---------------------------------------------------------------- notes ---
-
-// The school diary: dated pages from teachers, signed by them; the parent
-// signs each page (optionally with a reply), like signing a paper diary.
-function NotesTab({ child, since }) {
-  const load = useCallback(() => parentNotes(child.id), [child.id]);
-  const { data, error, reload } = useLoad(load);
-  if (error) return <p className="notice notice-error">{error}</p>;
-  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
-  if (!data.length)
-    return <Empty icon="edit" title="The diary is empty" text={`Pages ${child.name.split(" ")[0]}’s teachers write in the diary will appear here for you to read and sign.`} />;
-  return (
-    <ul className="diary-list pa-diary">
-      {data.map((n) => (
-        <DiaryPage key={n.id} note={n} fresh={isNew(n.updated_at, since)} onSigned={reload} />
-      ))}
-    </ul>
-  );
-}
-
-const STAMP_LABEL = { appreciation: "Well done", concern: "Concern", reminder: "Reminder" };
-
-function DiaryPage({ note, fresh, onSigned }) {
-  const sig = Array.isArray(note.signature) ? note.signature[0] : note.signature;
-  const [open, setOpen] = useState(false);
-  const [reply, setReply] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function sign() {
-    setBusy(true);
-    setError("");
-    try {
-      await signDiary(note.id, reply.trim());
-      setOpen(false);
-      onSigned();
-    } catch {
-      setError("Couldn’t sign. Please try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <li className={`diary-page${fresh ? " is-new" : ""}`}>
-      <div className="diary-page-head">
-        <span className="diary-date">{dateText(note.created_at, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</span>
-        {STAMP_LABEL[note.kind] && <span className={`stamp stamp-${note.kind} is-on`}>{STAMP_LABEL[note.kind]}</span>}
-        {fresh && <NewTag />}
-      </div>
-      <p className="diary-body">{note.body}</p>
-      {note.author_name && (
-        <p className="diary-sign">
-          {note.author_name}
-          {note.author_role ? `, ${note.author_role}` : ""}
-        </p>
-      )}
-      {sig ? (
-        <div className="diary-foot">
-          <span className="diary-signed">
-            <Icon name="check" size={14} /> You signed · {dateText(sig.signed_at, { day: "numeric", month: "short" })}
-          </span>
-          {sig.reply && <p className="diary-reply">You: “{sig.reply}”</p>}
-        </div>
-      ) : open ? (
-        <div className="diary-sign-form">
-          <textarea className="textarea" rows={2} maxLength={1000} placeholder="Reply to the teacher (optional)" value={reply} onChange={(e) => setReply(e.target.value)} />
-          {error && <p className="field-error">{error}</p>}
-          <div className="pa-form-foot">
-            <button className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
-              Cancel
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={sign} disabled={busy}>
-              <Icon name="edit" /> {busy ? "Signing…" : "Sign"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button className="btn btn-primary btn-sm diary-sign-btn" onClick={() => setOpen(true)}>
-          <Icon name="edit" /> Sign the diary
-        </button>
-      )}
-    </li>
-  );
-}
-
 // ------------------------------------------------------------- homework ---
 
 function HomeworkTab({ child, since }) {
@@ -649,99 +558,44 @@ function HomeworkTab({ child, since }) {
   );
 }
 
-// ------------------------------------------------------------- requests ---
+// ------------------------------------------------------------- messages ---
 
-const KINDS = [
-  ["leave", "Leave"],
-  ["certificate", "Certificate"],
-  ["message", "Message"],
-];
-const STATUS = {
-  open: ["Waiting", "badge-warning"],
-  approved: ["Approved", "badge-success"],
-  rejected: ["Not approved", "badge-danger"],
-  resolved: ["Done", "badge-success"],
-  cancelled: ["Withdrawn", "badge-neutral"],
-};
 const CERTIFICATES = ["Bonafide certificate", "Character certificate", "Transfer certificate", "Fee certificate", "Other"];
 
-function RequestsTab({ child, since }) {
-  const load = useCallback(() => parentRequests(child.id), [child.id]);
-  const { data, error, reload } = useLoad(load);
-  const [writing, setWriting] = useState(false);
-
-  async function withdraw(id) {
-    try {
-      await cancelParentRequest(id);
-      reload();
-    } catch {
-      // Already handled by the school; the reload shows the new status.
-      reload();
-    }
-  }
-
-  if (error) return <p className="notice notice-error">{error}</p>;
-  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
-
+// The child's conversation with the school (teachers and office), with
+// Leave and Certificate buttons that send a request card into it.
+function MessagesTab({ child, phone }) {
+  const [form, setForm] = useState(null); // "leave" | "certificate"
+  const [tick, setTick] = useState(0);
+  const me = `+91${String(phone).replace(/\D/g, "").slice(-10)}`;
   return (
     <>
-      {writing ? (
-        <RequestForm child={child} onCancel={() => setWriting(false)} onSent={() => (setWriting(false), reload())} />
-      ) : (
-        <button className="pa-new" onClick={() => setWriting(true)}>
-          <span className="pa-new-icon">
-            <Icon name="plus" size={18} />
-          </span>
-          <span>
-            <strong>New request</strong>
-            <span className="row-sub">Leave, a certificate, or a message to the school</span>
-          </span>
-        </button>
-      )}
-
-      {data.length ? (
-        <section className="pa-card">
-          <ul className="pa-list">
-            {data.map((r) => {
-              const [label, tone] = STATUS[r.status] ?? [r.status, "badge-neutral"];
-              return (
-                <li key={r.id} className="pa-request">
-                  <div className="pa-request-head">
-                    <strong>
-                      {r.subject} {isNew(r.handled_at, since) && <NewTag />}
-                    </strong>
-                    <span className={`badge ${tone}`}>{label}</span>
-                  </div>
-                  <span className="row-sub">
-                    {KINDS.find(([k]) => k === r.kind)?.[1]}
-                    {r.kind === "leave" && ` · ${dateText(r.leave_from, { day: "numeric", month: "short" })} to ${dateText(r.leave_to, { day: "numeric", month: "short" })}`}
-                    {r.certificate_type && ` · ${r.certificate_type}`} · sent {dateText(r.created_at)}
-                  </span>
-                  {r.body && <p className="pa-request-body">{r.body}</p>}
-                  {r.response && (
-                    <p className="pa-reply">
-                      <strong>School:</strong> {r.response}
-                    </p>
-                  )}
-                  {r.status === "open" && (
-                    <button className="link-btn" onClick={() => withdraw(r.id)}>
-                      Withdraw
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : (
-        !writing && <Empty icon="file" title="No requests yet" text="Requests you send to the school, and their replies, appear here." />
-      )}
+      {form && <RequestForm child={child} kind={form} onCancel={() => setForm(null)} onSent={() => (setForm(null), setTick((t) => t + 1))} />}
+      <section className="pa-card pa-chat">
+        <Chat
+          studentId={child.id}
+          viewer="parent"
+          me={me}
+          refreshKey={tick}
+          actions={
+            <span className="chat-actions">
+              <button type="button" className="chat-chip" onClick={() => setForm("leave")}>
+                <Icon name="plus" size={14} /> Leave
+              </button>
+              <button type="button" className="chat-chip" onClick={() => setForm("certificate")}>
+                <Icon name="plus" size={14} /> Certificate
+              </button>
+            </span>
+          }
+        />
+      </section>
     </>
   );
 }
 
-function RequestForm({ child, onCancel, onSent }) {
-  const [form, setForm] = useState({ kind: "leave", subject: "", body: "", leave_from: today(), leave_to: today(), certificate_type: CERTIFICATES[0] });
+// Leave or certificate request; it appears in the conversation as a card.
+function RequestForm({ child, kind, onCancel, onSent }) {
+  const [form, setForm] = useState({ kind, subject: "", body: "", leave_from: today(), leave_to: today(), certificate_type: CERTIFICATES[0] });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -779,14 +633,7 @@ function RequestForm({ child, onCancel, onSent }) {
 
   return (
     <form className="pa-card pa-form" onSubmit={submit}>
-      <h2 className="pa-h2">New request for {first}</h2>
-      <nav className="segmented pa-kind" aria-label="Request type">
-        {KINDS.map(([k, l]) => (
-          <button type="button" key={k} className={form.kind === k ? "active" : ""} onClick={() => setForm({ ...form, kind: k })}>
-            {l}
-          </button>
-        ))}
-      </nav>
+      <h2 className="pa-h2">{kind === "leave" ? `Leave for ${first}` : `Certificate for ${first}`}</h2>
       {form.kind === "leave" && (
         <div className="pa-dates">
           <label>
@@ -810,10 +657,6 @@ function RequestForm({ child, onCancel, onSent }) {
         </label>
       )}
       <label>
-        <span>Subject{form.kind === "message" ? "" : " (optional)"}</span>
-        <input className="input" value={form.subject} onChange={set("subject")} maxLength={150} placeholder={subjectFor({ ...form, subject: "" }) || "What is it about?"} />
-      </label>
-      <label>
         <span>{form.kind === "leave" ? "Reason" : "Details"}</span>
         <textarea className="textarea" rows={3} value={form.body} onChange={set("body")} maxLength={2000} />
       </label>
@@ -823,7 +666,7 @@ function RequestForm({ child, onCancel, onSent }) {
           Cancel
         </button>
         <button className="btn btn-primary" disabled={busy}>
-          {busy ? "Sending…" : "Send to school"}
+          {busy ? "Sending…" : "Send"}
         </button>
       </div>
     </form>
