@@ -1,6 +1,6 @@
 // Godview service worker: makes the installed app open fast and show its
 // shell offline. School data always comes fresh from the network; only the
-// app's own files are cached.
+// app's own files are cached, plus small student photos (see PHOTOS).
 const CACHE = "godview-shell-v4";
 // Student photos (small thumbnails), kept on the device so they appear
 // instantly. Survives app updates; cleared on logout.
