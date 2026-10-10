@@ -13,6 +13,7 @@ import {
   signDiary,
   childHomework,
   parentUnread,
+  attendanceMonth,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
@@ -30,7 +31,11 @@ const TABS = [
   ["homework", "Homework"],
   ["requests", "Requests"],
 ];
-const today = () => new Date().toISOString().slice(0, 10);
+// Local date (India), not UTC: before 5:30 am UTC is still yesterday.
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 const dateText = (d, opts = { day: "numeric", month: "short", year: "numeric" }) =>
   d ? new Date(d).toLocaleDateString("en-IN", opts) : "";
 const showPhone = (p = "") => p.replace(/^\+?91(\d{5})(\d{5})$/, "+91 $1 $2");
@@ -163,6 +168,7 @@ export default function ParentApp({ phone }) {
                   {child.school?.name}
                   {child.session ? ` · Session ${child.session.name}` : ""}
                 </p>
+                <TodayAttendance key={child.id} child={child} />
               </div>
             </section>
 
@@ -191,6 +197,28 @@ export default function ParentApp({ phone }) {
 // when everything would be "new").
 const isNew = (when, since) => Boolean(when && since && when > since);
 const NewTag = () => <span className="pa-new-tag">New</span>;
+
+// "Today: Present" and this month's tally, on the child's card.
+const MARK_TEXT = { present: "Present", absent: "Absent", late: "Late", leave: "On leave" };
+function TodayAttendance({ child }) {
+  const [days, setDays] = useState(null);
+  useEffect(() => {
+    attendanceMonth(child.id, today()).then(setDays, () => setDays([]));
+  }, [child.id]);
+  if (!days) return null;
+  const t = days.find((d) => d.day === today());
+  const present = days.filter((d) => d.status === "present" || d.status === "late").length;
+  return (
+    <div className="pa-att">
+      <span className={`pa-att-today is-${t?.status ?? "none"}`}>Today: {t ? MARK_TEXT[t.status] : "Not marked yet"}</span>
+      {days.length > 0 && (
+        <span className="row-sub">
+          This month {present} of {days.length} days
+        </span>
+      )}
+    </div>
+  );
+}
 
 function NotLinked({ phone }) {
   return (

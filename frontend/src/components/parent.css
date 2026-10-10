@@ -777,3 +777,26 @@
     font-size: 12px;
   }
 }
+
+/* Attendance on the child's card */
+.pa-att {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 8px;
+}
+
+.pa-att-today {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pa-att-today.is-present { background: #e3f3df; color: #2f6d22; }
+.pa-att-today.is-absent { background: var(--danger-soft); color: var(--danger); }
+.pa-att-today.is-late { background: var(--warning-soft); color: var(--warning); }
+.pa-att-today.is-leave { background: var(--brand-soft); color: var(--brand); }

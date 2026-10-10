@@ -4,6 +4,7 @@ import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
 import HomeworkPage from "./components/HomeworkPage.jsx";
+import AttendancePage from "./components/AttendancePage.jsx";
 import AddModal from "./components/AddModal.jsx";
 import ProfileModal from "./components/ProfileModal.jsx";
 import ImportModal from "./components/ImportModal.jsx";
@@ -171,6 +172,7 @@ export default function App() {
   const title = isStudents ? "Students" : "Employees";
   const sections = [
     ["students", "Students"],
+    ["attendance", "Attendance"],
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Requests", openRequests],
@@ -209,6 +211,8 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
+        ) : mode === "attendance" ? (
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} />
         ) : mode === "requests" ? (

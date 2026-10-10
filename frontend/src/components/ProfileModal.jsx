@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
+import { attendanceMonth } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import StudentNotes from "./StudentNotes.jsx";
 import StudentResults from "./StudentResults.jsx";
@@ -90,6 +91,38 @@ const GROUPS = {
     ],
   ],
 };
+
+// This month's attendance: a dot per marked day and the totals.
+export function MonthAttendance({ studentId, title = "Attendance this month" }) {
+  const [days, setDays] = useState(null);
+  useEffect(() => {
+    const d = new Date();
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    attendanceMonth(studentId, local).then(setDays, () => setDays([]));
+  }, [studentId]);
+  if (!days?.length) return null;
+  const n = (s) => days.filter((d) => d.status === s).length;
+  const present = n("present") + n("late");
+  return (
+    <section className="profile-group month-att">
+      <h3>{title}</h3>
+      <div className="month-att-dots" aria-hidden="true">
+        {days.map((d) => (
+          <i key={d.day} className={`att-dot att-${d.status}`} title={`${d.day}: ${d.status}`} />
+        ))}
+      </div>
+      <p className="month-att-sum">
+        <strong>
+          {present} of {days.length} days
+        </strong>{" "}
+        ({Math.round((present / days.length) * 100)}%)
+        {n("absent") > 0 && ` · ${n("absent")} absent`}
+        {n("late") > 0 && ` · ${n("late")} late`}
+        {n("leave") > 0 && ` · ${n("leave")} on leave`}
+      </p>
+    </section>
+  );
+}
 
 // Boy / girl mark beside a student's name.
 function GenderMark({ gender }) {
@@ -310,6 +343,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                   </button>
                 </div>
               )}
+              {isStudent && <MonthAttendance studentId={person.id} />}
               {groups.length === 0 && <p className="row-sub">No details recorded yet.</p>}
               {groups.map(([title, rows]) => (
                 <section key={title} className="profile-group">
