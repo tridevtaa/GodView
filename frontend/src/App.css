@@ -1712,20 +1712,71 @@ a:hover {
 
 .result-form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-.result-form .input {
-  min-width: 120px;
+.result-exam {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.result-form .input-num {
-  flex: 0 0 76px;
+.result-exam .input {
+  flex: 1;
   min-width: 0;
+}
+
+/* One result per line: Subject, Marks / Max, Save. */
+.result-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-line .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.result-line .input-num {
+  flex: 0 0 64px;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.result-save {
+  flex: none;
+  width: 40px;
+  padding: 0;
+}
+
+/* Result rows never wrap: long subject names are cut with "…". */
+.result-table {
+  table-layout: fixed;
+}
+
+.result-table th,
+.result-table td {
+  white-space: nowrap;
+}
+
+.result-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 40%;
+}
+
+.result-table .result-pct {
+  width: 16%;
+}
+
+.result-table .result-actions {
+  width: 18%;
 }
 
 .seg-count {
@@ -6288,4 +6339,67 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--danger);
   font-size: 12px;
   text-align: left;
+}
+
+/* Boy / girl mark beside a student's name */
+.gender {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  border-radius: 50%;
+  vertical-align: 3px;
+}
+
+.gender-male {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.gender-female {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* Details: shortcuts to add a note or a result */
+.profile-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* One-tap note starters */
+.note-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note-starters button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.note-starters button:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.note-form .note-starters {
+  align-self: stretch;
+}
+
+.result-table caption {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.result-table caption span {
+  margin-left: 10px;
 }

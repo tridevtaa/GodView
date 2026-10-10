@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addNote, deleteNote, listNotes, setNoteShared } from "../data/api.js";
 
 const when = (iso) =>
@@ -6,7 +6,14 @@ const when = (iso) =>
 
 // Notes about a student from anyone who can see them; authors (and admins)
 // can delete their notes.
-export default function StudentNotes({ person, me, isAdmin, canWrite }) {
+// One-tap starters for the notes teachers write most.
+const STARTERS = ["Great work today", "Homework not done", "Needs help with", "Absent without notice", "Spoke to parents about"];
+
+export default function StudentNotes({ person, me, isAdmin, canWrite, autoFocus }) {
+  const box = useRef(null);
+  useEffect(() => {
+    if (autoFocus) box.current?.focus();
+  }, [autoFocus]);
   const [notes, setNotes] = useState(null);
   const [body, setBody] = useState("");
   const [shared, setShared] = useState(false);
@@ -63,7 +70,15 @@ export default function StudentNotes({ person, me, isAdmin, canWrite }) {
     <div className="notes">
       {canWrite && (
         <form className="note-form" onSubmit={submit}>
+          <div className="note-starters">
+            {STARTERS.map((s) => (
+              <button type="button" key={s} onClick={() => (setBody((b) => (b.trim() ? `${b.trim()} ${s}` : s) + " "), box.current?.focus())}>
+                {s}
+              </button>
+            ))}
+          </div>
           <textarea
+            ref={box}
             className="textarea"
             rows={3}
             maxLength={4000}

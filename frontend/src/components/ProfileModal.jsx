@@ -41,7 +41,6 @@ const GROUPS = {
       "Personal",
       [
         ["Date of birth", (p) => p.dob && `${longDate(p.dob)}${age(p.dob) ? ` · ${age(p.dob)}` : ""}`],
-        ["Gender", (p) => ({ M: "Male", F: "Female" })[p.gender]],
         ["Category", (p) => p.category],
         ["Religion", (p) => p.religion],
         // Only the last 4 digits are stored.
@@ -70,8 +69,9 @@ const GROUPS = {
       [
         ["Roll no.", (p) => p.roll_no],
         ["Stream", (p) => p.stream],
-        ["Admission date", (p) => longDate(p.admission_date)],
-        ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · ")],
+        // Office details: teachers don't need them.
+        ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
+        ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
         ["SRN", (p) => p.srn],
         ["Bus", (p, routes) => (p.uses_bus ? stopLabel(routes, p.bus_stop_id) || [p.transport_route, p.pickup_point].filter(Boolean).join(" · ") || "Uses the bus" : !p.bus_stop_id && [p.transport_route, p.pickup_point].filter(Boolean).join(" · "))],
         ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
@@ -90,6 +90,17 @@ const GROUPS = {
     ],
   ],
 };
+
+// Boy / girl mark beside a student's name.
+function GenderMark({ gender }) {
+  const g = { M: ["male", "Boy"], F: ["female", "Girl"] }[gender];
+  if (!g) return null;
+  return (
+    <span className={`gender gender-${g[0]}`} title={g[1]} aria-label={g[1]}>
+      <Icon name={g[0]} size={14} />
+    </span>
+  );
+}
 
 function PhotoUpload({ person, kind, schoolId, onSaved }) {
   const input = useRef(null);
@@ -134,6 +145,12 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [] }) {
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState(initialTab);
+  // "Add note" / "Add result" on Details open that tab ready to type.
+  const [startAdding, setStartAdding] = useState(null);
+  const addTo = (t) => {
+    setStartAdding(t);
+    setTab(t);
+  };
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
@@ -148,7 +165,13 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
 
   const isStudent = mode === "students";
   const groups = GROUPS[mode]
-    .map(([title, rows]) => [title, rows.map(([label, get, wide]) => [label, get(person, routes), wide]).filter(([, v]) => v)])
+    .map(([title, rows]) => [
+      title,
+      rows
+        .filter(([, , , only]) => only !== "admin" || isAdmin)
+        .map(([label, get, wide]) => [label, get(person, routes), wide])
+        .filter(([, v]) => v),
+    ])
     .filter(([, rows]) => rows.length);
   const callNo = person.parent_phone || person.father_phone || person.mother_phone || person.phone;
   const feeKnown = isStudent && isAdmin && person.fee_status && person.fee_status !== "unknown";
@@ -198,7 +221,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
               {person.status === "left" && <span className="badge badge-danger">Left</span>}
             </div>
-            <h2>{person.name}</h2>
+            <h2>
+              {person.name}
+              {isStudent && <GenderMark gender={person.gender} />}
+            </h2>
             <p className="profile-sub">
               {isStudent
                 ? person.parent_name && `${relation(person.gender)} ${person.parent_name}`
@@ -257,9 +283,9 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           ) : isStudent && !editing && tab === "parents" ? (
             <StudentParents person={person} canEdit={canEdit} />
           ) : isStudent && !editing && tab === "notes" ? (
-            <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} />
+            <StudentNotes person={person} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={startAdding === "notes"} />
           ) : isStudent && !editing && tab === "results" ? (
-            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} />
+            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={startAdding === "results"} />
           ) : editing ? (
             <ProfileEdit
               person={person}
@@ -272,10 +298,19 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 setEditing(false);
               }}
             />
-          ) : groups.length === 0 ? (
-            <p className="row-sub">No details recorded yet.</p>
           ) : (
             <div className="profile-groups">
+              {isStudent && canWrite && (
+                <div className="profile-quick">
+                  <button className="btn btn-secondary btn-sm" onClick={() => addTo("notes")}>
+                    <Icon name="edit" /> Add note
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => addTo("results")}>
+                    <Icon name="plus" /> Add result
+                  </button>
+                </div>
+              )}
+              {groups.length === 0 && <p className="row-sub">No details recorded yet.</p>}
               {groups.map(([title, rows]) => (
                 <section key={title} className="profile-group">
                   <h3>{title}</h3>
