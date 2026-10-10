@@ -56,6 +56,9 @@ export default function App() {
   const { school, role, user, setSchool } = useAuth();
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
+  // Principal: sees students, attendance, homework, requests and employees
+  // across the school, and changes nothing (no imports, exports or edits).
+  const isPrincipal = role === "principal";
   const [pendingCount, setPendingCount] = useState(0);
   const [openRequests, setOpenRequests] = useState(0);
   const [badgeTick, setBadgeTick] = useState(0);
@@ -103,7 +106,7 @@ export default function App() {
   const viewOnly = mode !== "employees" && Boolean(currentSession) && sessionId !== currentSession.id;
   // Records: owners/admins. Photos, notes, results: anyone who can see the student.
   const canEdit = source === "supabase" && !viewOnly && isAdmin;
-  const canWrite = source === "supabase" && !viewOnly;
+  const canWrite = source === "supabase" && !viewOnly && !isPrincipal;
 
   // Students who left stay in the database (history) but aren't shown.
   // Ordered by grade (Nursery → 12), then section, then name.
@@ -196,7 +199,7 @@ export default function App() {
   // mistaken for the whole school.
   const countLabel = (() => {
     const n = `${current.length.toLocaleString("en-IN")} ${mode}`;
-    if (!isStudents || isAdmin) return n;
+    if (!isStudents || isAdmin || isPrincipal) return n;
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
@@ -207,7 +210,7 @@ export default function App() {
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Requests", openRequests],
-    ...(isAdmin ? [["employees", "Employees"]] : []),
+    ...(isAdmin || isPrincipal ? [["employees", "Employees"]] : []),
     ...(isOwner ? [["team", "Owner", pendingCount]] : []),
   ];
 
@@ -266,11 +269,12 @@ export default function App() {
             onChanged={reload}
           />
         ) : mode === "attendance" ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin} me={user.email} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} />
         ) : mode === "requests" ? (
           <RequestsPage
+            readOnly={isPrincipal}
             school={school}
             me={user.email}
             onOpenStudent={(id) => openStudent(id)}
@@ -321,7 +325,7 @@ export default function App() {
           </p>
         )}
 
-        {!loading && isStudents && !isAdmin && current.length === 0 && (
+        {!loading && isStudents && !isAdmin && !isPrincipal && current.length === 0 && (
           <p className="notice">
             You haven’t been given any classes for this session yet. Ask the school’s owner to assign your classes.
           </p>

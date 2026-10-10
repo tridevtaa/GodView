@@ -14,7 +14,9 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // Teachers set homework for a class (or only some students in it); parents
 // see it in their app. Teachers see their own classes; owners and admins
 // see every class and can set work for a whole class across sections.
-export default function HomeworkPage({ school, session, students, me, isAdmin }) {
+// readOnly: the principal sees every class's homework but can't give or
+// remove any.
+export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
@@ -79,7 +81,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin })
             <span className="badge badge-neutral">Session {session.name}</span>
           </div>
         </div>
-        {groups.length > 0 && !writing && (
+        {groups.length > 0 && !writing && !readOnly && (
           <div className="page-actions">
             <button className="btn btn-primary" onClick={() => setWriting(true)}>
               <Icon name="plus" />
@@ -119,7 +121,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin })
             <Icon name="book" size={22} />
           </span>
           <strong>No homework yet</strong>
-          <p className="row-sub">Homework you give appears here and in parents’ Godview app the moment you send it.</p>
+          <p className="row-sub">{readOnly ? "Homework teachers give appears here." : "Homework you give appears here and in parents’ Godview app the moment you send it."}</p>
         </section>
       ) : (
         byDay.map(([d, list]) => (
@@ -140,7 +142,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin })
                       <span className="row-sub">
                         {h.due_date ? `Due ${dayText(h.due_date)}` : "No due date"} · {h.author_name || h.created_by}
                       </span>
-                      {(h.created_by === me || isAdmin) && (
+                      {!readOnly && (h.created_by === me || isAdmin) && (
                         <button className="link-btn" onClick={() => remove(h.id)}>
                           Remove
                         </button>

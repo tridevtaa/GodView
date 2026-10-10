@@ -20,7 +20,7 @@ export default function AccountMenu() {
             {user?.displayName && <div className="menu-title">{user.displayName}</div>}
             <div className="menu-subtitle">{user?.email}</div>
             <div className="menu-subtitle">
-              {{ owner: "Owner", admin: "Admin", teacher: "Teacher" }[role]} · {school?.name}
+              {{ owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" }[role]} · {school?.name}
             </div>
           </div>
           <button role="menuitem" className="menu-item" onClick={logOut}>
