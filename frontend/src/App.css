@@ -7493,6 +7493,301 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 }
 
+/* =========================================================
+   Student page: minimal profile header (stats, bio, actions,
+   shortcuts) and underlined icon tabs
+   ========================================================= */
+
+.ig-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 28px 32px 8px;
+}
+
+.ig-top {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.ig-photo {
+  position: relative;
+  flex: none;
+  width: 132px;
+  height: 132px;
+  padding: 4px;
+  border-radius: 50%;
+  /* Soft ring in the student's colour, fading into the brand */
+  background: conic-gradient(from 210deg, var(--tint), var(--brand) 55%, var(--tint));
+}
+
+.ig-photo-img {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 4px solid var(--surface);
+  border-radius: 50%;
+  background: var(--tint);
+  object-fit: cover;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.ig-photo .photo-upload {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+}
+
+.ig-head {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ig-name {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.ig-name .gender {
+  flex: none;
+}
+
+.ig-stats {
+  display: flex;
+  gap: 36px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ig-stats li,
+.ig-stats button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.ig-stats button {
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.ig-stats strong {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ig-stats strong.is-due {
+  color: var(--warning);
+}
+
+.ig-stats span {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.ig-bio p {
+  margin: 0;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.ig-bio .ig-bio-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ig-id {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.ig-bus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ig-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ig-actions .btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.ig-highlights {
+  display: flex;
+  gap: 22px;
+  padding: 4px 0 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ig-highlights button {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ig-hl {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 3px var(--surface);
+  color: var(--brand);
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.ig-highlights button:hover .ig-hl {
+  border-color: var(--brand);
+  transform: scale(1.04);
+}
+
+/* Underlined tabs */
+.ig-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.ig-tabs button {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 4px 12px;
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ig-tabs button.is-on {
+  color: var(--text);
+}
+
+.ig-tabs button.is-on::after {
+  position: absolute;
+  right: 18%;
+  bottom: -1px;
+  left: 18%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--brand);
+  content: "";
+}
+
+.profile-full .profile-body {
+  padding: 22px 32px 30px;
+}
+
+@media (max-width: 760px) {
+  .ig-hero {
+    gap: 14px;
+    padding: 20px 18px 4px;
+  }
+
+  .ig-top {
+    gap: 18px;
+  }
+
+  .ig-photo {
+    width: 92px;
+    height: 92px;
+    padding: 3px;
+  }
+
+  .ig-photo-img {
+    border-width: 3px;
+    font-size: 28px;
+  }
+
+  .ig-photo .photo-upload {
+    right: 0;
+    bottom: 0;
+  }
+
+  .ig-name {
+    font-size: 19px;
+  }
+
+  .ig-head {
+    gap: 10px;
+  }
+
+  .ig-stats {
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .ig-stats strong {
+    font-size: 17px;
+  }
+
+  .ig-stats span {
+    font-size: 12px;
+  }
+
+  .ig-tabs button {
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 2px 9px;
+    font-size: 11px;
+  }
+
+  .profile-full .profile-body {
+    padding: 18px 16px 24px;
+  }
+}
+
+/* Keep the gender mark right after the name when it wraps */
+.ig-name {
+  display: block;
+}
+
+.ig-name .gender {
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+
 /* Members: one tab per group */
 .members-head {
   display: flex;

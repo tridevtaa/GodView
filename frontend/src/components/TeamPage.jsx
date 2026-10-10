@@ -24,9 +24,10 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 
-const ROLE_LABEL = { owner: "Owner", admin: "Admin", teacher: "Teacher" };
+const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
 const ROLE_HINT = {
   admin: "Everything except managing users; exports need your approval",
+  principal: "Sees students, attendance, homework, requests and staff; can’t change anything",
   teacher: "Only assigned classes; no personal details; photos, notes and results",
 };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
@@ -245,7 +246,7 @@ const MEMBER_GROUPS = [
 ];
 const memberGroup = (m) => {
   const d = m.designation ?? "";
-  if (m.role === "owner" || m.role === "admin" || /principal|director|vice/i.test(d)) return "lead";
+  if (m.role === "owner" || m.role === "admin" || m.role === "principal" || /principal|director|vice/i.test(d)) return "lead";
   if (!d.trim() || /teach|coordinator|hod|pgt|tgt|prt|lecturer|faculty|incharge|in-charge/i.test(d)) return "teachers";
   return "others";
 };
@@ -255,6 +256,7 @@ function RolePicker({ value, onChange, disabled }) {
     <select className="select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
       <option value="teacher">Teacher</option>
       <option value="admin">Admin</option>
+      <option value="principal">Principal</option>
     </select>
   );
 }
