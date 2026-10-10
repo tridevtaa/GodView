@@ -8786,3 +8786,129 @@ input[type="date"]::-webkit-date-and-time-value {
 .profile-facts .parent-list a .icon {
   color: var(--text-3);
 }
+
+/* Edit in steps: numbered sections, a dot where something changed */
+.edit-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.edit-steps::-webkit-scrollbar {
+  display: none;
+}
+
+.edit-steps button {
+  position: relative;
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.edit-steps button.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.edit-step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edit-steps .is-on .edit-step-n {
+  background: var(--brand);
+  color: #fff;
+}
+
+.edit-steps .is-done .edit-step-n {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.edit-step-dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.edit-step {
+  min-height: 220px;
+}
+
+.edit-note {
+  margin: 0 0 14px;
+}
+
+.edit-foot {
+  justify-content: space-between;
+}
+
+.edit-foot-right {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  /* Phones: numbers only, the current step shows its name */
+  .edit-steps button {
+    flex: 0 0 auto;
+    padding: 0 10px;
+  }
+
+  .edit-steps button:not(.is-on) .edit-step-label {
+    display: none;
+  }
+}
+
+/* On the student page the step buttons stay in view, above the tab bar */
+.profile-full .edit-foot {
+  bottom: 0;
+  z-index: 4;
+  margin: 16px -32px -30px;
+  padding: 14px 32px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 760px) {
+  .profile-full .edit-foot {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    margin: 16px calc(-1 * var(--gutter)) 0;
+    padding: 10px var(--gutter);
+  }
+
+  .edit-foot .btn {
+    padding: 0 14px;
+  }
+}
