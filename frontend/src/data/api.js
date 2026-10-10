@@ -45,27 +45,38 @@ export async function listSessions(schoolId) {
 }
 
 // Students enrolled in a session, with that session's class and fee dues.
+// Owners and admins use two fast database functions (one access check for
+// the whole list); teachers, or a database without them yet, use the normal
+// reads, where access is checked row by row.
 export async function loadStudents(schoolId, sessionId) {
+  const [fast, fastDues] = await Promise.all([
+    supabase.rpc("session_students", { session: sessionId }).then(({ data, error }) => (error ? null : data), () => null),
+    supabase.rpc("session_fee_totals", { session: sessionId }).then(({ data, error }) => (error ? null : data), () => null),
+  ]);
   const [enrolments, dues] = await Promise.all([
-    all(() =>
-      supabase
-        .from("student_enrolments")
-        .select("class, section, stream, roll_no, status, student:students(*, private:student_private(*))")
-        .eq("school_id", schoolId)
-        .eq("session_id", sessionId)
-        .order("student_id")
-    ),
+    fast?.length
+      ? fast
+      : all(() =>
+          supabase
+            .from("student_enrolments")
+            .select("class, section, stream, roll_no, status, student:students(*, private:student_private(*))")
+            .eq("school_id", schoolId)
+            .eq("session_id", sessionId)
+            .order("student_id")
+        ),
     // Fee totals: owners/admins (and parents) get rows; teachers get none.
     // Optional: if fees can't be read, students still load (fees show as
     // not recorded) rather than the whole list failing.
-    all(() =>
-      supabase
-        .from("fee_student_totals")
-        .select("student_id, billed, paid, balance, due_now, next_due_date")
-        .eq("school_id", schoolId)
-        .eq("session_id", sessionId)
-        .order("student_id")
-    ).catch(() => []),
+    fastDues?.length
+      ? fastDues
+      : all(() =>
+          supabase
+            .from("fee_student_totals")
+            .select("student_id, billed, paid, balance, due_now, next_due_date")
+            .eq("school_id", schoolId)
+            .eq("session_id", sessionId)
+            .order("student_id")
+        ).catch(() => []),
   ]);
   const duesBy = new Map(dues.map((d) => [d.student_id, d]));
   return enrolments.filter((e) => e.student).map((e) => toPerson(e.student, e, duesBy.get(e.student.id)));
@@ -241,16 +252,21 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
 
 export async function listNotes(studentId) {
   return must(
-    await supabase.from("student_notes").select("*").eq("student_id", studentId).order("created_at", { ascending: false })
+    await supabase
+      .from("student_notes")
+      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
+      .eq("student_id", studentId)
+      .order("created_at", { ascending: false })
   );
 }
 
-export async function addNote(schoolId, studentId, body, shared = false) {
+// A diary page. kind: remark | appreciation | concern | reminder.
+export async function addNote(schoolId, studentId, body, shared = false, kind = "remark") {
   return must(
     await supabase
       .from("student_notes")
-      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared })
-      .select()
+      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared, kind })
+      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
       .single()
   );
 }
@@ -349,7 +365,18 @@ export async function lookupJoinCode(code) {
   return rows?.[0] ?? null;
 }
 
-export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes }) {
+// Photo for a join request, saved before the person is a member: only they
+// can write it; the owner and admins of a school they ask to join can see it.
+export async function uploadJoinPhoto(blob) {
+  const { data } = await supabase.auth.getUser();
+  if (!data?.user) throw new Error("not-signed-in");
+  const path = `requests/${data.user.id}.jpg`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+  if (error) throw error;
+  return path;
+}
+
+export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes, photoPath }) {
   must(
     await supabase.rpc("request_access", {
       p_code: code,
@@ -359,6 +386,7 @@ export async function requestAccess(code, { fullName, designation, phone, subjec
       p_subjects: subjects,
       p_note: note,
       p_classes: classes,
+      p_photo_path: photoPath,
     })
   );
 }
@@ -915,7 +943,7 @@ export async function parentNotes(studentId) {
   return must(
     await supabase
       .from("student_notes")
-      .select("id, body, created_at, updated_at")
+      .select("id, body, kind, author_name, author_role, created_at, updated_at, signature:diary_signatures(signed_by, signed_at, reply)")
       .eq("student_id", studentId)
       .eq("shared_with_parents", true)
       .order("created_at", { ascending: false })
@@ -954,4 +982,56 @@ export async function parentUnread() {
 
 export async function markParentSeen(studentId, section) {
   must(await supabase.rpc("mark_parent_seen", { student: studentId, p_section: section }));
+}
+
+// A parent signs a diary page, optionally with a short reply.
+export async function signDiary(noteId, reply) {
+  must(await supabase.rpc("sign_diary", { note: noteId, p_reply: reply || null }));
+}
+
+// ------------------------------------------------------------- homework ---
+
+// Homework the signed-in staff member can see this session (their classes;
+// everything for owners and admins), newest first.
+export async function listHomework(schoolId, sessionId) {
+  return must(
+    await supabase
+      .from("homework")
+      .select("*, students:homework_students(student_id)")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(300)
+  );
+}
+
+// Sets homework for a class (section null = every section), or only for
+// `studentIds` in it.
+export async function addHomework(schoolId, sessionId, { klass, section, subject, body, due_date }, studentIds = []) {
+  const saved = must(
+    await supabase
+      .from("homework")
+      .insert({ school_id: schoolId, session_id: sessionId, class: klass, section: section || null, subject: subject?.trim() || null, body: body.trim(), due_date: due_date || null })
+      .select()
+      .single()
+  );
+  if (studentIds.length) {
+    const { error } = await supabase
+      .from("homework_students")
+      .insert(studentIds.map((id) => ({ homework_id: saved.id, student_id: id, school_id: schoolId })));
+    if (error) {
+      await supabase.from("homework").delete().eq("id", saved.id); // don't leave it set for the whole class
+      throw error;
+    }
+  }
+  return { ...saved, students: studentIds.map((student_id) => ({ student_id })) };
+}
+
+export async function deleteHomework(id) {
+  must(await supabase.from("homework").delete().eq("id", id));
+}
+
+// One child's homework (for their parents, and staff who can see them).
+export async function childHomework(studentId) {
+  return must(await supabase.rpc("child_homework", { student: studentId }));
 }

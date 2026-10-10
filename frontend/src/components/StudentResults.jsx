@@ -1,11 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { deleteResult, listResults, saveResult } from "../data/api.js";
+import Icon from "./Icon.jsx";
 
 const EMPTY = { exam: "", subject: "", marks: "", max_marks: "100" };
 const pct = (r) => (r.marks !== null && r.max_marks ? Math.round((r.marks / r.max_marks) * 100) : null);
 
 // Marks per exam and subject for the session being viewed.
-export default function StudentResults({ person, sessionId, me, isAdmin, canWrite }) {
+export default function StudentResults({ person, sessionId, me, isAdmin, canWrite, autoFocus }) {
+  const first = useRef(null);
+  useEffect(() => {
+    if (autoFocus) first.current?.focus();
+  }, [autoFocus]);
   const [results, setResults] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
@@ -112,19 +117,25 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
 
       {canWrite && (
         <form className="result-form" onSubmit={submit}>
-          <input className="input" list="exam-names" placeholder="Exam (e.g. Term 1)" value={form.exam} onChange={set("exam")} />
+          {/* The exam is set once; it stays filled for the next subject. */}
+          <label className="result-exam">
+            <span>Exam</span>
+            <input ref={first} className="input" list="exam-names" placeholder="e.g. Term 1" value={form.exam} onChange={set("exam")} />
+          </label>
           <datalist id="exam-names">
             {exams.map((x) => (
               <option key={x} value={x} />
             ))}
           </datalist>
-          <input className="input" placeholder="Subject" value={form.subject} onChange={set("subject")} />
-          <input className="input input-num" type="number" min="0" step="0.5" placeholder="Marks" value={form.marks} onChange={set("marks")} />
-          <span className="row-sub">/</span>
-          <input className="input input-num" type="number" min="1" step="0.5" placeholder="Max" value={form.max_marks} onChange={set("max_marks")} />
-          <button className="btn btn-primary btn-sm" disabled={busy || invalid}>
-            {busy ? "Saving…" : "Save"}
-          </button>
+          <div className="result-line">
+            <input className="input" placeholder="Subject" value={form.subject} onChange={set("subject")} aria-label="Subject" />
+            <input className="input input-num" type="number" inputMode="decimal" min="0" step="0.5" placeholder="Marks" value={form.marks} onChange={set("marks")} aria-label="Marks" />
+            <span className="row-sub">/</span>
+            <input className="input input-num" type="number" inputMode="decimal" min="1" step="0.5" placeholder="Max" value={form.max_marks} onChange={set("max_marks")} aria-label="Out of" />
+            <button className="btn btn-primary btn-sm result-save" disabled={busy || invalid} aria-label="Save result">
+              {busy ? "…" : <Icon name="check" />}
+            </button>
+          </div>
         </form>
       )}
       {error && <p className="field-error">{error}</p>}

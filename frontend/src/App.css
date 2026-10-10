@@ -1712,20 +1712,71 @@ a:hover {
 
 .result-form {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 
-.result-form .input {
-  min-width: 120px;
+.result-exam {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.result-form .input-num {
-  flex: 0 0 76px;
+.result-exam .input {
+  flex: 1;
   min-width: 0;
+}
+
+/* One result per line: Subject, Marks / Max, Save. */
+.result-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.result-line .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.result-line .input-num {
+  flex: 0 0 64px;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.result-save {
+  flex: none;
+  width: 40px;
+  padding: 0;
+}
+
+/* Result rows never wrap: long subject names are cut with "…". */
+.result-table {
+  table-layout: fixed;
+}
+
+.result-table th,
+.result-table td {
+  white-space: nowrap;
+}
+
+.result-table th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 40%;
+}
+
+.result-table .result-pct {
+  width: 16%;
+}
+
+.result-table .result-actions {
+  width: 18%;
 }
 
 .seg-count {
@@ -6288,4 +6339,566 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--danger);
   font-size: 12px;
   text-align: left;
+}
+
+/* Boy / girl mark beside a student's name */
+.gender {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  border-radius: 50%;
+  vertical-align: 3px;
+}
+
+.gender-male {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.gender-female {
+  background: #fce7f3;
+  color: #be185d;
+}
+
+/* Details: shortcuts to add a note or a result */
+.profile-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* One-tap note starters */
+.note-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.note-starters button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.note-starters button:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.note-form .note-starters {
+  align-self: stretch;
+}
+
+.result-table caption {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.result-table caption span {
+  margin-left: 10px;
+}
+
+/* =========================================================
+   Student diary: dated, signed pages like a school diary
+   ========================================================= */
+
+.diary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.diary-page {
+  position: relative;
+  padding: 16px 18px 14px 26px;
+  border: 1px solid #efe6c8;
+  border-radius: 14px;
+  /* Ruled paper with a red margin line */
+  background:
+    linear-gradient(90deg, transparent 15px, rgba(229, 83, 61, 0.35) 15px, rgba(229, 83, 61, 0.35) 16px, transparent 16px),
+    repeating-linear-gradient(transparent 0 27px, rgba(29, 35, 102, 0.07) 27px 28px),
+    #fffdf6;
+  box-shadow: 0 1px 2px rgba(60, 50, 10, 0.06);
+}
+
+.diary-page.is-private {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+
+.diary-page.is-new {
+  border-color: var(--fee-overdue);
+}
+
+.diary-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.diary-date {
+  color: var(--brand-edge);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.diary-body {
+  margin: 0;
+  font-size: 15px;
+  line-height: 28px;
+  white-space: pre-wrap;
+}
+
+.diary-sign {
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-style: italic;
+  text-align: right;
+}
+
+.diary-sign::before {
+  content: "— ";
+}
+
+.diary-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e8dcb5;
+  font-size: 12px;
+}
+
+.diary-signed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+  font-weight: 600;
+}
+
+.diary-waiting {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.diary-reply {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--fee-paid);
+  border-radius: 0 10px 10px 0;
+  background: rgba(168, 200, 31, 0.1);
+  font-size: 13px;
+}
+
+.diary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.diary-empty {
+  padding: 8px 2px;
+}
+
+/* Writing a page */
+.diary-write {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.diary-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stamp {
+  padding: 3px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.stamp.is-on {
+  opacity: 1;
+  rotate: -2deg;
+}
+
+.stamp-remark.is-on {
+  color: var(--brand);
+}
+
+.stamp-appreciation.is-on {
+  color: #15803d;
+}
+
+.stamp-concern.is-on {
+  color: var(--danger);
+}
+
+.stamp-reminder.is-on {
+  color: #b45309;
+}
+
+.diary-lines {
+  width: 100%;
+  min-height: 112px;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  line-height: 28px;
+  resize: vertical;
+}
+
+.diary-write-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diary-sign-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.diary-sign-btn {
+  margin-top: 10px;
+}
+
+/* =========================================================
+   Homework (staff)
+   ========================================================= */
+
+.hw-filter,
+.hw-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.hw-filter button,
+.hw-classes button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hw-filter button.is-on,
+.hw-classes button.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.hw-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.hw-form .panel-title {
+  padding: 0;
+}
+
+.hw-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hw-form label.checkbox {
+  flex-direction: row;
+  font-weight: 500;
+}
+
+.hw-form .input,
+.hw-form .textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.hw-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hw-who {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hw-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px;
+  max-height: 280px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.hw-pick button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 10px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.hw-pick button.is-on {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.hw-pick button > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.hw-pick-photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  object-fit: cover;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hw-pick-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  color: #fff;
+}
+
+.hw-pick button.is-on .hw-pick-box {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.hw-form-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.hw-day {
+  margin-bottom: 18px;
+}
+
+.hw-day-title {
+  margin: 0 0 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hw-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hw-card {
+  padding: 14px 18px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.hw-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hw-body {
+  margin: 8px 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.hw-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.hw-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 36px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  text-align: center;
+}
+
+.hw-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.hw-skeleton {
+  height: 120px;
+}
+
+@media (max-width: 760px) {
+  .hw-form {
+    padding: 16px;
+  }
+}
+
+.hw-form .input {
+  flex: none;
+}
+
+/* Join request: the applicant's own photo (required) */
+.join-photo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 4px 0 16px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--bg);
+  text-align: left;
+}
+
+.join-photo-pick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  overflow: hidden;
+  border: 2px dashed color-mix(in srgb, var(--brand) 45%, transparent);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--brand);
+  cursor: pointer;
+}
+
+.join-photo-pick.is-set {
+  border: 3px solid #fff;
+  box-shadow: 0 4px 12px rgba(29, 35, 102, 0.15);
+}
+
+.join-photo-pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.join-photo-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.join-photo-btn {
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.request-photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-start;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  object-fit: cover;
+  color: rgba(0, 0, 0, 0.45);
+  font-weight: 700;
+}
+
+.request-form label.join-photo-btn,
+.request-form label.join-photo-pick {
+  flex-direction: row;
+  gap: 6px;
+}
+
+.request-form label.join-photo-pick {
+  align-items: center;
+  justify-content: center;
 }

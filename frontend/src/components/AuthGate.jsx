@@ -1,6 +1,7 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
 import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess } from "../data/api.js";
+import { saveJoinPhoto } from "../data/photos.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
@@ -63,7 +64,24 @@ function RequestAccess({ user, onSchool }) {
     subjects: "",
     note: "",
     classes: [],
+    photoPath: "",
   });
+  const [photo, setPhoto] = useState({ preview: "", busy: false, error: "" });
+
+  async function pickPhoto(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhoto({ preview: URL.createObjectURL(file), busy: true, error: "" });
+    try {
+      const photoPath = await saveJoinPhoto(file);
+      setForm((f) => ({ ...f, photoPath }));
+      setPhoto((p) => ({ ...p, busy: false }));
+    } catch {
+      setForm((f) => ({ ...f, photoPath: "" }));
+      setPhoto({ preview: "", busy: false, error: "Couldn’t save that photo. Try another one." });
+    }
+  }
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -91,11 +109,15 @@ function RequestAccess({ user, onSchool }) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    if (!form.photoPath) {
+      setBusy(false);
+      return setError("Add a photo of yourself so the school can recognise you.");
+    }
     try {
       await requestAccess(code, form);
       setStep("sent");
-    } catch {
-      setError("Couldn’t send the request. Please try again.");
+    } catch (err) {
+      setError(/photo/i.test(err?.message ?? "") ? "Add a photo of yourself so the school can recognise you." : "Couldn’t send the request. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -149,6 +171,25 @@ function RequestAccess({ user, onSchool }) {
     <form className="request-form request-form-wide" onSubmit={submit}>
       <h1>{school.school_name}</h1>
       <p className="muted">Tell the school who you are and which classes you teach.</p>
+      <div className="join-photo">
+        <label className={`join-photo-pick${form.photoPath ? " is-set" : ""}`}>
+          {photo.preview ? <img src={photo.preview} alt="Your photo" /> : <Icon name="camera" size={26} />}
+          <input type="file" accept="image/*" onChange={pickPhoto} hidden />
+        </label>
+        <div className="join-photo-text">
+          <strong>Your photo *</strong>
+          <span className="row-sub">
+            {photo.busy ? "Saving…" : form.photoPath ? "Looks good. Tap it to change." : "A clear photo of your face, so staff and parents can recognise you."}
+          </span>
+          {!form.photoPath && !photo.busy && (
+            <label className="btn btn-secondary btn-sm join-photo-btn">
+              <Icon name="camera" /> Take or choose a photo
+              <input type="file" accept="image/*" onChange={pickPhoto} hidden />
+            </label>
+          )}
+          {photo.error && <span className="field-error">{photo.error}</span>}
+        </div>
+      </div>
       <div className="form-grid">
         <label>
           <span>Full name *</span>
@@ -183,7 +224,7 @@ function RequestAccess({ user, onSchool }) {
         <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
       </label>
       {error && <p className="field-error">{error}</p>}
-      <button className="btn btn-primary btn-block" disabled={busy || !form.fullName.trim() || !form.designation.trim()}>
+      <button className="btn btn-primary btn-block" disabled={busy || photo.busy || !form.photoPath || !form.fullName.trim() || !form.designation.trim()}>
         {busy ? "Sending…" : "Send request"}
       </button>
       <button type="button" className="btn btn-secondary btn-block" onClick={() => setStep("code")}>
