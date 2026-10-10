@@ -14,11 +14,12 @@ import {
   removeAssignment,
   removeMember,
   setMemberRole,
+  withPhotoUrls,
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
 import TransportRoutes from "./TransportRoutes.jsx";
-import { gradeLabel } from "./PersonCard.jsx";
+import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 
@@ -54,7 +55,7 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
       const [m, a, r, x, c] = await Promise.all([
         listMembers(school.id),
         listAssignments(school.id),
-        listAccessRequests(school.id),
+        listAccessRequests(school.id).then(withPhotoUrls),
         listExportRequests(school.id),
         session ? listClassSections(school.id, session.id) : [],
       ]);
@@ -272,6 +273,7 @@ function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
 
   return (
     <div className="row row-request">
+      <Photo person={{ ...request, name: request.name || request.email }} className="request-photo" />
       <div className="row-main">
         <div className="row-title">{request.name || request.email}</div>
         <div className="row-sub">

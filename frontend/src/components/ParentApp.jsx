@@ -10,6 +10,8 @@ import {
   parentFees,
   parentNotes,
   parentRequests,
+  signDiary,
+  childHomework,
   parentUnread,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
@@ -24,7 +26,8 @@ import "./parent.css";
 const TABS = [
   ["fees", "Fees"],
   ["results", "Results"],
-  ["notes", "Notes"],
+  ["notes", "Diary"],
+  ["homework", "Homework"],
   ["requests", "Requests"],
 ];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -175,6 +178,7 @@ export default function ParentApp({ phone }) {
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "notes" && <NotesTab key={child.id} child={child} since={since} />}
+            {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
             {tab === "requests" && <RequestsTab key={child.id} child={child} since={since} />}
           </>
         )}
@@ -424,25 +428,118 @@ function ResultsTab({ child, since }) {
 
 // ---------------------------------------------------------------- notes ---
 
+// The school diary: dated pages from teachers, signed by them; the parent
+// signs each page (optionally with a reply), like signing a paper diary.
 function NotesTab({ child, since }) {
   const load = useCallback(() => parentNotes(child.id), [child.id]);
+  const { data, error, reload } = useLoad(load);
+  if (error) return <p className="notice notice-error">{error}</p>;
+  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
+  if (!data.length)
+    return <Empty icon="edit" title="The diary is empty" text={`Pages ${child.name.split(" ")[0]}’s teachers write in the diary will appear here for you to read and sign.`} />;
+  return (
+    <ul className="diary-list pa-diary">
+      {data.map((n) => (
+        <DiaryPage key={n.id} note={n} fresh={isNew(n.updated_at, since)} onSigned={reload} />
+      ))}
+    </ul>
+  );
+}
+
+const STAMP_LABEL = { appreciation: "Well done", concern: "Concern", reminder: "Reminder" };
+
+function DiaryPage({ note, fresh, onSigned }) {
+  const sig = Array.isArray(note.signature) ? note.signature[0] : note.signature;
+  const [open, setOpen] = useState(false);
+  const [reply, setReply] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function sign() {
+    setBusy(true);
+    setError("");
+    try {
+      await signDiary(note.id, reply.trim());
+      setOpen(false);
+      onSigned();
+    } catch {
+      setError("Couldn’t sign. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className={`diary-page${fresh ? " is-new" : ""}`}>
+      <div className="diary-page-head">
+        <span className="diary-date">{dateText(note.created_at, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</span>
+        {STAMP_LABEL[note.kind] && <span className={`stamp stamp-${note.kind} is-on`}>{STAMP_LABEL[note.kind]}</span>}
+        {fresh && <NewTag />}
+      </div>
+      <p className="diary-body">{note.body}</p>
+      {note.author_name && (
+        <p className="diary-sign">
+          {note.author_name}
+          {note.author_role ? `, ${note.author_role}` : ""}
+        </p>
+      )}
+      {sig ? (
+        <div className="diary-foot">
+          <span className="diary-signed">
+            <Icon name="check" size={14} /> You signed · {dateText(sig.signed_at, { day: "numeric", month: "short" })}
+          </span>
+          {sig.reply && <p className="diary-reply">You: “{sig.reply}”</p>}
+        </div>
+      ) : open ? (
+        <div className="diary-sign-form">
+          <textarea className="textarea" rows={2} maxLength={1000} placeholder="Reply to the teacher (optional)" value={reply} onChange={(e) => setReply(e.target.value)} />
+          {error && <p className="field-error">{error}</p>}
+          <div className="pa-form-foot">
+            <button className="btn btn-secondary btn-sm" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={sign} disabled={busy}>
+              <Icon name="edit" /> {busy ? "Signing…" : "Sign"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-primary btn-sm diary-sign-btn" onClick={() => setOpen(true)}>
+          <Icon name="edit" /> Sign the diary
+        </button>
+      )}
+    </li>
+  );
+}
+
+// ------------------------------------------------------------- homework ---
+
+function HomeworkTab({ child, since }) {
+  const load = useCallback(() => childHomework(child.id), [child.id]);
   const { data, error } = useLoad(load);
   if (error) return <p className="notice notice-error">{error}</p>;
   if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
-  if (!data.length) return <Empty icon="message" title="No notes yet" text="Notes your child’s teachers share with you will appear here." />;
+  if (!data.length) return <Empty icon="book" title="No homework yet" text="Homework from the teachers appears here as soon as it’s given." />;
+  const now = today();
+  const due = (d) => (!d ? "" : d < now ? "Was due" : d === now ? "Due today" : `Due ${dateText(d, { weekday: "short", day: "numeric", month: "short" })}`);
   return (
-    <section className="pa-card">
-      <ul className="pa-notes">
-        {data.map((n) => (
-          <li key={n.id} className={isNew(n.updated_at, since) ? "is-new" : ""}>
-            <span className="row-sub">
-              {dateText(n.created_at)} {isNew(n.updated_at, since) && <NewTag />}
-            </span>
-            <p>{n.body}</p>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <ul className="pa-hw">
+      {data.map((h) => (
+        <li key={h.id} className={`pa-card pa-hw-item${isNew(h.created_at, since) ? " is-new" : ""}`}>
+          <div className="pa-hw-head">
+            <strong>{h.subject || "Homework"}</strong>
+            {isNew(h.created_at, since) && <NewTag />}
+            {h.just_some && <span className="badge badge-brand">Just for {child.name.split(" ")[0]}</span>}
+            {h.due_date && <span className={`pa-hw-due${h.due_date <= now ? " is-soon" : ""}`}>{due(h.due_date)}</span>}
+          </div>
+          <p className="pa-hw-body">{h.body}</p>
+          <span className="row-sub">
+            Given {dateText(h.created_at, { day: "numeric", month: "short" })}
+            {h.author_name ? ` by ${h.author_name}` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
