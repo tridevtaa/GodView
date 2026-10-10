@@ -5,6 +5,7 @@ import AuthGate from './components/AuthGate.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './App.css'
 import './pwa/install.js'
+import './pwa/scrollLock.js'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
