@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { feeClassSummary, feeMonthlyCollection, feeSessionSummary } from "../data/api.js";
-import { rupees } from "../data/money.js";
+import { rupees, rupeesShort } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import { BarChart, ColumnChart } from "./charts.jsx";
@@ -254,7 +254,9 @@ function Stat({ label, value, tone, note }) {
   return (
     <div className="fee-card">
       <span>{label}</span>
-      <strong className={tone ? `is-${tone}` : ""}>{value === undefined ? "…" : rupees(value)}</strong>
+      <strong className={tone ? `is-${tone}` : ""} title={value === undefined ? undefined : rupees(value)}>
+        {value === undefined ? "…" : rupeesShort(value)}
+      </strong>
       {note && <span className="row-sub">{note}</span>}
     </div>
   );

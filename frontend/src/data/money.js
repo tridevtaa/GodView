@@ -3,6 +3,13 @@
 const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
 export const rupees = (n) => inr.format(Number(n) || 0).replace(/\.00$/, "");
 
+// Short Indian form for big totals: ₹1.32 Cr, ₹94.4 L. Smaller amounts as usual.
+export function rupeesShort(n) {
+  const v = Number(n) || 0;
+  if (Math.abs(v) >= 1e7) return `₹${(v / 1e7).toFixed(2).replace(/\.?0+$/, "")} Cr`;
+  return rupees(v);
+}
+
 const ONES = [
   "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve",
   "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen",
