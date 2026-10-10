@@ -15,8 +15,8 @@ import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
-import RequestsPage from "./components/RequestsPage.jsx";
-import { countOpenRequests, countPendingRequests, listGrades, listRoutes } from "./data/api.js";
+import InboxPage from "./components/InboxPage.jsx";
+import { countPendingRequests, listGrades, listRoutes, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -60,12 +60,15 @@ export default function App() {
   // across the school, and changes nothing (no imports, exports or edits).
   const isPrincipal = role === "principal";
   const [pendingCount, setPendingCount] = useState(0);
-  const [openRequests, setOpenRequests] = useState(0);
-  const [badgeTick, setBadgeTick] = useState(0);
+  // Inbox badge: conversations with unread parent messages or open requests.
+  const [inboxCount, setInboxCount] = useState(0);
   useEffect(() => {
     if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => setPendingCount(0));
-    countOpenRequests(school.id).then(setOpenRequests, () => setOpenRequests(0));
-  }, [isOwner, school.id, mode, badgeTick]);
+    staffInbox(school.id).then(
+      (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
+      () => {}
+    );
+  }, [isOwner, school.id, mode]);
   const { sessions, current: currentSession } = useSessions(school.id);
 
   // The school's grade list (names and sections); grade names everywhere use it.
@@ -213,7 +216,7 @@ export default function App() {
     ["attendance", "Attendance"],
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
-    ["requests", "Requests", openRequests],
+    ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(isAdmin || isPrincipal ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
   ];
   const staffTabs = isOwner && (
@@ -257,9 +260,6 @@ export default function App() {
             onClose={closeProfile}
             grades={schoolGrades}
             routes={routes}
-            position={`${openIndex + 1} of ${profileList.length}`}
-            onPrev={openIndex > 0 ? () => openStudent(profileList[openIndex - 1].id) : undefined}
-            onNext={openIndex < profileList.length - 1 ? () => openStudent(profileList[openIndex + 1].id) : undefined}
           />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
           <>
@@ -301,12 +301,13 @@ export default function App() {
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} />
         ) : mode === "requests" ? (
-          <RequestsPage
+          <InboxPage
             readOnly={isPrincipal}
             school={school}
+            students={current}
             me={user.email}
             onOpenStudent={(id) => openStudent(id)}
-            onChanged={() => setBadgeTick((t) => t + 1)}
+            onCount={setInboxCount}
           />
         ) : (
         <>
@@ -364,11 +365,11 @@ export default function App() {
           {isStudents && isAdmin && (
             <nav className="segmented view-switch" aria-label="View">
               {[
-                ["tiles", "Tiles"],
-                ["map", "Map"],
-              ].map(([v, l]) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
-                  {l}
+                ["tiles", "Tiles", "grid"],
+                ["map", "Map", "map"],
+              ].map(([v, l, icon]) => (
+                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)} aria-label={l} title={l}>
+                  <Icon name={icon} size={16} />
                 </button>
               ))}
             </nav>
@@ -377,7 +378,8 @@ export default function App() {
             <Icon name="search" />
             <input
               type="search"
-              placeholder={isStudents ? "Search name, parent, admission no., phone…" : "Search name, role, department…"}
+              placeholder="Search"
+              aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label={`Search ${mode}`}

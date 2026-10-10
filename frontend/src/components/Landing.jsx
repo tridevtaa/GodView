@@ -29,7 +29,7 @@ const BENEFITS = [
   ["upload", "Bring your data in minutes", "Import the student export and the pending dues list from your current system. Classes, parents, photos and balances come across in one go."],
   ["file", "Fees that add up", "Pending dues by month, collection by grade and the families who owe the most, on one page for the owner."],
   ["check", "Session after session", "Each academic year keeps its own classes, sections and fees. Promote with a new import and look back any time."],
-  ["edit", "Notes and results", "Teachers record exam marks and notes for their own students. Totals and percentages are worked out for you."],
+  ["edit", "Results", "Teachers record exam marks for their own students. Totals and percentages are worked out for you."],
   ["camera", "Works on any device", "Phones, tablets and laptops, with nothing to install. Staff sign in with their Google account."],
 ];
 
@@ -67,7 +67,7 @@ const SPOTLIGHTS = [
 const ROLES = [
   ["Owner", "Sets the fee structure, approves staff, assigns classes, edits the school profile and approves exports."],
   ["Admin", "Manages students, fees and receipts, bus routes and the student map. Exports need the owner’s approval."],
-  ["Teacher", "Sees only their classes, without parents’ phone numbers or addresses. Adds photos, notes and results."],
+  ["Teacher", "Sees only their classes, without parents’ phone numbers or addresses. Adds photos and results, and messages parents."],
 ];
 
 const JOURNEY = [
@@ -78,7 +78,7 @@ const JOURNEY = [
 ];
 
 const NEXT = [
-  ["message", "Parent app", "Parents see results, shared notes and dues, and send leave or certificate requests to the school."],
+  ["message", "Parent app", "Parents see results and dues, chat with teachers and the office, and ask for leave or certificates in the same chat."],
   ["bus", "Live bus tracking", "Parents and the school see where the bus is and when it will reach each stop."],
   ["phone", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
 ];
@@ -479,7 +479,7 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
             <div className="lp-head" data-reveal>
               <span className="lp-kicker">On the way</span>
               <h2 className="lp-h2">Bringing parents in next.</h2>
-              <p className="lp-sub">What we’re building now, on top of the routes, fees and notes your school already keeps.</p>
+              <p className="lp-sub">What we’re building now, on top of the routes, fees and messages your school already keeps.</p>
             </div>
             <div className="lp-next">
               {NEXT.map(([icon, title, text], i) => (

@@ -102,8 +102,8 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
                       <td className="result-pct">{pct(r) !== null ? `${pct(r)}%` : ""}</td>
                       <td className="result-actions">
                         {canWrite && (r.entered_by === me || isAdmin) && (
-                          <button className="link-btn" onClick={() => remove(r.id)}>
-                            Delete
+                          <button className="icon-btn-sm" onClick={() => remove(r.id)} aria-label={`Delete ${r.subject}`} title="Delete">
+                            <Icon name="trash" size={15} />
                           </button>
                         )}
                       </td>
@@ -119,8 +119,8 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
         <form className="result-form" onSubmit={submit}>
           {/* The exam is set once; it stays filled for the next subject. */}
           <label className="result-exam">
-            <span>Exam</span>
-            <input ref={first} className="input" list="exam-names" placeholder="e.g. Term 1" value={form.exam} onChange={set("exam")} />
+            <span className="sr-only">Exam</span>
+            <input ref={first} className="input" list="exam-names" placeholder="Exam, e.g. Term 1" value={form.exam} onChange={set("exam")} />
           </label>
           <datalist id="exam-names">
             {exams.map((x) => (

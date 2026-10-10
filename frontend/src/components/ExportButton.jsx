@@ -84,7 +84,7 @@ export default function ExportButton({ school, role, people, label }) {
 
   return (
     <div className="popover-anchor" ref={ref}>
-      <button className="btn btn-secondary" onClick={() => setAsking((a) => !a)} aria-expanded={asking}>
+      <button className="btn btn-secondary" onClick={() => setAsking((a) => !a)} aria-expanded={asking} aria-label="Request an export" title="Request an export">
         <Icon name="file" />
         <span className="btn-label">Export</span>
       </button>

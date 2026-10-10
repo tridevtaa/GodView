@@ -71,6 +71,10 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
   const [transport, setTransport] = useState({ uses_bus: Boolean(person.uses_bus), bus_stop_id: person.bus_stop_id ?? null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Students edit in steps (the field groups, then home and bus); employees
+  // have one short group.
+  const steps = [...FIELDS[kind].map(([title, list]) => ({ title, keys: list.map(([k]) => k) })), ...(kind === "students" ? [{ title: "Home & bus", keys: [] }] : [])];
+  const [step, setStep] = useState(0);
 
   const changes = Object.fromEntries(
     Object.entries(form)
@@ -101,9 +105,20 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
     }
   }
   const dirty = Object.keys(changes).length > 0;
+  const HOME_KEYS = ["address", "home_lat", "uses_bus", "bus_stop_id"];
+  const stepChanged = (i) =>
+    steps[i].keys.some((k) => k in changes) || (steps[i].title === "Home & bus" && HOME_KEYS.some((k) => k in changes));
+  const last = step === steps.length - 1;
 
   async function save(e) {
     e.preventDefault();
+    // Required fields may sit on another step; go there.
+    const missing = fields.find(([key, , , required]) => required && !form[key].trim());
+    if (missing) {
+      setStep(steps.findIndex((st) => st.keys.includes(missing[0])));
+      setError(`${missing[1]} is needed.`);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -116,19 +131,36 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
     }
   }
 
+  const group = FIELDS[kind][step];
   return (
     <form className="profile-edit" onSubmit={save}>
-      {kind === "students" && (
-        <p className="callout callout-neutral">
-          Admission no. <strong>{person.admission_no}</strong> can’t be changed here. A later import from the ERP
-          will overwrite edited fields with the ERP’s values.
-        </p>
+      {steps.length > 1 && (
+        <nav className="edit-steps" aria-label="Sections">
+          {steps.map((st, i) => (
+            <button
+              type="button"
+              key={st.title}
+              className={`${i === step ? "is-on" : ""}${i < step ? " is-done" : ""}`}
+              aria-current={i === step ? "step" : undefined}
+              onClick={() => (setStep(i), setError(""))}
+            >
+              <span className="edit-step-n">{i + 1}</span>
+              <span className="edit-step-label">{st.title}</span>
+              {stepChanged(i) && <span className="edit-step-dot" aria-label="changed" />}
+            </button>
+          ))}
+        </nav>
       )}
-      {FIELDS[kind].map(([section, list]) => (
-        <fieldset key={section}>
-          <legend>{section}</legend>
+
+      {group && (
+        <div className="edit-step">
+          {kind === "students" && step === 0 && (
+            <p className="row-sub edit-note">
+              Admission no. <strong>{person.admission_no}</strong> stays fixed. An ERP import overwrites edited fields.
+            </p>
+          )}
           <div className="form-grid">
-            {list.map(([key, label, type, required]) => (
+            {group[1].map(([key, label, type, required]) => (
               <label key={key}>
                 <span>{label}</span>
                 {Array.isArray(type) ? (
@@ -148,42 +180,52 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
               </label>
             ))}
           </div>
-        </fieldset>
-      ))}
-      {kind === "students" && (
-        <fieldset>
-          <legend>Home & transport</legend>
-          <div className="ns-sections">
-            <section>
-              <h3>
-                <Icon name="pin" />
-                Home
-              </h3>
-              <PlacePicker value={home} onChange={setHome} label="Home location" />
-            </section>
-            <section>
-              <h3>
-                <Icon name="bus" />
-                Transport
-              </h3>
-              {person.transport_route && !person.bus_stop_id && (
-                <p className="row-sub">
-                  From the ERP: {[person.transport_route, person.pickup_point].filter(Boolean).join(" · ")}
-                </p>
-              )}
-              <TransportPicker routes={routes} value={transport} onChange={setTransport} />
-            </section>
-          </div>
-        </fieldset>
+        </div>
       )}
+
+      {kind === "students" && !group && (
+        <div className="edit-step ns-sections">
+          <section>
+            <h3>
+              <Icon name="pin" />
+              Home
+            </h3>
+            <PlacePicker value={home} onChange={setHome} label="Home location" />
+          </section>
+          <section>
+            <h3>
+              <Icon name="bus" />
+              Bus
+            </h3>
+            {person.transport_route && !person.bus_stop_id && (
+              <p className="row-sub">From the ERP: {[person.transport_route, person.pickup_point].filter(Boolean).join(" · ")}</p>
+            )}
+            <TransportPicker routes={routes} value={transport} onChange={setTransport} />
+          </section>
+        </div>
+      )}
+
       {error && <p className="field-error">{error}</p>}
-      <div className="modal-footer modal-footer-sticky">
-        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
-          Cancel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={saving || !dirty}>
-          {saving ? "Saving…" : "Save changes"}
-        </button>
+      <div className="modal-footer modal-footer-sticky edit-foot">
+        {step === 0 ? (
+          <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
+            Cancel
+          </button>
+        ) : (
+          <button type="button" className="btn btn-secondary" onClick={() => (setStep(step - 1), setError(""))} disabled={saving}>
+            <Icon name="arrowLeft" /> Back
+          </button>
+        )}
+        <span className="edit-foot-right">
+          {!last && (
+            <button type="button" className="btn btn-secondary" onClick={() => (setStep(step + 1), setError(""))}>
+              Next <Icon name="arrowRight" />
+            </button>
+          )}
+          <button type="submit" className="btn btn-primary" disabled={saving || !dirty}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+        </span>
       </div>
     </form>
   );

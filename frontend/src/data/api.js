@@ -250,31 +250,6 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
 
 // ------------------------------------------------------ notes & results ---
 
-export async function listNotes(studentId) {
-  return must(
-    await supabase
-      .from("student_notes")
-      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
-      .eq("student_id", studentId)
-      .order("created_at", { ascending: false })
-  );
-}
-
-// A diary page. kind: remark | appreciation | concern | reminder.
-export async function addNote(schoolId, studentId, body, shared = false, kind = "remark") {
-  return must(
-    await supabase
-      .from("student_notes")
-      .insert({ school_id: schoolId, student_id: studentId, body, shared_with_parents: shared, kind })
-      .select("*, signature:diary_signatures(signed_by, signed_at, reply)")
-      .single()
-  );
-}
-
-export async function deleteNote(id) {
-  must(await supabase.from("student_notes").delete().eq("id", id));
-}
-
 export async function listResults(studentId, sessionId) {
   return must(
     await supabase
@@ -672,17 +647,6 @@ export async function importOpeningBalances(schoolId, sessionId, rows) {
 
 // -------------------------------------------------------------- requests ---
 
-export async function listRequests(schoolId, { status } = {}) {
-  let q = supabase
-    .from("parent_requests")
-    .select("*, student:students(id, name, admission_no, photo_url, photo_path), guardian:guardians(name, phone)")
-    .eq("school_id", schoolId)
-    .order("created_at", { ascending: false })
-    .limit(300);
-  if (status === "open") q = q.eq("status", "open");
-  return must(await q);
-}
-
 export async function answerRequest(id, status, response, me) {
   must(
     await supabase
@@ -692,13 +656,32 @@ export async function answerRequest(id, status, response, me) {
   );
 }
 
-export async function countOpenRequests(schoolId) {
-  const { count } = await supabase
-    .from("parent_requests")
-    .select("id", { count: "exact", head: true })
-    .eq("school_id", schoolId)
-    .eq("status", "open");
-  return count ?? 0;
+// ---------------------------------------------------------------- inbox ---
+
+// One conversation per child: messages and leave/certificate requests,
+// oldest first. Works for staff and parents (each sees what RLS allows).
+export async function loadThread(studentId) {
+  const [m, r] = await Promise.all([
+    supabase.from("messages").select("*").eq("student_id", studentId).order("created_at", { ascending: false }).limit(300),
+    supabase.from("parent_requests").select("*").eq("student_id", studentId).order("created_at", { ascending: false }).limit(100),
+  ]);
+  return [...must(m).map((x) => ({ ...x, type: "message" })), ...must(r).map((x) => ({ ...x, type: "request" }))].sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
+}
+
+export async function sendMessage(studentId, body) {
+  return { ...must(await supabase.rpc("send_message", { student: studentId, p_body: body })), type: "message" };
+}
+
+export async function markThreadRead(studentId) {
+  must(await supabase.rpc("mark_thread_read", { student: studentId }));
+}
+
+// Staff: every conversation they can see, newest first, with unread parent
+// messages and open requests.
+export async function staffInbox(schoolId) {
+  return must(await supabase.rpc("staff_inbox", { school: schoolId }));
 }
 
 // --------------------------------------------------------------- parents ---
@@ -726,10 +709,6 @@ export async function removeGuardianLink(guardianId, studentId) {
 }
 
 // ------------------------------------------------------------ note sharing ---
-
-export async function setNoteShared(noteId, shared) {
-  must(await supabase.from("student_notes").update({ shared_with_parents: shared }).eq("id", noteId));
-}
 
 // --------------------------------------------- grades & instalment types ---
 
@@ -944,23 +923,6 @@ export async function parentFees(studentId, schoolId) {
   return { dues: dues.map((d) => ({ ...d, head_name: name.get(d.head_id) })), payments };
 }
 
-export async function parentNotes(studentId) {
-  return must(
-    await supabase
-      .from("student_notes")
-      .select("id, body, kind, author_name, author_role, created_at, updated_at, signature:diary_signatures(signed_by, signed_at, reply)")
-      .eq("student_id", studentId)
-      .eq("shared_with_parents", true)
-      .order("created_at", { ascending: false })
-  );
-}
-
-export async function parentRequests(studentId) {
-  return must(
-    await supabase.from("parent_requests").select("*").eq("student_id", studentId).order("created_at", { ascending: false })
-  );
-}
-
 export async function createParentRequest(studentId, { kind, subject, body, leave_from, leave_to, certificate_type }) {
   return must(
     await supabase.rpc("create_request", {
@@ -987,11 +949,6 @@ export async function parentUnread() {
 
 export async function markParentSeen(studentId, section) {
   must(await supabase.rpc("mark_parent_seen", { student: studentId, p_section: section }));
-}
-
-// A parent signs a diary page, optionally with a short reply.
-export async function signDiary(noteId, reply) {
-  must(await supabase.rpc("sign_diary", { note: noteId, p_reply: reply || null }));
 }
 
 // ------------------------------------------------------------- homework ---

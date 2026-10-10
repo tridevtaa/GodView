@@ -7995,3 +7995,920 @@ input[type="date"]::-webkit-date-and-time-value {
     gap: 6px;
   }
 }
+
+/* =========================================================
+   Conversations: one chat per child (staff inbox, student page,
+   parent app). Bubbles, request cards and a sticky message box.
+   ========================================================= */
+.chat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-empty {
+  margin: 24px 0;
+  text-align: center;
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chat-day {
+  align-self: center;
+  margin: 14px auto 8px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  width: fit-content;
+}
+
+.bubble-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.bubble-row.is-mine {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: min(78%, 520px);
+  padding: 7px 12px 6px;
+  border: 1px solid var(--border);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.bubble-row.is-parent:not(.is-mine) .bubble {
+  background: #f6f7ff;
+}
+
+.bubble-row.is-mine .bubble {
+  border-color: transparent;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--brand);
+  color: #fff;
+}
+
+.bubble p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.bubble-who {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bubble-who span {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.bubble time,
+.chat-request time {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 11px;
+  text-align: right;
+}
+
+.bubble-row.is-mine .bubble time {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chat-request {
+  width: min(100%, 440px);
+  margin: 6px auto;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.chat-request p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.chat-request-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-request-head .badge {
+  margin-left: auto;
+}
+
+.chat-request-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.chat-request-dates {
+  font-weight: 600;
+}
+
+.chat-request-subject {
+  color: var(--text-2);
+}
+
+.chat-request-reply {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.chat-request-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.chat-request-foot time {
+  margin: 0;
+}
+
+.chat-request-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* The message box stays at the bottom while the conversation scrolls. */
+.chat-compose {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 0;
+  background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
+}
+
+.chat-input {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  resize: none;
+  field-sizing: content;
+}
+
+.chat-input:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+
+.chat-send {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+}
+
+.chat-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.chat-actions {
+  display: flex;
+  flex-basis: 100%;
+  gap: 8px;
+}
+
+.chat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ----------------------------------------------------------- staff inbox */
+.inbox {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+  height: calc(100dvh - 64px - 56px);
+  min-height: 480px;
+}
+
+.inbox-list,
+.inbox-chat {
+  overflow-y: auto;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.inbox-list {
+  padding: 18px 12px;
+}
+
+.inbox-chat {
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.inbox-chat .chat {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.inbox-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 12px;
+}
+
+.inbox-head h1 {
+  margin: 0;
+}
+
+.inbox-filter {
+  margin: 0 8px 10px;
+}
+
+.inbox-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 8px 12px;
+}
+
+.inbox-pick .search {
+  max-width: none;
+  margin-bottom: 6px;
+}
+
+.inbox-threads {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inbox-row,
+.inbox-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inbox-row:hover,
+.inbox-row.is-on {
+  background: var(--brand-soft);
+}
+
+.inbox-photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  object-fit: cover;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Scrolling to the newest message leaves room for the box (and tab bar). */
+.chat-end {
+  scroll-margin-bottom: 16px;
+}
+
+@media (max-width: 760px) {
+  .chat-end {
+    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom));
+  }
+}
+
+.inbox-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inbox-top,
+.inbox-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inbox-top strong {
+  overflow: hidden;
+  font-size: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inbox-top time {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.inbox-last {
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.inbox-row.is-unread .inbox-last {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.inbox-req {
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.inbox-chat-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 -20px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.inbox-who {
+  padding: 4px 8px;
+}
+
+.inbox-who .inbox-photo {
+  width: 38px;
+  height: 38px;
+}
+
+.inbox-back {
+  display: none;
+}
+
+.inbox-empty,
+.inbox-pick-hint {
+  margin: 32px 16px;
+  text-align: center;
+}
+
+.inbox-pick-hint {
+  margin: auto;
+}
+
+.inbox-skeleton {
+  height: 220px;
+  margin: 0 8px;
+}
+
+.inbox-chat .chat-compose {
+  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92) 35%);
+}
+
+/* Parent app: the conversation sits in a card */
+.pa-chat {
+  padding-bottom: 0;
+}
+
+.pa-chat .chat-compose,
+.profile-full .chat-compose {
+  background: linear-gradient(rgba(255, 255, 255, 0), #fff 35%);
+}
+
+@media (max-width: 760px) {
+  /* Phones: the list, or the conversation full screen. */
+  .inbox {
+    display: block;
+    height: auto;
+    min-height: 0;
+  }
+
+  .inbox-list,
+  .inbox-chat {
+    overflow: visible;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .inbox-list {
+    padding: 0;
+  }
+
+  .inbox-head,
+  .inbox-filter,
+  .inbox-pick {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .inbox.has-open .inbox-list,
+  .inbox:not(.has-open) .inbox-chat {
+    display: none;
+  }
+
+  .inbox-chat {
+    padding: 0;
+  }
+
+  .inbox-chat-head {
+    top: 56px;
+    margin: -12px calc(-1 * var(--gutter)) 8px;
+    padding: 8px 8px;
+  }
+
+  .inbox-back {
+    display: grid;
+  }
+
+  .inbox-row {
+    padding: 10px 4px;
+  }
+
+  /* Above the bottom tab bar */
+  .chat-compose {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  .inbox-chat .chat-compose,
+  .profile-full .chat-compose {
+    background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
+  }
+
+  .pa-chat .chat-compose {
+    bottom: 0;
+  }
+
+  .bubble {
+    max-width: 84%;
+  }
+}
+
+/* Phones: the student page sits straight on the page (no card), so the
+   content gets the full width inside the page gutter. */
+@media (max-width: 760px) {
+  .profile.profile-full {
+    margin: 0;
+    overflow: visible;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .profile-full .ig-hero {
+    padding: 4px 0 4px;
+  }
+
+  .profile-full .profile-body {
+    padding: 16px 0 24px;
+  }
+
+  .profile-full .profile-group {
+    background: var(--surface);
+  }
+}
+
+/* =========================================================
+   Student page, icon pass: round back button, tap the photo to
+   change it (no ring), icon actions, facts as icon + value.
+   ========================================================= */
+.back-btn,
+.ig-act,
+.icon-btn-sm {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+}
+
+.back-btn:hover,
+.ig-act:hover,
+.icon-btn-sm:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.icon-btn-sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border-color: transparent;
+  background: none;
+  color: var(--text-3);
+}
+
+.icon-btn-sm:hover {
+  background: var(--brand-soft);
+}
+
+/* Photo: no ring; the photo itself is the button */
+.ig-photo {
+  padding: 0;
+  background: none;
+}
+
+.ig-photo-img {
+  border: 0;
+}
+
+.ig-photo.is-editable {
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.ig-photo-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(17, 17, 17, 0.38);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.ig-photo.is-editable:hover .ig-photo-hint,
+.ig-photo.is-editable:focus-visible .ig-photo-hint,
+.ig-photo.is-busy .ig-photo-hint {
+  opacity: 1;
+}
+
+.ig-photo-wrap {
+  flex: none;
+}
+
+.ig-photo-wrap .field-error {
+  max-width: 132px;
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+/* Bio on the left, round actions on the right */
+.ig-bio-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ig-actions {
+  flex: none;
+  gap: 8px;
+}
+
+.ig-act {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+/* Facts: icon + value, two columns on wide screens */
+.profile-facts .facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-full .profile-groups .profile-facts {
+  grid-column: 1 / -1;
+}
+
+.facts li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.facts li.is-wide {
+  grid-column: 1 / -1;
+}
+
+.fact-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--brand);
+}
+
+.fact-label {
+  flex: none;
+  min-width: 30px;
+  padding-top: 5px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.fact-value {
+  min-width: 0;
+  padding-top: 5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.fact-value a {
+  color: var(--brand);
+  text-decoration: none;
+}
+
+.profile-facts .parents-head {
+  align-items: center;
+}
+
+.profile-facts .parent-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-switch button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+}
+
+@media (max-width: 760px) {
+  .profile-facts .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-full .fact-icon {
+    background: var(--bg);
+  }
+
+  .ig-act {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Export and Import: icons everywhere, the main action keeps its words */
+.page-actions .btn-secondary:has(.btn-label) {
+  width: 44px;
+  padding: 0;
+  justify-content: center;
+}
+
+.page-actions .btn-label {
+  display: none;
+}
+
+/* Facts: a quiet outline icon beside each value; two even columns. */
+.fact-icon,
+.profile-full .fact-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text-3);
+}
+
+.profile-facts .facts {
+  grid-auto-flow: row dense;
+}
+
+.facts li {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.fact-icon {
+  margin-top: 1px;
+}
+
+.fact-value,
+.fact-label {
+  padding-top: 0;
+}
+
+.profile-facts .parent-list a .icon {
+  color: var(--text-3);
+}
+
+/* Edit in steps: numbered sections, a dot where something changed */
+.edit-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 18px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.edit-steps::-webkit-scrollbar {
+  display: none;
+}
+
+.edit-steps button {
+  position: relative;
+  display: inline-flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.edit-steps button.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.edit-step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edit-steps .is-on .edit-step-n {
+  background: var(--brand);
+  color: #fff;
+}
+
+.edit-steps .is-done .edit-step-n {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.edit-step-dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.edit-step {
+  min-height: 220px;
+}
+
+.edit-note {
+  margin: 0 0 14px;
+}
+
+.edit-foot {
+  justify-content: space-between;
+}
+
+.edit-foot-right {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  /* Phones: numbers only, the current step shows its name */
+  .edit-steps button {
+    flex: 0 0 auto;
+    padding: 0 10px;
+  }
+
+  .edit-steps button:not(.is-on) .edit-step-label {
+    display: none;
+  }
+}
+
+/* On the student page the step buttons stay in view, above the tab bar */
+.profile-full .edit-foot {
+  bottom: 0;
+  z-index: 4;
+  margin: 16px -32px -30px;
+  padding: 14px 32px;
+  border-top: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 760px) {
+  .profile-full .edit-foot {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    margin: 16px calc(-1 * var(--gutter)) 0;
+    padding: 10px var(--gutter);
+  }
+
+  .edit-foot .btn {
+    padding: 0 14px;
+  }
+}

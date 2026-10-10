@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { addGuardian, listGuardians, removeGuardianLink } from "../data/api.js";
+import Icon from "./Icon.jsx";
 
 const RELATIONS = { father: "Father", mother: "Mother", guardian: "Guardian" };
 const show = (phone) => phone.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2");
@@ -58,8 +59,8 @@ export default function StudentParents({ person, canEdit }) {
       <div className="parents-head">
         <h4 title="These numbers sign in to the Godview parent app">Parent app</h4>
         {canEdit && !adding && (
-          <button type="button" className="link-btn" onClick={() => setAdding(true)}>
-            + Add number
+          <button type="button" className="icon-btn-sm" onClick={() => setAdding(true)} aria-label="Add a parent number" title="Add a parent number">
+            <Icon name="plus" size={16} />
           </button>
         )}
       </div>
@@ -72,7 +73,9 @@ export default function StudentParents({ person, canEdit }) {
           {links.map((l) => (
             <li key={l.guardian.id}>
               <div>
-                <a href={`tel:${l.guardian.phone}`}>{show(l.guardian.phone)}</a>
+                <a href={`tel:${l.guardian.phone}`}>
+                  <Icon name="phone" size={14} /> {show(l.guardian.phone)}
+                </a>
                 <span className="row-sub">
                   {[l.guardian.name, RELATIONS[l.relation]].filter(Boolean).join(" · ")}
                 </span>
@@ -89,8 +92,8 @@ export default function StudentParents({ person, canEdit }) {
                     </button>
                   </span>
                 ) : (
-                  <button className="link-btn" onClick={() => setConfirm(l.guardian.id)}>
-                    Remove
+                  <button className="icon-btn-sm" onClick={() => setConfirm(l.guardian.id)} aria-label="Remove this number" title="Remove this number">
+                    <Icon name="x" size={15} />
                   </button>
                 ))}
             </li>
