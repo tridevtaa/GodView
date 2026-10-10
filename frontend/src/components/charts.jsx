@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { rupees } from "../data/money.js";
+import Icon from "./Icon.jsx";
 
 // Small single-series charts in plain SVG. One hue (the brand), thin marks
 // with a 4px rounded data end, hairline grid, a hover tooltip on every mark,
@@ -36,8 +37,13 @@ function barPath(x, y, w, h, r = 4) {
 
 function TableToggle({ showTable, setShowTable }) {
   return (
-    <button className="link-btn chart-toggle" onClick={() => setShowTable((v) => !v)}>
-      {showTable ? "Show chart" : "Show table"}
+    <button
+      className="icon-btn-sm chart-toggle"
+      onClick={() => setShowTable((v) => !v)}
+      aria-label={showTable ? "Show chart" : "Show table"}
+      title={showTable ? "Show chart" : "Show table"}
+    >
+      <Icon name={showTable ? "chart" : "table"} size={16} />
     </button>
   );
 }

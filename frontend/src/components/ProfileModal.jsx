@@ -24,6 +24,23 @@ function age(dob) {
 }
 const digits = (n = "") => String(n).replace(/\D/g, "").slice(-10);
 
+// Facts shown as an icon and the value (the label is the tooltip); facts
+// without an icon keep a small label.
+const FACT_ICON = {
+  Father: "male",
+  Mother: "female",
+  "Parent phone": "phone",
+  "Father phone": "phone",
+  "Mother phone": "phone",
+  Email: "mail",
+  "Date of birth": "cake",
+  Home: "pin",
+  Admission: "register",
+  Phone: "phone",
+  Joined: "register",
+  Remarks: "file",
+};
+
 // Details in groups; empty rows and empty groups are left out.
 const GROUPS = {
   students: [
@@ -70,11 +87,9 @@ const GROUPS = {
       "School",
       [
         ["Stream", (p) => p.stream],
-        // Office details: teachers don't need them.
-        ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
-        ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
+        // Office details: teachers don't need them. (The bus is in the header.)
+        ["Admission", (p) => [longDate(p.admission_date), p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
         ["SRN", (p) => p.srn],
-        ["Bus", (p, routes) => (p.uses_bus ? stopLabel(routes, p.bus_stop_id) || [p.transport_route, p.pickup_point].filter(Boolean).join(" · ") || "Uses the bus" : !p.bus_stop_id && [p.transport_route, p.pickup_point].filter(Boolean).join(" · "))],
         ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
         ["Remarks", (p) => p.remarks, "wide"],
       ],
@@ -115,7 +130,6 @@ export function MonthAttendance({ studentId, title = "This month" }) {
         <strong>
           {present} of {days.length} days
         </strong>{" "}
-        ({Math.round((present / days.length) * 100)}%)
         {n("absent") > 0 && ` · ${n("absent")} absent`}
         {n("late") > 0 && ` · ${n("late")} late`}
         {n("leave") > 0 && ` · ${n("leave")} on leave`}
@@ -176,10 +190,7 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
   return (
     <header className="ig-hero">
       <div className="ig-top">
-        <div className="ig-photo" style={{ "--tint": tintFor(person) }}>
-          <Photo person={person} className="ig-photo-img" />
-          {canWrite && <PhotoUpload person={person} kind={mode} schoolId={schoolId} onSaved={(patch) => onUpdate(person.id, patch)} />}
-        </div>
+        <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
         <div className="ig-head">
           <h2 className="ig-name">
             {person.name}
@@ -209,6 +220,7 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
         </div>
       </div>
 
+      <div className="ig-bio-row">
       <div className="ig-bio">
         <p className="ig-bio-main">
           {gradeLabel(person.class)}
@@ -217,7 +229,6 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
           <span className="ig-id">#{person.admission_no}</span>
           {person.status === "left" && <span className="badge badge-danger">Left</span>}
         </p>
-        {person.parent_name && <p>{`${relation(person.gender)} ${person.parent_name}`}</p>}
         {bus && (
           <p className="ig-bus">
             <Icon name="bus" size={14} /> {bus}
@@ -228,24 +239,63 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
       {!editing && (callNo || canEdit) && (
         <div className="ig-actions">
           {callNo && (
-            <a className="btn btn-secondary" href={`tel:${callNo}`}>
-              <Icon name="phone" /> Call
+            <a className="ig-act" href={`tel:${callNo}`} aria-label="Call parent" title="Call parent">
+              <Icon name="phone" size={18} />
             </a>
           )}
           {callNo && (
-            <a className="btn btn-secondary" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer">
-              <Icon name="message" /> WhatsApp
+            <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp parent" title="WhatsApp parent">
+              <Icon name="whatsapp" size={19} />
             </a>
           )}
           {canEdit && (
-            <button className="btn btn-secondary" onClick={onEdit}>
-              <Icon name="edit" /> Edit
+            <button className="ig-act" onClick={onEdit} aria-label="Edit details" title="Edit details">
+              <Icon name="edit" size={18} />
             </button>
           )}
         </div>
       )}
+      </div>
 
     </header>
+  );
+}
+
+// The student's photo; staff who can write tap it to add or change it.
+function EditablePhoto({ person, kind, schoolId, canWrite, onSaved }) {
+  const input = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const img = <Photo person={person} className="ig-photo-img" />;
+  if (!canWrite) return <div className="ig-photo">{img}</div>;
+
+  async function onFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      onSaved(await savePhoto(schoolId, kind, person, file));
+    } catch (err) {
+      setError(err.message === "not-an-image" ? "Choose an image." : "Upload failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const label = person.has_photo || person.photo_url ? "Change photo" : "Add photo";
+  return (
+    <div className="ig-photo-wrap">
+      <button type="button" className={`ig-photo is-editable${busy ? " is-busy" : ""}`} onClick={() => input.current.click()} disabled={busy} title={label} aria-label={label}>
+        {img}
+        <span className="ig-photo-hint" aria-hidden="true">
+          {busy ? <span className="spinner" /> : <Icon name="camera" size={22} />}
+        </span>
+      </button>
+      <input ref={input} type="file" accept="image/*" hidden onChange={onFile} />
+      {error && <p className="field-error">{error}</p>}
+    </div>
   );
 }
 
@@ -302,7 +352,7 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 // canWrite: photos, notes and results (anyone who can see the student, current session)
 // A student's or employee's profile. Students open as a full page (asPage),
 // with a back bar and previous/next; employees as a pop-up.
-export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [], asPage = false, onPrev, onNext, position }) {
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [], asPage = false }) {
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState(initialTab);
 
@@ -484,24 +534,23 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             <div className="profile-groups">
               {isStudent && <MonthAttendance studentId={person.id} />}
               {groups.length === 0 && <p className="row-sub">No details recorded yet.</p>}
-              {groups.map(([title, rows]) => (
-                <section key={title} className="profile-group">
-                  <h3>{title}</h3>
-                  <dl className="details">
-                    {rows.map(([label, value, wide]) => (
-                      <div key={label} className={wide ? "is-wide" : ""}>
-                        <dt>{label}</dt>
-                        <dd>{value}</dd>
-                      </div>
+              {(groups.length > 0 || (isStudent && isAdmin)) && (
+                <section className="profile-group profile-facts">
+                  <ul className="facts">
+                    {groups.flatMap(([, rows]) => rows).map(([label, value, wide]) => (
+                      <li key={label} className={wide ? "is-wide" : ""} title={label}>
+                        {FACT_ICON[label] ? (
+                          <span className="fact-icon" role="img" aria-label={label}>
+                            <Icon name={FACT_ICON[label]} size={16} />
+                          </span>
+                        ) : (
+                          <span className="fact-label">{label}</span>
+                        )}
+                        <span className="fact-value">{value}</span>
+                      </li>
                     ))}
-                  </dl>
-                  {title === "Family" && isStudent && isAdmin && <StudentParents person={person} canEdit={canEdit} />}
-                </section>
-              ))}
-              {isStudent && isAdmin && !groups.some(([t]) => t === "Family") && (
-                <section className="profile-group">
-                  <h3>Family</h3>
-                  <StudentParents person={person} canEdit={canEdit} />
+                  </ul>
+                  {isStudent && isAdmin && <StudentParents person={person} canEdit={canEdit} />}
                 </section>
               )}
             </div>
@@ -520,20 +569,9 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   return (
     <div className="profile-page">
       <nav className="profile-page-bar" aria-label="Student">
-        <button className="btn btn-secondary btn-sm" onClick={onClose}>
-          <Icon name="arrowLeft" /> Students
+        <button className="back-btn" onClick={onClose} aria-label="Back to students" title="Back">
+          <Icon name="chevronLeft" size={22} />
         </button>
-        {(onPrev || onNext) && (
-          <span className="profile-page-step">
-            {position && <span className="row-sub">{position}</span>}
-            <button className="btn-icon" onClick={onPrev} disabled={!onPrev} aria-label="Previous student">
-              <Icon name="arrowLeft" size={18} />
-            </button>
-            <button className="btn-icon" onClick={onNext} disabled={!onNext} aria-label="Next student">
-              <Icon name="arrowRight" size={18} />
-            </button>
-          </span>
-        )}
       </nav>
       {card}
     </div>

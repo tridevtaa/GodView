@@ -436,8 +436,8 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
         ) : (
           <>
             <RolePicker value={member.role} onChange={onRole} />
-            <button className="btn btn-secondary btn-sm" onClick={() => setConfirming(true)}>
-              Remove
+            <button className="icon-btn-sm" onClick={() => setConfirming(true)} aria-label="Remove access" title="Remove access">
+              <Icon name="trash" size={16} />
             </button>
           </>
         )}

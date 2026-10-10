@@ -260,9 +260,6 @@ export default function App() {
             onClose={closeProfile}
             grades={schoolGrades}
             routes={routes}
-            position={`${openIndex + 1} of ${profileList.length}`}
-            onPrev={openIndex > 0 ? () => openStudent(profileList[openIndex - 1].id) : undefined}
-            onNext={openIndex < profileList.length - 1 ? () => openStudent(profileList[openIndex + 1].id) : undefined}
           />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
           <>
@@ -368,11 +365,11 @@ export default function App() {
           {isStudents && isAdmin && (
             <nav className="segmented view-switch" aria-label="View">
               {[
-                ["tiles", "Tiles"],
-                ["map", "Map"],
-              ].map(([v, l]) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
-                  {l}
+                ["tiles", "Tiles", "grid"],
+                ["map", "Map", "map"],
+              ].map(([v, l, icon]) => (
+                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)} aria-label={l} title={l}>
+                  <Icon name={icon} size={16} />
                 </button>
               ))}
             </nav>
@@ -381,7 +378,8 @@ export default function App() {
             <Icon name="search" />
             <input
               type="search"
-              placeholder={isStudents ? "Search name, parent, admission no., phone…" : "Search name, role, department…"}
+              placeholder="Search"
+              aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label={`Search ${mode}`}

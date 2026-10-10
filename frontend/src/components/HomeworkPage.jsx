@@ -142,8 +142,8 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
                         {h.due_date ? `Due ${dayText(h.due_date)}` : "No due date"} · {h.author_name || h.created_by}
                       </span>
                       {!readOnly && (h.created_by === me || isAdmin) && (
-                        <button className="link-btn" onClick={() => remove(h.id)}>
-                          Remove
+                        <button className="icon-btn-sm" onClick={() => remove(h.id)} aria-label="Remove homework" title="Remove">
+                          <Icon name="trash" size={15} />
                         </button>
                       )}
                     </div>
