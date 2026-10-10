@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth } from "../data/api.js";
+import { attendanceMonth, listNotes, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import StudentNotes from "./StudentNotes.jsx";
 import StudentResults from "./StudentResults.jsx";
@@ -124,6 +124,157 @@ export function MonthAttendance({ studentId, title = "Attendance this month" }) 
   );
 }
 
+const TAB_ICONS = { details: "file", fees: "rupee", parents: "users", notes: "book", results: "chart" };
+
+// The student page header, kept minimal: photo, name and three numbers,
+// a few lines about the student, the main actions, and shortcuts.
+function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onAdd, onFees }) {
+  const [att, setAtt] = useState(null);
+  const [result, setResult] = useState(null);
+  const [pages, setPages] = useState(null);
+
+  useEffect(() => {
+    let off = false;
+    const d = new Date();
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    attendanceMonth(person.id, local).then(
+      (days) => {
+        if (off || !days.length) return;
+        const present = days.filter((x) => x.status === "present" || x.status === "late").length;
+        setAtt(Math.round((present / days.length) * 100));
+      },
+      () => {}
+    );
+    if (sessionId) {
+      listResults(person.id, sessionId).then(
+        (rows) => {
+          if (off) return;
+          // The most recently entered exam's overall percentage.
+          const latest = [...rows].sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]?.exam;
+          const scored = rows.filter((r) => r.exam === latest && r.marks !== null && r.max_marks);
+          const max = scored.reduce((t, r) => t + Number(r.max_marks), 0);
+          if (max) setResult({ pct: Math.round((scored.reduce((t, r) => t + Number(r.marks), 0) / max) * 100), exam: latest });
+        },
+        () => {}
+      );
+    }
+    if (!isAdmin) listNotes(person.id).then((n) => !off && setPages(n.length), () => {});
+    return () => {
+      off = true;
+    };
+  }, [person.id, sessionId, isAdmin]);
+
+  const due = Number(person.fee_due) || 0;
+  const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
+  const bus = person.uses_bus ? stopLabel(routes, person.bus_stop_id) || [person.transport_route, person.pickup_point].filter(Boolean).join(" · ") : "";
+  const stats = [
+    ["Attendance", att === null ? "–" : `${att}%`, "this month"],
+    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet"],
+    isAdmin
+      ? ["Fees", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "is-due" : "", onFees]
+      : ["Diary", pages === null ? "–" : pages, "pages"],
+  ];
+
+  return (
+    <header className="ig-hero">
+      <div className="ig-top">
+        <div className="ig-photo" style={{ "--tint": tintFor(person) }}>
+          <Photo person={person} className="ig-photo-img" />
+          {canWrite && <PhotoUpload person={person} kind={mode} schoolId={schoolId} onSaved={(patch) => onUpdate(person.id, patch)} />}
+        </div>
+        <div className="ig-head">
+          <h2 className="ig-name">
+            {person.name}
+            <GenderMark gender={person.gender} />
+          </h2>
+          <ul className="ig-stats">
+            {stats.map(([label, value, note, tone, onClick]) => {
+              const inner = (
+                <>
+                  <strong className={tone || ""}>{value}</strong>
+                  <span>{label}</span>
+                </>
+              );
+              return (
+                <li key={label} title={`${label}: ${value} ${note}`}>
+                  {onClick ? (
+                    <button type="button" onClick={onClick}>
+                      {inner}
+                    </button>
+                  ) : (
+                    inner
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+
+      <div className="ig-bio">
+        <p className="ig-bio-main">
+          {gradeLabel(person.class)}
+          {person.section ? ` · Section ${person.section}` : ""}
+          {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
+          <span className="ig-id">#{person.admission_no}</span>
+          {person.status === "left" && <span className="badge badge-danger">Left</span>}
+        </p>
+        {person.parent_name && <p>{`${relation(person.gender)} ${person.parent_name}`}</p>}
+        {bus && (
+          <p className="ig-bus">
+            <Icon name="bus" size={14} /> {bus}
+          </p>
+        )}
+      </div>
+
+      {!editing && (callNo || canEdit) && (
+        <div className="ig-actions">
+          {callNo && (
+            <a className="btn btn-secondary" href={`tel:${callNo}`}>
+              <Icon name="phone" /> Call
+            </a>
+          )}
+          {callNo && (
+            <a className="btn btn-secondary" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer">
+              <Icon name="message" /> WhatsApp
+            </a>
+          )}
+          {canEdit && (
+            <button className="btn btn-secondary" onClick={onEdit}>
+              <Icon name="edit" /> Edit
+            </button>
+          )}
+        </div>
+      )}
+
+      {!editing && canWrite && (
+        <div className="ig-highlights">
+          <button type="button" onClick={() => onAdd("notes")}>
+            <span className="ig-hl">
+              <Icon name="book" size={22} />
+            </span>
+            Diary
+          </button>
+          <button type="button" onClick={() => onAdd("results")}>
+            <span className="ig-hl">
+              <Icon name="chart" size={22} />
+            </span>
+            Add result
+          </button>
+          {isAdmin && (
+            <button type="button" onClick={onFees}>
+              <span className="ig-hl">
+                <Icon name="rupee" size={22} />
+              </span>
+              Fees
+            </button>
+          )}
+        </div>
+      )}
+    </header>
+  );
+}
+
 // Boy / girl mark beside a student's name.
 function GenderMark({ gender }) {
   const g = { M: ["male", "Boy"], F: ["female", "Girl"] }[gender];
@@ -224,6 +375,25 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
         onClick={(e) => e.stopPropagation()}
         style={{ "--tint": tintFor(person) }}
       >
+        {asPage && isStudent ? (
+          <StudentHero
+            person={person}
+            mode={mode}
+            schoolId={schoolId}
+            sessionId={sessionId}
+            routes={routes}
+            isAdmin={isAdmin}
+            canEdit={canEdit}
+            canWrite={canWrite}
+            editing={editing}
+            callNo={callNo}
+            onEdit={() => setEditing(true)}
+            onUpdate={onUpdate}
+            onAdd={addTo}
+            onFees={() => setTab("fees")}
+          />
+        ) : (
+        <>
         <div className="profile-band">
           <div className="profile-tools">
             {canEdit && !editing && (
@@ -301,7 +471,20 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           </div>
         )}
 
-        {isStudent && !editing && (
+        </>
+        )}
+
+        {isStudent && !editing && asPage && (
+          <nav className="ig-tabs" aria-label="Profile sections">
+            {tabs.map(([value, label]) => (
+              <button key={value} className={tab === value ? "is-on" : ""} onClick={() => setTab(value)} aria-current={tab === value ? "page" : undefined}>
+                <Icon name={TAB_ICONS[value]} size={18} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
+        {isStudent && !editing && !asPage && (
           <nav className="segmented profile-tabs" aria-label="Profile sections">
             {tabs.map(([value, label]) => (
               <button key={value} className={tab === value ? "active" : ""} onClick={() => setTab(value)}>
@@ -334,7 +517,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             />
           ) : (
             <div className="profile-groups">
-              {isStudent && canWrite && (
+              {isStudent && canWrite && !asPage && (
                 <div className="profile-quick">
                   <button className="btn btn-secondary btn-sm" onClick={() => addTo("notes")}>
                     <Icon name="edit" /> Write in diary
