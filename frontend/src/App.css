@@ -6324,3 +6324,16 @@ input[type="date"]::-webkit-date-and-time-value {
   min-height: 1.4em;
   text-align: left;
 }
+
+.crash-detail {
+  display: block;
+  width: 100%;
+  margin: 4px 0 16px;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--danger);
+  font-size: 12px;
+  text-align: left;
+}

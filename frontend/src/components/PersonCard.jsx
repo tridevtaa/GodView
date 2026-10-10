@@ -19,7 +19,8 @@ export function tintFor(person) {
 }
 
 // The old ERP sometimes stored a PDF or Word file as the "photo".
-export const isImageUrl = (url = "") => /\.(jpe?g|png|webp|gif|heic)$/i.test(url.split("?")[0]);
+// Students without a photo have photo_url = null (not undefined), so guard.
+export const isImageUrl = (url) => typeof url === "string" && /\.(jpe?g|png|webp|gif|heic)$/i.test(url.split("?")[0]);
 
 export function Photo({ person, className = "card-photo" }) {
   // Uploaded photos come as short-lived signed URLs; ERP photos as plain links.
