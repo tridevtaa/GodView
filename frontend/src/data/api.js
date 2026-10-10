@@ -353,6 +353,11 @@ export async function addAssignment(schoolId, sessionId, email, klass, section) 
   );
 }
 
+// Owner: make (or stop making) this assignment the class's class teacher.
+export async function setClassTeacher(id, on) {
+  must(await supabase.from("teacher_classes").update({ is_class_teacher: on }).eq("id", id));
+}
+
 export async function removeAssignment(id) {
   must(await supabase.from("teacher_classes").delete().eq("id", id));
 }
@@ -1034,4 +1039,36 @@ export async function deleteHomework(id) {
 // One child's homework (for their parents, and staff who can see them).
 export async function childHomework(studentId) {
   return must(await supabase.rpc("child_homework", { student: studentId }));
+}
+
+// ----------------------------------------------------------- attendance ---
+
+// Marks already saved for a day (the caller's students only).
+export async function loadAttendance(sessionId, day) {
+  return all(() => supabase.from("attendance").select("student_id, status, marked_by, marked_at").eq("session_id", sessionId).eq("day", day));
+}
+
+// rows: [{ student_id, status }]; replaces any earlier mark for the day.
+export async function saveAttendance(schoolId, sessionId, day, rows) {
+  if (!rows.length) return;
+  must(
+    await supabase
+      .from("attendance")
+      .upsert(rows.map((r) => ({ ...r, day, school_id: schoolId, session_id: sessionId })), { onConflict: "student_id,day" })
+  );
+}
+
+// Students with an approved leave request covering the day.
+export async function leaveOn(sessionId, day) {
+  return (must(await supabase.rpc("leave_on", { session: sessionId, p_day: day })) ?? []).map((r) => r.student_id);
+}
+
+// Owners/admins: each class's marks for the day.
+export async function attendanceOverview(sessionId, day) {
+  return must(await supabase.rpc("attendance_overview", { session: sessionId, p_day: day }));
+}
+
+// One student's marks for the month containing `day`.
+export async function attendanceMonth(studentId, day) {
+  return must(await supabase.rpc("attendance_month", { student: studentId, month: day }));
 }

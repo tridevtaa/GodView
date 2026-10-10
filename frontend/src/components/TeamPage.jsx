@@ -14,6 +14,7 @@ import {
   removeAssignment,
   removeMember,
   setMemberRole,
+  setClassTeacher,
   withPhotoUrls,
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
@@ -182,6 +183,16 @@ export default function TeamPage({ school, session, me, onSchoolSaved, students,
             onRemove={act(() => removeMember(school.id, m.email))}
             onAssign={act((k, s) => addAssignment(school.id, session.id, m.email, k, s))}
             onUnassign={act((id) => removeAssignment(id))}
+            onClassTeacher={async (a) => {
+              try {
+                await setClassTeacher(a.id, !a.is_class_teacher);
+                await load();
+              } catch {
+                setError(
+                  `${gradeLabel(a.class)}${a.section ? ` · ${a.section}` : ""} already has a class teacher. Remove the star from them first.`
+                );
+              }
+            }}
             canAssign={Boolean(session)}
           />
         ))}
@@ -304,7 +315,7 @@ function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
   );
 }
 
-function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAssign, onUnassign, canAssign }) {
+function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAssign, onUnassign, onClassTeacher, canAssign }) {
   const [confirming, setConfirming] = useState(false);
   const [pick, setPick] = useState("");
   const isOwner = member.role === "owner";
@@ -331,9 +342,19 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
         {member.role === "teacher" && (
           <div className="chips">
             {assignments.map((a) => (
-              <span key={a.id} className="chip">
+              <span key={a.id} className={`chip${a.is_class_teacher ? " chip-ct" : ""}`}>
+                <button
+                  className="chip-star"
+                  aria-pressed={a.is_class_teacher}
+                  title={a.is_class_teacher ? "Class teacher (marks attendance). Tap to remove." : "Make class teacher"}
+                  aria-label={a.is_class_teacher ? "Remove as class teacher" : "Make class teacher"}
+                  onClick={() => onClassTeacher(a)}
+                >
+                  {a.is_class_teacher ? "★" : "☆"}
+                </button>
                 {gradeLabel(a.class)}
                 {a.section ? ` · ${a.section}` : " · all"}
+                {a.is_class_teacher && <span className="chip-ct-label">Class teacher</span>}
                 <button aria-label="Remove class" onClick={() => onUnassign(a.id)}>
                   <Icon name="x" size={12} />
                 </button>
@@ -360,6 +381,9 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
               </select>
             )}
             {!assignments.length && <span className="row-sub">No classes yet, so they’ll see no students.</span>}
+            {assignments.length > 0 && !assignments.some((a) => a.is_class_teacher) && (
+              <span className="row-sub ct-hint">Tap ☆ to make them a class’s class teacher (they mark its daily attendance).</span>
+            )}
           </div>
         )}
       </div>

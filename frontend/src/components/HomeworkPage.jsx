@@ -3,6 +3,7 @@ import { addHomework, deleteHomework, listHomework } from "../data/api.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import ClassSwitcher from "./ClassSwitcher.jsx";
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -107,16 +108,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin })
       )}
 
       {groups.length > 1 && (
-        <nav className="hw-filter" aria-label="Class">
-          <button className={!filter ? "is-on" : ""} onClick={() => setFilter("")}>
-            All classes
-          </button>
-          {groups.map((g) => (
-            <button key={g.key} className={filter === g.key ? "is-on" : ""} onClick={() => setFilter(g.key)}>
-              {classText(g.klass, g.section)}
-            </button>
-          ))}
-        </nav>
+        <ClassSwitcher groups={groups} value={filter} onChange={setFilter} allLabel="All classes" />
       )}
 
       {items === null ? (
@@ -200,13 +192,7 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
   return (
     <form className="hw-form" onSubmit={submit}>
       <h2 className="panel-title">Give homework</h2>
-      <div className="hw-classes" role="radiogroup" aria-label="Class">
-        {groups.map((g) => (
-          <button type="button" key={g.key} role="radio" aria-checked={target === g.key} className={target === g.key ? "is-on" : ""} onClick={() => (setTarget(g.key), setPicked([]))}>
-            {classText(g.klass, g.section)}
-          </button>
-        ))}
-      </div>
+      <ClassSwitcher groups={groups} value={target} onChange={(k) => (setTarget(k), setPicked([]))} ariaLabel="Homework for" />
       {isAdmin && group?.section && (
         <label className="checkbox checkbox-inline">
           <input type="checkbox" checked={whole} onChange={(e) => (setWhole(e.target.checked), setSome(false))} />

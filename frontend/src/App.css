@@ -6909,3 +6909,457 @@ input[type="date"]::-webkit-date-and-time-value {
 .modal-backdrop * {
   overscroll-behavior: contain;
 }
+
+/* =========================================================
+   Attendance: the morning register
+   ========================================================= */
+
+.att-day {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.att-day-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 132px;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.att-day-pick input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.att-day-pick .row-sub {
+  font-size: 11px;
+}
+
+.att-register {
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.att-register-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.att-register-head h2 {
+  margin: 0 0 2px;
+  font-size: 17px;
+}
+
+.att-register-head .row-sub {
+  margin: 0;
+}
+
+.att-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.att-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.att-row.is-absent {
+  background: color-mix(in srgb, var(--fee-overdue) 8%, transparent);
+}
+
+.att-row.is-late {
+  background: color-mix(in srgb, var(--fee-due) 10%, transparent);
+}
+
+.att-row.is-leave {
+  background: var(--surface-2);
+}
+
+.att-photo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  object-fit: cover;
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.att-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.att-name strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.att-marks {
+  display: flex;
+  flex: none;
+  gap: 4px;
+}
+
+.att-mark {
+  width: 38px;
+  height: 38px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.att-mark.is-on {
+  color: #fff;
+}
+
+.att-present.is-on {
+  border-color: #3f8f2f;
+  background: #3f8f2f;
+}
+
+.att-absent.is-on {
+  border-color: var(--fee-overdue);
+  background: var(--fee-overdue);
+}
+
+.att-late.is-on {
+  border-color: #d99a0b;
+  background: #d99a0b;
+}
+
+.att-leave.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.att-save {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 -1px 0 var(--border);
+}
+
+.att-tally b {
+  font-weight: 700;
+}
+
+.t-present { color: #3f8f2f; }
+.t-absent { color: var(--fee-overdue); }
+.t-late { color: #b47c04; }
+.t-leave { color: var(--brand); }
+
+.att-skeleton {
+  height: 260px;
+}
+
+.att-overview {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.att-overview button {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 22px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: none;
+  text-align: left;
+}
+
+.att-overview button:hover {
+  background: var(--surface-2);
+}
+
+.att-ov-name {
+  font-weight: 600;
+}
+
+.att-ov-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fee-overdue) 25%, var(--surface-2));
+}
+
+.att-ov-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #3f8f2f;
+}
+
+.att-ov-nums {
+  color: var(--text-3);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Month dots on a student's profile */
+.month-att-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.att-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.att-dot.att-present { background: #3f8f2f; }
+.att-dot.att-absent { background: var(--fee-overdue); }
+.att-dot.att-late { background: #d99a0b; }
+.att-dot.att-leave { background: var(--brand); }
+
+.month-att-sum {
+  margin: 0;
+  color: var(--text-2);
+}
+
+@media (max-width: 760px) {
+  .att-row,
+  .att-register-head,
+  .att-save {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .att-photo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .att-mark {
+    width: 34px;
+    height: 34px;
+  }
+
+  .att-save {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .att-overview button {
+    grid-template-columns: 90px 1fr auto;
+    padding: 10px 14px;
+  }
+}
+
+.att-save .btn {
+  margin-left: auto;
+}
+
+/* Class teacher star on the Owner page */
+.chip-star {
+  margin-right: 2px;
+  padding: 0 2px;
+  border: none;
+  background: none;
+  color: #c79a10;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip.chip-ct {
+  border-color: #e7c14b;
+  background: #fff7dc;
+}
+
+.chip-ct-label {
+  margin-left: 6px;
+  color: #8a6a05;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ct-hint {
+  flex-basis: 100%;
+}
+
+.att-readonly {
+  margin: 6px 0 0;
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.att-mark:disabled {
+  cursor: default;
+}
+
+.att-ov-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.att-ov-name .row-sub {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip .chip-star,
+.chip .chip-star:hover {
+  width: auto;
+  height: auto;
+  background: none;
+  color: #c79a10;
+}
+
+/* Class switcher: one button and a picker grouped by grade */
+.cls-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.cls-all {
+  height: var(--control-sm);
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cls-all.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.cls-current.is-on {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.cls-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(420px, 60vh);
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.cls-grade {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  align-items: start;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 10px;
+}
+
+.cls-grade + .cls-grade {
+  border-top: 1px solid var(--border);
+}
+
+.cls-grade-name {
+  padding-top: 5px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cls-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cls-sections button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cls-sections button:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.cls-sections button.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .cls-switch {
+    position: relative;
+  }
+
+  .cls-switch .popover-anchor {
+    position: static;
+  }
+
+  .cls-menu {
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+
+  .cls-grade {
+    grid-template-columns: 64px 1fr;
+  }
+}
