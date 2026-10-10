@@ -113,7 +113,7 @@ export default function ParentApp({ phone }) {
   }, [childId, tab, unread.size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="pa">
+    <div className="pa" data-clarity-mask="True">
       <header className="pa-top">
         <div className="pa-top-inner">
           <span className="pa-brand">

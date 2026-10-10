@@ -231,7 +231,7 @@ export default function App() {
   );
 
   return (
-    <div className="app">
+    <div className="app" data-clarity-mask="True">
       <TopBar mode={mode} onMode={switchMode} sections={sections} onSettings={isOwner ? () => openOwner("profile") : null} />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
