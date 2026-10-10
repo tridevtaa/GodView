@@ -160,6 +160,14 @@ export default function App() {
   }
 
   const isStudents = mode === "students";
+  // Teachers only ever load their own classes; say so, so the number isn't
+  // mistaken for the whole school.
+  const countLabel = (() => {
+    const n = `${current.length.toLocaleString("en-IN")} ${mode}`;
+    if (!isStudents || isAdmin) return n;
+    const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
+    return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
+  })();
   const title = isStudents ? "Students" : "Employees";
   const sections = [
     ["students", "Students"],
@@ -217,7 +225,7 @@ export default function App() {
             <h1 className="sr-only">{title}</h1>
             <div className="page-meta">
               <span className="page-count">
-                {loading ? "Loading…" : `${current.length.toLocaleString("en-IN")} ${mode}`}
+                {loading ? "Loading…" : countLabel}
               </span>
               {isStudents && (
                 <SessionSelect
