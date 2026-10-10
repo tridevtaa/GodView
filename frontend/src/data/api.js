@@ -218,7 +218,9 @@ export async function withPhotoUrls(people) {
 // Uploads a JPEG blob as the person's photo; returns the fields to update.
 export async function uploadPhoto(schoolId, kind, person, blob) {
   const path = `${schoolId}/${kind}/${person.id}.jpg`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: "image/jpeg" });
+  // The file keeps its .jpg name (the database expects it); the content type
+  // says what it really is (WebP or JPEG).
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
   if (error) throw error;
   // Students go through set_student_photo so their teachers can change photos
   // without update rights on the rest of the record.
