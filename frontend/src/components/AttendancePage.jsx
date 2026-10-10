@@ -24,7 +24,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // The morning register. Teachers open their class, everyone starts Present
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
-export default function AttendancePage({ school, session, students, isAdmin, me }) {
+export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false }) {
   const [day, setDay] = useState(todayIso());
   // Classes this person is class teacher of (only they mark attendance;
   // owners and admins can mark any class).
@@ -36,7 +36,8 @@ export default function AttendancePage({ school, session, students, isAdmin, me 
       () => setMine([])
     );
   }, [school.id, session, me, isAdmin]);
-  const canMark = (g) => isAdmin || (mine ?? []).some((a) => a.class === g.klass && (!a.section || a.section === g.section));
+  // readOnly: the principal sees every class but marks none.
+  const canMark = (g) => !readOnly && (isAdmin || (mine ?? []).some((a) => a.class === g.klass && (!a.section || a.section === g.section)));
   const groups = useMemo(() => {
     const m = new Map();
     for (const s of students) {
@@ -105,7 +106,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me 
       )}
 
       {group ? (
-        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} />
+        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} viewer={readOnly} />
       ) : isAdmin && groups.length > 0 ? (
         <Overview session={session} day={day} onOpen={setOpen} />
       ) : null}
@@ -113,7 +114,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me 
   );
 }
 
-function Register({ school, session, day, group, canMark }) {
+function Register({ school, session, day, group, canMark, viewer }) {
   const [marks, setMarks] = useState(null); // student id -> status
   const [saved, setSaved] = useState(null); // { by, at } when already marked
   const [dirty, setDirty] = useState(false);
@@ -187,7 +188,7 @@ function Register({ school, session, day, group, canMark }) {
                 ? "Not marked yet: everyone starts as present. Tap anyone who isn’t."
                 : "Not marked yet."}
           </p>
-          {!canMark && <p className="att-readonly">Only this class’s class teacher marks attendance. You can see it here.</p>}
+          {!canMark && <p className="att-readonly">{viewer ? "View only." : "Only this class’s class teacher marks attendance. You can see it here."}</p>}
         </div>
         {canMark && (
         <button

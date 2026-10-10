@@ -27,9 +27,9 @@ export const isStandalone = () =>
 export const isIOS = () =>
   /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-// Parent login stays hidden (but reachable at /parent for testing) until
-// WhatsApp codes work. Turn on with VITE_PARENT_LOGIN=on.
-export const parentLoginLive = import.meta.env.VITE_PARENT_LOGIN === "on";
+// Parent login (mobile + password) shows on the landing page and in the
+// installed app. VITE_PARENT_LOGIN=off hides it again.
+export const parentLoginLive = import.meta.env.VITE_PARENT_LOGIN !== "off";
 
 export const isPhone = () => window.matchMedia?.("(pointer: coarse)").matches && window.innerWidth < 900;
 

@@ -14,6 +14,7 @@ import {
   childHomework,
   parentUnread,
   attendanceMonth,
+  setParentPassword,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
@@ -47,6 +48,7 @@ export default function ParentApp({ phone }) {
   const [error, setError] = useState("");
   const [childId, setChildId] = useState(null);
   const [tab, setTab] = useState("fees");
+  const [pwOpen, setPwOpen] = useState(false);
   // "<child>:<section>" -> { unread, seen_at }, from the database.
   const [unread, setUnread] = useState(new Map());
   // When the open section was last seen before this visit, to mark items New.
@@ -128,6 +130,9 @@ export default function ParentApp({ phone }) {
           </span>
           <span className="pa-me">
             <span className="row-sub">{showPhone(phone)}</span>
+            <button className="btn btn-secondary btn-sm" onClick={() => setPwOpen((o) => !o)}>
+              Password
+            </button>
             <button className="btn btn-secondary btn-sm" onClick={logOut}>
               Log out
             </button>
@@ -137,6 +142,7 @@ export default function ParentApp({ phone }) {
 
       <InstallPrompt />
       <main className="pa-main">
+        {pwOpen && <ChangePassword onDone={() => setPwOpen(false)} />}
         {error && <p className="notice notice-error">{error}</p>}
         {!children && !error && <div className="pa-hero pa-skeleton" aria-busy="true" />}
         {children && !children.length && <NotLinked phone={phone} />}
@@ -217,6 +223,68 @@ function TodayAttendance({ child }) {
         </span>
       )}
     </div>
+  );
+}
+
+// A parent sets their own password (8+ characters). After this the starting
+// password (child's name + birth year) no longer works for them.
+function ChangePassword({ onDone }) {
+  const [pw, setPw] = useState("");
+  const [again, setAgain] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+
+  async function save(e) {
+    e.preventDefault();
+    if (pw.length < 8) return setError("Use at least 8 characters.");
+    if (pw !== again) return setError("The two passwords don’t match.");
+    setBusy(true);
+    setError("");
+    try {
+      await setParentPassword(pw);
+      setDone(true);
+    } catch {
+      setError("Couldn’t change the password. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done)
+    return (
+      <section className="pa-card pa-pw">
+        <p className="pa-pw-done">
+          <Icon name="check" size={16} /> Password changed. Use your new password next time you log in.
+        </p>
+        <button className="btn btn-secondary btn-sm" onClick={onDone}>
+          Done
+        </button>
+      </section>
+    );
+
+  return (
+    <form className="pa-card pa-pw pa-form" onSubmit={save}>
+      <h2 className="pa-h2">Choose your own password</h2>
+      <p className="row-sub">Safer than your child’s name and birth year. After this, only the new password works.</p>
+      <label>
+        <span>New password</span>
+        <input className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} minLength={8} />
+      </label>
+      <label>
+        <span>Type it again</span>
+        <input className="input" type="password" autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
+      </label>
+      {error && <p className="field-error">{error}</p>}
+      <div className="pa-form-foot">
+        <button type="button" className="btn btn-secondary" onClick={onDone}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? "Saving…" : "Save password"}
+        </button>
+      </div>
+    </form>
   );
 }
 

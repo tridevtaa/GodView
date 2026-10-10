@@ -14,7 +14,7 @@ const showPhone = (p) => p.replace(/^\+91(\d{5})(\d{5})$/, "+91 $1 $2");
 const days = (a, b) => Math.round((new Date(b) - new Date(a)) / 86400000) + 1;
 
 // Requests from parents. Owners/admins see all; teachers see their classes'.
-export default function RequestsPage({ school, me, onOpenStudent, onChanged }) {
+export default function RequestsPage({ school, me, onOpenStudent, onChanged, readOnly = false }) {
   const [filter, setFilter] = useState("open");
   const [requests, setRequests] = useState(null);
   const [error, setError] = useState("");
@@ -75,7 +75,7 @@ export default function RequestsPage({ school, me, onOpenStudent, onChanged }) {
       ) : (
         <div className="request-list">
           {requests.map((r) => (
-            <RequestCard key={r.id} request={r} onAnswer={answer} onOpenStudent={onOpenStudent} />
+            <RequestCard key={r.id} request={r} onAnswer={answer} onOpenStudent={onOpenStudent} readOnly={readOnly} />
           ))}
         </div>
       )}
@@ -83,11 +83,12 @@ export default function RequestsPage({ school, me, onOpenStudent, onChanged }) {
   );
 }
 
-function RequestCard({ request: r, onAnswer, onOpenStudent }) {
+function RequestCard({ request: r, onAnswer, onOpenStudent, readOnly }) {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [label, tone] = STATUS[r.status];
-  const open = r.status === "open";
+  // The principal sees requests but doesn't answer them.
+  const open = r.status === "open" && !readOnly;
 
   const act = (status) => async () => {
     setBusy(true);
