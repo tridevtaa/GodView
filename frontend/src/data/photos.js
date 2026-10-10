@@ -23,3 +23,14 @@ export async function savePhoto(schoolId, kind, person, file) {
   if (!file.type.startsWith("image/")) throw new Error("not-an-image");
   return uploadPhoto(schoolId, kind, person, await toThumbnail(file));
 }
+
+// Makes a small copy of a photo hosted elsewhere (the old ERP's storage) and
+// keeps it as the person's photo. Full-size camera photos (often 1 to 10 MB)
+// are too heavy for phones; the copy is SIZE×SIZE, about 30 KB.
+export async function copyHostedPhoto(schoolId, kind, person) {
+  const res = await fetch(person.photo_url, { mode: "cors", cache: "no-store" });
+  if (!res.ok) throw new Error(`photo-${res.status}`);
+  const blob = await res.blob();
+  if (!blob.type.startsWith("image/")) throw new Error("not-an-image");
+  return uploadPhoto(schoolId, kind, person, await toThumbnail(blob));
+}

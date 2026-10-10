@@ -6259,3 +6259,52 @@ body {
     font-size: 16px !important;
   }
 }
+
+/* Copying full-size ERP photos into small ones */
+.photo-upgrade {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.photo-upgrade-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.photo-upgrade-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.photo-upgrade-bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.photo-upgrade-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+  transition: width 0.3s;
+}
+
+@media (max-width: 760px) {
+  .photo-upgrade {
+    flex-wrap: wrap;
+  }
+}

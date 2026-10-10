@@ -1,3 +1,4 @@
+import { useState } from "react";
 const AVATAR_TINTS = ["#dbeafe", "#fce7f3", "#dcfce7", "#fef3c7", "#ede9fe", "#e0f2fe"];
 
 function initials(name = "") {
@@ -17,11 +18,15 @@ export function tintFor(person) {
   return AVATAR_TINTS[h % AVATAR_TINTS.length];
 }
 
+// The old ERP sometimes stored a PDF or Word file as the "photo".
+export const isImageUrl = (url = "") => /\.(jpe?g|png|webp|gif|heic)$/i.test(url.split("?")[0]);
+
 export function Photo({ person, className = "card-photo" }) {
   // Uploaded photos come as short-lived signed URLs; ERP photos as plain links.
-  const src = person.photo_src || person.photo_url;
-  if (src) {
-    return <img className={className} src={src} alt={person.name} loading="lazy" />;
+  const src = person.photo_src || (isImageUrl(person.photo_url) ? person.photo_url : "");
+  const [failed, setFailed] = useState(null); // the src that didn't load
+  if (src && failed !== src) {
+    return <img className={className} src={src} alt={person.name} loading="lazy" decoding="async" onError={() => setFailed(src)} />;
   }
   return (
     <div className={`${className} placeholder`} style={{ background: tintFor(person) }}>
