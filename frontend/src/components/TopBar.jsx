@@ -4,6 +4,9 @@ import Icon from "./Icon.jsx";
 
 const ICONS = { students: "users", attendance: "register", homework: "book", fees: "rupee", requests: "inbox", employees: "briefcase", team: "settings" };
 
+// Phone bottom bar: seven sections must fit, so shorter names.
+const SHORT = { attendance: "Register", requests: "Inbox", employees: "Staff" };
+
 // sections: [[value, label, badgeCount?], …], already filtered by role.
 // Wide screens: tabs in the top bar. Phones: an app-style bar at the bottom.
 export default function TopBar({ mode, onMode, sections }) {
@@ -17,7 +20,7 @@ export default function TopBar({ mode, onMode, sections }) {
           onClick={() => onMode(value)}
         >
           <Icon name={ICONS[value] ?? "file"} size={20} className="tab-icon" />
-          <span className="tab-label">{label}</span>
+          <span className="tab-label">{className === "tabbar" ? SHORT[value] ?? label : label}</span>
           {count > 0 && <span className="seg-count">{count > 99 ? "99+" : count}</span>}
         </button>
       ))}

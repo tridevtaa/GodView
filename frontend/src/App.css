@@ -7397,3 +7397,98 @@ input[type="date"]::-webkit-date-and-time-value {
   font-size: 11px;
   letter-spacing: 0;
 }
+
+/* =========================================================
+   Student profile as a full page
+   ========================================================= */
+
+.profile-page {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.profile-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.profile-page-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-page-step .row-sub {
+  margin-right: 4px;
+  font-size: 13px;
+}
+
+.profile.profile-full {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  animation: none;
+}
+
+.profile-full .profile-body {
+  overflow: visible;
+}
+
+/* Wide screens: detail groups side by side */
+@media (min-width: 900px) {
+  .profile-full .profile-groups {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .profile-full .profile-quick,
+  .profile-full .month-att {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .profile-page-bar {
+    margin-bottom: 10px;
+  }
+
+  .profile.profile-full {
+    margin: 0 -4px;
+    border-radius: 22px;
+  }
+}
+
+@media (max-width: 760px) {
+  .tabbar button {
+    padding-right: 0;
+    padding-left: 0;
+    font-size: 10.5px;
+  }
+
+  .tabbar .tab-icon {
+    padding: 2px 8px;
+  }
+
+  .tabbar button.active .tab-icon {
+    width: 40px;
+    padding: 2px 9px;
+  }
+}
+
+@media (max-width: 760px) {
+  .tabbar button {
+    font-size: 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .tabbar .tab-label {
+    overflow: visible;
+  }
+}

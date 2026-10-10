@@ -175,7 +175,9 @@ function PhotoUpload({ person, kind, schoolId, onSaved }) {
 
 // canEdit: change the record (owners/admins, current session)
 // canWrite: photos, notes and results (anyone who can see the student, current session)
-export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [] }) {
+// A student's or employee's profile. Students open as a full page (asPage),
+// with a back bar and previous/next; employees as a pop-up.
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [], asPage = false, onPrev, onNext, position }) {
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState(initialTab);
   // "Add note" / "Add result" on Details open that tab ready to type.
@@ -215,13 +217,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
     ["results", "Results"],
   ];
 
-  return (
-    <div className="modal-backdrop" onClick={() => !editing && onClose()}>
+  const card = (
       <section
-        className="modal modal-lg profile"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${person.name} profile`}
+        className={asPage ? "profile profile-full" : "modal modal-lg profile"}
+        {...(asPage ? { "aria-label": `${person.name} profile` } : { role: "dialog", "aria-modal": "true", "aria-label": `${person.name} profile` })}
         onClick={(e) => e.stopPropagation()}
         style={{ "--tint": tintFor(person) }}
       >
@@ -233,9 +232,11 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 Edit
               </button>
             )}
-            <button className="btn-icon profile-close" onClick={onClose} aria-label="Close">
-              <Icon name="x" size={18} />
-            </button>
+            {!asPage && (
+              <button className="btn-icon profile-close" onClick={onClose} aria-label="Close">
+                <Icon name="x" size={18} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -362,6 +363,34 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           )}
         </div>
       </section>
+  );
+
+  if (!asPage) {
+    return (
+      <div className="modal-backdrop" onClick={() => !editing && onClose()}>
+        {card}
+      </div>
+    );
+  }
+  return (
+    <div className="profile-page">
+      <nav className="profile-page-bar" aria-label="Student">
+        <button className="btn btn-secondary btn-sm" onClick={onClose}>
+          <Icon name="arrowLeft" /> Students
+        </button>
+        {(onPrev || onNext) && (
+          <span className="profile-page-step">
+            {position && <span className="row-sub">{position}</span>}
+            <button className="btn-icon" onClick={onPrev} disabled={!onPrev} aria-label="Previous student">
+              <Icon name="arrowLeft" size={18} />
+            </button>
+            <button className="btn-icon" onClick={onNext} disabled={!onNext} aria-label="Next student">
+              <Icon name="arrowRight" size={18} />
+            </button>
+          </span>
+        )}
+      </nav>
+      {card}
     </div>
   );
 }
