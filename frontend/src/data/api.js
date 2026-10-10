@@ -349,7 +349,18 @@ export async function lookupJoinCode(code) {
   return rows?.[0] ?? null;
 }
 
-export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes }) {
+// Photo for a join request, saved before the person is a member: only they
+// can write it; the owner and admins of a school they ask to join can see it.
+export async function uploadJoinPhoto(blob) {
+  const { data } = await supabase.auth.getUser();
+  if (!data?.user) throw new Error("not-signed-in");
+  const path = `requests/${data.user.id}.jpg`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+  if (error) throw error;
+  return path;
+}
+
+export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes, photoPath }) {
   must(
     await supabase.rpc("request_access", {
       p_code: code,
@@ -359,6 +370,7 @@ export async function requestAccess(code, { fullName, designation, phone, subjec
       p_subjects: subjects,
       p_note: note,
       p_classes: classes,
+      p_photo_path: photoPath,
     })
   );
 }
