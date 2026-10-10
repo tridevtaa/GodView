@@ -1,7 +1,7 @@
 // Godview service worker: makes the installed app open fast and show its
 // shell offline. School data always comes fresh from the network; only the
 // app's own files are cached.
-const CACHE = "godview-shell-v2";
+const CACHE = "godview-shell-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icon-192.png"])));
