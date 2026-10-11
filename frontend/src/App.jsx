@@ -371,7 +371,7 @@ export default function App() {
         ) : mode === "fees" ? (
           <FeesPage
             heading={studentsSwitch}
-            start={quick.kind === "fee" ? quick.at : 0}
+            collectAt={quick.kind === "fee" ? quick.at : 0}
             school={school}
             role={role}
             grades={schoolGrades}
@@ -411,10 +411,10 @@ export default function App() {
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={studentsSwitch} start={quick.kind === "homework" ? quick.at : 0} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={studentsSwitch} giveAt={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
-            start={quick.kind === "message" ? quick.at : 0}
+            newAt={quick.kind === "message" ? quick.at : 0}
             readOnly={isPrincipal}
             school={school}
             students={current}

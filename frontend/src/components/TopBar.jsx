@@ -4,7 +4,7 @@ import Logo from "./Logo.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import Icon from "./Icon.jsx";
 
-const ICONS = { students: "users", academics: "academics", attendance: "register", homework: "book", fees: "rupee", requests: "inbox", employees: "briefcase", transport: "bus" };
+const ICONS = { students: "scholar", academics: "academics", attendance: "register", homework: "book", fees: "rupee", requests: "plane", employees: "teacher", transport: "bus" };
 
 // sections: [[value, label, badgeCount?], …], already filtered by role.
 // Wide screens: tabs in the top bar. Phones: an app-style bar at the bottom.
@@ -19,7 +19,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
   const plus = actions.length > 0 && (
     <div className="tab-plus-wrap" ref={sheetRef} key="plus">
       <button className={`tab-plus${sheet ? " is-open" : ""}`} onClick={() => setSheet((o) => !o)} aria-label="Create" aria-expanded={sheet}>
-        <Icon name="plus" size={26} weight="bold" />
+        <Icon name="create" size={26} weight={sheet ? "fill" : "regular"} className="tab-icon" />
       </button>
       {sheet && (
         <div className="plus-sheet" role="menu">

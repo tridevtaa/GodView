@@ -9924,3 +9924,157 @@ input[type="date"]::-webkit-date-and-time-value {
 .marks .marks-input {
   min-width: 0;
 }
+
+/* =========================================================
+   Phone tab bar, like the Instagram app's: icons only, an even row on
+   a solid white bar, the active icon filled. In Godview's colours:
+   slate outlines, indigo when active. A soft press and a small spring
+   when a tab is chosen. Staff and parent apps.
+   ========================================================= */
+@media (max-width: 760px) {
+  .tabbar {
+    padding: 2px 6px calc(2px + env(safe-area-inset-bottom));
+    background: #fff;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 -0.5px 0 rgba(29, 35, 102, 0.14);
+  }
+
+  .tabbar button {
+    gap: 0;
+    min-height: 50px;
+    justify-content: center;
+    color: #4a4f6e;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tabbar button.active {
+    color: var(--brand);
+  }
+
+  /* Labels: for screen readers only */
+  .tabbar .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .tabbar .tab-icon,
+  .tabbar button.active .tab-icon {
+    box-sizing: border-box;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    transition: transform 0.16s ease-out;
+  }
+
+  /* Press: a small dip */
+  .tabbar button:active .tab-icon {
+    transform: scale(0.86);
+  }
+
+  /* Chosen: the filled icon settles in with a small spring */
+  .tabbar button.active .tab-icon {
+    animation: tab-pop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes tab-pop {
+    0% {
+      transform: scale(0.82);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  /* Counts: a small red bubble on the icon */
+  .tabbar .seg-count {
+    top: 5px;
+    left: calc(50% + 7px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+    box-shadow: 0 0 0 2px #fff;
+    animation: badge-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes badge-in {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  /* Create (+): Instagram's square plus, in line with the others */
+  .tabbar .tab-plus {
+    width: 50px;
+    height: 50px;
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: #4a4f6e;
+    box-shadow: none;
+  }
+
+  .tabbar .tab-plus.is-open {
+    transform: none;
+    color: var(--brand);
+  }
+
+  .tabbar .tab-plus.is-open .tab-icon {
+    animation: tab-pop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .tab-plus-wrap {
+    align-items: center;
+  }
+
+  .plus-sheet {
+    bottom: calc(100% + 8px);
+    transform-origin: 50% 100%;
+    animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes sheet-up {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(8px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  .app,
+  .pa {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar .tab-icon,
+  .tabbar .seg-count,
+  .plus-sheet {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 760px) {
+  /* The + menu's rows keep their own look inside the tab bar */
+  .tabbar .plus-sheet button {
+    min-height: 0;
+    justify-content: flex-start;
+    color: var(--text);
+  }
+}

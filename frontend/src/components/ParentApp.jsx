@@ -28,7 +28,7 @@ const TABS = [
   ["fees", "Fees", "rupee"],
   ["results", "Results", "chart"],
   ["homework", "Homework", "book"],
-  ["inbox", "Messages", "message"],
+  ["inbox", "Messages", "plane"],
 ];
 // Local date (India), not UTC: before 5:30 am UTC is still yesterday.
 const today = () => {
