@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { logoUrl, removeSchoolLogo, updateSchool, uploadSchoolLogo } from "../data/api.js";
+import { logoUrl, removeSchoolLogo, setLogoScale, updateSchool, uploadSchoolLogo } from "../data/api.js";
+import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
 import { StepBar } from "./Steps.jsx";
 
@@ -38,6 +39,19 @@ export default function SchoolProfile({ school, onSaved, aside }) {
   const [state, setState] = useState("idle"); // idle | saving | logo
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
+  // Logo size in the header, previewed live beside the Godview mark.
+  const [scale, setScale] = useState(Number(school.logo_scale ?? 1));
+  const [scaleState, setScaleState] = useState("");
+  async function saveScale(v) {
+    setScaleState("saving");
+    try {
+      onSaved(await setLogoScale(school.id, v));
+      setScaleState("saved");
+      setTimeout(() => setScaleState(""), 1200);
+    } catch {
+      setScaleState("error");
+    }
+  }
   const file = useRef(null);
   const changed = (k) => (form[k] ?? "") !== (initial[k] ?? "");
   const dirty = FIELDS.some(([k]) => changed(k));
@@ -132,6 +146,39 @@ export default function SchoolProfile({ school, onSaved, aside }) {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {step === 0 && school.logo_path && (
+            <div className="logo-size">
+              <span className="logo-size-preview" aria-hidden="true">
+                <LogoMark size={26} />
+                <span className="logo-x">×</span>
+                <img className="logo-partner" src={logoUrl(school.logo_path)} alt="" style={{ "--logo-scale": scale }} />
+              </span>
+              <label className="logo-size-range">
+                <span>
+                  Logo size in the header
+                  {scaleState === "saved" && <em> · Saved</em>}
+                  {scaleState === "error" && <em className="field-error"> · Couldn’t save</em>}
+                </span>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.05"
+                  value={scale}
+                  onChange={(e) => setScale(Number(e.target.value))}
+                  onPointerUp={(e) => saveScale(Number(e.target.value))}
+                  onKeyUp={(e) => saveScale(Number(e.target.value))}
+                  aria-label="Logo size"
+                />
+              </label>
+              {scale !== 1 && (
+                <button type="button" className="link-btn" onClick={() => (setScale(1), saveScale(1))}>
+                  Reset
+                </button>
+              )}
             </div>
           )}
 

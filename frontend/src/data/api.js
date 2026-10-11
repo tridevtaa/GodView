@@ -523,6 +523,11 @@ export async function updateSchool(schoolId, fields) {
   return must(await supabase.from("schools").update(row).eq("id", schoolId).select().single());
 }
 
+// How big the logo shows in the header (0.5 to 2; 1 = default).
+export async function setLogoScale(schoolId, scale) {
+  return must(await supabase.from("schools").update({ logo_scale: scale }).eq("id", schoolId).select().single());
+}
+
 // Any image (incl. SVG) → PNG no larger than 512px, transparent background kept.
 async function toLogoPng(file) {
   const url = URL.createObjectURL(file);
