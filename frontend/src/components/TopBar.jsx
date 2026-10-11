@@ -12,7 +12,8 @@ const ICONS = { students: "scholar", academics: "academics", attendance: "regist
 // session: the session picker, shown beside the logo.
 // actions: [[key, label, icon], …] for the + in the middle of the phone tab
 // bar (everything you can create); onAction(key) runs one.
-export default function TopBar({ mode, onMode, sections, onSettings, session, actions = [], onAction }) {
+// search: the common search (header on computers; above the tab bar on phones).
+export default function TopBar({ mode, onMode, sections, onSettings, session, actions = [], onAction, search }) {
   const [sheet, setSheet] = useState(false);
   const sheetRef = useDismiss(sheet, useCallback(() => setSheet(false), []));
   const half = Math.ceil(sections.length / 2);
@@ -70,6 +71,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
             <Logo />
             {session}
           </span>
+          {search}
           {sections.length > 1 && tabs("segmented topbar-tabs")}
           <AccountMenu onSettings={onSettings} />
         </div>

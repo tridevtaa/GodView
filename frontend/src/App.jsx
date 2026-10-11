@@ -18,6 +18,7 @@ import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
 import MarksPage from "./components/MarksPage.jsx";
+import GlobalSearch from "./components/GlobalSearch.jsx";
 import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -291,6 +292,33 @@ export default function App() {
   // The + in the middle of the phone tab bar: everything this person can
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
+  // The common search: the session's students (kept from the Students
+  // load, so it works on every page) and a conversation to open in Inbox.
+  const [searchStudents, setSearchStudents] = useState([]);
+  useEffect(() => {
+    if (dataMode === "students" && !loading) setSearchStudents(current);
+  }, [dataMode, loading, current]);
+  const [openThread, setOpenThread] = useState({ id: null, at: 0 });
+  const globalSearch = (
+    <GlobalSearch
+      school={school}
+      students={searchStudents}
+      seesStaff={leads}
+      onStudent={(id) => {
+        switchMode("students");
+        openStudent(id);
+      }}
+      onStaff={(id) => {
+        switchMode("employees");
+        setStaffTab("people");
+        setOpenId(id);
+      }}
+      onThread={(id) => {
+        switchMode("requests");
+        setOpenThread({ id, at: Date.now() });
+      }}
+    />
+  );
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "users"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
@@ -335,6 +363,7 @@ export default function App() {
         onSettings={isOwner ? () => openOwner("profile") : null}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
         actions={plusActions}
+        search={globalSearch}
         onAction={runAction}
       />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
@@ -427,6 +456,7 @@ export default function App() {
         ) : mode === "requests" ? (
           <InboxPage
             newAt={quick.kind === "message" ? quick.at : 0}
+            openThread={openThread}
             readOnly={isPrincipal}
             school={school}
             students={current}
@@ -456,16 +486,6 @@ export default function App() {
         <div className="toolbar toolbar-students toolbar-sticky">
           {isStudents && studentParts.length > 1 && studentsSwitch}
           {!isStudents && staffTabs}
-          <label className="search">
-            <Icon name="search" />
-            <input
-              type="search"
-              placeholder={loading ? "Search" : `Search ${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}`}
-              aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
           {!loading && (query || pickedGrades.length > 0) && (
             <span className="toolbar-count">

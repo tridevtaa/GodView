@@ -23,11 +23,15 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // on phones the conversation opens full screen.
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
-export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, newAt = 0 }) {
+export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, newAt = 0, openThread }) {
   const [threads, setThreads] = useState(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(null);
+  // A conversation picked in the common search.
+  useEffect(() => {
+    if (openThread?.id) setOpen(openThread.id);
+  }, [openThread]);
   const [picking, setPicking] = useState(false);
   // The + button in the tab bar: start a new message.
   useEffect(() => {
@@ -119,13 +123,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
           </div>
         )}
 
-
-        <div className="inbox-search toolbar-sticky">
-          <label className="search">
-            <Icon name="search" />
-            <input type="search" placeholder="Search messages" aria-label="Search by student, parent or message" value={find} onChange={(e) => setFind(e.target.value)} />
-          </label>
-        </div>
 
         {error && <p className="notice notice-error">{error}</p>}
         {threads === null && !error && <div className="card card-skeleton inbox-skeleton" />}

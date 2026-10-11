@@ -6224,7 +6224,7 @@ button.profile-stat:hover {
   /* Room for the bar (and the install banner) under the last row. */
   .app,
   .pa {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    padding-bottom: calc(76px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -6257,7 +6257,7 @@ button.profile-stat:hover {
 @media (max-width: 760px) {
   .app .install,
   .pa .install {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
   }
 }
 
@@ -7220,7 +7220,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .att-save {
-    bottom: calc(68px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(68px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .att-overview button {
@@ -8361,7 +8361,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .chat-end {
-    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -8526,7 +8526,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
   /* Above the bottom tab bar and the install banner */
   .chat-compose {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .inbox-chat .chat-compose,
@@ -8918,7 +8918,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .profile-full .edit-foot {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
     margin: 16px calc(-1 * var(--gutter)) 0;
     padding: 10px var(--gutter);
   }
@@ -9885,7 +9885,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .marks-save {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .marks-list li {
@@ -10058,7 +10058,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .app,
   .pa {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -10156,5 +10156,140 @@ input[type="date"]::-webkit-date-and-time-value {
   .page .page-header {
     align-items: flex-start;
     min-height: 0;
+  }
+}
+
+/* ---------------------------------------------------------------
+   The common search: in the header on computers, docked just above
+   the tab bar on phones (everything fixed at the bottom moves up by
+   --dock-h to make room). */
+.gsearch {
+  position: relative;
+  flex: 0 1 340px;
+  min-width: 0;
+}
+
+.gsearch .search {
+  width: 100%;
+  max-width: none;
+}
+
+.gsearch-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: max(100%, 380px);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(29, 35, 102, 0.2), 0 0 0 1px var(--border);
+}
+
+.gsearch-panel section + section {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.gsearch-panel h4 {
+  margin: 6px 10px 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gsearch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gsearch-row:hover,
+.gsearch-row:focus-visible {
+  background: var(--brand-soft);
+}
+
+.gsearch-row .gsearch-photo {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.gsearch-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.gsearch-last {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gsearch-empty {
+  margin: 12px 10px;
+}
+
+@media (max-width: 760px) {
+  .app {
+    --dock-h: 58px;
+  }
+
+  /* An open conversation or the marks sheet has its own bottom bar */
+  .app:has(.inbox.has-open),
+  .app:has(.marks) {
+    --dock-h: 0px;
+  }
+
+  .app:has(.inbox.has-open) .gsearch,
+  .app:has(.marks) .gsearch {
+    display: none;
+  }
+
+  .gsearch {
+    position: fixed;
+    right: 0;
+    bottom: calc(54px + env(safe-area-inset-bottom));
+    left: 0;
+    z-index: 29;
+    padding: 8px var(--gutter);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 -0.5px 0 rgba(29, 35, 102, 0.1);
+  }
+
+  .gsearch .search input {
+    height: 42px;
+  }
+
+  /* Results open upwards, above the bar */
+  .gsearch-panel {
+    top: auto;
+    right: var(--gutter);
+    bottom: calc(100% + 8px);
+    left: var(--gutter);
+    width: auto;
+    max-height: 60vh;
   }
 }
