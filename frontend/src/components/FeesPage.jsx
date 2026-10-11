@@ -95,7 +95,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       <div>
         <h1 className="sr-only">Fees</h1>
         <div className="page-meta">
-          <span className="page-count">Fees</span>
+
           {isOwner && (
             <nav className="segmented segmented-sm" aria-label="Fee sections">
               {[["overview", "Overview"], ["structure", "Fee structure"]].map(([v, l]) => (

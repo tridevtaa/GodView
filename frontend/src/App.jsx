@@ -32,22 +32,8 @@ const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
   const [query, setQuery] = useState("");
-  // Transport: routes or the student map. Remembered per browser.
-  const [view, setViewState] = useState(() => {
-    try {
-      return localStorage.getItem("godview.transportView") === "map" ? "map" : "routes";
-    } catch {
-      return "routes";
-    }
-  });
-  const setView = (v) => {
-    setViewState(v);
-    try {
-      localStorage.setItem("godview.transportView", v);
-    } catch {
-      /* private mode: fine, just not remembered */
-    }
-  };
+  // Transport: the map starts as a small preview ("routes"); "map" opens it.
+  const [view, setView] = useState("routes");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
@@ -344,7 +330,7 @@ export default function App() {
           <>
             <div className="page-header">
               <div className="page-meta">
-                <h1 className="page-count">Staff</h1>
+                <h1 className="sr-only">Staff</h1>
                 {staffTabs}
               </div>
             </div>
@@ -378,28 +364,27 @@ export default function App() {
           )
         ) : mode === "transport" && isAdmin ? (
           <>
-            <div className="page-header">
-              <div className="page-meta">
-                <h1 className="page-count">Transport</h1>
-                <nav className="segmented segmented-sm" aria-label="Transport">
-                  {[
-                    ["routes", "Routes"],
-                    ["map", "Map"],
-                  ].map(([v, l]) => (
-                    <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
-                      {l}
-                    </button>
-                  ))}
-                </nav>
+            <h1 className="sr-only">Transport</h1>
+            {/* The map on top: a short preview that opens to full size. */}
+            {view === "map" && (
+              <div className="tr-map-bar">
+                <button className="btn btn-secondary btn-sm" onClick={() => setView("routes")}>
+                  <Icon name="chevronDown" /> Collapse map
+                </button>
               </div>
-            </div>
-            {view === "map" ? (
-              <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
-                <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
-              </Suspense>
-            ) : (
-              <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
             )}
+            <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
+              <StudentMap
+                school={school}
+                students={current}
+                allStudents={current}
+                canEdit={canEdit}
+                onOpenStudent={(id) => openStudent(id)}
+                compact={view !== "map"}
+                onExpand={() => setView("map")}
+              />
+            </Suspense>
+            {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
           </>
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />

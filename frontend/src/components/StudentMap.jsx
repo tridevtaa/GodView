@@ -33,7 +33,9 @@ const BUS = [
 // Owners/admins: where students come from. Students are grouped by village
 // (from their address or pick-up point); a pinned home shows on its own.
 // Numbers merge into clusters as you zoom out; clicking one lists them.
-export default function StudentMap({ school, students, allStudents, canEdit, onOpenStudent }) {
+// compact: a short preview (map only, no panel or controls) that opens the
+// full map when tapped (onExpand).
+export default function StudentMap({ school, students, allStudents, canEdit, onOpenStudent, compact = false, onExpand }) {
   const [areas, setAreas] = useState(null);
   const [error, setError] = useState("");
   const [bus, setBus] = useState("all");
@@ -174,7 +176,14 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
   const suggestions = useMemo(() => (firstRun ? buildAreas(allStudents) : []), [firstRun, allStudents]);
 
   return (
-    <div className="smap" ref={wrap} style={{ height }}>
+    <div className={`smap${compact ? " is-compact" : ""}`} ref={wrap} style={{ height: compact ? undefined : height }}>
+      {compact && (
+        <button type="button" className="smap-open" onClick={onExpand} aria-label="Open the map">
+          <span>
+            <Icon name="map" size={16} /> Where students live
+          </span>
+        </button>
+      )}
       <div className={`smap-map${placing ? " is-placing" : ""}`}>
         <LeafletMap groups={groups} home={home} school={school} selected={selected} placing={placing} onSelect={setSelected} onPlace={onPlace} />
 

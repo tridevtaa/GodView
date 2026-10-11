@@ -77,7 +77,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
         <div>
           <h1 className="sr-only">Attendance</h1>
           <div className="page-meta">
-            {heading ?? <span className="page-count">Attendance</span>}
+            {heading}
           </div>
         </div>
         <div className="att-day">

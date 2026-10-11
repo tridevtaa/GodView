@@ -75,7 +75,15 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     <div className={`inbox${open ? " has-open" : ""}`}>
       <section className="inbox-list">
         <div className="inbox-head">
-          <h1 className="page-count">Inbox</h1>
+          <h1 className="sr-only">Inbox</h1>
+          <nav className="segmented segmented-sm inbox-filter" aria-label="Show">
+            {FILTERS.map(([v, l]) => (
+              <button key={v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>
+                {l}
+                {counts[v] > 0 && <span className="seg-count">{counts[v]}</span>}
+              </button>
+            ))}
+          </nav>
           {!readOnly && (
             <button className="btn btn-primary btn-sm" onClick={() => setPicking((p) => !p)}>
               <Icon name="plus" /> New
@@ -101,14 +109,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
           </div>
         )}
 
-        <nav className="segmented segmented-sm inbox-filter" aria-label="Show">
-          {FILTERS.map(([v, l]) => (
-            <button key={v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>
-              {l}
-              {counts[v] > 0 && <span className="seg-count">{counts[v]}</span>}
-            </button>
-          ))}
-        </nav>
 
         {error && <p className="notice notice-error">{error}</p>}
         {threads === null && !error && <div className="card card-skeleton inbox-skeleton" />}
