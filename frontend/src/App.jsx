@@ -59,6 +59,18 @@ export default function App() {
   }, [isOwner, school.id, mode]);
   const { sessions, current: currentSession } = useSessions(school.id);
 
+  // The pinned search strip frosts only once the page has scrolled.
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => root.classList.toggle("is-scrolled", window.scrollY > 4);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      root.classList.remove("is-scrolled");
+    };
+  }, []);
+
   // Teachers see Attendance only when they're a class's class teacher
   // (in-charge) this session; owners, admins and the principal always do.
   const [isClassTeacher, setIsClassTeacher] = useState(false);
