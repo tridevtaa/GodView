@@ -10515,3 +10515,37 @@ input[type="date"]::-webkit-date-and-time-value {
     bottom: calc(6px + var(--kb, 0px));
   }
 }
+
+@media (max-width: 760px) {
+  /* Marking attendance: Save takes the search's spot right above the tab
+     bar (no search on this screen), as a frosted pill like the search. */
+  .app:has(.att-save) {
+    --dock-h: 0px;
+  }
+
+  .app:has(.att-save) .gsearch {
+    display: none;
+  }
+
+  .att-register .att-save {
+    position: fixed;
+    right: 14px;
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    left: 14px;
+    z-index: 29;
+    padding: 8px 8px 8px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.6));
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 10px 26px rgba(29, 35, 102, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  /* Room under the last student for the pill */
+  .att-register .att-list {
+    padding-bottom: 68px;
+  }
+}
