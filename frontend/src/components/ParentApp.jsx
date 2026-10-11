@@ -129,7 +129,7 @@ export default function ParentApp({ phone }) {
               <>
                 <span className="logo-x" aria-hidden="true">×</span>
                 {school.logo_path ? (
-                  <img className="pa-school-logo" src={logoUrl(school.logo_path)} alt={school.short_name || school.name} />
+                  <img className="pa-school-logo" src={logoUrl(school.logo_path)} alt={school.short_name || school.name} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
                 ) : (
                   <span className="pa-school-name">{school.short_name || school.name}</span>
                 )}

@@ -24,7 +24,7 @@ export default function Logo() {
         <>
           <span className="logo-x" aria-hidden="true">×</span>
           {school.logo_path ? (
-            <img className="logo-partner" src={logoUrl(school.logo_path)} alt={label} />
+            <img className="logo-partner" src={logoUrl(school.logo_path)} alt={label} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
           ) : (
             <span className="logo-school">{label}</span>
           )}
