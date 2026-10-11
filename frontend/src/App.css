@@ -5448,7 +5448,7 @@ button.profile-stat:hover {
    Students map
    ========================================================= */
 
-.page:has(.smap:not(.is-compact)) {
+.page:has(.smap:not(.is-compact)):not(:has(.map-full)) {
   max-width: none;
 }
 
@@ -10724,4 +10724,81 @@ input[type="date"]::-webkit-date-and-time-value {
 .logo-size-range input[type="range"] {
   width: 100%;
   accent-color: var(--brand);
+}
+
+/* Full-screen map, over everything (header and tab bar too) */
+.map-full {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg);
+  animation: map-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes map-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.map-full .smap {
+  height: 100% !important;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.map-full-close {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 14px;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 6px 18px rgba(29, 35, 102, 0.2), inset 0 1px 0 #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Wide screens: the close button sits left of the side panel */
+@media (min-width: 761px) {
+  .map-full-close {
+    right: 394px;
+  }
+}
+
+.map-open,
+.map-open body {
+  overflow: hidden;
+}
+
+/* No empty scrollbar strip beside the full-screen map */
+.map-open {
+  scrollbar-gutter: auto;
+}
+
+/* Phones: more map, the panel below it scrolls */
+@media (max-width: 760px) {
+  .map-full .smap {
+    grid-template-rows: 62% 38%;
+  }
+
+  .map-full .smap-panel {
+    overflow-y: auto;
+  }
+}
+
+.map-full .smap-panel * {
+  flex-shrink: 0;
 }

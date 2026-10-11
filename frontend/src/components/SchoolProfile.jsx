@@ -42,6 +42,12 @@ export default function SchoolProfile({ school, onSaved, aside }) {
   // Logo size in the header, previewed live beside the Godview mark.
   const [scale, setScale] = useState(Number(school.logo_scale ?? 1));
   const [scaleState, setScaleState] = useState("");
+  const scaleTimer = useRef(null);
+  const queueScale = (v) => {
+    setScale(v);
+    clearTimeout(scaleTimer.current);
+    scaleTimer.current = setTimeout(() => saveScale(v), 450);
+  };
   async function saveScale(v) {
     setScaleState("saving");
     try {
@@ -168,9 +174,7 @@ export default function SchoolProfile({ school, onSaved, aside }) {
                   max="2"
                   step="0.05"
                   value={scale}
-                  onChange={(e) => setScale(Number(e.target.value))}
-                  onPointerUp={(e) => saveScale(Number(e.target.value))}
-                  onKeyUp={(e) => saveScale(Number(e.target.value))}
+                  onChange={(e) => queueScale(Number(e.target.value))}
                   aria-label="Logo size"
                 />
               </label>
