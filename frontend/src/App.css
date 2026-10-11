@@ -7645,7 +7645,15 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 600;
 }
 
+/* Admission no. under the name; the section quieter than the grade */
 .ig-id {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ig-section {
   color: var(--text-3);
   font-weight: 500;
 }
@@ -7781,9 +7789,10 @@ input[type="date"]::-webkit-date-and-time-value {
     gap: 10px;
   }
 
+  /* Numbers sit together from the left, two or three of them */
   .ig-stats {
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: flex-start;
+    gap: 24px;
   }
 
   .ig-stats strong {
