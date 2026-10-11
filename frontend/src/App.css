@@ -9731,3 +9731,57 @@ input[type="date"]::-webkit-date-and-time-value {
     min-width: 0;
   }
 }
+
+/* Quick student picker (Add result from the +) */
+.modal.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(440px, calc(100vw - 32px));
+  max-height: min(640px, calc(100dvh - 48px));
+  padding: 18px;
+}
+
+.picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.picker .search {
+  max-width: none;
+}
+
+.picker-list {
+  margin: 0 -6px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.picker-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-list button:hover {
+  background: var(--brand-soft);
+}
+
+.picker-empty {
+  padding: 12px 6px;
+}

@@ -446,7 +446,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           ) : isStudent && !editing && tab === "messages" ? (
             <Chat studentId={person.id} viewer="staff" me={me} canSend={canWrite} canAnswer={canWrite} />
           ) : isStudent && !editing && tab === "results" ? (
-            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} />
+            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={initialTab === "results"} />
           ) : editing ? (
             <ProfileEdit
               person={person}

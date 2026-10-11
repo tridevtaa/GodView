@@ -17,6 +17,7 @@ import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
+import StudentPicker from "./components/StudentPicker.jsx";
 import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -278,16 +279,21 @@ export default function App() {
   // The + in the middle of the phone tab bar: everything this person can
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
+  const [pickingResult, setPickingResult] = useState(false);
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "users"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
-    // Homework is given by teachers; owners, admins and the principal see it.
+    // Teachers' daily work: their class register (class in-charges), homework
+    // and marks. Owners, admins and the principal see these, not give them.
+    ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
+    ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
     ...(!isPrincipal ? [["message", "New message", "message"]] : []),
     ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
   ];
   function runAction(kind) {
-    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees" }[kind];
+    if (kind === "result") return setPickingResult(true);
+    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -540,6 +546,19 @@ export default function App() {
           onDone={reload}
         />
       )}
+      {pickingResult && (
+        <StudentPicker
+          title="Add result for"
+          students={current}
+          onClose={() => setPickingResult(false)}
+          onPick={(id) => {
+            setPickingResult(false);
+            switchMode("students");
+            openStudent(id, "results");
+          }}
+        />
+      )}
+
       {adding && (
         <AddModal
           mode={mode}
