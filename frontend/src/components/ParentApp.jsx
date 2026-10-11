@@ -176,6 +176,17 @@ export default function ParentApp({ phone }) {
               ))}
             </nav>
 
+            {/* Phones: the same sections in a bottom bar, like the staff app. */}
+            <nav className="tabbar" aria-label="Sections">
+              {TABS.map(([v, l, icon]) => (
+                <button key={v} className={tab === v ? "active" : ""} aria-current={tab === v ? "page" : undefined} onClick={() => setTab(v)}>
+                  <Icon name={icon} size={22} className="tab-icon" weight={tab === v ? "fill" : "regular"} />
+                  <span className="tab-label">{l}</span>
+                  {tab !== v && count(child.id, v) > 0 && <span className="seg-count">{count(child.id, v) > 99 ? "99+" : count(child.id, v)}</span>}
+                </button>
+              ))}
+            </nav>
+
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { canPrompt, isIOS, isPhone, isStandalone, onInstallChange, promptInstall } from "../pwa/install.js";
 import Icon from "./Icon.jsx";
 
@@ -20,7 +20,23 @@ export default function InstallPrompt() {
   useEffect(() => onInstallChange(() => setTick((t) => t + 1)), []);
 
   const ios = isIOS();
-  if (hidden || (!ios && !canPrompt())) return null;
+  const shown = !hidden && (ios || canPrompt());
+  // While the banner shows, tell the page how tall it is (--banner-h), so
+  // message boxes, save bars and the last rows stay clear of it.
+  const box = useRef(null);
+  useLayoutEffect(() => {
+    const root = document.documentElement.style;
+    if (!shown || !box.current) return root.setProperty("--banner-h", "0px");
+    const set = () => root.setProperty("--banner-h", `${box.current.offsetHeight + 12}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(box.current);
+    return () => {
+      ro.disconnect();
+      root.setProperty("--banner-h", "0px");
+    };
+  }, [shown, steps]);
+  if (!shown) return null;
 
   function close() {
     try {
@@ -37,7 +53,7 @@ export default function InstallPrompt() {
   }
 
   return (
-    <aside className="install" role="dialog" aria-label="Install Godview">
+    <aside ref={box} className="install" role="dialog" aria-label="Install Godview">
       <span className="install-icon">
         <img src="/icon-192.png?v=3" alt="" width="44" height="44" />
       </span>

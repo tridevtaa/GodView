@@ -986,3 +986,14 @@
     border-radius: 50%;
   }
 }
+
+/* Phones: sections live in the bottom bar, not under the child */
+@media (max-width: 760px) {
+  .ig-tabs.pa-tabs {
+    display: none;
+  }
+
+  .pa-hero {
+    margin-bottom: 4px;
+  }
+}
