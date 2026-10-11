@@ -1046,6 +1046,12 @@ export async function parentPasswordLogin(ten, password) {
   if (e) throw new Error("error");
 }
 
+// Whether the signed-in parent has chosen their own password yet.
+export async function parentHasOwnPassword() {
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.user_metadata?.custom_password === true;
+}
+
 // A parent chooses their own password (after which the starting one stops
 // working for them).
 export async function setParentPassword(password) {
