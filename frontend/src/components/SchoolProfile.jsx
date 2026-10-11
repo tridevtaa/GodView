@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { logoUrl, removeSchoolLogo, updateSchool, uploadSchoolLogo } from "../data/api.js";
 import Icon from "./Icon.jsx";
+import { StepBar } from "./Steps.jsx";
 
 const BOARDS = ["CBSE", "ICSE / ISC", "State board", "IB", "Cambridge (IGCSE)", "NIOS"];
 
@@ -20,6 +21,14 @@ const FIELDS = [
   ["pincode", "PIN code", { inputMode: "numeric", pattern: "\\d{6}", title: "6 digits", maxLength: 6 }],
 ];
 
+// Edited in four short steps.
+const STEPS = [
+  ["Name & logo", ["name", "short_name"]],
+  ["Board", ["board", "affiliation_no", "udise_code", "principal_name"]],
+  ["Contact", ["phone", "email", "website"]],
+  ["Address", ["address", "city", "state", "pincode"]],
+];
+
 // Owner-only: the school's name, logo and details. A one-line summary (with
 // `aside`, the join code) until the owner opens it to edit.
 export default function SchoolProfile({ school, onSaved, aside }) {
@@ -28,11 +37,18 @@ export default function SchoolProfile({ school, onSaved, aside }) {
   const [form, setForm] = useState(initial);
   const [state, setState] = useState("idle"); // idle | saving | logo
   const [error, setError] = useState("");
+  const [step, setStep] = useState(0);
   const file = useRef(null);
-  const dirty = FIELDS.some(([k]) => (form[k] ?? "") !== (initial[k] ?? ""));
+  const changed = (k) => (form[k] ?? "") !== (initial[k] ?? "");
+  const dirty = FIELDS.some(([k]) => changed(k));
+  const last = step === STEPS.length - 1;
 
   async function save(e) {
     e.preventDefault();
+    if (!form.name.trim()) {
+      setStep(0);
+      return setError("The school needs a name.");
+    }
     setState("saving");
     setError("");
     try {
@@ -93,36 +109,34 @@ export default function SchoolProfile({ school, onSaved, aside }) {
           </p>
         </div>
         {aside}
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => (editing ? (setForm(initial), setEditing(false)) : setEditing(true))}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => (editing ? (setForm(initial), setEditing(false)) : (setStep(0), setEditing(true)))}>
           {editing ? "Close" : <><Icon name="edit" /> Edit details</>}
         </button>
       </div>
       {editing && (
-      <div className="school-body">
-        <div className="logo-box">
-          {school.logo_path ? (
-            <img src={logoUrl(school.logo_path)} alt={`${school.name} logo`} />
-          ) : (
-            <span className="row-sub">No logo</span>
-          )}
-          <input ref={file} type="file" accept="image/*" hidden onChange={changeLogo} />
-          <div className="logo-actions">
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => file.current.click()} disabled={state === "logo"}>
-              <Icon name="upload" />
-              {state === "logo" ? "Uploading…" : school.logo_path ? "Replace" : "Upload logo"}
-            </button>
-            {school.logo_path && (
-              <button type="button" className="link-btn" onClick={dropLogo} disabled={state === "logo"}>
-                Remove
-              </button>
-            )}
-          </div>
-          <span className="row-sub">Shown in the header and on the join screen.</span>
-        </div>
+        <form className="school-body school-steps" onSubmit={save}>
+          <StepBar steps={STEPS.map(([t]) => t)} step={step} onPick={(i) => (setStep(i), setError(""))} marks={STEPS.map(([, keys]) => keys.some(changed))} />
 
-        <form className="school-form" onSubmit={save}>
+          {step === 0 && (
+            <div className="logo-box">
+              {school.logo_path ? <img src={logoUrl(school.logo_path)} alt={`${school.name} logo`} /> : <span className="row-sub">No logo</span>}
+              <input ref={file} type="file" accept="image/*" hidden onChange={changeLogo} />
+              <div className="logo-actions">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => file.current.click()} disabled={state === "logo"}>
+                  <Icon name="upload" />
+                  {state === "logo" ? "Uploading…" : school.logo_path ? "Replace" : "Upload logo"}
+                </button>
+                {school.logo_path && (
+                  <button type="button" className="icon-btn-sm" onClick={dropLogo} disabled={state === "logo"} aria-label="Remove logo" title="Remove logo">
+                    <Icon name="trash" size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="form-grid">
-            {FIELDS.map(([k, label, { wide, ...attrs }]) => (
+            {FIELDS.filter(([k]) => STEPS[step][1].includes(k)).map(([k, label, { wide, ...attrs }]) => (
               <label key={k} className={wide ? "span-2" : ""}>
                 <span>{label}</span>
                 <input value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} {...attrs} />
@@ -135,18 +149,32 @@ export default function SchoolProfile({ school, onSaved, aside }) {
             </datalist>
           </div>
           {error && <p className="field-error">{error}</p>}
-          <div className="school-actions">
-            {dirty && (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm(initial)}>
-                Discard
+          <div className="school-actions edit-foot">
+            {step === 0 ? (
+              dirty ? (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setForm(initial)}>
+                  Discard
+                </button>
+              ) : (
+                <span />
+              )
+            ) : (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => (setStep(step - 1), setError(""))}>
+                <Icon name="arrowLeft" /> Back
               </button>
             )}
-            <button className="btn btn-primary btn-sm" disabled={!dirty || state === "saving"}>
-              {state === "saving" ? "Saving…" : "Save details"}
-            </button>
+            <span className="edit-foot-right">
+              {!last && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => (setStep(step + 1), setError(""))}>
+                  Next <Icon name="arrowRight" />
+                </button>
+              )}
+              <button className="btn btn-primary btn-sm" disabled={!dirty || state === "saving"}>
+                {state === "saving" ? "Saving…" : "Save"}
+              </button>
+            </span>
           </div>
         </form>
-      </div>
       )}
     </section>
   );

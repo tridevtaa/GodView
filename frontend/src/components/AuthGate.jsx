@@ -7,6 +7,7 @@ import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 import Landing from "./Landing.jsx";
 import ParentSignIn from "./ParentSignIn.jsx";
+import { StepBar } from "./Steps.jsx";
 import Icon from "./Icon.jsx";
 import { isStandalone, parentLoginLive } from "../pwa/install.js";
 
@@ -53,7 +54,7 @@ const DESIGNATIONS = [
 
 // Shown to someone signed in who isn't a member of any school yet:
 // 1) enter the school's join code, 2) details and classes, 3) sent.
-function RequestAccess({ user, onSchool }) {
+export function RequestAccess({ user, onSchool }) {
   const [step, setStep] = useState("code");
   const [code, setCode] = useState("");
   const [school, setSchool] = useState(null); // { school_name, session_name, classes }
@@ -67,6 +68,8 @@ function RequestAccess({ user, onSchool }) {
     photoPath: "",
   });
   const [photo, setPhoto] = useState({ preview: "", busy: false, error: "" });
+  // The details come in three short screens: photo, about you, classes.
+  const [part, setPart] = useState(0);
 
   async function pickPhoto(e) {
     const file = e.target.files?.[0];
@@ -105,8 +108,14 @@ function RequestAccess({ user, onSchool }) {
     }
   }
 
+  const partOk = [Boolean(form.photoPath) && !photo.busy, Boolean(form.fullName.trim() && form.designation.trim()), true];
+
   async function submit(e) {
     e.preventDefault();
+    if (part < 2) {
+      if (partOk[part]) (setPart(part + 1), setError(""));
+      return;
+    }
     setBusy(true);
     setError("");
     if (!form.photoPath) {
@@ -170,64 +179,67 @@ function RequestAccess({ user, onSchool }) {
   return (
     <form className="request-form request-form-wide" onSubmit={submit}>
       <h1>{school.school_name}</h1>
-      <p className="muted">Tell the school who you are and which classes you teach.</p>
-      <div className="join-photo">
-        <label className={`join-photo-pick${form.photoPath ? " is-set" : ""}`}>
-          {photo.preview ? <img src={photo.preview} alt="Your photo" /> : <Icon name="camera" size={26} />}
-          <input type="file" accept="image/*" onChange={pickPhoto} hidden />
-        </label>
-        <div className="join-photo-text">
-          <strong>Your photo *</strong>
+      <StepBar steps={["Photo", "About you", "Classes"]} step={part} onPick={setPart} canPick={(i) => partOk.slice(0, i).every(Boolean)} />
+
+      {part === 0 && (
+        <div className="join-photo join-photo-big">
+          <label className={`join-photo-pick${form.photoPath ? " is-set" : ""}`}>
+            {photo.preview ? <img src={photo.preview} alt="Your photo" /> : <Icon name="camera" size={30} />}
+            <input type="file" accept="image/*" onChange={pickPhoto} hidden />
+          </label>
           <span className="row-sub">
-            {photo.busy ? "Saving…" : form.photoPath ? "Looks good. Tap it to change." : "A clear photo of your face, so staff and parents can recognise you."}
+            {photo.busy ? "Saving…" : form.photoPath ? "Looks good. Tap it to change." : "A clear photo of your face, so staff and parents recognise you."}
           </span>
-          {!form.photoPath && !photo.busy && (
-            <label className="btn btn-secondary btn-sm join-photo-btn">
-              <Icon name="camera" /> Take or choose a photo
-              <input type="file" accept="image/*" onChange={pickPhoto} hidden />
-            </label>
-          )}
           {photo.error && <span className="field-error">{photo.error}</span>}
         </div>
-      </div>
-      <div className="form-grid">
-        <label>
-          <span>Full name *</span>
-          <input value={form.fullName} onChange={set("fullName")} required maxLength={120} autoComplete="name" />
-        </label>
-        <label>
-          <span>Designation *</span>
-          <input list="designations" value={form.designation} onChange={set("designation")} required maxLength={80} />
-          <datalist id="designations">
-            {DESIGNATIONS.map((d) => (
-              <option key={d} value={d} />
-            ))}
-          </datalist>
-        </label>
-        <label>
-          <span>Phone</span>
-          <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
-        </label>
-        <label>
-          <span>Subjects you teach</span>
-          <input value={form.subjects} onChange={set("subjects")} maxLength={200} placeholder="e.g. Maths, EVS" />
-        </label>
-      </div>
-      <div className="field-block">
-        <span className="field-label">
-          Your classes{school.session_name ? ` for ${school.session_name}` : ""}
-        </span>
-        <ClassPicker options={school.classes ?? []} value={form.classes} onChange={(classes) => setForm({ ...form, classes })} />
-      </div>
-      <label>
-        <span>Anything else the owner should know</span>
-        <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
-      </label>
+      )}
+
+      {part === 1 && (
+        <>
+          <label>
+            <span>Full name *</span>
+            <input value={form.fullName} onChange={set("fullName")} required maxLength={120} autoComplete="name" autoFocus />
+          </label>
+          <label>
+            <span>Designation *</span>
+            <input list="designations" value={form.designation} onChange={set("designation")} required maxLength={80} />
+            <datalist id="designations">
+              {DESIGNATIONS.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          </label>
+          <label>
+            <span>Phone</span>
+            <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
+          </label>
+        </>
+      )}
+
+      {part === 2 && (
+        <>
+          <div className="field-block">
+            <span className="field-label">
+              Your classes{school.session_name ? ` for ${school.session_name}` : ""}
+            </span>
+            <ClassPicker options={school.classes ?? []} value={form.classes} onChange={(classes) => setForm({ ...form, classes })} />
+          </div>
+          <label>
+            <span>Subjects you teach</span>
+            <input value={form.subjects} onChange={set("subjects")} maxLength={200} placeholder="e.g. Maths, EVS" />
+          </label>
+          <label>
+            <span>Note for the owner</span>
+            <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
+          </label>
+        </>
+      )}
+
       {error && <p className="field-error">{error}</p>}
-      <button className="btn btn-primary btn-block" disabled={busy || photo.busy || !form.photoPath || !form.fullName.trim() || !form.designation.trim()}>
-        {busy ? "Sending…" : "Send request"}
+      <button className="btn btn-primary btn-block" disabled={busy || !partOk[part]}>
+        {part < 2 ? "Next" : busy ? "Sending…" : "Send request"}
       </button>
-      <button type="button" className="btn btn-secondary btn-block" onClick={() => setStep("code")}>
+      <button type="button" className="btn btn-secondary btn-block" onClick={() => (part > 0 ? setPart(part - 1) : setStep("code"))}>
         Back
       </button>
     </form>

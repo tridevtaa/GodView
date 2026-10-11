@@ -3,6 +3,7 @@ import PlacePicker from "./PlacePicker.jsx";
 import TransportPicker from "./TransportPicker.jsx";
 import { gradeLabel, tintFor } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import { StepBar } from "./Steps.jsx";
 
 const EMPLOYEE_FIELDS = [
   ["name", "Full name", "text", true],
@@ -13,7 +14,8 @@ const EMPLOYEE_FIELDS = [
   ["email", "Email", "email"],
 ];
 
-const STEPS = ["Student", "Family", "Home & bus"];
+const STEPS = ["Student", "Class", "Family", "Home & bus"];
+const EMPLOYEE_STEPS = ["Role", "Contact"];
 const today = () => new Date().toISOString().slice(0, 10);
 // Empty, or a 10-digit Indian mobile (an optional +91 or 0 in front is fine).
 const tenDigits = (v) => !v.trim() || v.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "").length === 10;
@@ -104,10 +106,12 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
 
   const taken = form.admission_no.trim() && students.some((s) => s.admission_no?.toLowerCase() === form.admission_no.trim().toLowerCase());
   const stepOk = [
-    form.name.trim() && form.class && form.admission_no.trim() && !taken,
+    Boolean(form.name.trim()),
+    Boolean(form.class && form.admission_no.trim() && !taken),
     tenDigits(form.parent_phone) && tenDigits(form.mother_phone),
     true,
   ];
+  const canSave = stepOk[0] && stepOk[1] && stepOk[2];
 
   async function save() {
     setSaving(true);
@@ -165,16 +169,7 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
             <Icon name="x" size={18} />
           </button>
         </div>
-        <ol className="stepper">
-          {STEPS.map((label, i) => (
-            <li key={label} className={i === step ? "is-on" : i < step ? "is-done" : ""}>
-              <button type="button" onClick={() => (i < step || stepOk.slice(0, i).every(Boolean)) && setStep(i)}>
-                <span className="stepper-dot">{i < step ? <Icon name="check" size={12} /> : i + 1}</span>
-                {label}
-              </button>
-            </li>
-          ))}
-        </ol>
+        <StepBar steps={STEPS} step={step} onPick={setStep} canPick={(i) => i < step || stepOk.slice(0, i).every(Boolean)} />
       </header>
 
       <div className="modal-body ns-body">
@@ -183,6 +178,10 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
             <label className="span-2">
               <span>Full name *</span>
               <input value={form.name} onChange={set("name")} required maxLength={80} autoFocus placeholder="e.g. Harman Singh" />
+            </label>
+            <label className="span-2">
+              <span>Date of birth</span>
+              <input type="date" value={form.dob} onChange={set("dob")} max={today()} />
             </label>
             <div className="field span-2">
               <span>Gender</span>
@@ -197,6 +196,11 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div className="ns-grid">
             <label>
               <span>Grade *</span>
               <select value={form.class} onChange={(e) => pickGrade(e.target.value)} required>
@@ -239,10 +243,6 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
               )}
             </label>
             <label>
-              <span>Date of birth</span>
-              <input type="date" value={form.dob} onChange={set("dob")} max={today()} />
-            </label>
-            <label>
               <span>Admission date</span>
               <input type="date" value={form.admission_date} onChange={set("admission_date")} />
             </label>
@@ -259,7 +259,7 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
           </div>
         )}
 
-        {step === 1 && (
+        {step === 2 && (
           <div className="ns-grid">
             <label>
               <span>Father’s name</span>
@@ -287,7 +287,7 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="ns-sections">
             <section>
               <h3>
@@ -321,8 +321,8 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
           </button>
         )}
         <span className="ns-foot-end">
-          {!last && step > 0 && (
-            <button type="button" className="link-btn" onClick={save} disabled={saving || !stepOk[0]}>
+          {!last && step > 1 && (
+            <button type="button" className="link-btn" onClick={save} disabled={saving || !canSave}>
               Skip and save
             </button>
           )}
@@ -336,13 +336,22 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
   );
 }
 
+// Two short steps: who they are, then how to reach them.
+const EMPLOYEE_STEP_FIELDS = [["name", "designation", "department", "employee_no"], ["phone", "email"]];
+
 function AddEmployee({ onClose, onSave }) {
   const [form, setForm] = useState(Object.fromEntries(EMPLOYEE_FIELDS.map(([k]) => [k, ""])));
+  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const firstOk = Boolean(form.name.trim() && form.designation.trim());
 
   async function submit(e) {
     e.preventDefault();
+    if (step === 0) {
+      if (firstOk) setStep(1);
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -369,27 +378,43 @@ function AddEmployee({ onClose, onSave }) {
             <Icon name="x" size={18} />
           </button>
         </div>
+        <StepBar steps={EMPLOYEE_STEPS} step={step} onPick={setStep} canPick={(i) => i === 0 || firstOk} />
       </header>
       <div className="modal-body ns-body">
         <div className="ns-grid">
-          {EMPLOYEE_FIELDS.map(([key, label, type, required]) => (
+          {EMPLOYEE_FIELDS.filter(([key]) => EMPLOYEE_STEP_FIELDS[step].includes(key)).map(([key, label, type, required]) => (
             <label key={key} className={key === "name" ? "span-2" : ""}>
               <span>
                 {label}
                 {required ? " *" : ""}
               </span>
-              <input type={type} required={required} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} autoFocus={key === "name"} />
+              <input type={type} required={required} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} autoFocus={key === EMPLOYEE_STEP_FIELDS[step][0]} />
             </label>
           ))}
         </div>
         {error && <p className="field-error">{error}</p>}
       </div>
       <footer className="modal-footer ns-foot">
-        <button type="button" className="btn btn-secondary" onClick={onClose}>
-          Cancel
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={saving}>
-          {saving ? "Adding…" : "Add employee"}
+        {step === 0 ? (
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+        ) : (
+          <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}>
+            <Icon name="arrowLeft" />
+            Back
+          </button>
+        )}
+        <button type="submit" className="btn btn-primary" disabled={saving || !firstOk}>
+          {step === 0 ? (
+            <>
+              Next <Icon name="arrowRight" />
+            </>
+          ) : saving ? (
+            "Adding…"
+          ) : (
+            "Add staff"
+          )}
         </button>
       </footer>
     </form>
