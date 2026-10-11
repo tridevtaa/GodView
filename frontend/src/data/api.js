@@ -250,6 +250,19 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
 
 // ------------------------------------------------------ notes & results ---
 
+// Each student's overall result this session (all marks / all max marks),
+// for the students the caller can see. Map: student id -> percent.
+export async function sessionResultPercents(sessionId) {
+  const rows = await all(() => supabase.from("exam_results").select("student_id, marks, max_marks").eq("session_id", sessionId));
+  const sums = new Map();
+  for (const r of rows) {
+    if (r.marks === null || !r.max_marks) continue;
+    const t = sums.get(r.student_id) ?? [0, 0];
+    sums.set(r.student_id, [t[0] + Number(r.marks), t[1] + Number(r.max_marks)]);
+  }
+  return new Map([...sums].map(([id, [m, max]]) => [id, max ? (m / max) * 100 : null]));
+}
+
 export async function listResults(studentId, sessionId) {
   return must(
     await supabase

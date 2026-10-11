@@ -16,7 +16,7 @@ import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
-import { countPendingRequests, listAssignments, listGrades, listRoutes, staffInbox } from "./data/api.js";
+import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -153,6 +153,48 @@ export default function App() {
     );
   }, [inGrade, query, mode]);
 
+  // Students page order: the last three profiles this person opened, then
+  // owners and admins see the biggest dues first; teachers (and the
+  // principal) see the lowest results first, students without marks last.
+  const recentKey = `godview.recent.${school.id}.${user.email}`;
+  const [recent, setRecent] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(recentKey) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const rememberOpened = useCallback(
+    (id) =>
+      setRecent((r) => {
+        const next = [id, ...r.filter((x) => x !== id)].slice(0, 3);
+        try {
+          localStorage.setItem(recentKey, JSON.stringify(next));
+        } catch {
+          /* private mode: fine */
+        }
+        return next;
+      }),
+    [recentKey]
+  );
+  const [perf, setPerf] = useState(new Map());
+  useEffect(() => {
+    if (isAdmin || !sessionId || source !== "supabase") return;
+    sessionResultPercents(sessionId).then(setPerf, () => setPerf(new Map()));
+  }, [isAdmin, sessionId, source]);
+  const ordered = useMemo(() => {
+    if (mode !== "students") return visible;
+    const rest = [...visible].sort((a, b) => {
+      if (isAdmin) return (Number(b.fee_due) || 0) - (Number(a.fee_due) || 0);
+      const pa = perf.get(a.id) ?? null;
+      const pb = perf.get(b.id) ?? null;
+      if (pa === null || pb === null) return pa === null ? (pb === null ? 0 : 1) : -1;
+      return pa - pb;
+    });
+    const first = recent.map((id) => rest.find((p) => p.id === id)).filter(Boolean);
+    return [...first, ...rest.filter((p) => !recent.includes(p.id))];
+  }, [visible, mode, isAdmin, perf, recent]);
+
   // On the Students page the profile follows the filtered grid; elsewhere
   // (Fees, Requests) any student in the session can be opened.
   const profileList = mode === "students" || mode === "employees" ? visible : current;
@@ -171,6 +213,7 @@ export default function App() {
     (id, tab = "details") => {
       setOpenTab(tab);
       if (dataMode === "students") {
+        rememberOpened(id);
         if (!window.history.state?.student) listScroll.current = window.scrollY;
         const url = `/students/${id}`;
         if (window.history.state?.student) window.history.replaceState({ student: id }, "", url);
@@ -178,7 +221,7 @@ export default function App() {
       }
       setOpenId(id);
     },
-    [dataMode]
+    [dataMode, rememberOpened]
   );
   useEffect(() => {
     const onPop = (e) => setOpenId(e.state?.student ?? null);
@@ -425,7 +468,7 @@ export default function App() {
           </div>
         ) : (
           <div className="grid">
-            {visible.map((p, i) => (
+            {ordered.map((p, i) => (
               <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />
             ))}
           </div>
