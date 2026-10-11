@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import Logo from "./Logo.jsx";
+import GlassPill from "./GlassPill.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import Icon from "./Icon.jsx";
 
@@ -43,8 +44,13 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
       )}
     </div>
   );
+  // Slot of the active tab in the phone bar (the + takes the middle slot).
+  const at = sections.findIndex(([v]) => v === mode);
+  const slots = sections.length + (actions.length > 0 ? 1 : 0);
+  const slot = at < 0 ? -1 : at + (actions.length > 0 && at >= half ? 1 : 0);
   const tabs = (className) => (
     <nav className={className} aria-label="Section">
+      {className === "tabbar" && <GlassPill index={slot} count={slots} />}
       {sections.map(([value, label, count], i) => [
         className === "tabbar" && i === half && plus,
         (

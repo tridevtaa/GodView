@@ -10301,3 +10301,146 @@ input[type="date"]::-webkit-date-and-time-value {
     max-height: 60vh;
   }
 }
+
+/* =========================================================
+   Liquid Glass tab bar (phones, staff and parent apps): a floating
+   frosted pill with a bright rim; a lighter glass bubble glides to
+   the active tab, stretching a little on the way, with a spring.
+   ========================================================= */
+@media (max-width: 760px) {
+  .tabbar {
+    right: 14px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 14px;
+    height: 62px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 12px 32px rgba(29, 35, 102, 0.18),
+      0 2px 6px rgba(29, 35, 102, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .tabbar > button,
+  .tabbar > .tab-plus-wrap {
+    position: relative;
+    z-index: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .tabbar button.active .tab-icon {
+    animation: none;
+  }
+
+  /* The bubble */
+  .glass-pill {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: calc(6px + (100% - 12px) / var(--n) * var(--i));
+    z-index: 0;
+    width: calc((100% - 12px) / var(--n));
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.45));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 2px rgba(91, 104, 196, 0.12),
+      0 4px 12px rgba(29, 35, 102, 0.12);
+    transition: left 0.55s cubic-bezier(0.32, 1.35, 0.45, 1);
+    animation: glass-stretch-a 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
+    pointer-events: none;
+  }
+
+  .glass-pill.is-b {
+    animation-name: glass-stretch-b;
+  }
+
+  @keyframes glass-stretch-a {
+    0% { transform: scale(1, 1); }
+    35% { transform: scale(1.22, 0.86); }
+    70% { transform: scale(0.96, 1.04); }
+    100% { transform: scale(1, 1); }
+  }
+
+  @keyframes glass-stretch-b {
+    0% { transform: scale(1, 1); }
+    35% { transform: scale(1.22, 0.86); }
+    70% { transform: scale(0.96, 1.04); }
+    100% { transform: scale(1, 1); }
+  }
+
+  /* A press squeezes the glass a touch */
+  .tabbar:has(> button:active) .glass-pill {
+    transform: scale(0.97);
+  }
+
+  .tabbar .seg-count {
+    top: 6px;
+  }
+
+  /* Everything above the bar moves up: the bar now floats 10px up and
+     is 62px tall. */
+  .app,
+  .pa {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+
+  .gsearch {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .chat-compose,
+  .att-save,
+  .marks-save,
+  .profile-full .edit-foot {
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+
+  .pa .chat-compose {
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+
+  .app .install,
+  .pa .install {
+    bottom: calc(86px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
+  }
+
+  .chat-end {
+    scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* The search pill: glass, matching the tab bar */
+  .gsearch .search {
+    border-radius: 999px;
+    box-shadow: none;
+  }
+
+  .gsearch .search input {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.45));
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 10px 26px rgba(29, 35, 102, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+.gsearch .search > .icon {
+  z-index: 1;
+}
