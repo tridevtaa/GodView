@@ -112,11 +112,13 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
         />
       )}
 
-      {groups.length > 1 && (
+      {/* While writing, just the form. The class filter only when there's
+          homework to filter. */}
+      {!writing && groups.length > 1 && items?.length > 0 && (
         <ClassSwitcher groups={groups} value={filter} onChange={setFilter} allLabel="All classes" />
       )}
 
-      {items === null ? (
+      {writing ? null : items === null ? (
         <div className="card card-skeleton hw-skeleton" />
       ) : !byDay.length ? (
         <section className="hw-empty">
@@ -166,6 +168,8 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
   const [target, setTarget] = useState(initial || groups[0]?.key || "");
   const [whole, setWhole] = useState(false); // admins: every section of the class
   const [form, setForm] = useState({ subject: "", body: "", due_date: tomorrow() });
+  const [pickDate, setPickDate] = useState(false);
+  const dayAfter = iso(new Date(Date.now() + 2 * 864e5));
   const [some, setSome] = useState(false);
   const [picked, setPicked] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -196,7 +200,6 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
 
   return (
     <form className="hw-form" onSubmit={submit}>
-      <h2 className="panel-title">Give homework</h2>
       <ClassSwitcher groups={groups} value={target} onChange={(k) => (setTarget(k), setPicked([]))} ariaLabel="Homework for" />
       {isAdmin && group?.section && (
         <label className="checkbox checkbox-inline">
@@ -204,36 +207,39 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
           <span>All sections of {gradeLabel(group.klass)}</span>
         </label>
       )}
-      <div className="hw-row">
-        <label>
-          <span>Subject</span>
-          <input className="input" list="hw-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Maths" maxLength={80} />
-          <datalist id="hw-subjects">
-            {SUBJECTS.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        </label>
-        <label>
-          <span>Due</span>
-          <input className="input" type="date" value={form.due_date} min={iso(new Date())} onChange={set("due_date")} />
-        </label>
+      <input className="input" list="hw-subjects" value={form.subject} onChange={set("subject")} placeholder="Subject, e.g. Maths" maxLength={80} aria-label="Subject" />
+      <datalist id="hw-subjects">
+        {SUBJECTS.map((s) => (
+          <option key={s} value={s} />
+        ))}
+      </datalist>
+      <textarea className="textarea" rows={3} maxLength={4000} value={form.body} onChange={set("body")} placeholder="Homework, e.g. Page 24, questions 1 to 10" aria-label="Homework" required />
+
+      {/* Due: one tap for the usual days; a date only when needed. */}
+      <div className="hw-due" role="radiogroup" aria-label="Due">
+        <span className="row-sub">Due</span>
+        {[
+          [tomorrow(), "Tomorrow"],
+          [dayAfter, "Day after"],
+        ].map(([d, l]) => (
+          <button type="button" key={d} className={`chip-btn${!pickDate && form.due_date === d ? " is-on" : ""}`} onClick={() => (setPickDate(false), setForm({ ...form, due_date: d }))}>
+            {l}
+          </button>
+        ))}
+        {pickDate ? (
+          <input className="input hw-date" type="date" value={form.due_date} min={iso(new Date())} onChange={set("due_date")} aria-label="Due date" autoFocus />
+        ) : (
+          <button type="button" className="chip-btn" onClick={() => setPickDate(true)}>
+            <Icon name="register" size={14} /> Date
+          </button>
+        )}
       </div>
-      <label>
-        <span>Homework</span>
-        <textarea className="textarea" rows={3} maxLength={4000} value={form.body} onChange={set("body")} placeholder="e.g. Page 24, questions 1 to 10. Learn the spellings." required />
-      </label>
 
       {!whole && group && (
         <div className="hw-who">
-          <div className="segmented segmented-sm" role="radiogroup" aria-label="Who">
-            <button type="button" className={!some ? "active" : ""} onClick={() => setSome(false)}>
-              Whole class ({group.kids.length})
-            </button>
-            <button type="button" className={some ? "active" : ""} onClick={() => setSome(true)}>
-              Some students
-            </button>
-          </div>
+          <button type="button" className="link-btn" onClick={() => (setSome((v) => !v), setPicked([]))}>
+            {some ? `Send to the whole class (${group.kids.length}) instead` : "Only for some students?"}
+          </button>
           {some && (
             <ul className="hw-pick">
               {group.kids.map((k) => {

@@ -236,6 +236,8 @@ export default function App() {
   }, [studentPage, openId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function switchMode(next) {
+    // A + action opens its form once; moving between pages clears it.
+    setQuick({ kind: "", at: 0 });
     if (next === mode) {
       if (openId !== null) closeProfile();
       return;
