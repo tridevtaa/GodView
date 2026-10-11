@@ -30,6 +30,7 @@ import {
   PencilSimple,
   Phone,
   Plus,
+  PlusSquare,
   SignOut,
   SquaresFour,
   Table,
@@ -49,6 +50,7 @@ import {
 const PHOSPHOR = {
   search: MagnifyingGlass,
   plus: Plus,
+  create: PlusSquare,
   upload: UploadSimple,
   chevronDown: CaretDown,
   chevronLeft: CaretLeft,

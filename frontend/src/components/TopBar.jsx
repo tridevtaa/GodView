@@ -19,7 +19,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
   const plus = actions.length > 0 && (
     <div className="tab-plus-wrap" ref={sheetRef} key="plus">
       <button className={`tab-plus${sheet ? " is-open" : ""}`} onClick={() => setSheet((o) => !o)} aria-label="Create" aria-expanded={sheet}>
-        <Icon name="plus" size={26} weight="bold" />
+        <Icon name="create" size={26} weight={sheet ? "fill" : "regular"} className="tab-icon" />
       </button>
       {sheet && (
         <div className="plus-sheet" role="menu">

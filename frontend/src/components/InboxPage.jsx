@@ -23,7 +23,7 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // on phones the conversation opens full screen.
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
-export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, start = 0 }) {
+export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, newAt = 0 }) {
   const [threads, setThreads] = useState(null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
@@ -31,8 +31,8 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
   const [picking, setPicking] = useState(false);
   // The + button in the tab bar: start a new message.
   useEffect(() => {
-    if (start && !readOnly) setPicking(true);
-  }, [start, readOnly]);
+    if (newAt && !readOnly) setPicking(true);
+  }, [newAt, readOnly]);
   const [query, setQuery] = useState("");
   const byId = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
 

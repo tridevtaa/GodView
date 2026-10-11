@@ -9924,3 +9924,164 @@ input[type="date"]::-webkit-date-and-time-value {
 .marks .marks-input {
   min-width: 0;
 }
+
+/* =========================================================
+   Phone tab bar, Instagram-like: icons only, thin outlines that
+   fill in when active, near-black, no pills; a soft press and a
+   springy pop when a tab becomes active. Staff and parent apps.
+   ========================================================= */
+@media (max-width: 760px) {
+  .tabbar {
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: saturate(1.8) blur(18px);
+    -webkit-backdrop-filter: saturate(1.8) blur(18px);
+    box-shadow: 0 -0.5px 0 rgba(17, 17, 17, 0.12);
+  }
+
+  .tabbar button {
+    gap: 0;
+    min-height: 48px;
+    justify-content: center;
+    color: #262626;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tabbar button.active {
+    color: #111;
+  }
+
+  /* Labels: for screen readers only */
+  .tabbar .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .tabbar .tab-icon,
+  .tabbar button.active .tab-icon {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.4, 1);
+  }
+
+  /* Press: a small dip */
+  .tabbar button:active .tab-icon {
+    transform: scale(0.84);
+  }
+
+  /* Becoming active: the filled icon springs in */
+  .tabbar button.active .tab-icon {
+    animation: tab-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes tab-pop {
+    0% {
+      transform: scale(0.78);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Counts: a small red bubble on the icon */
+  .tabbar .seg-count {
+    top: 4px;
+    left: calc(50% + 6px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
+    box-shadow: 0 0 0 2px #fff;
+    animation: badge-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes badge-in {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  /* Create (+): flat, in line with the others; turns and fills while open */
+  .tabbar .tab-plus {
+    width: 48px;
+    height: 48px;
+    margin-top: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: #262626;
+    box-shadow: none;
+  }
+
+  .tabbar .tab-plus .tab-icon {
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .tabbar .tab-plus.is-open {
+    transform: none;
+    color: #111;
+  }
+
+  .tabbar .tab-plus.is-open .tab-icon {
+    transform: rotate(90deg);
+  }
+
+  .tab-plus-wrap {
+    align-items: center;
+  }
+
+  .plus-sheet {
+    bottom: calc(100% + 8px);
+    transform-origin: 50% 100%;
+    animation: sheet-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes sheet-up {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(8px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  /* The bar is a little shorter now */
+  .app,
+  .pa {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar .tab-icon,
+  .tabbar .seg-count,
+  .plus-sheet {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* The + menu's rows keep their own look inside the tab bar */
+  .tabbar .plus-sheet button {
+    min-height: 0;
+    justify-content: flex-start;
+    color: var(--text);
+  }
+}
