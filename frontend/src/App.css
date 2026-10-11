@@ -10149,3 +10149,12 @@ input[type="date"]::-webkit-date-and-time-value {
     -webkit-backdrop-filter: saturate(1.6) blur(14px);
   }
 }
+
+@media (max-width: 760px) {
+  /* The switch starts at the same spot whether or not a button shares
+     its row (Homework has none on phones), so tabs don't jump. */
+  .page .page-header {
+    align-items: flex-start;
+    min-height: 0;
+  }
+}
