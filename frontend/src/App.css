@@ -10273,10 +10273,18 @@ input[type="date"]::-webkit-date-and-time-value {
     left: 0;
     z-index: 29;
     padding: 8px var(--gutter);
-    background: rgba(255, 255, 255, 0.96);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 -0.5px 0 rgba(29, 35, 102, 0.1);
+    background: none;
+    pointer-events: none;
+  }
+
+  /* Just the floating box: no strip behind it */
+  .gsearch .search,
+  .gsearch-panel {
+    pointer-events: auto;
+  }
+
+  .gsearch .search {
+    box-shadow: 0 4px 18px rgba(29, 35, 102, 0.16), 0 0 0 1px rgba(29, 35, 102, 0.06);
   }
 
   .gsearch .search input {
