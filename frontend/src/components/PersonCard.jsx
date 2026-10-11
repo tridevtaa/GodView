@@ -82,12 +82,18 @@ export function relation(gender) {
   return "C/O";
 }
 
+// Photo-first card: the photo fills the card and the name sits on a soft
+// fade at the bottom. Students show their class; staff their role. Fees are
+// a small coloured dot (owners and admins), not a coin.
 export default function PersonCard({ person, mode, index, showFee = true, onOpen }) {
   const isStudent = mode === "students";
   const fee = person.fee_status || "unknown";
+  const sub = isStudent
+    ? [gradeLabel(person.class), person.section].filter(Boolean).join(" · ")
+    : [person.designation, person.department].filter(Boolean).join(" · ");
   return (
     <article
-      className={`card${person.status === "inactive" ? " inactive" : ""}`}
+      className={`card pc${person.status === "inactive" ? " inactive" : ""}`}
       role="button"
       tabIndex={0}
       aria-label={`Open profile of ${person.name}`}
@@ -98,26 +104,16 @@ export default function PersonCard({ person, mode, index, showFee = true, onOpen
           onOpen();
         }
       }}
+      style={{ "--tint": tintFor(person) }}
     >
       <Photo person={person} />
-      <div className="card-body">
-        <div className="card-row card-row-tag">
-          <span className="tag">
-            {isStudent ? gradeLabel(person.class) : person.designation}
-          </span>
-        </div>
-        {person.status === "inactive" && <span className="card-status">Inactive</span>}
-        <div className="card-name">{person.name}</div>
-        <div className="card-row">
-          <span className="card-sub">
-            {isStudent ? (person.parent_name ? `${relation(person.gender)} ${person.parent_name}` : "") : person.department}
-          </span>
-          {isStudent && showFee && (
-            <span className={`fee fee-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)}>
-              ₹
-            </span>
-          )}
-        </div>
+      {person.status === "inactive" && <span className="pc-flag">Inactive</span>}
+      {isStudent && showFee && fee !== "unknown" && (
+        <span className={`pc-fee is-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)} />
+      )}
+      <div className="pc-text">
+        <div className="pc-name">{person.name}</div>
+        {sub && <div className="pc-sub">{sub}</div>}
       </div>
     </article>
   );

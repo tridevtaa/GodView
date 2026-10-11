@@ -9217,3 +9217,164 @@ input[type="date"]::-webkit-date-and-time-value {
 .att-class-row {
   margin: 0 0 14px;
 }
+
+/* =========================================================
+   Person cards, photo first: the photo fills the card, the name
+   sits on a soft fade, fees are a dot. Same for students and staff.
+   ========================================================= */
+.grid {
+  gap: 20px;
+}
+
+.card.pc {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border-radius: 22px;
+  background: var(--tint, var(--brand-soft));
+  box-shadow: 0 1px 2px rgba(17, 17, 17, 0.06), 0 8px 24px rgba(29, 35, 102, 0.08);
+  isolation: isolate;
+}
+
+.card.pc:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(17, 17, 17, 0.06), 0 14px 32px rgba(29, 35, 102, 0.14);
+}
+
+.card.pc .card-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+  object-position: 50% 22%;
+}
+
+/* No photo: a soft gradient in the person's colour, initials high up */
+.card.pc .card-photo.placeholder {
+  align-items: start;
+  padding-top: 26%;
+  background:
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.75), transparent 60%),
+    var(--tint, var(--brand-soft)) !important;
+  color: rgba(17, 17, 17, 0.28);
+  font-size: 44px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* The fade the name sits on */
+.card.pc::after {
+  position: absolute;
+  inset: 45% 0 0;
+  z-index: 1;
+  background: linear-gradient(rgba(17, 17, 30, 0), rgba(17, 17, 30, 0.62));
+  content: "";
+  pointer-events: none;
+}
+
+.pc-text {
+  position: absolute;
+  right: 12px;
+  bottom: 11px;
+  left: 12px;
+  z-index: 2;
+  color: #fff;
+}
+
+.pc-name {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+.pc-sub {
+  overflow: hidden;
+  margin-top: 1px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Fees: one dot, top right (green paid, amber due, red overdue) */
+.pc-fee {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
+}
+
+.pc-fee.is-paid {
+  background: #4caf50;
+}
+
+.pc-fee.is-due {
+  background: #f0b429;
+}
+
+.pc-fee.is-overdue {
+  background: #e5533d;
+}
+
+.pc-flag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.card.pc.inactive .card-photo {
+  filter: grayscale(1);
+  opacity: 0.7;
+}
+
+@media (max-width: 760px) {
+  .grid {
+    gap: 12px;
+  }
+
+  .card.pc {
+    border-radius: 18px;
+  }
+
+  .card.pc .card-photo.placeholder {
+    font-size: 36px;
+  }
+
+  .pc-name {
+    font-size: 14px;
+  }
+}
+
+/* No photo: no fade; dark text on the soft colour */
+.card.pc:has(.placeholder)::after {
+  display: none;
+}
+
+.card.pc:has(.placeholder) .pc-text {
+  color: var(--text);
+}
+
+.card.pc:has(.placeholder) .pc-name {
+  text-shadow: none;
+}
+
+.card.pc:has(.placeholder) .pc-sub {
+  color: var(--text-3);
+}
