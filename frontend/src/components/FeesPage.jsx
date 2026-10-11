@@ -26,13 +26,17 @@ function sessionMonths(session) {
 // pays). Admins see the overview only.
 // pastSession: a past session is open (picked on Students); say which.
 // heading: the Students section switch, shown first in the header.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged, heading }) {
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged, heading, start = 0 }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [monthly, setMonthly] = useState([]);
   const [byClass, setByClass] = useState([]);
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "collect" | "balances"
+  // The + button in the tab bar: open Collect fee.
+  useEffect(() => {
+    if (start) setDialog("collect");
+  }, [start]);
   const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {

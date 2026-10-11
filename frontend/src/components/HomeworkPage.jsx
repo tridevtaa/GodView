@@ -16,10 +16,14 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // see every class and can set work for a whole class across sections.
 // readOnly: the principal sees every class's homework but can't give or
 // remove any.
-export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading }) {
+// start: when set (a time), open the form (the + button in the tab bar).
+export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, start = 0 }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
+  useEffect(() => {
+    if (start && !readOnly) setWriting(true);
+  }, [start, readOnly]);
   const [filter, setFilter] = useState(""); // "class|section" or ""
 
   // The classes this person can set work for, from the students they see.

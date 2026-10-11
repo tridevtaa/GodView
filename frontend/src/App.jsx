@@ -275,6 +275,26 @@ export default function App() {
       ))}
     </nav>
   );
+  // The + in the middle of the phone tab bar: everything this person can
+  // create, wherever they are. Pages open their form when `quick` changes.
+  const [quick, setQuick] = useState({ kind: "", at: 0 });
+  const plusActions = [
+    ...(canEdit ? [["student", "Add student", "users"]] : []),
+    ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
+    ...(!isPrincipal ? [["homework", "Give homework", "book"]] : []),
+    ...(!isPrincipal ? [["message", "New message", "message"]] : []),
+    ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
+  ];
+  function runAction(kind) {
+    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees" }[kind];
+    switchMode(go);
+    if (kind === "student" || kind === "staff") {
+      if (kind === "staff") setStaffTab("people");
+      setAdding(true);
+    } else {
+      setQuick({ kind, at: Date.now() });
+    }
+  }
   const staffTabs = isOwner && (
     <nav className="segmented segmented-sm page-switch" aria-label="Staff">
       {[
@@ -290,13 +310,15 @@ export default function App() {
   );
 
   return (
-    <div className="app" data-clarity-mask="True">
+    <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
         mode={STUDENT_PARTS.includes(mode) ? "students" : mode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
+        actions={plusActions}
+        onAction={runAction}
       />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
@@ -344,6 +366,7 @@ export default function App() {
         ) : mode === "fees" ? (
           <FeesPage
             heading={studentsSwitch}
+            start={quick.kind === "fee" ? quick.at : 0}
             school={school}
             role={role}
             grades={schoolGrades}
@@ -381,9 +404,10 @@ export default function App() {
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={studentsSwitch} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={studentsSwitch} start={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
+            start={quick.kind === "message" ? quick.at : 0}
             readOnly={isPrincipal}
             school={school}
             students={current}
