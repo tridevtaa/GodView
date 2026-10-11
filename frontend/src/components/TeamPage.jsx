@@ -101,7 +101,7 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
             <h1 className="page-count">School</h1>
           </div>
         </div>
-        <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
+        <SchoolProfile key={school.id} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
       </>
     );
   }
