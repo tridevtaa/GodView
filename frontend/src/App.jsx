@@ -17,7 +17,7 @@ import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
-import StudentPicker from "./components/StudentPicker.jsx";
+import MarksPage from "./components/MarksPage.jsx";
 import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -260,7 +260,7 @@ export default function App() {
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
-  const STUDENT_PARTS = ["students", "attendance", "homework", "fees"];
+  const STUDENT_PARTS = ["students", "attendance", "homework", "fees", "marks"];
   const studentParts = [
     ["students", "Students"],
     ...(seesAttendance ? [["attendance", "Attendance"]] : []),
@@ -279,7 +279,6 @@ export default function App() {
   // The + in the middle of the phone tab bar: everything this person can
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
-  const [pickingResult, setPickingResult] = useState(false);
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "users"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
@@ -292,8 +291,7 @@ export default function App() {
     ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
   ];
   function runAction(kind) {
-    if (kind === "result") return setPickingResult(true);
-    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -384,6 +382,8 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
+        ) : mode === "marks" && canWrite ? (
+          <MarksPage school={school} session={currentSession} students={current} onClose={() => switchMode("students")} />
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
@@ -489,6 +489,12 @@ export default function App() {
                   Add student
                 </button>
               )}
+              {role === "teacher" && canWrite && (
+                <button className="btn btn-primary" onClick={() => switchMode("marks")}>
+                  <Icon name="chart" />
+                  Add results
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -546,19 +552,6 @@ export default function App() {
           onDone={reload}
         />
       )}
-      {pickingResult && (
-        <StudentPicker
-          title="Add result for"
-          students={current}
-          onClose={() => setPickingResult(false)}
-          onPick={(id) => {
-            setPickingResult(false);
-            switchMode("students");
-            openStudent(id, "results");
-          }}
-        />
-      )}
-
       {adding && (
         <AddModal
           mode={mode}

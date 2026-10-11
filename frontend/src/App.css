@@ -9785,3 +9785,142 @@ input[type="date"]::-webkit-date-and-time-value {
 .picker-empty {
   padding: 12px 6px;
 }
+
+/* Class-wise marks */
+.marks-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.marks-top .edit-steps {
+  flex: 1;
+  margin: 0;
+}
+
+.marks-test,
+.marks-sheet {
+  padding: 22px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+
+.marks-test {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.marks-test .field > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.marks-foot {
+  display: flex;
+  justify-content: space-between;
+}
+
+.marks-sheet {
+  padding: 0;
+  overflow: clip;
+}
+
+.marks-sheet-head {
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.marks-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.marks-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.marks-list li.is-bad .marks-input {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.marks-input {
+  width: 84px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.marks-max {
+  min-width: 44px;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.marks-save {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 760px) {
+  .marks-save {
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+
+  .marks-list li {
+    padding: 10px 14px;
+  }
+
+  .marks-test {
+    padding: 16px;
+  }
+}
+
+.marks .input {
+  flex: none;
+  height: 44px;
+  padding: 0 14px;
+}
+
+.marks .marks-input {
+  width: 84px;
+  height: 40px;
+  padding: 0 8px;
+}
+
+.marks-list .att-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.marks-list .att-name strong {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.marks .marks-input {
+  min-width: 0;
+}
