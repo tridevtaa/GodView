@@ -19,7 +19,6 @@ import {
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
-import TransportRoutes from "./TransportRoutes.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -33,19 +32,11 @@ const ROLE_HINT = {
 };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-const SCHOOL_TABS = [
-  ["profile", "Profile"],
-  ["transport", "Transport"],
-];
-
 // Owner only, in two places:
 // view "school": School settings (profile and join code, transport).
 // view "access": Staff > App access (join requests, export requests, who
 // can sign in and with what role, class assignments).
-export default function TeamPage({ view = "access", school, session, me, onSchoolSaved, students, routes = [], onRoutesChanged, tab: shownTab, onTab, onCount }) {
-  const [ownTab, setOwnTab] = useState("profile");
-  const tab = shownTab === "transport" ? "transport" : shownTab ? "profile" : ownTab;
-  const setTab = onTab ?? setOwnTab;
+export default function TeamPage({ view = "access", school, session, me, onSchoolSaved, onCount }) {
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -101,26 +92,16 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
     if (!loading) onCount?.(waiting);
   }, [waiting, loading, onCount]);
 
+  // School settings: the profile and join code (transport is its own tab).
   if (view === "school") {
     return (
       <>
         <div className="page-header">
           <div className="page-meta">
             <h1 className="page-count">School</h1>
-            <nav className="segmented segmented-sm" aria-label="School settings">
-              {SCHOOL_TABS.map(([v, l]) => (
-                <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
-                  {l}
-                </button>
-              ))}
-            </nav>
           </div>
         </div>
-        {tab === "transport" ? (
-          <TransportRoutes school={school} routes={routes} students={students} onChanged={onRoutesChanged} />
-        ) : (
-          <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
-        )}
+        <SchoolProfile key={school.updated_at} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
       </>
     );
   }

@@ -16,7 +16,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // see every class and can set work for a whole class across sections.
 // readOnly: the principal sees every class's homework but can't give or
 // remove any.
-export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false }) {
+export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
@@ -77,7 +77,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
         <div>
           <h1 className="sr-only">Homework</h1>
           <div className="page-meta">
-            <span className="page-count">Homework</span>
+            {heading ?? <span className="page-count">Homework</span>}
           </div>
         </div>
         {groups.length > 0 && !writing && !readOnly && (

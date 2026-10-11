@@ -2,7 +2,7 @@ import Logo from "./Logo.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import Icon from "./Icon.jsx";
 
-const ICONS = { students: "users", attendance: "register", homework: "book", fees: "rupee", requests: "inbox", employees: "briefcase" };
+const ICONS = { students: "users", academics: "academics", attendance: "register", homework: "book", fees: "rupee", requests: "inbox", employees: "briefcase", transport: "bus" };
 
 // sections: [[value, label, badgeCount?], …], already filtered by role.
 // Wide screens: tabs in the top bar. Phones: an app-style bar at the bottom.

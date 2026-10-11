@@ -24,7 +24,8 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // The morning register. Teachers open their class, everyone starts Present
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
-export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false }) {
+// heading: replaces the title (Academics puts its Attendance | Homework switch there).
+export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, heading }) {
   const [day, setDay] = useState(todayIso());
   // Classes this person is class teacher of (only they mark attendance;
   // owners and admins can mark any class).
@@ -76,7 +77,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
         <div>
           <h1 className="sr-only">Attendance</h1>
           <div className="page-meta">
-            <span className="page-count">Attendance</span>
+            {heading ?? <span className="page-count">Attendance</span>}
           </div>
         </div>
         <div className="att-day">

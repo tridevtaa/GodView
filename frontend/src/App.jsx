@@ -13,6 +13,7 @@ import Icon from "./components/Icon.jsx";
 import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
+import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
@@ -100,13 +101,12 @@ export default function App() {
 
   // Bus routes with their stops (for the Add student card, profiles, Owner).
   const [routes, setRoutes] = useState([]);
-  const [ownerTab, setOwnerTab] = useState("profile");
+  // Academics (owner, admin, principal): attendance and homework together.
+  const [academicsTab, setAcademicsTab] = useState("attendance");
   // Staff: the people (employees) and, for the owner, who can sign in.
   const [staffTab, setStaffTab] = useState("people");
-  const openOwner = (tab) => {
-    setOwnerTab(tab);
-    switchMode("team");
-  };
+  // School settings (profile) or the Transport tab.
+  const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
     () => listRoutes(school.id).then(setRoutes, () => setRoutes([])),
     [school.id]
@@ -266,14 +266,32 @@ export default function App() {
   const title = isStudents ? "Students" : "Staff";
   // The school's work, in the order of a school day. School settings live in
   // the account menu (owner only).
+  // Owners, admins and the principal get Academics (attendance and
+  // homework in one) and, for those who manage routes, Transport. Teachers
+  // keep Attendance (class in-charges) and Homework as their own tabs.
+  const leads = isAdmin || isPrincipal;
   const sections = [
     ["students", "Students"],
-    ...(seesAttendance ? [["attendance", "Attendance"]] : []),
-    ["homework", "Homework"],
+    ...(leads
+      ? [["academics", "Academics"]]
+      : [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]]),
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
-    ...(isAdmin || isPrincipal ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
+    ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
+    ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
+  const academicsSwitch = (
+    <nav className="segmented segmented-sm" aria-label="Academics">
+      {[
+        ["attendance", "Attendance"],
+        ["homework", "Homework"],
+      ].map(([v, l]) => (
+        <button key={v} className={academicsTab === v ? "active" : ""} onClick={() => setAcademicsTab(v)}>
+          {l}
+        </button>
+      ))}
+    </nav>
+  );
   const staffTabs = isOwner && (
     <nav className="segmented segmented-sm" aria-label="Staff">
       {[
@@ -333,11 +351,6 @@ export default function App() {
             session={currentSession}
             me={user.email}
             onSchoolSaved={setSchool}
-            routes={routes}
-            onRoutesChanged={loadRoutes}
-            tab={ownerTab}
-            onTab={setOwnerTab}
-            students={current}
           />
         ) : mode === "fees" ? (
           <FeesPage
@@ -351,6 +364,21 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
+        ) : mode === "academics" && leads ? (
+          academicsTab === "attendance" ? (
+            <AttendancePage school={school} session={currentSession} students={current} isAdmin readOnly={isPrincipal} me={user.email} heading={academicsSwitch} />
+          ) : (
+            <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={academicsSwitch} />
+          )
+        ) : mode === "transport" && isAdmin ? (
+          <>
+            <div className="page-header">
+              <div className="page-meta">
+                <h1 className="page-count">Transport</h1>
+              </div>
+            </div>
+            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
+          </>
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
         ) : mode === "homework" ? (
