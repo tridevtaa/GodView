@@ -25,13 +25,18 @@ function sessionMonths(session) {
 // Owners get two tabs: Overview (collection) and Structure (what each grade
 // pays). Admins see the overview only.
 // pastSession: a past session is open (picked on Students); say which.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged }) {
+// heading: the Students section switch, shown first in the header.
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged, heading, start = 0 }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(null);
   const [monthly, setMonthly] = useState([]);
   const [byClass, setByClass] = useState([]);
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "collect" | "balances"
+  // The + button in the tab bar: open Collect fee.
+  useEffect(() => {
+    if (start) setDialog("collect");
+  }, [start]);
   const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {
@@ -95,7 +100,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       <div>
         <h1 className="sr-only">Fees</h1>
         <div className="page-meta">
-          <span className="page-count">Fees</span>
+          {heading}
           {isOwner && (
             <nav className="segmented segmented-sm" aria-label="Fee sections">
               {[["overview", "Overview"], ["structure", "Fee structure"]].map(([v, l]) => (

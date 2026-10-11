@@ -250,6 +250,43 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
 
 // ------------------------------------------------------ notes & results ---
 
+// Class-wise marks: the exams and subjects already used this session (for
+// suggestions), one test's marks, and saving a whole class at once.
+export async function sessionTests(sessionId) {
+  const rows = await all(() => supabase.from("exam_results").select("exam, subject, max_marks").eq("session_id", sessionId));
+  const exams = [...new Set(rows.map((r) => r.exam))].sort();
+  const subjects = [...new Set(rows.map((r) => r.subject))].sort();
+  return { exams, subjects };
+}
+
+export async function testResults(sessionId, exam, subject) {
+  return must(
+    await supabase
+      .from("exam_results")
+      .select("student_id, marks, max_marks")
+      .eq("session_id", sessionId)
+      .eq("exam", exam.trim())
+      .eq("subject", subject.trim())
+  );
+}
+
+// rows: [{ student_id, marks }] (marks "" = absent / not entered: skipped)
+export async function saveClassResults(schoolId, sessionId, { exam, subject, max_marks }, rows) {
+  const list = rows
+    .filter((r) => r.marks !== "" && r.marks !== null && r.marks !== undefined)
+    .map((r) => ({
+      school_id: schoolId,
+      session_id: sessionId,
+      student_id: r.student_id,
+      exam: exam.trim(),
+      subject: subject.trim(),
+      marks: Number(r.marks),
+      max_marks: Number(max_marks),
+    }));
+  if (!list.length) return [];
+  return must(await supabase.from("exam_results").upsert(list, { onConflict: "student_id,session_id,exam,subject" }).select("student_id"));
+}
+
 // Each student's overall result this session (all marks / all max marks),
 // for the students the caller can see. Map: student id -> percent.
 export async function sessionResultPercents(sessionId) {

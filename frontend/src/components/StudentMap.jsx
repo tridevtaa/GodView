@@ -33,7 +33,9 @@ const BUS = [
 // Owners/admins: where students come from. Students are grouped by village
 // (from their address or pick-up point); a pinned home shows on its own.
 // Numbers merge into clusters as you zoom out; clicking one lists them.
-export default function StudentMap({ school, students, allStudents, canEdit, onOpenStudent }) {
+// compact: a short preview (map only, no panel or controls) that opens the
+// full map when tapped (onExpand).
+export default function StudentMap({ school, students, allStudents, canEdit, onOpenStudent, compact = false, onExpand }) {
   const [areas, setAreas] = useState(null);
   const [error, setError] = useState("");
   const [bus, setBus] = useState("all");
@@ -174,9 +176,16 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
   const suggestions = useMemo(() => (firstRun ? buildAreas(allStudents) : []), [firstRun, allStudents]);
 
   return (
-    <div className="smap" ref={wrap} style={{ height }}>
+    <div className={`smap${compact ? " is-compact" : ""}`} ref={wrap} style={{ height: compact ? undefined : height }}>
+      {compact && (
+        <button type="button" className="smap-open" onClick={onExpand} aria-label="Open the map">
+          <span>
+            <Icon name="map" size={16} /> Where students live
+          </span>
+        </button>
+      )}
       <div className={`smap-map${placing ? " is-placing" : ""}`}>
-        <LeafletMap groups={groups} home={home} school={school} selected={selected} placing={placing} onSelect={setSelected} onPlace={onPlace} />
+        <LeafletMap groups={groups} home={home} school={school} selected={selected} placing={placing} onSelect={setSelected} onPlace={onPlace} compact={compact} />
 
         <div className="smap-top">
           <nav className="segmented smap-seg" aria-label="Transport">
@@ -553,13 +562,25 @@ function StudentRows({ students, onOpenStudent }) {
 }
 
 // The Leaflet map: one marker per village (or pinned home), clustered.
-function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace }) {
+// The preview: the school (or the middle of everyone) at a closer zoom.
+function previewView(m, pts, home) {
+  const centre = home ? [home.lat, home.lng] : L.latLngBounds(pts).getCenter();
+  m.setView(centre, PREVIEW_ZOOM, { animate: false });
+}
+
+// compact: the small preview card, centred on the school a little closer in
+// (fitting every village would zoom a short card far out).
+const PREVIEW_ZOOM = 11;
+function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace, compact = false }) {
+  const compactRef = useRef(compact);
+  compactRef.current = compact;
   const el = useRef(null);
   const map = useRef(null);
   const layer = useRef(null);
   const schoolMarker = useRef(null);
   const touched = useRef(false); // the user moved the map; stop auto-fitting
   const points = useRef([]);
+  const homeRef = useRef(home);
   const cb = useRef({});
   cb.current = { onSelect, onPlace, placing };
 
@@ -600,6 +621,7 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
     // Re-measure when the box changes size (screen resize, panel layout).
     const fitAll = () => {
       const pts = points.current;
+      if (compactRef.current && pts.length) return previewView(m, pts, homeRef.current);
       if (pts.length > 1) m.fitBounds(L.latLngBounds(pts), { maxZoom: 13, paddingTopLeft: [50, 90], paddingBottomRight: [70, 70], animate: false });
       else if (pts.length === 1) m.setView(pts[0], 12, { animate: false });
     };
@@ -639,10 +661,12 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
     // Show everyone (room for the filter buttons and legend), until the
     // user moves the map.
     points.current = groups.map((g) => [g.lat, g.lng]).concat(home ? [[home.lat, home.lng]] : []);
+    homeRef.current = home;
     if (!touched.current && points.current.length) {
       map.current.invalidateSize();
       const pts = points.current;
-      if (pts.length > 1) map.current.fitBounds(L.latLngBounds(pts), { maxZoom: 13, paddingTopLeft: [50, 90], paddingBottomRight: [70, 70], animate: false });
+      if (compactRef.current) previewView(map.current, pts, home);
+      else if (pts.length > 1) map.current.fitBounds(L.latLngBounds(pts), { maxZoom: 13, paddingTopLeft: [50, 90], paddingBottomRight: [70, 70], animate: false });
       else map.current.setView(pts[0], 12, { animate: false });
     }
   }, [groups, selected, home]);

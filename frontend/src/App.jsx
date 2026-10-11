@@ -13,9 +13,11 @@ import Icon from "./components/Icon.jsx";
 import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import TeamPage from "./components/TeamPage.jsx";
+import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
+import MarksPage from "./components/MarksPage.jsx";
 import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -31,22 +33,8 @@ const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
   const [query, setQuery] = useState("");
-  // Students page: tiles or the map (owners/admins). Remembered per browser.
-  const [view, setViewState] = useState(() => {
-    try {
-      return localStorage.getItem("godview.studentsView") === "map" ? "map" : "tiles";
-    } catch {
-      return "tiles";
-    }
-  });
-  const setView = (v) => {
-    setViewState(v);
-    try {
-      localStorage.setItem("godview.studentsView", v);
-    } catch {
-      /* private mode: fine, just not remembered */
-    }
-  };
+  // Transport: the map starts as a small preview ("routes"); "map" opens it.
+  const [view, setView] = useState("routes");
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
@@ -100,13 +88,10 @@ export default function App() {
 
   // Bus routes with their stops (for the Add student card, profiles, Owner).
   const [routes, setRoutes] = useState([]);
-  const [ownerTab, setOwnerTab] = useState("profile");
   // Staff: the people (employees) and, for the owner, who can sign in.
   const [staffTab, setStaffTab] = useState("people");
-  const openOwner = (tab) => {
-    setOwnerTab(tab);
-    switchMode("team");
-  };
+  // School settings (profile) or the Transport tab.
+  const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
     () => listRoutes(school.id).then(setRoutes, () => setRoutes([])),
     [school.id]
@@ -264,18 +249,59 @@ export default function App() {
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
   const title = isStudents ? "Students" : "Staff";
-  // The school's work, in the order of a school day. School settings live in
-  // the account menu (owner only).
+  // Header: Students, Inbox, Staff and Transport. Everything about the
+  // students (attendance, homework, fees) lives inside Students, behind a
+  // switch at the top; each role sees the parts it can use. School settings
+  // are in the account menu (owner only).
+  const leads = isAdmin || isPrincipal;
   const sections = [
+    ["students", "Students"],
+    ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
+    ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
+    ...(isAdmin ? [["transport", "Transport"]] : []),
+  ];
+  const STUDENT_PARTS = ["students", "attendance", "homework", "fees", "marks"];
+  const studentParts = [
     ["students", "Students"],
     ...(seesAttendance ? [["attendance", "Attendance"]] : []),
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
-    ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
-    ...(isAdmin || isPrincipal ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
   ];
+  const studentsSwitch = (
+    <nav className="segmented segmented-sm students-switch page-switch" aria-label="Students">
+      {studentParts.map(([v, l]) => (
+        <button key={v} className={mode === v ? "active" : ""} onClick={() => switchMode(v)}>
+          {l}
+        </button>
+      ))}
+    </nav>
+  );
+  // The + in the middle of the phone tab bar: everything this person can
+  // create, wherever they are. Pages open their form when `quick` changes.
+  const [quick, setQuick] = useState({ kind: "", at: 0 });
+  const plusActions = [
+    ...(canEdit ? [["student", "Add student", "users"]] : []),
+    ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
+    // Teachers' daily work: their class register (class in-charges), homework
+    // and marks. Owners, admins and the principal see these, not give them.
+    ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
+    ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
+    ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
+    ...(!isPrincipal ? [["message", "New message", "message"]] : []),
+    ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
+  ];
+  function runAction(kind) {
+    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance", result: "marks" }[kind];
+    switchMode(go);
+    if (kind === "student" || kind === "staff") {
+      if (kind === "staff") setStaffTab("people");
+      setAdding(true);
+    } else {
+      setQuick({ kind, at: Date.now() });
+    }
+  }
   const staffTabs = isOwner && (
-    <nav className="segmented segmented-sm" aria-label="Staff">
+    <nav className="segmented segmented-sm page-switch" aria-label="Staff">
       {[
         ["people", "People"],
         ["access", "App access", pendingCount],
@@ -289,8 +315,16 @@ export default function App() {
   );
 
   return (
-    <div className="app" data-clarity-mask="True">
-      <TopBar mode={mode} onMode={switchMode} sections={sections} onSettings={isOwner ? () => openOwner("profile") : null} />
+    <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
+      <TopBar
+        mode={STUDENT_PARTS.includes(mode) ? "students" : mode}
+        onMode={switchMode}
+        sections={sections}
+        onSettings={isOwner ? () => openOwner("profile") : null}
+        session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
+        actions={plusActions}
+        onAction={runAction}
+      />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
@@ -320,7 +354,7 @@ export default function App() {
           <>
             <div className="page-header">
               <div className="page-meta">
-                <h1 className="page-count">Staff</h1>
+                <h1 className="sr-only">Staff</h1>
                 {staffTabs}
               </div>
             </div>
@@ -333,14 +367,11 @@ export default function App() {
             session={currentSession}
             me={user.email}
             onSchoolSaved={setSchool}
-            routes={routes}
-            onRoutesChanged={loadRoutes}
-            tab={ownerTab}
-            onTab={setOwnerTab}
-            students={current}
           />
         ) : mode === "fees" ? (
           <FeesPage
+            heading={studentsSwitch}
+            start={quick.kind === "fee" ? quick.at : 0}
             school={school}
             role={role}
             grades={schoolGrades}
@@ -351,12 +382,39 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
+        ) : mode === "marks" && canWrite ? (
+          <MarksPage school={school} session={currentSession} students={current} onClose={() => switchMode("students")} />
+        ) : mode === "transport" && isAdmin ? (
+          <>
+            <h1 className="sr-only">Transport</h1>
+            {/* The map on top: a short preview that opens to full size. */}
+            {view === "map" && (
+              <div className="tr-map-bar">
+                <button className="btn btn-secondary btn-sm" onClick={() => setView("routes")}>
+                  <Icon name="chevronDown" /> Collapse map
+                </button>
+              </div>
+            )}
+            <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
+              <StudentMap
+                school={school}
+                students={current}
+                allStudents={current}
+                canEdit={canEdit}
+                onOpenStudent={(id) => openStudent(id)}
+                compact={view !== "map"}
+                onExpand={() => setView("map")}
+              />
+            </Suspense>
+            {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
+          </>
         ) : mode === "attendance" && seesAttendance ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={studentsSwitch} start={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
+            start={quick.kind === "message" ? quick.at : 0}
             readOnly={isPrincipal}
             school={school}
             students={current}
@@ -366,43 +424,22 @@ export default function App() {
           />
         ) : (
         <>
-        <div className="page-header">
-          <div>
-            <h1 className="sr-only">{title}</h1>
+        <h1 className="sr-only">{title}</h1>
+        {!isStudents && (
+          <div className="page-header">
             <div className="page-meta">
-              <span className="page-count">
-                {loading ? "Loading…" : countLabel}
-              </span>
-              {isStudents && (
-                <SessionSelect
-                  sessions={sessions}
-                  value={sessionId}
-                  current={currentSession}
-                  onChange={switchSession}
-                />
-              )}
-              {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
-              {!isStudents && staffTabs}
+              {staffTabs}
             </div>
-          </div>
-          <div className="page-actions">
-            {isStudents && isAdmin && !loading && (
-              <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />
-            )}
-            {isStudents && canEdit && (
-              <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
-                <Icon name="upload" />
-                <span className="btn-label">Import</span>
-              </button>
-            )}
             {canEdit && (
-              <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                <Icon name="plus" />
-                Add {isStudents ? "student" : "staff"}
-              </button>
+              <div className="page-actions">
+                <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                  <Icon name="plus" />
+                  Add staff
+                </button>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
         {!loading && source === "error" && (
           <p className="notice notice-error">
@@ -416,28 +453,18 @@ export default function App() {
           </p>
         )}
 
-        <div className="toolbar">
-          {isStudents && isAdmin && (
-            <nav className="segmented view-switch" aria-label="View">
-              {[
-                ["tiles", "Tiles", "grid"],
-                ["map", "Map", "map"],
-              ].map(([v, l, icon]) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)} aria-label={l} title={l}>
-                  <Icon name={icon} size={16} />
-                </button>
-              ))}
-            </nav>
-          )}
+        {/* Students: search, grades and the actions on one line; the count
+            lives in the search box. */}
+        <div className={`toolbar${isStudents ? " toolbar-students" : ""}`}>
+          {isStudents && studentParts.length > 1 && studentsSwitch}
           <label className="search">
             <Icon name="search" />
             <input
               type="search"
-              placeholder="Search"
+              placeholder={loading ? "Search" : `Search ${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}`}
               aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label={`Search ${mode}`}
             />
           </label>
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
@@ -446,13 +473,33 @@ export default function App() {
               {visible.length} of {current.length}
             </span>
           )}
+          {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+          {isStudents && (
+            <div className="page-actions toolbar-actions">
+              {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
+              {canEdit && (
+                <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
+                  <Icon name="upload" />
+                  <span className="btn-label">Import</span>
+                </button>
+              )}
+              {canEdit && (
+                <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                  <Icon name="plus" />
+                  Add student
+                </button>
+              )}
+              {role === "teacher" && canWrite && (
+                <button className="btn btn-primary" onClick={() => switchMode("marks")}>
+                  <Icon name="chart" />
+                  Add results
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {isStudents && isAdmin && view === "map" && !loading ? (
-          <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
-            <StudentMap school={school} students={visible} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
-          </Suspense>
-        ) : loading ? (
+        {loading ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="card card-skeleton" />
