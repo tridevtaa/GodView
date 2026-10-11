@@ -87,8 +87,6 @@ export default function App() {
 
   // Bus routes with their stops (for the Add student card, profiles, Owner).
   const [routes, setRoutes] = useState([]);
-  // Academics (owner, admin, principal): attendance and homework together.
-  const [academicsTab, setAcademicsTab] = useState("attendance");
   // Staff: the people (employees) and, for the owner, who can sign in.
   const [staffTab, setStaffTab] = useState("people");
   // School settings (profile) or the Transport tab.
@@ -250,29 +248,28 @@ export default function App() {
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
   const title = isStudents ? "Students" : "Staff";
-  // The school's work, in the order of a school day. School settings live in
-  // the account menu (owner only).
-  // Owners, admins and the principal get Academics (attendance and
-  // homework in one) and, for those who manage routes, Transport. Teachers
-  // keep Attendance (class in-charges) and Homework as their own tabs.
+  // Header: Students, Inbox, Staff and Transport. Everything about the
+  // students (attendance, homework, fees) lives inside Students, behind a
+  // switch at the top; each role sees the parts it can use. School settings
+  // are in the account menu (owner only).
   const leads = isAdmin || isPrincipal;
   const sections = [
     ["students", "Students"],
-    ...(leads
-      ? [["academics", "Academics"]]
-      : [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]]),
-    ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
-  const academicsSwitch = (
-    <nav className="segmented segmented-sm" aria-label="Academics">
-      {[
-        ["attendance", "Attendance"],
-        ["homework", "Homework"],
-      ].map(([v, l]) => (
-        <button key={v} className={academicsTab === v ? "active" : ""} onClick={() => setAcademicsTab(v)}>
+  const STUDENT_PARTS = ["students", "attendance", "homework", "fees"];
+  const studentParts = [
+    ["students", "Students"],
+    ...(seesAttendance ? [["attendance", "Attendance"]] : []),
+    ["homework", "Homework"],
+    ...(isAdmin ? [["fees", "Fees"]] : []),
+  ];
+  const studentsSwitch = (
+    <nav className="segmented segmented-sm students-switch" aria-label="Students">
+      {studentParts.map(([v, l]) => (
+        <button key={v} className={mode === v ? "active" : ""} onClick={() => switchMode(v)}>
           {l}
         </button>
       ))}
@@ -295,7 +292,7 @@ export default function App() {
   return (
     <div className="app" data-clarity-mask="True">
       <TopBar
-        mode={mode}
+        mode={STUDENT_PARTS.includes(mode) ? "students" : mode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
@@ -346,6 +343,7 @@ export default function App() {
           />
         ) : mode === "fees" ? (
           <FeesPage
+            heading={studentsSwitch}
             school={school}
             role={role}
             grades={schoolGrades}
@@ -356,12 +354,6 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
-        ) : mode === "academics" && leads ? (
-          academicsTab === "attendance" ? (
-            <AttendancePage school={school} session={currentSession} students={current} isAdmin readOnly={isPrincipal} me={user.email} heading={academicsSwitch} />
-          ) : (
-            <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={academicsSwitch} />
-          )
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
@@ -387,9 +379,9 @@ export default function App() {
             {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
           </>
         ) : mode === "attendance" && seesAttendance ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={studentsSwitch} />
         ) : mode === "requests" ? (
           <InboxPage
             readOnly={isPrincipal}
@@ -434,6 +426,7 @@ export default function App() {
         {/* Students: search, grades and the actions on one line; the count
             lives in the search box. */}
         <div className={`toolbar${isStudents ? " toolbar-students" : ""}`}>
+          {isStudents && studentParts.length > 1 && studentsSwitch}
           <label className="search">
             <Icon name="search" />
             <input

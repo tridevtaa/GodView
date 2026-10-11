@@ -5445,7 +5445,7 @@ button.profile-stat:hover {
    Students map
    ========================================================= */
 
-.page:has(.smap) {
+.page:has(.smap:not(.is-compact)) {
   max-width: none;
 }
 
@@ -9497,4 +9497,33 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .inbox-head .inbox-filter {
   margin: 0;
+}
+
+/* The preview map: no km labels (they crowd a small card) */
+.smap.is-compact .leaflet-tooltip-pane,
+.smap.is-compact .leaflet-marker-pane .smap-ring-label {
+  display: none;
+}
+
+/* Students section switch: Students · Attendance · Homework · Fees */
+.students-switch {
+  flex: none;
+}
+
+@media (max-width: 760px) {
+  .students-switch {
+    order: -2;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .students-switch button {
+    flex: 1 0 auto;
+    padding: 0 10px;
+  }
+
+  .page-meta:has(.students-switch) {
+    flex-wrap: wrap;
+  }
 }
