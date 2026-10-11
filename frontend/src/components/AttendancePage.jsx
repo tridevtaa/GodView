@@ -5,11 +5,12 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 
+// Present, Absent or on Leave. (Days already saved as late still count
+// as present in the totals.)
 export const MARKS = [
   ["present", "P", "Present"],
   ["absent", "A", "Absent"],
-  ["late", "L", "Late"],
-  ["leave", "Lv", "Leave"],
+  ["leave", "L", "Leave"],
 ];
 const iso = (d) => {
   const x = new Date(d);
