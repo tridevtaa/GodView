@@ -425,22 +425,6 @@ export default function App() {
         ) : (
         <>
         <h1 className="sr-only">{title}</h1>
-        {!isStudents && (
-          <div className="page-header">
-            <div className="page-meta">
-              {staffTabs}
-            </div>
-            {canEdit && (
-              <div className="page-actions">
-                <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                  <Icon name="plus" />
-                  Add staff
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {!loading && source === "error" && (
           <p className="notice notice-error">
             Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
@@ -455,8 +439,11 @@ export default function App() {
 
         {/* Students: search, grades and the actions on one line; the count
             lives in the search box. */}
-        <div className={`toolbar${isStudents ? " toolbar-students" : ""}`}>
+        {/* One row, pinned under the header while scrolling: the page switch,
+            search, filters and actions (Students and Staff alike). */}
+        <div className="toolbar toolbar-students toolbar-sticky">
           {isStudents && studentParts.length > 1 && studentsSwitch}
+          {!isStudents && staffTabs}
           <label className="search">
             <Icon name="search" />
             <input
@@ -474,6 +461,14 @@ export default function App() {
             </span>
           )}
           {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+          {!isStudents && canEdit && (
+            <div className="page-actions toolbar-actions">
+              <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                <Icon name="plus" />
+                Add staff
+              </button>
+            </div>
+          )}
           {isStudents && (
             <div className="page-actions toolbar-actions">
               {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
