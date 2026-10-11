@@ -10491,3 +10491,25 @@ input[type="date"]::-webkit-date-and-time-value {
     pointer-events: none;
   }
 }
+
+@media (max-width: 760px) {
+  /* Typing in search: the tab bar slides away and the search drops to the
+     bottom, so it sits right above the keyboard. */
+  .tabbar {
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s;
+  }
+
+  .gsearch {
+    transition: bottom 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .is-typing .app .tabbar {
+    opacity: 0;
+    transform: translateY(24px);
+    pointer-events: none;
+  }
+
+  .is-typing .app .gsearch {
+    bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}

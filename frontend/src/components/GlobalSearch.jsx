@@ -25,6 +25,11 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
     if (threads === null) staffInbox(school.id).then(setThreads, () => setThreads([]));
   }
 
+  // While typing, the tab bar steps aside (phones): the keyboard lifts
+  // everything fixed, and the search should sit right above it.
+  const typing = (on) => document.documentElement.classList.toggle("is-typing", on);
+  useEffect(() => () => typing(false), []);
+
   // "/" focuses the search on computers.
   useEffect(() => {
     const onKey = (e) => {
@@ -76,7 +81,9 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
           placeholder="Search students, staff, messages"
           aria-label="Search students, staff and messages"
           value={q}
-          onFocus={warm}
+          onFocus={() => (warm(), typing(true))}
+          // A short wait so tapping a result still lands before the bar returns.
+          onBlur={() => setTimeout(() => typing(false), 150)}
           onChange={(e) => (setQ(e.target.value), warm())}
           onKeyDown={(e) => e.key === "Escape" && (setQ(""), setOpen(false), input.current?.blur())}
         />
