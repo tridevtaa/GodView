@@ -2,6 +2,9 @@ import { useCallback, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import Icon from "./Icon.jsx";
 
+// "2026-27" -> "26-27", for the compact picker in the top bar.
+const short = (name = "") => name.replace(/^20(\d\d)\s*[-–/]\s*(?:20)?(\d\d)$/, "$1-$2");
+
 // Pill dropdown for the academic session; past sessions are view-only.
 export default function SessionSelect({ sessions, value, current, onChange }) {
   const [open, setOpen] = useState(false);
@@ -12,12 +15,13 @@ export default function SessionSelect({ sessions, value, current, onChange }) {
     <div className="popover-anchor" ref={ref}>
       <button
         className="session-btn"
+        title={selected ? `Session ${selected.name}` : "Session"}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="true"
         aria-expanded={open}
         disabled={!sessions.length}
       >
-        Session {selected?.name ?? "…"}
+        {selected ? short(selected.name) : "…"}
         <Icon name="chevronDown" />
       </button>
       {open && (

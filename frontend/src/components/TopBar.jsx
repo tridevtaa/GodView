@@ -7,7 +7,8 @@ const ICONS = { students: "users", academics: "academics", attendance: "register
 // sections: [[value, label, badgeCount?], …], already filtered by role.
 // Wide screens: tabs in the top bar. Phones: an app-style bar at the bottom.
 // onSettings: the owner's School settings, from the account menu.
-export default function TopBar({ mode, onMode, sections, onSettings }) {
+// session: the session picker, shown beside the logo.
+export default function TopBar({ mode, onMode, sections, onSettings, session }) {
   const tabs = (className) => (
     <nav className={className} aria-label="Section">
       {sections.map(([value, label, count]) => (
@@ -28,7 +29,10 @@ export default function TopBar({ mode, onMode, sections, onSettings }) {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Logo />
+          <span className="topbar-left">
+            <Logo />
+            {session}
+          </span>
           {sections.length > 1 && tabs("segmented topbar-tabs")}
           <AccountMenu onSettings={onSettings} />
         </div>

@@ -32,18 +32,18 @@ const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
   const [query, setQuery] = useState("");
-  // Students page: tiles or the map (owners/admins). Remembered per browser.
+  // Transport: routes or the student map. Remembered per browser.
   const [view, setViewState] = useState(() => {
     try {
-      return localStorage.getItem("godview.studentsView") === "map" ? "map" : "tiles";
+      return localStorage.getItem("godview.transportView") === "map" ? "map" : "routes";
     } catch {
-      return "tiles";
+      return "routes";
     }
   });
   const setView = (v) => {
     setViewState(v);
     try {
-      localStorage.setItem("godview.studentsView", v);
+      localStorage.setItem("godview.transportView", v);
     } catch {
       /* private mode: fine, just not remembered */
     }
@@ -308,7 +308,13 @@ export default function App() {
 
   return (
     <div className="app" data-clarity-mask="True">
-      <TopBar mode={mode} onMode={switchMode} sections={sections} onSettings={isOwner ? () => openOwner("profile") : null} />
+      <TopBar
+        mode={mode}
+        onMode={switchMode}
+        sections={sections}
+        onSettings={isOwner ? () => openOwner("profile") : null}
+        session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
+      />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
@@ -375,9 +381,25 @@ export default function App() {
             <div className="page-header">
               <div className="page-meta">
                 <h1 className="page-count">Transport</h1>
+                <nav className="segmented segmented-sm" aria-label="Transport">
+                  {[
+                    ["routes", "Routes"],
+                    ["map", "Map"],
+                  ].map(([v, l]) => (
+                    <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)}>
+                      {l}
+                    </button>
+                  ))}
+                </nav>
               </div>
             </div>
-            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
+            {view === "map" ? (
+              <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
+                <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
+              </Suspense>
+            ) : (
+              <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
+            )}
           </>
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
@@ -394,43 +416,23 @@ export default function App() {
           />
         ) : (
         <>
-        <div className="page-header">
-          <div>
-            <h1 className="sr-only">{title}</h1>
+        <h1 className="sr-only">{title}</h1>
+        {!isStudents && (
+          <div className="page-header">
             <div className="page-meta">
-              <span className="page-count">
-                {loading ? "Loading…" : countLabel}
-              </span>
-              {isStudents && (
-                <SessionSelect
-                  sessions={sessions}
-                  value={sessionId}
-                  current={currentSession}
-                  onChange={switchSession}
-                />
-              )}
-              {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
-              {!isStudents && staffTabs}
+              <span className="page-count">{loading ? "Loading…" : countLabel}</span>
+              {staffTabs}
             </div>
-          </div>
-          <div className="page-actions">
-            {isStudents && isAdmin && !loading && (
-              <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />
-            )}
-            {isStudents && canEdit && (
-              <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
-                <Icon name="upload" />
-                <span className="btn-label">Import</span>
-              </button>
-            )}
             {canEdit && (
-              <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                <Icon name="plus" />
-                Add {isStudents ? "student" : "staff"}
-              </button>
+              <div className="page-actions">
+                <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                  <Icon name="plus" />
+                  Add staff
+                </button>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
         {!loading && source === "error" && (
           <p className="notice notice-error">
@@ -444,28 +446,17 @@ export default function App() {
           </p>
         )}
 
-        <div className="toolbar">
-          {isStudents && isAdmin && (
-            <nav className="segmented view-switch" aria-label="View">
-              {[
-                ["tiles", "Tiles", "grid"],
-                ["map", "Map", "map"],
-              ].map(([v, l, icon]) => (
-                <button key={v} className={view === v ? "active" : ""} onClick={() => setView(v)} aria-label={l} title={l}>
-                  <Icon name={icon} size={16} />
-                </button>
-              ))}
-            </nav>
-          )}
+        {/* Students: search, grades and the actions on one line; the count
+            lives in the search box. */}
+        <div className={`toolbar${isStudents ? " toolbar-students" : ""}`}>
           <label className="search">
             <Icon name="search" />
             <input
               type="search"
-              placeholder="Search"
+              placeholder={isStudents && !loading ? `Search ${current.length.toLocaleString("en-IN")} students` : "Search"}
               aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label={`Search ${mode}`}
             />
           </label>
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
@@ -474,13 +465,27 @@ export default function App() {
               {visible.length} of {current.length}
             </span>
           )}
+          {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+          {isStudents && (
+            <div className="page-actions toolbar-actions">
+              {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
+              {canEdit && (
+                <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
+                  <Icon name="upload" />
+                  <span className="btn-label">Import</span>
+                </button>
+              )}
+              {canEdit && (
+                <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                  <Icon name="plus" />
+                  Add student
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {isStudents && isAdmin && view === "map" && !loading ? (
-          <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
-            <StudentMap school={school} students={visible} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} />
-          </Suspense>
-        ) : loading ? (
+        {loading ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="card card-skeleton" />
