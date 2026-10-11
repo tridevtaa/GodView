@@ -7047,6 +7047,21 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 700;
 }
 
+.att-who {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .att-name {
   display: flex;
   flex: 1;

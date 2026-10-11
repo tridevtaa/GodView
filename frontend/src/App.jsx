@@ -460,7 +460,7 @@ export default function App() {
             {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
           </>
         ) : mode === "attendance" && seesAttendance ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (

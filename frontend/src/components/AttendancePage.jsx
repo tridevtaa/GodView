@@ -26,7 +26,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
 // heading: replaces the title (Academics puts its Attendance | Homework switch there).
-export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, heading }) {
+export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, heading, onOpenStudent }) {
   const [day, setDay] = useState(todayIso());
   // Classes this person is class teacher of (only they mark attendance;
   // owners and admins can mark any class).
@@ -123,7 +123,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
       )}
 
       {group ? (
-        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} viewer={readOnly} />
+        <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} viewer={readOnly} onOpenStudent={onOpenStudent} />
       ) : isAdmin && groups.length > 0 ? (
         <Overview session={session} day={day} onOpen={setOpen} />
       ) : null}
@@ -131,7 +131,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
   );
 }
 
-function Register({ school, session, day, group, canMark, viewer }) {
+function Register({ school, session, day, group, canMark, viewer, onOpenStudent }) {
   const [marks, setMarks] = useState(null); // student id -> status
   const [saved, setSaved] = useState(null); // { by, at } when already marked
   const [dirty, setDirty] = useState(false);
@@ -224,11 +224,13 @@ function Register({ school, session, day, group, canMark, viewer }) {
       <ul className="att-list">
         {group.kids.map((k) => (
           <li key={k.id} className={`att-row is-${marks[k.id]}`}>
-            <Photo person={k} className="att-photo" />
-            <span className="att-name">
-              <strong>{k.name}</strong>
-              {k.roll_no && <span className="row-sub">Roll {k.roll_no}</span>}
-            </span>
+            <button type="button" className="att-who" onClick={() => onOpenStudent(k.id)}>
+              <Photo person={k} className="att-photo" />
+              <span className="att-name">
+                <strong>{k.name}</strong>
+                {k.roll_no && <span className="row-sub">Roll {k.roll_no}</span>}
+              </span>
+            </button>
             <span className="att-marks" role="radiogroup" aria-label={`${k.name} attendance`}>
               {MARKS.map(([v, short, label]) => (
                 <button key={v} role="radio" aria-checked={marks[k.id] === v} aria-label={label} title={label} disabled={!canMark} className={`att-mark att-${v}${marks[k.id] === v ? " is-on" : ""}`} onClick={() => set(k.id, v)}>
