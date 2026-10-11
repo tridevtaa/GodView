@@ -236,7 +236,10 @@ export default function App() {
   }, [studentPage, openId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function switchMode(next) {
-    if (next === mode) return;
+    if (next === mode) {
+      if (openId !== null) closeProfile();
+      return;
+    }
     setMode(next);
     setQuery("");
     setPickedGrades([]);
