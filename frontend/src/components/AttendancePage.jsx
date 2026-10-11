@@ -77,8 +77,6 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
           <h1 className="sr-only">Attendance</h1>
           <div className="page-meta">
             <span className="page-count">Attendance</span>
-            {/* One class in charge: just its name, no picker. */}
-            {!isAdmin && groups.length === 1 && <span className="att-class-name">{classText(groups[0].klass, groups[0].section)}</span>}
           </div>
         </div>
         <div className="att-day">
@@ -102,6 +100,11 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
         </p>
       ) : isAdmin ? (
         <ClassSwitcher groups={groups} value={open ?? ""} onChange={setOpen} allLabel="All classes" />
+      ) : groups.length === 1 ? (
+        // One class in charge: just its name, under the title.
+        <p className="att-class-row">
+          <span className="att-class-name">{classText(groups[0].klass, groups[0].section)}</span>
+        </p>
       ) : (
         groups.length > 1 && (
           // In charge of more than one class: switch between them.
