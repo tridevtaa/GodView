@@ -699,13 +699,15 @@ a:hover {
   color: var(--text-3);
 }
 
+/* Class / role tag: a soft pill, not a coloured block */
 .tag {
   display: inline-block;
-  padding: 1px 8px;
-  background: var(--tag);
-  border-right: 4px solid var(--brand-edge);
-  color: #fff;
-  font-size: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -8973,4 +8975,230 @@ input[type="date"]::-webkit-date-and-time-value {
   .ns-head .edit-steps button:not(.is-on) .edit-step-label {
     display: none;
   }
+}
+
+/* Student fees: a summary line, dues as a list, a light payment form */
+.ledger-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.ledger-summary > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.ledger-summary strong {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.due-list,
+.ledger-view .payment-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.due-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.due-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.due-main strong {
+  font-weight: 600;
+}
+
+.due-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.due-row.is-overdue .due-side strong {
+  color: var(--danger, #c0392b);
+}
+
+.due-row.is-settled .due-side strong {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.due-flag {
+  margin-top: 2px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fdecea;
+  color: #b42318;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.concession-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.concession-edit .input-num {
+  width: 110px;
+}
+
+.ledger-toggle {
+  margin: 6px 0 0;
+}
+
+.ledger-h {
+  margin: 22px 0 4px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ledger-view .payment-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.ledger-view .payment-list li > div:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.payment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+.pay-amount {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.pay-rupee {
+  color: var(--text-3);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.pay-amount input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  outline: none;
+}
+
+.pay-methods {
+  flex-wrap: wrap;
+}
+
+.pay-more {
+  display: grid;
+  grid-template-columns: minmax(0, 180px) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.payment-form .link-btn {
+  align-self: flex-start;
+}
+
+.payment-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .pay-more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Staff pop-up: the same light header as the student page */
+.staff-hero {
+  position: relative;
+  padding: 26px 26px 6px;
+}
+
+.staff-hero .ig-photo,
+.staff-hero .ig-photo-wrap .ig-photo {
+  width: 96px;
+  height: 96px;
+}
+
+.staff-hero .ig-head {
+  justify-content: center;
+}
+
+.staff-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+@media (max-width: 760px) {
+  .staff-hero {
+    padding: 22px 18px 4px;
+  }
+
+  .staff-hero .ig-photo,
+  .staff-hero .ig-photo-wrap .ig-photo {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+.tr-line {
+  margin: 0 0 16px;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+.payment-form .input {
+  flex: none;
+  height: 44px;
+  padding: 0 14px;
 }

@@ -33,27 +33,18 @@ export default function TransportRoutes({ school, routes, students, onChanged })
     <>
       {error && <p className="notice notice-error">{error}</p>}
 
-      <section className="tr-summary">
-        <div>
-          <span>Routes</span>
-          <strong>{routes.length}</strong>
-        </div>
-        <div>
-          <span>Stops</span>
-          <strong>{routes.reduce((n, r) => n + r.stops.length, 0)}</strong>
-        </div>
-        <div>
-          <span>Students on the bus</span>
-          <strong>{onBus}</strong>
-        </div>
-        <div>
-          <span>Homes pinned</span>
-          <strong>
-            {pinnedHomes}
-            <small> of {students.length}</small>
-          </strong>
-        </div>
-      </section>
+      {/* One line instead of four counters. */}
+      <p className="tr-line">
+        {(() => {
+          const stops = routes.reduce((n, r) => n + r.stops.length, 0);
+          return [
+            `${routes.length} route${routes.length === 1 ? "" : "s"}`,
+            `${stops} stop${stops === 1 ? "" : "s"}`,
+            `${onBus} on the bus`,
+            `${pinnedHomes} of ${students.length} homes pinned`,
+          ].join(" · ");
+        })()}
+      </p>
 
       <form
         className="tr-add"
@@ -124,8 +115,8 @@ function RouteCard({ school, route, riders, act }) {
               </button>
             </span>
           ) : (
-            <button className="link-btn link-danger" onClick={() => setAsking(true)}>
-              Remove route
+            <button className="icon-btn-sm" onClick={() => setAsking(true)} aria-label="Remove route" title="Remove route">
+              <Icon name="trash" size={16} />
             </button>
           )}
         </div>
