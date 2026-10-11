@@ -38,7 +38,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
   }, [school.id, session, me, isAdmin]);
   // readOnly: the principal sees every class but marks none.
   const canMark = (g) => !readOnly && (isAdmin || (mine ?? []).some((a) => a.class === g.klass && (!a.section || a.section === g.section)));
-  const groups = useMemo(() => {
+  const allGroups = useMemo(() => {
     const m = new Map();
     for (const s of students) {
       if (!s.class || s.status === "left") continue;
@@ -58,13 +58,14 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
         kids: kids.sort((x, y) => (Number(x.roll_no) || 999) - (Number(y.roll_no) || 999) || x.name.localeCompare(y.name)),
       }));
   }, [students]);
-  // Teachers land on the class they're class teacher of (else their first
-  // class); admins on the overview.
+  // A class in-charge sees only the class (or classes) they're in charge of.
+  const groups = useMemo(() => (isAdmin ? allGroups : allGroups.filter(canMark)), [allGroups, isAdmin, mine]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Teachers land on their class; admins on the overview.
   const [open, setOpen] = useState(isAdmin ? "" : null);
   useEffect(() => {
     if (isAdmin || open !== null || mine === null || !groups.length) return;
-    setOpen((groups.find((g) => canMark(g)) ?? groups[0]).key);
-  }, [groups, isAdmin, open, mine]); // eslint-disable-line react-hooks/exhaustive-deps
+    setOpen(groups[0].key);
+  }, [groups, isAdmin, open, mine]);
 
   if (!session) return <p className="notice">Import your students first; attendance is kept per session.</p>;
   const group = groups.find((g) => g.key === open);
@@ -76,6 +77,8 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
           <h1 className="sr-only">Attendance</h1>
           <div className="page-meta">
             <span className="page-count">Attendance</span>
+            {/* One class in charge: just its name, no picker. */}
+            {!isAdmin && groups.length === 1 && <span className="att-class-name">{classText(groups[0].klass, groups[0].section)}</span>}
           </div>
         </div>
         <div className="att-day">
@@ -93,16 +96,23 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
         </div>
       </div>
 
-      {!groups.length ? (
-        <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>
+      {mine === null ? null : !groups.length ? (
+        <p className="notice">
+          {isAdmin ? "No classes this session yet." : "You’re not a class in-charge this session. The owner sets class in-charges in Staff, App access."}
+        </p>
+      ) : isAdmin ? (
+        <ClassSwitcher groups={groups} value={open ?? ""} onChange={setOpen} allLabel="All classes" />
       ) : (
-        <ClassSwitcher
-          groups={groups}
-          value={open ?? ""}
-          onChange={setOpen}
-          allLabel={isAdmin ? "All classes" : undefined}
-          starred={new Set(isAdmin ? [] : groups.filter(canMark).map((g) => g.key))}
-        />
+        groups.length > 1 && (
+          // In charge of more than one class: switch between them.
+          <nav className="hw-filter att-mine" aria-label="Your classes">
+            {groups.map((g) => (
+              <button type="button" key={g.key} className={open === g.key ? "is-on" : ""} onClick={() => setOpen(g.key)}>
+                {classText(g.klass, g.section)}
+              </button>
+            ))}
+          </nav>
+        )
       )}
 
       {group ? (

@@ -6974,7 +6974,9 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 .att-register {
-  overflow: hidden;
+  /* clip, not hidden: hidden would make the save bar stick to this box
+     instead of the screen and cover the last student. */
+  overflow: clip;
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-md);
@@ -8973,4 +8975,14 @@ input[type="date"]::-webkit-date-and-time-value {
   .ns-head .edit-steps button:not(.is-on) .edit-step-label {
     display: none;
   }
+}
+
+/* Attendance: a class in-charge's class name beside the title */
+.att-class-name {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 14px;
+  font-weight: 600;
 }
