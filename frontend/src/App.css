@@ -62,6 +62,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Keep room for the scrollbar on every page, so short and long pages
+     line up and nothing shifts sideways when switching. */
+  scrollbar-gutter: stable;
 }
 
 /* The landing hero's light blue wash, behind the app too. */
@@ -9525,5 +9528,77 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .page-meta:has(.students-switch) {
     flex-wrap: wrap;
+  }
+}
+
+/* ---------------------------------------------------------------
+   One top row everywhere: the section switch on the left, the actions
+   on the right, all 38px tall, the content 18px below. */
+.page .page-header,
+.toolbar-students {
+  align-items: center;
+  min-height: 38px;
+  margin-bottom: 18px;
+}
+
+.page .page-header .btn,
+.toolbar-students .btn,
+.inbox-head .btn {
+  height: 38px;
+}
+
+/* The day picker: one 38px line, like the buttons beside it */
+.att-day {
+  height: 38px;
+  padding: 0 4px;
+}
+
+.att-day .btn-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.att-day-pick {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.att-day-pick strong {
+  font-size: 14px;
+}
+
+/* Phones: the same order on every Students page: the switch (full width),
+   then the main buttons, then anything else (e.g. Overview | Fee structure). */
+@media (max-width: 760px) {
+  .page .page-header {
+    gap: 8px;
+  }
+
+  .page-header > div:has(.students-switch),
+  .page-header .page-meta:has(.students-switch) {
+    display: contents;
+  }
+
+  .page-header .students-switch {
+    order: -2;
+    width: 100%;
+  }
+
+  .page-header:has(.students-switch) > .page-actions,
+  .page-header:has(.students-switch) > .att-day {
+    order: -1;
+  }
+
+  .page-header:has(.students-switch) > .att-day {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .toolbar-students {
+    gap: 8px;
   }
 }

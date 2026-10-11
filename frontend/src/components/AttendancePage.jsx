@@ -86,7 +86,9 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
           </button>
           <label className="att-day-pick">
             <strong>{day === todayIso() ? "Today" : dayText(day)}</strong>
-            {day === todayIso() && <span className="row-sub">{dayText(day)}</span>}
+            {day === todayIso() && (
+              <span className="row-sub">{new Date(`${day}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}</span>
+            )}
             <input type="date" value={day} max={todayIso()} onChange={(e) => e.target.value && setDay(e.target.value)} aria-label="Pick a day" />
           </label>
           <button className="btn-icon" onClick={() => setDay((d) => shift(d, 1))} disabled={day >= todayIso()} aria-label="Next day">
