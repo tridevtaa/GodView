@@ -16,7 +16,7 @@ import TeamPage from "./components/TeamPage.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import FeesPage from "./components/FeesPage.jsx";
 import InboxPage from "./components/InboxPage.jsx";
-import { countPendingRequests, listGrades, listRoutes, staffInbox } from "./data/api.js";
+import { countPendingRequests, listAssignments, listGrades, listRoutes, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -70,6 +70,18 @@ export default function App() {
     );
   }, [isOwner, school.id, mode]);
   const { sessions, current: currentSession } = useSessions(school.id);
+
+  // Teachers see Attendance only when they're a class's class teacher
+  // (in-charge) this session; owners, admins and the principal always do.
+  const [isClassTeacher, setIsClassTeacher] = useState(false);
+  useEffect(() => {
+    if (role !== "teacher" || !currentSession) return;
+    listAssignments(school.id).then(
+      (rows) => setIsClassTeacher(rows.some((a) => a.email === user.email && a.session_id === currentSession.id && a.is_class_teacher)),
+      () => setIsClassTeacher(false)
+    );
+  }, [role, school.id, currentSession, user.email]);
+  const seesAttendance = role !== "teacher" || isClassTeacher;
 
   // The school's grade list (names and sections); grade names everywhere use it.
   const [schoolGrades, setSchoolGrades] = useState([]);
@@ -213,7 +225,7 @@ export default function App() {
   // the account menu (owner only).
   const sections = [
     ["students", "Students"],
-    ["attendance", "Attendance"],
+    ...(seesAttendance ? [["attendance", "Attendance"]] : []),
     ["homework", "Homework"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
@@ -296,7 +308,7 @@ export default function App() {
             onOpenStudent={openStudent}
             onChanged={reload}
           />
-        ) : mode === "attendance" ? (
+        ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={isAdmin || isPrincipal} readOnly={isPrincipal} me={user.email} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} />

@@ -3,6 +3,7 @@ import { updateEmployee, updateStudent } from "../data/api.js";
 import PlacePicker from "./PlacePicker.jsx";
 import TransportPicker from "./TransportPicker.jsx";
 import Icon from "./Icon.jsx";
+import { StepBar } from "./Steps.jsx";
 
 // [field, label, input type or option list, required]
 const FIELDS = {
@@ -135,21 +136,7 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
   return (
     <form className="profile-edit" onSubmit={save}>
       {steps.length > 1 && (
-        <nav className="edit-steps" aria-label="Sections">
-          {steps.map((st, i) => (
-            <button
-              type="button"
-              key={st.title}
-              className={`${i === step ? "is-on" : ""}${i < step ? " is-done" : ""}`}
-              aria-current={i === step ? "step" : undefined}
-              onClick={() => (setStep(i), setError(""))}
-            >
-              <span className="edit-step-n">{i + 1}</span>
-              <span className="edit-step-label">{st.title}</span>
-              {stepChanged(i) && <span className="edit-step-dot" aria-label="changed" />}
-            </button>
-          ))}
-        </nav>
+        <StepBar steps={steps.map((st) => st.title)} step={step} onPick={(i) => (setStep(i), setError(""))} marks={steps.map((_, i) => stepChanged(i))} />
       )}
 
       {group && (

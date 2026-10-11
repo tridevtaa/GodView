@@ -8921,3 +8921,56 @@ input[type="date"]::-webkit-date-and-time-value {
     padding: 0 14px;
   }
 }
+
+/* Stepped forms elsewhere (school details, sign-up, add student/staff) */
+.edit-steps button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.school-body.school-steps {
+  display: block;
+}
+
+.school-steps .logo-box {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.school-steps .logo-box img {
+  width: 64px;
+  height: 64px;
+}
+
+.school-steps .edit-foot {
+  display: flex;
+  margin-top: 16px;
+}
+
+.request-form .edit-steps,
+.ns-head .edit-steps {
+  margin: 4px 0 6px;
+}
+
+.join-photo-big {
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  text-align: center;
+}
+
+.join-photo-big .join-photo-pick {
+  width: 120px;
+  height: 120px;
+}
+
+@media (max-width: 760px) {
+  .request-form .edit-steps button:not(.is-on) .edit-step-label,
+  .ns-head .edit-steps button:not(.is-on) .edit-step-label {
+    display: none;
+  }
+}
