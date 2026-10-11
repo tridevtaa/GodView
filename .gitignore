@@ -1,0 +1,18 @@
+backend/serviceAccountKey.json
+backend/venv/
+backend/__pycache__/
+frontend/node_modules/
+frontend/.env
+frontend/dist/
+.claude/
+
+# Real student data, kept out of git
+frontend/src/data/*.local.json
+
+# Wrangler local state
+frontend/.wrangler/
+
+# Real school data used to seed/migrate; never commit
+supabase/*.local.sql
+supabase/.temp/
+scripts/*.local.json

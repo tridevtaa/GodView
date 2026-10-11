@@ -1,0 +1,12 @@
+// Cloudflare Workers config: serves the Vite build as static assets.
+// Workers Builds runs `npm run build` (root dir: frontend), then `npx wrangler deploy`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "godview",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths fall back to index.html, so client-side routes keep working.
+    "not_found_handling": "single-page-application"
+  }
+}
