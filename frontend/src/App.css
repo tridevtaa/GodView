@@ -10444,3 +10444,50 @@ input[type="date"]::-webkit-date-and-time-value {
 .gsearch .search > .icon {
   z-index: 1;
 }
+
+@media (max-width: 760px) {
+  /* The + menu in Liquid Glass, opening above the search pill */
+  .tabbar .plus-sheet {
+    bottom: calc(100% + 14px + var(--dock-h, 0px));
+    min-width: 240px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 28px;
+    /* Frosted but readable: a blur can't see through the bar it sits in,
+       so the glass is mostly opaque white with the same rim and sheen. */
+    background: linear-gradient(180deg, #fff, #f6f7fd);
+    box-shadow:
+      0 16px 40px rgba(29, 35, 102, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .tabbar .plus-sheet button {
+    padding: 9px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .tabbar .plus-sheet button:hover,
+  .tabbar .plus-sheet button:focus-visible,
+  .tabbar .plus-sheet button:active {
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(29, 35, 102, 0.08);
+  }
+
+  .tabbar .plus-sheet-icon {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: linear-gradient(180deg, rgba(236, 238, 250, 0.95), rgba(236, 238, 250, 0.6));
+    box-shadow: inset 0 1px 0 #fff;
+  }
+
+  /* While the menu is open the page behind dims a touch */
+  .app:has(.tab-plus.is-open)::after {
+    position: fixed;
+    inset: 0;
+    z-index: 28;
+    background: rgba(29, 35, 102, 0.08);
+    content: "";
+    pointer-events: none;
+  }
+}
