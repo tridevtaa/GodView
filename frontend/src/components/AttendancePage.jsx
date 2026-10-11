@@ -193,7 +193,8 @@ function Register({ school, session, day, group, canMark, viewer }) {
     <section className="att-register">
       <div className="att-register-head">
         <div>
-          <h2>{classText(group.klass, group.section)}</h2>
+          {/* The class is named above the card already. */}
+          <h2 className="sr-only">{classText(group.klass, group.section)}</h2>
           <p className="row-sub">
             {saved
               ? `Marked by ${saved.by} at ${timeText(saved.at)}`
