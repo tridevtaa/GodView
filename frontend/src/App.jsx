@@ -281,7 +281,8 @@ export default function App() {
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "users"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
-    ...(!isPrincipal ? [["homework", "Give homework", "book"]] : []),
+    // Homework is given by teachers; owners, admins and the principal see it.
+    ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(!isPrincipal ? [["message", "New message", "message"]] : []),
     ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
   ];
@@ -404,7 +405,7 @@ export default function App() {
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={isPrincipal} heading={studentsSwitch} start={quick.kind === "homework" ? quick.at : 0} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={studentsSwitch} start={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
             start={quick.kind === "message" ? quick.at : 0}
