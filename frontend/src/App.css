@@ -6224,7 +6224,7 @@ button.profile-stat:hover {
   /* Room for the bar (and the install banner) under the last row. */
   .app,
   .pa {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    padding-bottom: calc(76px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -6257,7 +6257,7 @@ button.profile-stat:hover {
 @media (max-width: 760px) {
   .app .install,
   .pa .install {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
   }
 }
 
@@ -7220,7 +7220,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .att-save {
-    bottom: calc(68px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(68px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .att-overview button {
@@ -8361,7 +8361,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .chat-end {
-    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -8526,7 +8526,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
   /* Above the bottom tab bar and the install banner */
   .chat-compose {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .inbox-chat .chat-compose,
@@ -8918,7 +8918,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .profile-full .edit-foot {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
     margin: 16px calc(-1 * var(--gutter)) 0;
     padding: 10px var(--gutter);
   }
@@ -9885,7 +9885,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .marks-save {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
   .marks-list li {
@@ -10058,7 +10058,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
   .app,
   .pa {
-    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+    padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -10156,5 +10156,338 @@ input[type="date"]::-webkit-date-and-time-value {
   .page .page-header {
     align-items: flex-start;
     min-height: 0;
+  }
+}
+
+/* ---------------------------------------------------------------
+   The common search: in the header on computers, docked just above
+   the tab bar on phones (everything fixed at the bottom moves up by
+   --dock-h to make room). */
+.gsearch {
+  position: relative;
+  flex: 0 1 340px;
+  min-width: 0;
+}
+
+.gsearch .search {
+  width: 100%;
+  max-width: none;
+}
+
+.gsearch-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: max(100%, 380px);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgba(29, 35, 102, 0.2), 0 0 0 1px var(--border);
+}
+
+.gsearch-panel section + section {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.gsearch-panel h4 {
+  margin: 6px 10px 4px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gsearch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gsearch-row:hover,
+.gsearch-row:focus-visible {
+  background: var(--brand-soft);
+}
+
+.gsearch-row .gsearch-photo {
+  width: 36px;
+  height: 36px;
+  font-size: 13px;
+}
+
+.gsearch-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.gsearch-last {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.gsearch-empty {
+  margin: 12px 10px;
+}
+
+@media (max-width: 760px) {
+  .app {
+    --dock-h: 58px;
+  }
+
+  /* An open conversation or the marks sheet has its own bottom bar */
+  .app:has(.inbox.has-open),
+  .app:has(.marks) {
+    --dock-h: 0px;
+  }
+
+  .app:has(.inbox.has-open) .gsearch,
+  .app:has(.marks) .gsearch {
+    display: none;
+  }
+
+  .gsearch {
+    position: fixed;
+    right: 0;
+    bottom: calc(54px + env(safe-area-inset-bottom));
+    left: 0;
+    z-index: 29;
+    padding: 8px var(--gutter);
+    background: none;
+    pointer-events: none;
+  }
+
+  /* Just the floating box: no strip behind it */
+  .gsearch .search,
+  .gsearch-panel {
+    pointer-events: auto;
+  }
+
+  .gsearch .search {
+    box-shadow: 0 4px 18px rgba(29, 35, 102, 0.16), 0 0 0 1px rgba(29, 35, 102, 0.06);
+  }
+
+  .gsearch .search input {
+    height: 42px;
+  }
+
+  /* Results open upwards, above the bar */
+  .gsearch-panel {
+    top: auto;
+    right: var(--gutter);
+    bottom: calc(100% + 8px);
+    left: var(--gutter);
+    width: auto;
+    max-height: 60vh;
+  }
+}
+
+/* =========================================================
+   Liquid Glass tab bar (phones, staff and parent apps): a floating
+   frosted pill with a bright rim; a lighter glass bubble glides to
+   the active tab, stretching a little on the way, with a spring.
+   ========================================================= */
+@media (max-width: 760px) {
+  .tabbar {
+    right: 14px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 14px;
+    height: 62px;
+    padding: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 12px 32px rgba(29, 35, 102, 0.18),
+      0 2px 6px rgba(29, 35, 102, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .tabbar > button,
+  .tabbar > .tab-plus-wrap {
+    position: relative;
+    z-index: 1;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .tabbar button.active .tab-icon {
+    animation: none;
+  }
+
+  /* The bubble */
+  .glass-pill {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: calc(6px + (100% - 12px) / var(--n) * var(--i));
+    z-index: 0;
+    width: calc((100% - 12px) / var(--n));
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.45));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 2px rgba(91, 104, 196, 0.12),
+      0 4px 12px rgba(29, 35, 102, 0.12);
+    transition: left 0.55s cubic-bezier(0.32, 1.35, 0.45, 1);
+    animation: glass-stretch-a 0.55s cubic-bezier(0.3, 0.7, 0.4, 1);
+    pointer-events: none;
+  }
+
+  .glass-pill.is-b {
+    animation-name: glass-stretch-b;
+  }
+
+  @keyframes glass-stretch-a {
+    0% { transform: scale(1, 1); }
+    35% { transform: scale(1.22, 0.86); }
+    70% { transform: scale(0.96, 1.04); }
+    100% { transform: scale(1, 1); }
+  }
+
+  @keyframes glass-stretch-b {
+    0% { transform: scale(1, 1); }
+    35% { transform: scale(1.22, 0.86); }
+    70% { transform: scale(0.96, 1.04); }
+    100% { transform: scale(1, 1); }
+  }
+
+  /* A press squeezes the glass a touch */
+  .tabbar:has(> button:active) .glass-pill {
+    transform: scale(0.97);
+  }
+
+  .tabbar .seg-count {
+    top: 6px;
+  }
+
+  /* Everything above the bar moves up: the bar now floats 10px up and
+     is 62px tall. */
+  .app,
+  .pa {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+
+  .gsearch {
+    bottom: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .chat-compose,
+  .att-save,
+  .marks-save,
+  .profile-full .edit-foot {
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+
+  .pa .chat-compose {
+    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+
+  .app .install,
+  .pa .install {
+    bottom: calc(86px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
+  }
+
+  .chat-end {
+    scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-pill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* The search pill: glass, matching the tab bar */
+  .gsearch .search {
+    border-radius: 999px;
+    box-shadow: none;
+  }
+
+  .gsearch .search input {
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.45));
+    backdrop-filter: blur(22px) saturate(1.9);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9);
+    box-shadow:
+      0 10px 26px rgba(29, 35, 102, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+.gsearch .search > .icon {
+  z-index: 1;
+}
+
+@media (max-width: 760px) {
+  /* The + menu in Liquid Glass, opening above the search pill */
+  .tabbar .plus-sheet {
+    bottom: calc(100% + 14px + var(--dock-h, 0px));
+    min-width: 240px;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 28px;
+    /* Frosted but readable: a blur can't see through the bar it sits in,
+       so the glass is mostly opaque white with the same rim and sheen. */
+    background: linear-gradient(180deg, #fff, #f6f7fd);
+    box-shadow:
+      0 16px 40px rgba(29, 35, 102, 0.22),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .tabbar .plus-sheet button {
+    padding: 9px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .tabbar .plus-sheet button:hover,
+  .tabbar .plus-sheet button:focus-visible,
+  .tabbar .plus-sheet button:active {
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: inset 0 1px 0 #fff, 0 2px 8px rgba(29, 35, 102, 0.08);
+  }
+
+  .tabbar .plus-sheet-icon {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: linear-gradient(180deg, rgba(236, 238, 250, 0.95), rgba(236, 238, 250, 0.6));
+    box-shadow: inset 0 1px 0 #fff;
+  }
+
+  /* While the menu is open the page behind dims a touch */
+  .app:has(.tab-plus.is-open)::after {
+    position: fixed;
+    inset: 0;
+    z-index: 28;
+    background: rgba(29, 35, 102, 0.08);
+    content: "";
+    pointer-events: none;
   }
 }

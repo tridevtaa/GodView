@@ -22,6 +22,7 @@ import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
 import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
+import GlassPill from "./GlassPill.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -192,6 +193,7 @@ export default function ParentApp({ phone }) {
 
             {/* Phones: the same sections in a bottom bar, like the staff app. */}
             <nav className="tabbar" aria-label="Sections">
+              <GlassPill index={TABS.findIndex(([v]) => v === tab)} count={TABS.length} />
               {TABS.map(([v, l, icon]) => (
                 <button key={v} className={tab === v ? "active" : ""} aria-current={tab === v ? "page" : undefined} onClick={() => setTab(v)}>
                   <Icon name={icon} size={22} className="tab-icon" weight={tab === v ? "fill" : "regular"} />

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import Logo from "./Logo.jsx";
+import GlassPill from "./GlassPill.jsx";
 import AccountMenu from "./AccountMenu.jsx";
 import Icon from "./Icon.jsx";
 
@@ -12,7 +13,8 @@ const ICONS = { students: "scholar", academics: "academics", attendance: "regist
 // session: the session picker, shown beside the logo.
 // actions: [[key, label, icon], …] for the + in the middle of the phone tab
 // bar (everything you can create); onAction(key) runs one.
-export default function TopBar({ mode, onMode, sections, onSettings, session, actions = [], onAction }) {
+// search: the common search (header on computers; above the tab bar on phones).
+export default function TopBar({ mode, onMode, sections, onSettings, session, actions = [], onAction, search }) {
   const [sheet, setSheet] = useState(false);
   const sheetRef = useDismiss(sheet, useCallback(() => setSheet(false), []));
   const half = Math.ceil(sections.length / 2);
@@ -42,8 +44,13 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
       )}
     </div>
   );
+  // Slot of the active tab in the phone bar (the + takes the middle slot).
+  const at = sections.findIndex(([v]) => v === mode);
+  const slots = sections.length + (actions.length > 0 ? 1 : 0);
+  const slot = at < 0 ? -1 : at + (actions.length > 0 && at >= half ? 1 : 0);
   const tabs = (className) => (
     <nav className={className} aria-label="Section">
+      {className === "tabbar" && <GlassPill index={slot} count={slots} />}
       {sections.map(([value, label, count], i) => [
         className === "tabbar" && i === half && plus,
         (
@@ -70,6 +77,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, ac
             <Logo />
             {session}
           </span>
+          {search}
           {sections.length > 1 && tabs("segmented topbar-tabs")}
           <AccountMenu onSettings={onSettings} />
         </div>
