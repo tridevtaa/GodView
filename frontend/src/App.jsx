@@ -267,7 +267,7 @@ export default function App() {
     ...(isAdmin ? [["fees", "Fees"]] : []),
   ];
   const studentsSwitch = (
-    <nav className="segmented segmented-sm students-switch" aria-label="Students">
+    <nav className="segmented segmented-sm students-switch page-switch" aria-label="Students">
       {studentParts.map(([v, l]) => (
         <button key={v} className={mode === v ? "active" : ""} onClick={() => switchMode(v)}>
           {l}
@@ -276,7 +276,7 @@ export default function App() {
     </nav>
   );
   const staffTabs = isOwner && (
-    <nav className="segmented segmented-sm" aria-label="Staff">
+    <nav className="segmented segmented-sm page-switch" aria-label="Staff">
       {[
         ["people", "People"],
         ["access", "App access", pendingCount],
@@ -397,7 +397,6 @@ export default function App() {
         {!isStudents && (
           <div className="page-header">
             <div className="page-meta">
-              <span className="page-count">{loading ? "Loading…" : countLabel}</span>
               {staffTabs}
             </div>
             {canEdit && (
@@ -431,7 +430,7 @@ export default function App() {
             <Icon name="search" />
             <input
               type="search"
-              placeholder={isStudents && !loading ? `Search ${current.length.toLocaleString("en-IN")} students` : "Search"}
+              placeholder={loading ? "Search" : `Search ${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}`}
               aria-label={isStudents ? "Search by name, parent, admission no. or phone" : "Search by name, role or department"}
               value={query}
               onChange={(e) => setQuery(e.target.value)}

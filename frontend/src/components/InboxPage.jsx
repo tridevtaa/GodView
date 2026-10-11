@@ -76,7 +76,7 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
       <section className="inbox-list">
         <div className="inbox-head">
           <h1 className="sr-only">Inbox</h1>
-          <nav className="segmented segmented-sm inbox-filter" aria-label="Show">
+          <nav className="segmented segmented-sm inbox-filter page-switch" aria-label="Show">
             {FILTERS.map(([v, l]) => (
               <button key={v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>
                 {l}

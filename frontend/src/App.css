@@ -9571,34 +9571,52 @@ input[type="date"]::-webkit-date-and-time-value {
   font-size: 14px;
 }
 
-/* Phones: the same order on every Students page: the switch (full width),
-   then the main buttons, then anything else (e.g. Overview | Fee structure). */
+/* Phones: the same order on every page: the page's switch full width on
+   the first row, then the main buttons, then anything else (e.g. Overview |
+   Fee structure). Students, Attendance, Homework, Fees, Inbox, Staff. */
 @media (max-width: 760px) {
-  .page .page-header {
+  .page .page-header,
+  .inbox-head,
+  .toolbar-students {
+    flex-wrap: wrap;
     gap: 8px;
   }
 
-  .page-header > div:has(.students-switch),
-  .page-header .page-meta:has(.students-switch) {
+  .page-header > div:has(.page-switch),
+  .page-header .page-meta:has(.page-switch) {
     display: contents;
   }
 
-  .page-header .students-switch {
+  .page-switch {
     order: -2;
     width: 100%;
+    margin: 0;
   }
 
-  .page-header:has(.students-switch) > .page-actions,
-  .page-header:has(.students-switch) > .att-day {
+  .page-switch button {
+    flex: 1 0 auto;
+    padding: 0 10px;
+  }
+
+  .page-header:has(.page-switch) > .page-actions,
+  .page-header:has(.page-switch) > .att-day,
+  .inbox-head > .btn {
     order: -1;
+    width: 100%;
   }
 
-  .page-header:has(.students-switch) > .att-day {
-    width: 100%;
+  .page-header:has(.page-switch) > .page-actions .btn-primary,
+  .inbox-head > .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .page-header:has(.page-switch) > .att-day {
     justify-content: space-between;
   }
 
-  .toolbar-students {
-    gap: 8px;
+  .inbox-head {
+    padding: 0;
+    margin-bottom: 10px;
   }
 }
