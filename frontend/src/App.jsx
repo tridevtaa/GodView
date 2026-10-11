@@ -36,6 +36,17 @@ export default function App() {
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
+  // Full-screen map: Escape closes it, and the page behind doesn't scroll.
+  useEffect(() => {
+    if (view !== "map") return;
+    const onKey = (e) => e.key === "Escape" && setView("routes");
+    window.addEventListener("keydown", onKey);
+    document.documentElement.classList.add("map-open");
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("map-open");
+    };
+  }, [view]);
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
@@ -439,25 +450,27 @@ export default function App() {
           <>
             <h1 className="sr-only">Transport</h1>
             {/* The map on top: a short preview that opens to full size. */}
+            {/* The map card; tapping it opens the map full screen on top. */}
+            <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
+              <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
+            </Suspense>
+            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
             {view === "map" && (
-              <div className="tr-map-bar">
-                <button className="btn btn-secondary btn-sm" onClick={() => setView("routes")}>
-                  <Icon name="chevronDown" /> Collapse map
+              <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
+                <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
+                  <Icon name="x" size={20} />
                 </button>
+                <Suspense fallback={<p className="row-sub">Loading the map…</p>}>
+                  <StudentMap
+                    school={school}
+                    students={current}
+                    allStudents={current}
+                    canEdit={canEdit}
+                    onOpenStudent={(id) => (setView("routes"), openStudent(id))}
+                  />
+                </Suspense>
               </div>
             )}
-            <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
-              <StudentMap
-                school={school}
-                students={current}
-                allStudents={current}
-                canEdit={canEdit}
-                onOpenStudent={(id) => openStudent(id)}
-                compact={view !== "map"}
-                onExpand={() => setView("map")}
-              />
-            </Suspense>
-            {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
           </>
         ) : mode === "attendance" && seesAttendance ? (
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} onOpenStudent={(id) => openStudent(id)} />
