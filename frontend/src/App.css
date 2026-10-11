@@ -10549,3 +10549,98 @@ input[type="date"]::-webkit-date-and-time-value {
     padding-bottom: 68px;
   }
 }
+
+/* Date boxes (iPhone): the date sat high and large. Centre it and use
+   the same font as the other boxes, everywhere. */
+input[type="date"] {
+  display: flex;
+  align-items: center;
+  font: inherit;
+  line-height: normal;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 0;
+  margin: 0;
+  line-height: 1.25;
+  text-align: left;
+}
+
+/* Homework form: lighter */
+.hw-form {
+  gap: 12px;
+}
+
+.hw-form .input,
+.hw-form .textarea {
+  width: 100%;
+}
+
+.hw-form .input {
+  flex: none;
+  height: 44px;
+}
+
+.hw-due {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hw-due .row-sub {
+  margin-right: 2px;
+}
+
+.chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip-btn.is-on {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.hw-due .hw-date {
+  width: auto;
+  min-width: 150px;
+  height: 34px;
+  flex: 0 1 auto;
+}
+
+.hw-who .link-btn {
+  font-size: 14px;
+}
+
+.hw-due {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.hw-due .chip-btn {
+  flex: none;
+  padding: 0 12px;
+}
+
+.hw-who {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.hw-who .link-btn {
+  text-align: left;
+}
