@@ -10659,3 +10659,69 @@ input[type="date"]::-webkit-date-and-time-value {
 .hw-who .link-btn {
   text-align: left;
 }
+
+/* School logo in the header, at the size the owner chose (--logo-scale) */
+.logo .logo-partner,
+.logo-size-preview .logo-partner {
+  width: auto;
+  max-width: none;
+  height: calc(24px * var(--logo-scale, 1));
+  max-height: 52px;
+  object-fit: contain;
+}
+
+.pa-school-logo {
+  height: calc(24px * var(--logo-scale, 1)) !important;
+  max-height: 48px;
+}
+
+@media (max-width: 760px) {
+  .logo .logo-partner {
+    height: calc(22px * var(--logo-scale, 1));
+    max-height: 44px;
+  }
+}
+
+.logo-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 20px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+.logo-size-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+  height: 56px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.logo-size-range {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.logo-size-range em {
+  color: var(--success);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.logo-size-range input[type="range"] {
+  width: 100%;
+  accent-color: var(--brand);
+}
