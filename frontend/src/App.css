@@ -10509,7 +10509,9 @@ input[type="date"]::-webkit-date-and-time-value {
     pointer-events: none;
   }
 
+  /* Right above the keyboard: no home-bar space (the keyboard covers it),
+     plus whatever the keyboard covers if the page wasn't shrunk for it. */
   .is-typing .app .gsearch {
-    bottom: calc(8px + env(safe-area-inset-bottom));
+    bottom: calc(6px + var(--kb, 0px));
   }
 }
