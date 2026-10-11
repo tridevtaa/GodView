@@ -6,7 +6,7 @@ import Chat from "./Chat.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
 import StudentParents from "./StudentParents.jsx";
-import { Photo, gradeLabel, relation, tintFor } from "./PersonCard.jsx";
+import { Photo, gradeLabel, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
@@ -323,44 +323,6 @@ function GenderMark({ gender }) {
   );
 }
 
-function PhotoUpload({ person, kind, schoolId, onSaved }) {
-  const input = useRef(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function onFile(e) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setBusy(true);
-    setError("");
-    try {
-      onSaved(await savePhoto(schoolId, kind, person, file));
-    } catch (err) {
-      setError(err.message === "not-an-image" ? "Please choose an image file." : "Upload failed. Try again.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      <input ref={input} type="file" accept="image/*" hidden onChange={onFile} />
-      <button
-        type="button"
-        className="photo-upload"
-        onClick={() => input.current.click()}
-        disabled={busy}
-        title={person.has_photo ? "Change photo" : "Upload photo"}
-        aria-label={person.has_photo ? "Change photo" : "Upload photo"}
-      >
-        {busy ? <span className="spinner" /> : <Icon name="camera" />}
-      </button>
-      {error && <p className="field-error">{error}</p>}
-    </>
-  );
-}
-
 // canEdit: change the record (owners/admins, current session)
 // canWrite: photos, notes and results (anyone who can see the student, current session)
 // A student's or employee's profile. Students open as a full page (asPage),
@@ -391,7 +353,6 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
     ])
     .filter(([, rows]) => rows.length);
   const callNo = person.parent_phone || person.father_phone || person.mother_phone || person.phone;
-  const feeKnown = isStudent && isAdmin && person.fee_status && person.fee_status !== "unknown";
   const tabs = [
     ["details", "Details"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
@@ -423,85 +384,40 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             onTab={setTab}
           />
         ) : (
-        <>
-        <div className="profile-band">
-          <div className="profile-tools">
-            {canEdit && !editing && (
-              <button className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>
-                <Icon name="edit" />
-                Edit
-              </button>
-            )}
-            {!asPage && (
-              <button className="btn-icon profile-close" onClick={onClose} aria-label="Close">
-                <Icon name="x" size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <header className="profile-header">
-          <div className="profile-photo">
-            <Photo person={person} className="photo-lg" />
-            {canWrite && (
-              <PhotoUpload person={person} kind={mode} schoolId={schoolId} onSaved={(patch) => onUpdate(person.id, patch)} />
-            )}
-          </div>
-          <div className="profile-heading">
-            <div className="profile-chips">
-              <span className="chip-id">{isStudent ? person.admission_no : person.employee_no}</span>
-              <span className="tag">{isStudent ? gradeLabel(person.class) : person.designation}</span>
-              {isStudent && person.section && <span className="profile-section">{person.section}</span>}
-              {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
-              {person.status === "left" && <span className="badge badge-danger">Left</span>}
-            </div>
-            <h2>
-              {person.name}
-              {isStudent && <GenderMark gender={person.gender} />}
-            </h2>
-            <p className="profile-sub">
-              {isStudent
-                ? person.parent_name && `${relation(person.gender)} ${person.parent_name}`
-                : person.department}
-            </p>
-          </div>
-        </header>
-
-        {!editing && (feeKnown || callNo) && (
-          <div className="profile-strip">
-            {feeKnown && (
-              <button className={`profile-stat is-${person.fee_status}`} onClick={() => setTab("fees")} title="Open fees">
-                <span className={`fee fee-${person.fee_status}`}>₹</span>
-                <span>
-                  <span className="profile-stat-label">{Number(person.fee_due) > 0 ? "Due now" : "Fees"}</span>
-                  <strong>{Number(person.fee_due) > 0 ? rupees(person.fee_due) : "All paid"}</strong>
-                </span>
-              </button>
-            )}
-            {feeKnown && Number(person.fee_paid) > 0 && (
-              <div className="profile-stat">
-                <span>
-                  <span className="profile-stat-label">Paid this session</span>
-                  <strong>{rupees(person.fee_paid)}</strong>
-                </span>
+        <header className="ig-hero staff-hero">
+          <div className="ig-top">
+            <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
+            <div className="ig-head">
+              <div>
+                <h2 className="ig-name">{person.name}</h2>
+                <p className="ig-id">{[person.designation, person.department].filter(Boolean).join(" · ")}</p>
+                {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
               </div>
-            )}
-            {callNo && (
-              <span className="profile-actions">
-                <a className="btn btn-secondary btn-sm" href={`tel:${callNo}`}>
-                  <Icon name="phone" />
-                  Call
-                </a>
-                <a className="btn btn-secondary btn-sm" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer">
-                  <Icon name="message" />
-                  WhatsApp
-                </a>
-              </span>
-            )}
+              {!editing && (
+                <div className="ig-actions">
+                  {callNo && (
+                    <a className="ig-act" href={`tel:${callNo}`} aria-label="Call" title="Call">
+                      <Icon name="phone" size={18} />
+                    </a>
+                  )}
+                  {callNo && (
+                    <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
+                      <Icon name="whatsapp" size={19} />
+                    </a>
+                  )}
+                  {canEdit && (
+                    <button className="ig-act" onClick={() => setEditing(true)} aria-label="Edit details" title="Edit details">
+                      <Icon name="edit" size={18} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-
-        </>
+          <button className="btn-icon profile-close staff-close" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={18} />
+          </button>
+        </header>
         )}
 
         {isStudent && !editing && asPage && (

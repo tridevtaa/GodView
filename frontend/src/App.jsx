@@ -215,7 +215,7 @@ export default function App() {
   // Teachers only ever load their own classes; say so, so the number isn't
   // mistaken for the whole school.
   const countLabel = (() => {
-    const n = `${current.length.toLocaleString("en-IN")} ${mode}`;
+    const n = `${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}`;
     if (!isStudents || isAdmin || isPrincipal) return n;
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;

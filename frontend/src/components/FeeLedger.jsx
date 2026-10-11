@@ -54,25 +54,21 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
     );
   }
 
+  const paidDues = dues.length - open.length;
+  const extra = [upcoming > 0 && `${rupees(upcoming)} later`, paidTotal > 0 && `${rupees(paidTotal)} paid`].filter(Boolean).join(" · ");
+
   return (
     <div className="ledger-view">
-      <div className="ledger-stats">
+      {/* One line: what's due now, the rest in small print, and collect. */}
+      <div className="ledger-summary">
         <div>
-          <span>Due now</span>
-          <strong className={dueNow > 0 ? "is-due" : ""}>{rupees(dueNow)}</strong>
+          <strong className={dueNow > 0 ? "is-due" : "is-paid"}>{dueNow > 0 ? rupees(dueNow) : "Nothing due"}</strong>
+          <span className="row-sub">{dueNow > 0 ? `due now${extra ? ` · ${extra}` : ""}` : extra}</span>
         </div>
-        <div>
-          <span>Upcoming</span>
-          <strong>{rupees(upcoming)}</strong>
-        </div>
-        <div>
-          <span>Paid</span>
-          <strong className="is-paid">{rupees(paidTotal)}</strong>
-        </div>
-        {canEdit && (
+        {canEdit && !paying && (
           <button className="btn btn-primary btn-sm" onClick={() => setPaying(true)}>
-            <Icon name="plus" />
-            Record payment
+            <Icon name="rupee" />
+            Collect
           </button>
         )}
       </div>
@@ -90,65 +86,51 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
         />
       )}
 
-      <div className="ledger-section-head">
-        <h3>Dues</h3>
-        <label className="checkbox checkbox-inline">
-          <input type="checkbox" checked={showPaid} onChange={(e) => setShowPaid(e.target.checked)} />
-          <span>Show paid</span>
-        </label>
-      </div>
       {shown.length === 0 ? (
-        <p className="row-sub">Nothing outstanding.</p>
+        <p className="row-sub ledger-empty">Nothing outstanding.</p>
       ) : (
-        <table className="ledger-table">
-          <thead>
-            <tr>
-              <th>Fee</th>
-              <th>Due</th>
-              <th className="num">Amount</th>
-              <th className="num">Paid</th>
-              <th className="num">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((d) => (
-              <DueRow key={d.id} due={d} todayStr={todayStr} canEdit={canEdit} onChanged={changed} />
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <div className="ledger-section-head">
-        <h3>Payments</h3>
-      </div>
-      {payments.length === 0 ? (
-        <p className="row-sub">No payments yet.</p>
-      ) : (
-        <ul className="payment-list">
-          {payments.map((p) => (
-            <li key={p.id} className={p.status !== "success" ? "is-void" : ""}>
-              <div>
-                <strong>{rupees(p.amount)}</strong>
-                <span className="row-sub">
-                  {shortDate(p.paid_on)} · {METHODS[p.method]}
-                  {p.reference ? ` · ${p.reference}` : ""} · {p.receipt_no}
-                </span>
-              </div>
-              <div className="payment-actions">
-                {p.status !== "success" && <span className="badge badge-danger">Cancelled</span>}
-                <button className="link-btn" onClick={() => setReceipt(p.receipt_no)}>
-                  Receipt
-                </button>
-                {canEdit && p.status === "success" && (
-                  <CancelPayment onConfirm={async () => {
-                    await cancelPayment(p.id);
-                    await changed();
-                  }} />
-                )}
-              </div>
-            </li>
+        <ul className="due-list">
+          {shown.map((d) => (
+            <DueRow key={d.id} due={d} todayStr={todayStr} canEdit={canEdit} onChanged={changed} />
           ))}
         </ul>
+      )}
+      {paidDues > 0 && (
+        <button className="link-btn ledger-toggle" onClick={() => setShowPaid((v) => !v)}>
+          {showPaid ? "Hide paid" : `Show ${paidDues} paid`}
+        </button>
+      )}
+
+      {payments.length > 0 && (
+        <>
+          <h3 className="ledger-h">Payments</h3>
+          <ul className="payment-list">
+            {payments.map((p) => (
+              <li key={p.id} className={p.status !== "success" ? "is-void" : ""}>
+                <div>
+                  <strong>{rupees(p.amount)}</strong>
+                  <span className="row-sub">
+                    {[shortDate(p.paid_on), METHODS[p.method], p.reference, p.receipt_no].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+                <div className="payment-actions">
+                  {p.status !== "success" && <span className="badge badge-danger">Cancelled</span>}
+                  <button className="icon-btn-sm" onClick={() => setReceipt(p.receipt_no)} aria-label="Receipt" title="Receipt">
+                    <Icon name="file" size={16} />
+                  </button>
+                  {canEdit && p.status === "success" && (
+                    <CancelPayment
+                      onConfirm={async () => {
+                        await cancelPayment(p.id);
+                        await changed();
+                      }}
+                    />
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       {receipt && ledger.payments.find((p) => p.receipt_no === receipt) && (
@@ -164,11 +146,13 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
   );
 }
 
+// One due: what it is, when, how much is paid; the balance on the right.
 function DueRow({ due, todayStr, canEdit, onChanged }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(due.concession ?? 0));
   const [error, setError] = useState("");
   const overdue = Number(due.balance) > 0 && due.due_date && due.due_date < todayStr;
+  const settled = Number(due.balance) <= 0;
 
   async function save() {
     setError("");
@@ -177,51 +161,55 @@ function DueRow({ due, todayStr, canEdit, onChanged }) {
       setEditing(false);
       onChanged();
     } catch {
-      setError("Concession can’t be more than the amount.");
+      setError("Can’t be more than the amount.");
     }
   }
 
+  const sub = [
+    due.due_date && `Due ${shortDate(due.due_date)}`,
+    Number(due.paid) > 0 && `${rupees(due.paid)} of ${rupees(due.amount)} paid`,
+    Number(due.concession) > 0 && `${rupees(due.concession)} off`,
+  ].filter(Boolean);
+
   return (
-    <tr className={overdue ? "is-overdue" : ""}>
-      <td>
-        <div className="due-name">{due.head_name ?? "Fee"}</div>
-        <div className="row-sub">{due.label}</div>
-      </td>
-      <td>{due.due_date ? shortDate(due.due_date) : ""}</td>
-      <td className="num">
-        {rupees(due.amount)}
-        {Number(due.concession) > 0 && !editing && (
-          <div className="row-sub">−{rupees(due.concession)} concession</div>
-        )}
-        {editing ? (
+    <li className={`due-row${overdue ? " is-overdue" : ""}${settled ? " is-settled" : ""}`}>
+      <div className="due-main">
+        <strong>{[due.head_name ?? "Fee", due.label].filter(Boolean).join(" · ")}</strong>
+        <span className="row-sub">{sub.join(" · ")}</span>
+        {editing && (
           <div className="concession-edit">
-            <input className="input input-num" type="number" min="0" max={due.amount} value={value} onChange={(e) => setValue(e.target.value)} />
-            <button className="link-btn" onClick={save}>Save</button>
-            <button className="link-btn" onClick={() => setEditing(false)}>Cancel</button>
+            <span className="row-sub">Concession ₹</span>
+            <input className="input input-num" type="number" min="0" max={due.amount} value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+            <button className="btn btn-primary btn-sm" onClick={save}>
+              Save
+            </button>
+            <button className="icon-btn-sm" onClick={() => setEditing(false)} aria-label="Cancel">
+              <Icon name="x" size={15} />
+            </button>
             {error && <span className="field-error">{error}</span>}
           </div>
-        ) : (
-          canEdit &&
-          Number(due.paid) === 0 && (
-            <div>
-              <button className="link-btn" onClick={() => setEditing(true)}>
-                {Number(due.concession) > 0 ? "Change concession" : "Concession"}
-              </button>
-            </div>
-          )
         )}
-      </td>
-      <td className="num">{rupees(due.paid)}</td>
-      <td className="num">
-        <strong>{rupees(due.balance)}</strong>
-        {overdue && <div className="row-sub is-due">Overdue</div>}
-      </td>
-    </tr>
+      </div>
+      <div className="due-side">
+        <strong>{settled ? "Paid" : rupees(due.balance)}</strong>
+        {overdue && <span className="due-flag">Overdue</span>}
+      </div>
+      {canEdit && Number(due.paid) === 0 && !editing && !settled && (
+        <button className="icon-btn-sm" onClick={() => setEditing(true)} aria-label="Concession" title={Number(due.concession) > 0 ? "Change concession" : "Give a concession"}>
+          <Icon name="tag" size={16} />
+        </button>
+      )}
+    </li>
   );
 }
 
+const PAY_METHODS = ["cash", "upi", "cheque", "card", "bank_transfer"];
+
+// Amount and how it was paid; reference only when the method has one; date
+// and note tucked away (today, no note) until asked for.
 function PaymentForm({ suggested, onSave, onCancel }) {
   const [form, setForm] = useState({ amount: suggested ? String(suggested) : "", method: "cash", reference: "", paid_on: today(), note: "" });
+  const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -241,44 +229,38 @@ function PaymentForm({ suggested, onSave, onCancel }) {
 
   return (
     <form className="payment-form" onSubmit={submit}>
-      <div className="form-grid">
-        <label>
-          <span>Amount (₹)</span>
-          <input type="number" min="1" step="0.01" required value={form.amount} onChange={set("amount")} autoFocus />
-        </label>
-        <label>
-          <span>Paid by</span>
-          <select value={form.method} onChange={set("method")}>
-            {Object.entries(METHODS)
-              .filter(([k]) => k !== "online")
-              .map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          <span>{form.method === "cheque" ? "Cheque no." : "Reference / UTR"}</span>
-          <input value={form.reference} onChange={set("reference")} required={needsRef} maxLength={80} />
-        </label>
-        <label>
-          <span>Date</span>
-          <input type="date" value={form.paid_on} max={today()} onChange={set("paid_on")} required />
-        </label>
-        <label className="span-2">
-          <span>Note (optional)</span>
-          <input value={form.note} onChange={set("note")} maxLength={300} />
-        </label>
+      <label className="pay-amount">
+        <span className="sr-only">Amount</span>
+        <span className="pay-rupee">₹</span>
+        <input type="number" inputMode="decimal" min="1" step="0.01" required value={form.amount} onChange={set("amount")} autoFocus />
+      </label>
+      <div className="choice-row pay-methods" role="radiogroup" aria-label="Paid by">
+        {PAY_METHODS.map((m) => (
+          <button type="button" key={m} role="radio" aria-checked={form.method === m} className={`choice${form.method === m ? " on" : ""}`} onClick={() => setForm({ ...form, method: m })}>
+            {METHODS[m]}
+          </button>
+        ))}
       </div>
-      <p className="row-sub">Applied to the oldest dues first; anything extra is kept as credit.</p>
+      {needsRef && (
+        <input className="input" value={form.reference} onChange={set("reference")} required maxLength={80} placeholder={form.method === "cheque" ? "Cheque no." : "Reference / UTR"} />
+      )}
+      {more ? (
+        <div className="pay-more">
+          <input className="input" type="date" value={form.paid_on} max={today()} onChange={set("paid_on")} required aria-label="Paid on" />
+          <input className="input" value={form.note} onChange={set("note")} maxLength={300} placeholder="Note (optional)" />
+        </div>
+      ) : (
+        <button type="button" className="link-btn" onClick={() => setMore(true)}>
+          Paid today. Change date or add a note
+        </button>
+      )}
       {error && <p className="field-error">{error}</p>}
       <div className="payment-form-actions">
         <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
-        <button className="btn btn-primary btn-sm" disabled={busy || !(Number(form.amount) > 0)}>
-          {busy ? "Saving…" : "Save and show receipt"}
+        <button className="btn btn-primary btn-sm" disabled={busy || !(Number(form.amount) > 0)} title="Oldest dues are paid first; anything extra stays as credit">
+          {busy ? "Saving…" : "Save & receipt"}
         </button>
       </div>
     </form>
@@ -289,8 +271,8 @@ function CancelPayment({ onConfirm }) {
   const [asking, setAsking] = useState(false);
   if (!asking) {
     return (
-      <button className="link-btn link-danger" onClick={() => setAsking(true)}>
-        Cancel
+      <button className="icon-btn-sm" onClick={() => setAsking(true)} aria-label="Cancel payment" title="Cancel payment">
+        <Icon name="trash" size={16} />
       </button>
     );
   }
