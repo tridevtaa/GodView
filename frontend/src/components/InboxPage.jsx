@@ -34,6 +34,8 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     if (newAt && !readOnly) setPicking(true);
   }, [newAt, readOnly]);
   const [query, setQuery] = useState("");
+  // Search the conversations by student, parent or the last message.
+  const [find, setFind] = useState("");
   const byId = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
 
   const load = useCallback(
@@ -55,9 +57,13 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     return () => clearInterval(t);
   }, [load]);
 
-  const shown = (threads ?? []).filter(
-    (t) => filter === "all" || (filter === "unread" ? Number(t.unread) > 0 : Number(t.open_requests) > 0)
-  );
+  const q = find.trim().toLowerCase();
+  const shown = (threads ?? []).filter((t) => {
+    if (filter === "unread" ? !(Number(t.unread) > 0) : filter === "requests" ? !(Number(t.open_requests) > 0) : false) return false;
+    if (!q) return true;
+    const s = byId.get(t.student_id);
+    return `${s?.name ?? ""} ${s?.parent_name ?? ""} ${s?.mother_name ?? ""} ${t.last_body ?? ""}`.toLowerCase().includes(q);
+  });
   const counts = {
     unread: (threads ?? []).filter((t) => Number(t.unread) > 0).length,
     requests: (threads ?? []).filter((t) => Number(t.open_requests) > 0).length,
@@ -114,11 +120,18 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
         )}
 
 
+        <div className="inbox-search toolbar-sticky">
+          <label className="search">
+            <Icon name="search" />
+            <input type="search" placeholder="Search messages" aria-label="Search by student, parent or message" value={find} onChange={(e) => setFind(e.target.value)} />
+          </label>
+        </div>
+
         {error && <p className="notice notice-error">{error}</p>}
         {threads === null && !error && <div className="card card-skeleton inbox-skeleton" />}
         {threads && shown.length === 0 && (
           <p className="row-sub inbox-empty">
-            {filter === "all" ? "No conversations yet. Parents and staff write to each other here." : "Nothing here."}
+            {q ? `Nothing matches “${find}”.` : filter === "all" ? "No conversations yet. Parents and staff write to each other here." : "Nothing here."}
           </p>
         )}
         <ul className="inbox-threads">

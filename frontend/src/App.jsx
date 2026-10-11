@@ -59,6 +59,18 @@ export default function App() {
   }, [isOwner, school.id, mode]);
   const { sessions, current: currentSession } = useSessions(school.id);
 
+  // The pinned search strip frosts only once the page has scrolled.
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => root.classList.toggle("is-scrolled", window.scrollY > 4);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      root.classList.remove("is-scrolled");
+    };
+  }, []);
+
   // Teachers see Attendance only when they're a class's class teacher
   // (in-charge) this session; owners, admins and the principal always do.
   const [isClassTeacher, setIsClassTeacher] = useState(false);
@@ -425,22 +437,6 @@ export default function App() {
         ) : (
         <>
         <h1 className="sr-only">{title}</h1>
-        {!isStudents && (
-          <div className="page-header">
-            <div className="page-meta">
-              {staffTabs}
-            </div>
-            {canEdit && (
-              <div className="page-actions">
-                <button className="btn btn-primary" onClick={() => setAdding(true)}>
-                  <Icon name="plus" />
-                  Add staff
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {!loading && source === "error" && (
           <p className="notice notice-error">
             Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
@@ -455,8 +451,11 @@ export default function App() {
 
         {/* Students: search, grades and the actions on one line; the count
             lives in the search box. */}
-        <div className={`toolbar${isStudents ? " toolbar-students" : ""}`}>
+        {/* One row, pinned under the header while scrolling: the page switch,
+            search, filters and actions (Students and Staff alike). */}
+        <div className="toolbar toolbar-students toolbar-sticky">
           {isStudents && studentParts.length > 1 && studentsSwitch}
+          {!isStudents && staffTabs}
           <label className="search">
             <Icon name="search" />
             <input
@@ -474,6 +473,14 @@ export default function App() {
             </span>
           )}
           {viewOnly && <span className="badge badge-neutral">Past session · view only</span>}
+          {!isStudents && canEdit && (
+            <div className="page-actions toolbar-actions">
+              <button className="btn btn-primary" onClick={() => setAdding(true)}>
+                <Icon name="plus" />
+                Add staff
+              </button>
+            </div>
+          )}
           {isStudents && (
             <div className="page-actions toolbar-actions">
               {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}

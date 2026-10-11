@@ -10078,3 +10078,74 @@ input[type="date"]::-webkit-date-and-time-value {
     color: var(--text);
   }
 }
+
+/* ---------------------------------------------------------------
+   The search row stays pinned under the header while scrolling, on a
+   frosted strip with even padding all round. */
+.page > .toolbar-sticky {
+  position: sticky;
+  top: 64px;
+  z-index: 15;
+  margin: -12px calc(-1 * var(--gutter)) 6px;
+  padding: 12px var(--gutter);
+  background: transparent;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+/* Frosted only after scrolling (no strip at the top of the page), and
+   edge to edge on wide screens (a layer behind the row, 100vw wide). */
+.page > .toolbar-sticky::before {
+  position: absolute;
+  inset: 0 auto 0 50%;
+  z-index: -1;
+  width: 100vw;
+  transform: translateX(-50%);
+  opacity: 0;
+  background: rgba(238, 240, 248, 0.82);
+  backdrop-filter: saturate(1.6) blur(14px);
+  -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  box-shadow: 0 1px 0 rgba(29, 35, 102, 0.06);
+  transition: opacity 0.2s;
+  content: "";
+  pointer-events: none;
+}
+
+.is-scrolled .page > .toolbar-sticky::before {
+  opacity: 1;
+}
+
+/* Inbox: search at the top of the conversation list */
+.inbox-search {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  margin: 0 -12px 6px;
+  padding: 6px 20px 10px;
+  background: var(--surface);
+}
+
+.inbox-search .search {
+  max-width: none;
+}
+
+@media (max-width: 760px) {
+  .page > .toolbar-sticky {
+    top: 56px;
+    margin: -12px calc(-1 * var(--gutter)) 6px;
+    padding: 12px var(--gutter);
+  }
+
+  .inbox-search {
+    top: 56px;
+    margin: -4px calc(-1 * var(--gutter)) 6px;
+    padding: 8px var(--gutter);
+    background: transparent;
+    transition: background-color 0.2s;
+  }
+
+  .is-scrolled .inbox-search {
+    background: rgba(238, 240, 248, 0.82);
+    backdrop-filter: saturate(1.6) blur(14px);
+    -webkit-backdrop-filter: saturate(1.6) blur(14px);
+  }
+}
