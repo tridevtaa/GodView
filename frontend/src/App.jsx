@@ -267,19 +267,24 @@ export default function App() {
   // switch at the top; each role sees the parts it can use. School settings
   // are in the account menu (owner only).
   const leads = isAdmin || isPrincipal;
+  // Teachers: their daily work gets its own tabs (Attendance for class
+  // in-charges, Homework). Leads find these inside Students instead.
   const sections = [
     ["students", "Students"],
+    ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
   const STUDENT_PARTS = ["students", "attendance", "homework", "fees", "marks"];
-  const studentParts = [
-    ["students", "Students"],
-    ...(seesAttendance ? [["attendance", "Attendance"]] : []),
-    ["homework", "Homework"],
-    ...(isAdmin ? [["fees", "Fees"]] : []),
-  ];
+  const studentParts = leads
+    ? [
+        ["students", "Students"],
+        ["attendance", "Attendance"],
+        ["homework", "Homework"],
+        ...(isAdmin ? [["fees", "Fees"]] : []),
+      ]
+    : [["students", "Students"]];
   const studentsSwitch = (
     <nav className="segmented segmented-sm students-switch page-switch" aria-label="Students">
       {studentParts.map(([v, l]) => (
@@ -357,7 +362,7 @@ export default function App() {
   return (
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
-        mode={STUDENT_PARTS.includes(mode) ? "students" : mode}
+        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
@@ -450,9 +455,9 @@ export default function App() {
             {view !== "map" && <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />}
           </>
         ) : mode === "attendance" && seesAttendance ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={studentsSwitch} />
+          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} />
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={studentsSwitch} giveAt={quick.kind === "homework" ? quick.at : 0} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
             newAt={quick.kind === "message" ? quick.at : 0}
