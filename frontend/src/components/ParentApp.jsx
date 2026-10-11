@@ -24,10 +24,10 @@ import Chat from "./Chat.jsx";
 import "./parent.css";
 
 const TABS = [
-  ["fees", "Fees"],
-  ["results", "Results"],
-  ["homework", "Homework"],
-  ["inbox", "Messages"],
+  ["fees", "Fees", "rupee"],
+  ["results", "Results", "chart"],
+  ["homework", "Homework", "book"],
+  ["inbox", "Messages", "message"],
 ];
 // Local date (India), not UTC: before 5:30 am UTC is still yesterday.
 const today = () => {
@@ -150,20 +150,39 @@ export default function ParentApp({ phone }) {
 
         {child && (
           <>
+            {/* The child, like the staff student page: round photo, name,
+                class (section quieter), today's attendance. No card. */}
             <section className="pa-hero" style={{ "--tint": tintFor(child) }}>
               <Photo person={child} className="pa-hero-photo" />
               <div className="pa-hero-text">
                 <h1>{child.name}</h1>
-                <p className="pa-class">{[child.class && gradeLabel(child.class), child.section].filter(Boolean).join(" · ")}</p>
+                <p className="pa-class">
+                  {child.class && gradeLabel(child.class)}
+                  {child.section && <span className="pa-section"> · {child.section}</span>}
+                </p>
                 <TodayAttendance key={child.id} child={child} />
               </div>
             </section>
 
-            <nav className="segmented pa-tabs" aria-label="Sections">
-              {TABS.map(([v, l]) => (
-                <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
-                  {l}
-                  {tab !== v && badge(count(child.id, v), l.toLowerCase())}
+            <nav className="ig-tabs pa-tabs" aria-label="Sections">
+              {TABS.map(([v, l, icon]) => (
+                <button key={v} className={tab === v ? "is-on" : ""} onClick={() => setTab(v)} aria-current={tab === v ? "page" : undefined}>
+                  <span className="pa-tab-icon">
+                    <Icon name={icon} size={20} weight={tab === v ? "fill" : "regular"} />
+                    {tab !== v && badge(count(child.id, v), l.toLowerCase())}
+                  </span>
+                  <span>{l}</span>
+                </button>
+              ))}
+            </nav>
+
+            {/* Phones: the same sections in a bottom bar, like the staff app. */}
+            <nav className="tabbar" aria-label="Sections">
+              {TABS.map(([v, l, icon]) => (
+                <button key={v} className={tab === v ? "active" : ""} aria-current={tab === v ? "page" : undefined} onClick={() => setTab(v)}>
+                  <Icon name={icon} size={22} className="tab-icon" weight={tab === v ? "fill" : "regular"} />
+                  <span className="tab-label">{l}</span>
+                  {tab !== v && count(child.id, v) > 0 && <span className="seg-count">{count(child.id, v) > 99 ? "99+" : count(child.id, v)}</span>}
                 </button>
               ))}
             </nav>
@@ -403,6 +422,7 @@ function FeesTab({ child, since }) {
         </section>
       )}
 
+      {view.payments.length > 0 && (
       <section className="pa-card">
         <h2 className="pa-h2 pa-h2-total">
           Paid {view.paidTotal > 0 && <strong className="is-paid">{rupees(view.paidTotal)}</strong>}
@@ -429,10 +449,9 @@ function FeesTab({ child, since }) {
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="row-sub">No payments recorded yet.</p>
-        )}
+        ) : null}
       </section>
+      )}
 
       {receipt && <Receipt school={child.school} person={child} payment={receipt} dues={data.dues} onClose={() => setReceipt(null)} />}
     </>
@@ -571,7 +590,7 @@ function MessagesTab({ child, phone }) {
   return (
     <>
       {form && <RequestForm child={child} kind={form} onCancel={() => setForm(null)} onSent={() => (setForm(null), setTick((t) => t + 1))} />}
-      <section className="pa-card pa-chat">
+      <section className="pa-chat">
         <Chat
           studentId={child.id}
           viewer="parent"

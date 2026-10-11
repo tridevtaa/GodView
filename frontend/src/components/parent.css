@@ -889,3 +889,111 @@
   color: var(--success);
   font-weight: 600;
 }
+
+/* =========================================================
+   Parent app, lighter: the child header sits on the page (no
+   card or band), even icon tabs, the chat without a card.
+   ========================================================= */
+.pa-hero {
+  align-items: center;
+  overflow: visible;
+  padding: 4px 2px 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.pa-hero::before {
+  display: none;
+}
+
+.pa-hero-photo {
+  width: 76px;
+  height: 76px;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+.pa-hero-text {
+  padding-top: 0;
+}
+
+.pa-hero h1 {
+  margin: 0;
+}
+
+.pa-class {
+  margin: 2px 0 4px;
+  font-weight: 600;
+}
+
+.pa-section {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.pa-att {
+  margin-top: 4px;
+}
+
+/* Tabs: four equal columns with icons, like the student page */
+.ig-tabs.pa-tabs {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.ig-tabs.pa-tabs button {
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 10px 2px 9px;
+  font-size: 12px;
+}
+
+.pa-tab-icon {
+  position: relative;
+  display: inline-grid;
+}
+
+.pa-tab-icon .seg-count {
+  position: absolute;
+  top: -6px;
+  right: -12px;
+}
+
+.pa-chat {
+  padding: 0;
+}
+
+.pa-main .pa-chat .chat-compose {
+  background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
+}
+
+@media (max-width: 520px) {
+  .pa-hero {
+    align-items: center;
+    padding: 4px 0 0;
+  }
+
+  .pa-hero-photo {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+  }
+}
+
+/* Phones: sections live in the bottom bar, not under the child */
+@media (max-width: 760px) {
+  .ig-tabs.pa-tabs {
+    display: none;
+  }
+
+  .pa-hero {
+    margin-bottom: 4px;
+  }
+}

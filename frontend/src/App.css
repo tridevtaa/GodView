@@ -6218,9 +6218,10 @@ button.profile-stat:hover {
     box-shadow: 0 0 0 2px #fff;
   }
 
-  /* Room for the bar under the last row of content. */
-  .app {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  /* Room for the bar (and the install banner) under the last row. */
+  .app,
+  .pa {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
   }
 }
 
@@ -6251,7 +6252,8 @@ button.profile-stat:hover {
 }
 
 @media (max-width: 760px) {
-  .app .install {
+  .app .install,
+  .pa .install {
     bottom: calc(80px + env(safe-area-inset-bottom));
   }
 }
@@ -7215,7 +7217,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .att-save {
-    bottom: calc(68px + env(safe-area-inset-bottom));
+    bottom: calc(68px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
   }
 
   .att-overview button {
@@ -8356,7 +8358,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .chat-end {
-    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom));
+    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
   }
 }
 
@@ -8519,9 +8521,9 @@ input[type="date"]::-webkit-date-and-time-value {
     padding: 10px 4px;
   }
 
-  /* Above the bottom tab bar */
+  /* Above the bottom tab bar and the install banner */
   .chat-compose {
-    bottom: calc(64px + env(safe-area-inset-bottom));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
   }
 
   .inbox-chat .chat-compose,
@@ -8529,9 +8531,6 @@ input[type="date"]::-webkit-date-and-time-value {
     background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
   }
 
-  .pa-chat .chat-compose {
-    bottom: 0;
-  }
 
   .bubble {
     max-width: 84%;
@@ -8916,7 +8915,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 @media (max-width: 760px) {
   .profile-full .edit-foot {
-    bottom: calc(64px + env(safe-area-inset-bottom));
+    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
     margin: 16px calc(-1 * var(--gutter)) 0;
     padding: 10px var(--gutter);
   }
