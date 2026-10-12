@@ -91,9 +91,12 @@ console.log(`\nMatched by admission_no: ${matched.length} / ${byReg.size}`);
 console.log(`Unmatched: ${unmatched.length}`);
 
 if (unmatched.length) {
-  console.log("\nFirst 30 unmatched RegNos (file name -> no student with this admission_no):");
-  for (const u of unmatched.slice(0, 30)) console.log(`  ${u.reg}\t${u.name}\t(${u.count} payment(s), ₹${u.sum})`);
-  if (unmatched.length > 30) console.log(`  ...and ${unmatched.length - 30} more`);
+  const admissionSeries = unmatched.filter((u) => /^MIS2026-27/.test(u.reg));
+  const regular = unmatched.filter((u) => !/^MIS2026-27/.test(u.reg));
+  console.log(`\n${admissionSeries.length} look like new-admission RegNos (MIS2026-27xxx series):`);
+  for (const u of admissionSeries) console.log(`  ${u.reg}\t${u.name}\t(${u.count} payment(s), ₹${u.sum})`);
+  console.log(`\n${regular.length} other unmatched RegNos (file name -> no student with this admission_no):`);
+  for (const u of regular) console.log(`  ${u.reg}\t${u.name}\t(${u.count} payment(s), ₹${u.sum})`);
 }
 
 const nameMismatches = matched.filter((m) => m.name && m.dbName && m.name.trim().toLowerCase() !== m.dbName.trim().toLowerCase());
