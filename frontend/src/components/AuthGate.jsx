@@ -80,7 +80,8 @@ export function RequestAccess({ user, onSchool }) {
       const photoPath = await saveJoinPhoto(file);
       setForm((f) => ({ ...f, photoPath }));
       setPhoto((p) => ({ ...p, busy: false }));
-    } catch {
+    } catch (err) {
+      console.error("[join-photo]", err);
       setForm((f) => ({ ...f, photoPath: "" }));
       setPhoto({ preview: "", busy: false, error: "Couldn’t save that photo. Try another one." });
     }

@@ -291,6 +291,7 @@ function EditablePhoto({ person, kind, schoolId, canWrite, onSaved }) {
     try {
       onSaved(await savePhoto(schoolId, kind, person, file));
     } catch (err) {
+      console.error("[profile-photo]", err);
       setError(err.message === "not-an-image" ? "Choose an image." : "Upload failed.");
     } finally {
       setBusy(false);

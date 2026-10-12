@@ -10,7 +10,9 @@ const encode = (canvas, type, quality) => new Promise((resolve) => canvas.toBlob
 
 // Centre-crops and scales an image file to a small SIZE×SIZE photo.
 async function toThumbnail(file) {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+  // Some WebKit versions reject the imageOrientation option outright; retry
+  // without it rather than losing the photo over EXIF rotation.
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
   const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = SIZE;
