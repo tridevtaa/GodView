@@ -180,6 +180,7 @@ export default function ParentApp({ phone }) {
                   {child.class && gradeLabel(child.class)}
                   {child.section && <span className="pa-section"> · {child.section}</span>}
                 </p>
+                {child.admission_no && <p className="pa-adm">#{child.admission_no}</p>}
                 <TodayAttendance key={child.id} child={child} />
               </div>
             </section>

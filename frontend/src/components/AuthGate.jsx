@@ -37,7 +37,7 @@ async function clearLegacyCaches() {
 export async function logOut() {
   await supabase.auth.signOut();
   // Photos kept on this device go with the session (shared computers).
-  await globalThis.caches?.delete("godview-photos-v1").catch(() => {});
+  await globalThis.caches?.delete("godview-photos-v2").catch(() => {});
   // So is everything remembered for speed (lists, photo links).
   await import("../data/cache.js").then((c) => c.clearCache()).catch(() => {});
   try {

@@ -4,7 +4,9 @@
 const CACHE = "godview-shell-v5";
 // Student photos (small thumbnails), kept on the device so they appear
 // instantly. Survives app updates; cleared on logout.
-const PHOTOS = "godview-photos-v1";
+// v2: photos used to keep one file name when changed, so phones kept the
+// old one; starting a fresh cache drops those stale copies once.
+const PHOTOS = "godview-photos-v2";
 const DAY = 24 * 60 * 60 * 1000;
 
 self.addEventListener("install", (event) => {

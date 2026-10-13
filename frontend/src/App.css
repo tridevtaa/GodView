@@ -12941,3 +12941,12 @@ input[type="date"]::-webkit-date-and-time-value {
     animation: none;
   }
 }
+
+/* Parent app: the child's admission number under the class */
+.pa-adm {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
