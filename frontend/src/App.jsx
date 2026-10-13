@@ -13,6 +13,7 @@ import GlobalSearch from "./components/GlobalSearch.jsx";
 import QuickActions from "./components/QuickActions.jsx";
 import HomePage from "./components/HomePage.jsx";
 import NoticeBoard from "./components/NoticeBoard.jsx";
+import CalendarPage from "./components/CalendarPage.jsx";
 import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
 import { rupeesShort } from "./data/money.js";
@@ -469,6 +470,7 @@ export default function App() {
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
   const [noticeCompose, setNoticeCompose] = useState(false);
+  const [calAdding, setCalAdding] = useState(false);
   // Collect fee pop-up, over whatever page is open: {} to pick a student,
   // { student } when one was tapped. feesAt nudges the Fees page to refresh.
   const [collect, setCollect] = useState(null);
@@ -510,10 +512,16 @@ export default function App() {
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
     ...(!isPrincipal ? [["message", "New message", "plane"]] : []),
     ["notice", "Post notice", "notice"],
+    ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
   function runAction(kind) {
     if (kind === "fee") {
       setCollect({});
+      return;
+    }
+    if (kind === "event") {
+      switchMode("calendar");
+      setCalAdding(true);
       return;
     }
     if (kind === "notice") {
@@ -548,7 +556,7 @@ export default function App() {
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
         // The noticeboard is reached from Home, so Home stays lit there.
-        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" ? "home" : mode}
+        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" || mode === "calendar" ? "home" : mode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
@@ -610,6 +618,20 @@ export default function App() {
               } else switchMode(go);
             }}
           />
+        ) : mode === "calendar" ? (
+          <>
+            <div className="page-header">
+              <div className="page-meta">
+                <button className="back-btn" onClick={() => switchMode("home")} aria-label="Back to Home" title="Back">
+                  <Icon name="chevronLeft" size={22} />
+                </button>
+                <h1 className="nb-page-title">
+                  <Icon name="calendar" /> Calendar
+                </h1>
+              </div>
+            </div>
+            <CalendarPage schoolId={school.id} canEdit={isAdmin} staff adding={calAdding} onAdding={setCalAdding} onOpenNotices={() => switchMode("notices")} />
+          </>
         ) : mode === "notices" ? (
           <>
             <div className="page-header">

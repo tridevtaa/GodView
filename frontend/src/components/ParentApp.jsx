@@ -25,6 +25,7 @@ import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import StatCards from "./StatCards.jsx";
 import NoticeBoard, { NoticePeek } from "./NoticeBoard.jsx";
+import CalendarPage, { CalendarPeek } from "./CalendarPage.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -111,7 +112,7 @@ export default function ParentApp({ phone }) {
     );
 
   // The noticeboard opens from Home, so Home stays lit there.
-  const lit = tab === "notices" ? "home" : tab;
+  const lit = tab === "notices" || tab === "calendar" ? "home" : tab;
 
   // Opening a section marks it seen; keep the previous time to show "New".
   useEffect(() => {
@@ -207,6 +208,19 @@ export default function ParentApp({ phone }) {
               ))}
             </nav>
 
+            {tab === "calendar" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="calendar" /> Calendar
+                  </h2>
+                </div>
+                <CalendarPage schoolId={child.school_id} onOpenNotices={() => setTab("notices")} />
+              </>
+            )}
             {tab === "notices" && (
               <>
                 <div className="pa-page-head">
@@ -405,7 +419,10 @@ function ParentHome({ child, news, onGo }) {
         </p>
       )}
 
-      <NoticePeek schoolId={child.school_id} onOpen={() => onGo("notices")} newCount={news("notices")} />
+      <div className="home-peeks">
+        <CalendarPeek schoolId={child.school_id} onOpen={() => onGo("calendar")} />
+        <NoticePeek schoolId={child.school_id} onOpen={() => onGo("notices")} newCount={news("notices")} />
+      </div>
 
       <StatCards items={cards} className="home-cards" />
     </div>

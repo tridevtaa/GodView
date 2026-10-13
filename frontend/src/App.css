@@ -12204,3 +12204,740 @@ input[type="date"]::-webkit-date-and-time-value {
     border-radius: 22px 22px 0 0;
   }
 }
+
+/* =========================================================
+   Notices: date leaf, picture cover, compose extras, viewer
+   ========================================================= */
+.date-leaf {
+  display: inline-flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  width: 46px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(29, 35, 102, 0.14), inset 0 0 0 1px rgba(29, 35, 102, 0.06);
+  line-height: 1;
+}
+
+.date-leaf-month {
+  width: 100%;
+  padding: 3px 0 2px;
+  background: linear-gradient(160deg, #6b78d6, var(--brand));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.date-leaf-day {
+  padding-top: 4px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.date-leaf-week {
+  padding: 1px 0 4px;
+  color: var(--text-3);
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+.date-leaf.is-small {
+  width: 34px;
+  border-radius: 8px;
+}
+
+.date-leaf.is-small .date-leaf-month {
+  padding: 2px 0 1px;
+  font-size: 8.5px;
+}
+
+.date-leaf.is-small .date-leaf-day {
+  padding: 2px 0 3px;
+  font-size: 14px;
+}
+
+.nb-head .date-leaf {
+  margin-right: 4px;
+}
+
+/* A picture: full-bleed cover, soft fade-in, the date pinned on it */
+.nb-item.has-image {
+  padding-top: 0;
+  overflow: hidden;
+}
+
+.nb-cover {
+  position: relative;
+  display: block;
+  width: calc(100% + 36px);
+  margin: 0 -18px 14px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: linear-gradient(135deg, var(--brand-soft), #f4f1fb);
+  aspect-ratio: 16 / 9;
+  cursor: zoom-in;
+}
+
+.nb-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 0.5s, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.nb-cover img.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+.nb-cover::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(20, 22, 60, 0.28), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.nb-cover-wait {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.55) 50%, transparent 70%) -200% 0 / 200% 100%;
+  animation: nb-shimmer 1.4s linear infinite;
+}
+
+@keyframes nb-shimmer {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.nb-cover .date-leaf {
+  position: absolute;
+  z-index: 1;
+  top: 12px;
+  left: 12px;
+  box-shadow: 0 6px 16px rgba(20, 22, 60, 0.3);
+}
+
+.nb-item.is-pinned.has-image {
+  box-shadow: inset 0 3px 0 var(--brand), var(--shadow-sm);
+}
+
+/* Compose: date and picture as chips */
+.nb-extras {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nb-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nb-chip.is-set {
+  border-style: solid;
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.nb-chip .icon {
+  color: var(--brand);
+}
+
+/* The real date input sits invisibly over the chip, so a tap opens the
+   phone's own date picker */
+.nb-chip input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.nb-pick-preview {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  aspect-ratio: 16 / 9;
+}
+
+.nb-pick-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nb-pick-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(20, 22, 60, 0.55);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.nb-pick-note {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(20, 22, 60, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+
+/* Full-screen picture */
+.nb-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 12, 30, 0.88);
+  animation: fade-in 0.2s both;
+  cursor: zoom-out;
+}
+
+.nb-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  object-fit: contain;
+  animation: nb-zoom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes nb-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+.nb-viewer-close {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.nb-peek-item .date-leaf {
+  margin-left: -44px;
+  margin-right: 10px;
+}
+
+@media (max-width: 760px) {
+  .nb-cover {
+    width: calc(100% + 30px);
+    margin: 0 -15px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-cover img,
+  .nb-viewer img {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* =========================================================
+   Calendar
+   ========================================================= */
+:root {
+  --k-holiday: #2e9d6a;
+  --k-exam: #d9822b;
+  --k-event: #5b68c4;
+  --k-meeting: #1597a6;
+  --k-other: #8a8fa8;
+  --k-notice: #c2528b;
+}
+
+.k-holiday { --k: var(--k-holiday); }
+.k-exam { --k: var(--k-exam); }
+.k-event { --k: var(--k-event); }
+.k-meeting { --k: var(--k-meeting); }
+.k-other { --k: var(--k-other); }
+.k-notice { --k: var(--k-notice); }
+
+.cal {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.cal-card,
+.cal-list {
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  animation: card-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.cal-list {
+  animation-delay: 80ms;
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cal-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 17px;
+  text-align: center;
+  animation: fade-in 0.3s both;
+}
+
+.cal-today {
+  position: absolute;
+  margin-left: 4px;
+  font-size: 12px;
+}
+
+.cal-head {
+  position: relative;
+}
+
+.cal-head .cal-today {
+  top: 34px;
+  right: 0;
+}
+
+.cal-week,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.cal-week span {
+  padding: 4px 0;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cal-week span:last-child {
+  color: var(--danger);
+}
+
+.cal-grid {
+  animation: cal-swap 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes cal-swap {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-height: 46px;
+  padding: 6px 0 4px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.cal-day:active {
+  transform: scale(0.94);
+}
+
+.cal-day:hover {
+  background: var(--surface-2, rgba(29, 35, 102, 0.04));
+}
+
+.cal-num {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.cal-day.is-sunday .cal-num {
+  color: var(--danger);
+}
+
+.cal-day.is-out {
+  opacity: 0.35;
+}
+
+.cal-day.is-holiday {
+  background: color-mix(in srgb, var(--k-holiday) 12%, transparent);
+}
+
+.cal-day.is-holiday .cal-num {
+  color: var(--k-holiday);
+}
+
+.cal-day.is-today .cal-num {
+  box-shadow: inset 0 0 0 2px var(--brand);
+  color: var(--brand);
+}
+
+.cal-day.is-picked .cal-num {
+  background: var(--brand);
+  box-shadow: 0 4px 10px rgba(91, 104, 196, 0.4);
+  color: #fff;
+}
+
+.cal-dots {
+  display: flex;
+  gap: 3px;
+  height: 5px;
+}
+
+.cal-dots i,
+.cal-legend i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--k);
+}
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cal-legend i {
+  width: 7px;
+  height: 7px;
+}
+
+.cal-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cal-list-head h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+}
+
+.cal-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cal-list li {
+  animation: card-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d);
+}
+
+.cal-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px 10px 14px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--k) 7%, var(--surface));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cal-item:disabled {
+  cursor: default;
+}
+
+.cal-item::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--k);
+  content: "";
+}
+
+.cal-item.is-past {
+  opacity: 0.55;
+}
+
+.cal-item .date-leaf-month {
+  background: var(--k);
+}
+
+.cal-item-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cal-item-main strong {
+  font-size: 14.5px;
+}
+
+.cal-kind {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--k) 14%, transparent);
+  color: var(--k);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.cal-empty {
+  padding: 18px 4px;
+  text-align: center;
+}
+
+/* Editor: kind as icon tiles */
+.cal-kinds {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.cal-kind-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cal-kind-pick .icon {
+  color: var(--k);
+}
+
+.cal-kind-pick.is-on {
+  border-color: var(--k);
+  background: color-mix(in srgb, var(--k) 12%, var(--surface));
+  color: var(--k);
+}
+
+.cal-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.cal-dates label {
+  display: flex;
+  flex: 1 1 130px;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cal-dates input {
+  height: 42px;
+}
+
+.cal-dates .nb-chip {
+  height: 42px;
+}
+
+.cal-remove {
+  margin-right: auto;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* Home: what's coming up, next to the noticeboard */
+.home-peeks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.cal-peek-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border, rgba(29, 35, 102, 0.06)) !important;
+}
+
+.cal-peek-item:last-child {
+  padding-bottom: 12px;
+}
+
+.cal-peek-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cal-peek-main strong {
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cal-dot-lg {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--k) 14%, transparent);
+  color: var(--k);
+}
+
+.cal-peek-empty {
+  margin: 0;
+  padding: 4px 14px 14px 58px;
+}
+
+@media (max-width: 760px) {
+  .cal {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cal-card,
+  .cal-list {
+    padding: 14px 12px;
+  }
+
+  .cal-day {
+    min-height: 42px;
+  }
+
+  .cal-kinds {
+    gap: 4px;
+  }
+
+  .cal-kind-pick {
+    padding: 8px 0 6px;
+    font-size: 10.5px;
+  }
+
+  .cal-item .cal-kind {
+    padding: 4px;
+  }
+
+  /* On phones the kind shows as its icon only */
+  .cal-item .cal-kind {
+    font-size: 0;
+  }
+
+  .cal-item .cal-kind .icon {
+    font-size: initial;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cal-grid,
+  .cal-card,
+  .cal-list,
+  .cal-list li {
+    animation: none;
+  }
+}
