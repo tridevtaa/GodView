@@ -262,15 +262,19 @@ export async function withPhotoUrls(people) {
 
 // Uploads a JPEG blob as the person's photo; returns the fields to update.
 export async function uploadPhoto(schoolId, kind, person, blob) {
-  const path = `${schoolId}/${kind}/${person.id}.jpg`;
-  // The file keeps its .jpg name (the database expects it); the content type
-  // says what it really is (WebP or JPEG).
-  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
+  // A new file name for every new photo: phones keep photos by name, so a
+  // reused name left the old photo showing on everyone else's device. The
+  // file keeps a .jpg name (the database expects it); the content type says
+  // what it really is (WebP or JPEG).
+  const path = `${schoolId}/${kind}/${person.id}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: blob.type || "image/jpeg" });
   if (error) throw error;
   // Students go through set_student_photo so their teachers can change photos
   // without update rights on the rest of the record.
   if (kind === "students") must(await supabase.rpc("set_student_photo", { student: person.id, path }));
   else must(await supabase.from(kind).update({ photo_path: path }).eq("id", person.id));
+  // The old file isn't used any more (best effort).
+  if (person.photo_path && person.photo_path !== path) supabase.storage.from(BUCKET).remove([person.photo_path]).catch(() => {});
   const { signedUrl } = must(await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_FOR));
   // Use the new link from now on (not a reused one for the old photo).
   try {
@@ -279,13 +283,6 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
     localStorage.setItem(SIGNED_KEY, JSON.stringify(store));
   } catch {
     // not stored: fine
-  }
-  // Drop the device's stored copy of the old photo so the new one shows.
-  try {
-    const u = new URL(signedUrl);
-    await (await caches.open("godview-photos-v1")).delete(u.origin + u.pathname);
-  } catch {
-    // No cache storage here (e.g. a private window): nothing to drop.
   }
   return { photo_path: path, photo_src: signedUrl };
 }
