@@ -1288,3 +1288,27 @@ export async function updateCalendarEvent(id, entry) {
 export async function deleteCalendarEvent(id) {
   must(await supabase.from("calendar_events").delete().eq("id", id));
 }
+
+// ------------------------------------------------------ deleting people ---
+
+// What deleting a student or staff profile would remove (owner only; null
+// otherwise). kind: "students" | "employees".
+export async function deletePreview(kind, id) {
+  return must(await supabase.rpc("delete_preview", { p_kind: kind === "students" ? "student" : "employee", p_id: id }));
+}
+
+// Deletes the profile for good (owner only), and its photo. Throws with
+// .hint "has-payments" (students with receipts), "is-self" or "is-owner".
+export async function deletePerson(kind, person) {
+  const { error } = await supabase.rpc(kind === "students" ? "delete_student" : "delete_employee", { p_id: person.id });
+  if (error) throw error;
+  if (person.photo_path) await supabase.storage.from(BUCKET).remove([person.photo_path]); // best effort
+}
+
+// A student who has left: kept with every record, off the lists.
+export async function markStudentLeft(id, sessionId) {
+  const today = new Date().toISOString().slice(0, 10);
+  must(await supabase.from("students").update({ status: "left", left_on: today }).eq("id", id));
+  if (sessionId) must(await supabase.from("student_enrolments").update({ status: "left" }).eq("student_id", id).eq("session_id", sessionId));
+  return { status: "left", left_as_of: today };
+}

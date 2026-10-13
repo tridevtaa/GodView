@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
 import { attendanceMonth, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
+import DeletePerson from "./DeletePerson.jsx";
 import Chat from "./Chat.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
@@ -328,8 +329,9 @@ function GenderMark({ gender }) {
 // canWrite: photos, notes and results (anyone who can see the student, current session)
 // A student's or employee's profile. Students open as a full page (asPage),
 // with a back bar and previous/next; employees as a pop-up.
-export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, canEdit, canWrite, onUpdate, onFeesChanged, onClose, routes = [], asPage = false }) {
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, isOwner = false, canEdit, canWrite, onUpdate, onDeleted, onFeesChanged, onClose, routes = [], asPage = false }) {
   const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState(initialTab);
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
@@ -455,6 +457,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               sessionId={sessionId}
               routes={routes}
               onCancel={() => setEditing(false)}
+              onDelete={isOwner && onDeleted ? () => setDeleting(true) : undefined}
               onSaved={(changes) => {
                 onUpdate(person.id, changes);
                 setEditing(false);
@@ -489,15 +492,37 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
       </section>
   );
 
+  const del = deleting && (
+    <DeletePerson
+      person={person}
+      kind={mode}
+      sessionId={sessionId}
+      onClose={() => setDeleting(false)}
+      onDeleted={(id) => {
+        setDeleting(false);
+        onDeleted(id);
+      }}
+      onLeft={(changes) => {
+        setDeleting(false);
+        setEditing(false);
+        onUpdate(person.id, changes);
+      }}
+    />
+  );
+
   if (!asPage) {
     return (
-      <div className="modal-backdrop" onClick={() => !editing && onClose()}>
-        {card}
-      </div>
+      <>
+        <div className="modal-backdrop" onClick={() => !editing && onClose()}>
+          {card}
+        </div>
+        {del}
+      </>
     );
   }
   return (
     <div className="profile-page">
+      {del}
       <nav className="profile-page-bar" aria-label="Student">
         <button className="back-btn" onClick={onClose} aria-label="Back to students" title="Back">
           <Icon name="chevronLeft" size={22} />
