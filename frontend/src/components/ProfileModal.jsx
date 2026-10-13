@@ -145,7 +145,7 @@ export function MonthAttendance({ studentId, title = "This month" }) {
   );
 }
 
-const TAB_ICONS = { details: "file", fees: "rupee", messages: "message", results: "chart" };
+const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: "chart" };
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.

@@ -1166,3 +1166,37 @@ export async function setParentPassword(password) {
   const { error } = await supabase.auth.updateUser({ password, data: { custom_password: true } });
   if (error) throw error;
 }
+
+// ---------------------------------------------------------- noticeboard ---
+
+// The school's notices, pinned first then newest. Staff see all of them;
+// parents only those meant for them (the database decides).
+export async function listNotices(schoolId) {
+  return must(
+    await supabase
+      .from("notices")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(100)
+  );
+}
+
+export async function postNotice(schoolId, { title, body, for_parents }) {
+  return must(
+    await supabase
+      .from("notices")
+      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents })
+      .select()
+      .single()
+  );
+}
+
+export async function updateNotice(id, changes) {
+  return must(await supabase.from("notices").update(changes).eq("id", id).select().single());
+}
+
+export async function deleteNotice(id) {
+  must(await supabase.from("notices").delete().eq("id", id));
+}

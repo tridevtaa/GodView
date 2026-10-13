@@ -24,6 +24,7 @@ import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import StatCards from "./StatCards.jsx";
+import NoticeBoard, { NoticePeek } from "./NoticeBoard.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -109,6 +110,9 @@ export default function ParentApp({ phone }) {
       </span>
     );
 
+  // The noticeboard opens from Home, so Home stays lit there.
+  const lit = tab === "notices" ? "home" : tab;
+
   // Opening a section marks it seen; keep the previous time to show "New".
   useEffect(() => {
     if (!childId || tab === "home") return;
@@ -181,10 +185,10 @@ export default function ParentApp({ phone }) {
 
             <nav className="ig-tabs pa-tabs" aria-label="Sections">
               {TABS.map(([v, l, icon]) => (
-                <button key={v} className={tab === v ? "is-on" : ""} onClick={() => setTab(v)} aria-current={tab === v ? "page" : undefined}>
+                <button key={v} className={lit === v ? "is-on" : ""} onClick={() => setTab(v)} aria-current={lit === v ? "page" : undefined}>
                   <span className="pa-tab-icon">
-                    <Icon name={icon} size={20} weight={tab === v ? "fill" : "regular"} />
-                    {tab !== v && badge(count(child.id, v), l.toLowerCase())}
+                    <Icon name={icon} size={20} weight={lit === v ? "fill" : "regular"} />
+                    {lit !== v && badge(count(child.id, v), l.toLowerCase())}
                   </span>
                   <span>{l}</span>
                 </button>
@@ -193,16 +197,29 @@ export default function ParentApp({ phone }) {
 
             {/* Phones: the same sections in a bottom bar, like the staff app. */}
             <nav className="tabbar" aria-label="Sections">
-              <GlassPill index={TABS.findIndex(([v]) => v === tab)} count={TABS.length} />
+              <GlassPill index={Math.max(0, TABS.findIndex(([v]) => v === lit))} count={TABS.length} />
               {TABS.map(([v, l, icon]) => (
-                <button key={v} className={tab === v ? "active" : ""} aria-current={tab === v ? "page" : undefined} onClick={() => setTab(v)}>
-                  <Icon name={icon} size={22} className="tab-icon" weight={tab === v ? "fill" : "regular"} />
+                <button key={v} className={lit === v ? "active" : ""} aria-current={lit === v ? "page" : undefined} onClick={() => setTab(v)}>
+                  <Icon name={icon} size={22} className="tab-icon" weight={lit === v ? "fill" : "regular"} />
                   <span className="tab-label">{l}</span>
-                  {tab !== v && count(child.id, v) > 0 && <span className="seg-count">{count(child.id, v) > 99 ? "99+" : count(child.id, v)}</span>}
+                  {lit !== v && count(child.id, v) > 0 && <span className="seg-count">{count(child.id, v) > 99 ? "99+" : count(child.id, v)}</span>}
                 </button>
               ))}
             </nav>
 
+            {tab === "notices" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="notice" /> Noticeboard
+                  </h2>
+                </div>
+                <NoticeBoard schoolId={child.school_id} since={since} />
+              </>
+            )}
             {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
@@ -387,6 +404,8 @@ function ParentHome({ child, news, onGo }) {
           <Icon name="check" size={18} /> Nothing waiting on you. Nice.
         </p>
       )}
+
+      <NoticePeek schoolId={child.school_id} onOpen={() => onGo("notices")} newCount={news("notices")} />
 
       <StatCards items={cards} className="home-cards" />
     </div>

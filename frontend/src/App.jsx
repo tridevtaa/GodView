@@ -12,6 +12,7 @@ import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
 import QuickActions from "./components/QuickActions.jsx";
 import HomePage from "./components/HomePage.jsx";
+import NoticeBoard from "./components/NoticeBoard.jsx";
 import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
 import { rupeesShort } from "./data/money.js";
@@ -465,6 +466,7 @@ export default function App() {
   // The + in the middle of the phone tab bar: everything this person can
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
+  const [noticeCompose, setNoticeCompose] = useState(false);
   // The common search: the session's students (kept from the Students
   // load, so it works on every page) and a conversation to open in Inbox.
   const [searchStudents, setSearchStudents] = useState([]);
@@ -493,17 +495,23 @@ export default function App() {
     />
   );
   const plusActions = [
-    ...(canEdit ? [["student", "Add student", "users"]] : []),
+    ...(canEdit ? [["student", "Add student", "scholar"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
     // Teachers' daily work: their class register (class in-charges), homework
     // and marks. Owners, admins and the principal see these, not give them.
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
-    ...(!isPrincipal ? [["message", "New message", "message"]] : []),
-    ...(isAdmin ? [["staff", "Add staff", "briefcase"]] : []),
+    ...(!isPrincipal ? [["message", "New message", "plane"]] : []),
+    ...(isAdmin ? [["staff", "Add staff", "teacher"]] : []),
+    ["notice", "Post notice", "notice"],
   ];
   function runAction(kind) {
+    if (kind === "notice") {
+      switchMode("notices");
+      setNoticeCompose(true);
+      return;
+    }
     const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
@@ -530,7 +538,8 @@ export default function App() {
   return (
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
-        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode}
+        // The noticeboard is reached from Home, so Home stays lit there.
+        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" ? "home" : mode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
@@ -592,6 +601,27 @@ export default function App() {
               } else switchMode(go);
             }}
           />
+        ) : mode === "notices" ? (
+          <>
+            <div className="page-header">
+              <div className="page-meta">
+                <button className="back-btn" onClick={() => switchMode("home")} aria-label="Back to Home" title="Back">
+                  <Icon name="chevronLeft" size={22} />
+                </button>
+                <h1 className="nb-page-title">
+                  <Icon name="notice" /> Noticeboard
+                </h1>
+              </div>
+              {!viewOnly && (
+                <div className="page-actions">
+                  <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
+                    <Icon name="plus" /> Post notice
+                  </button>
+                </div>
+              )}
+            </div>
+            <NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />
+          </>
         ) : mode === "team" ? (
           <TeamPage
             view="school"
