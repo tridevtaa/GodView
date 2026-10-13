@@ -12084,3 +12084,21 @@ input[type="date"]::-webkit-date-and-time-value {
     transition-delay: var(--d);
   }
 }
+
+@media (max-width: 760px) {
+  /* Icons only: a little smaller, centred on their spots, evenly spaced */
+  .fab-arc {
+    display: none;
+  }
+
+  .fab-action {
+    top: 5px;
+    left: 5px;
+    width: 46px;
+  }
+
+  .fab-action-icon {
+    width: 46px;
+    height: 46px;
+  }
+}
