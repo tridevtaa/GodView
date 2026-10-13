@@ -12941,3 +12941,35 @@ input[type="date"]::-webkit-date-and-time-value {
     animation: none;
   }
 }
+
+/* "Remove?" (tap again to confirm): a soft red pill, not a stretched circle */
+.icon-btn-sm.is-danger,
+.nb-actions .icon-btn-sm.is-danger,
+.icon-btn-sm.is-danger:hover,
+.icon-btn-sm.is-danger:focus-visible {
+  width: auto;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  border-color: transparent;
+  border-radius: 999px;
+  outline: none;
+  background: var(--danger-soft);
+  color: var(--danger);
+  animation: pill-in 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes pill-in {
+  from {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+}
+
+/* Touch screens keep :hover after a tap; don't leave a ring behind */
+@media (hover: none) {
+  .icon-btn-sm:hover:not(.is-danger) {
+    border-color: transparent;
+    background: none;
+    color: var(--text-3);
+  }
+}
