@@ -89,11 +89,36 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     <>
     {threads && (
       <StatCards
-        items={[
-          { label: "Unread", value: counts.unread, note: "conversations", tone: counts.unread ? "due" : undefined, onClick: () => setFilter("unread") },
-          { label: "Open requests", value: counts.requests, note: "leave, certificates", tone: counts.requests ? "overdue" : undefined, onClick: () => setFilter("requests") },
-          { label: "Conversations", value: all.length, onClick: () => setFilter("all") },
-        ]}
+        items={(() => {
+          const name = (t) => byId.get(t.student_id)?.name ?? "Student";
+          const unread = all.filter((t) => Number(t.unread) > 0);
+          const reqs = all.filter((t) => Number(t.open_requests) > 0);
+          const todayStr = new Date().toDateString();
+          return [
+            {
+              label: "Unread",
+              value: unread.length,
+              note: unread.length ? "conversations" : "All caught up",
+              tone: unread.length ? "due" : "paid",
+              rows: unread.slice(0, 3).map((t) => [name(t), `${t.unread} new`]),
+              onClick: () => setFilter("unread"),
+            },
+            {
+              label: "Open requests",
+              value: reqs.length,
+              note: reqs.length ? "leave and certificates" : "None waiting",
+              tone: reqs.length ? "overdue" : "paid",
+              rows: reqs.slice(0, 3).map((t) => [name(t), "waiting", "due"]),
+              onClick: () => setFilter("requests"),
+            },
+            {
+              label: "Conversations",
+              value: all.length,
+              note: `${all.filter((t) => new Date(t.last_at).toDateString() === todayStr).length} active today`,
+              onClick: () => setFilter("all"),
+            },
+          ];
+        })()}
       />
     )}
     <div className={`inbox${open ? " has-open" : ""}`}>

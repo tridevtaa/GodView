@@ -10895,16 +10895,248 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 /* Inbox: room for the cards above the list and conversation */
-.stat-cards + .inbox {
-  height: calc(100dvh - 64px - 56px - 116px);
+.stat-cards-wrap + .inbox {
+  height: calc(100dvh - 64px - 56px - 190px);
+  min-height: 420px;
 }
 
 @media (max-width: 760px) {
-  .stat-cards + .inbox {
+  .stat-cards-wrap + .inbox {
     height: auto;
+    min-height: 0;
   }
 
-  .stat-cards:has(+ .inbox.has-open) {
+  .stat-cards-wrap:has(+ .inbox.has-open) {
     display: none;
+  }
+}
+
+/* ---------------------------------------------------------------
+   Overview cards, richer: number (counts up), ring or bar that fills,
+   and a few breakdown rows. Phones: full-width cards, swiped. */
+.stat-cards-wrap {
+  margin: 0 0 20px;
+}
+
+.stat-cards-wrap .stat-cards {
+  margin: 0;
+}
+
+.stat-card {
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.stat-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stat-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stat-note {
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Ring */
+.stat-ring {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  transform: rotate(-90deg);
+}
+
+.stat-ring circle {
+  fill: none;
+  stroke-width: 6;
+}
+
+.stat-ring-bg {
+  stroke: var(--brand-soft);
+}
+
+.stat-ring-fg {
+  stroke: var(--brand);
+  stroke-linecap: round;
+  stroke-dasharray: var(--c);
+  stroke-dashoffset: var(--off);
+  animation: ring-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.stat-ring.is-paid .stat-ring-fg { stroke: var(--success); }
+.stat-ring.is-due .stat-ring-fg { stroke: var(--warning); }
+.stat-ring.is-overdue .stat-ring-fg { stroke: var(--danger); }
+
+.stat-ring text {
+  fill: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  transform: rotate(90deg);
+  transform-origin: 28px 28px;
+}
+
+@keyframes ring-fill {
+  from {
+    stroke-dashoffset: var(--c);
+  }
+}
+
+/* Bar */
+.stat-bar {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--brand-soft);
+}
+
+.stat-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--to);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--success), #8cc63f);
+  animation: bar-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.stat-bar-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+@keyframes bar-fill {
+  from {
+    width: 0;
+  }
+}
+
+/* Breakdown rows */
+.stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--border);
+  list-style: none;
+}
+
+.stat-rows li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  animation: row-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.stat-rows li:nth-child(2) { animation-delay: 0.06s; }
+.stat-rows li:nth-child(3) { animation-delay: 0.12s; }
+.stat-rows li:nth-child(4) { animation-delay: 0.18s; }
+
+.stat-rows span {
+  color: var(--text-3);
+}
+
+.stat-rows b {
+  font-weight: 600;
+}
+
+.stat-rows b.is-paid { color: var(--success); }
+.stat-rows b.is-due { color: var(--warning); }
+.stat-rows b.is-overdue { color: var(--danger); }
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.stat-dots {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  /* One full-width card at a time; swipe sideways */
+  .stat-cards-wrap .stat-cards {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .stat-cards-wrap .stat-cards::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stat-cards-wrap .stat-card {
+    flex: 0 0 100%;
+    gap: 10px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    scroll-snap-align: start;
+  }
+
+  .stat-cards-wrap .stat-card strong {
+    font-size: 26px;
+  }
+
+  .stat-cards-wrap .stat-card .stat-label {
+    font-size: 13px;
+  }
+
+  .stat-dots {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+
+  .stat-dots button {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(91, 104, 196, 0.25);
+    cursor: pointer;
+    transition: width 0.25s, background 0.25s;
+  }
+
+  .stat-dots button.is-on {
+    width: 18px;
+    background: var(--brand);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stat-ring-fg,
+  .stat-bar-fill,
+  .stat-rows li {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* Room for the card shadow inside the swipe strip */
+  .stat-cards-wrap .stat-cards {
+    margin: -6px calc(-1 * var(--gutter)) -14px;
+    padding: 6px var(--gutter) 14px;
+    scroll-padding: 0 var(--gutter);
   }
 }

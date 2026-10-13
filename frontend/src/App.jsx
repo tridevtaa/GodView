@@ -335,7 +335,10 @@ export default function App() {
         setToday({
           present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
           absent: rows.reduce((t, r) => t + Number(r.absent), 0),
+          leave: rows.reduce((t, r) => t + Number(r.on_leave), 0),
           marked: rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0),
+          notMarked: rows.filter((r) => Number(r.unmarked) === Number(r.students)).length,
+          classes: rows.length,
         })
       ).catch(() => {});
     } else {
@@ -345,6 +348,7 @@ export default function App() {
         setToday({
           present: own.filter((r) => r.status === "present" || r.status === "late").length,
           absent: own.filter((r) => r.status === "absent").length,
+          leave: own.filter((r) => r.status === "leave").length,
           marked: own.length,
         });
       }).catch(() => {});
@@ -353,28 +357,74 @@ export default function App() {
 
   const overview = (() => {
     if (loading) return null;
+    const n = (v) => v.toLocaleString("en-IN");
     if (isStudents) {
+      const boys = current.filter((p) => p.gender === "M").length;
+      const girls = current.filter((p) => p.gender === "F").length;
       const owing = current.filter((p) => Number(p.fee_due) > 0);
       const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
+      const paid = current.reduce((t, p) => t + (Number(p.fee_paid) || 0), 0);
+      const billed = current.reduce((t, p) => t + (Number(p.fee_billed) || 0), 0);
+      const overdue = current.filter((p) => p.fee_status === "overdue").length;
       const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+      const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
       return [
-        { label: leads ? "Students" : "My students", value: current.length.toLocaleString("en-IN"), note: leads ? `${gradeChoices.length} grades` : countLabel.replace(/^[\d,]+ students ?/, "") || undefined },
-        isAdmin && { label: "Due now", value: rupeesShort(due), note: `${owing.length.toLocaleString("en-IN")} students owe`, tone: due > 0 ? "due" : "paid", onClick: () => switchMode("fees") },
+        {
+          label: leads ? "Students" : "My students",
+          value: current.length,
+          note: leads ? `${gradeChoices.length} grades · ${classes} classes` : `${classes} class${classes === 1 ? "" : "es"}`,
+          rows: [
+            ["Boys · Girls", `${n(boys)} · ${n(girls)}`],
+            leads && ["New admissions", n(current.filter((p) => /new/i.test(p.admission_type ?? "")).length)],
+            ["On the bus", n(current.filter((p) => p.uses_bus).length)],
+          ],
+        },
+        isAdmin && {
+          label: "Due now",
+          value: due,
+          format: rupeesShort,
+          note: `${n(owing.length)} students owe`,
+          tone: due > 0 ? "due" : "paid",
+          bar: billed ? { value: paid, max: billed, label: `${Math.round((paid / billed) * 100)}% of the year collected` } : undefined,
+          rows: [
+            ["Collected", `${rupeesShort(paid)}${billed ? ` · ${Math.round((paid / billed) * 100)}%` : ""}`, "paid"],
+            ["Overdue (15+ days)", n(overdue), overdue ? "overdue" : undefined],
+          ],
+          onClick: () => switchMode("fees"),
+        },
         {
           label: "Present today",
-          value: today === null ? undefined : today.marked ? `${pct}%` : "–",
-          note: today?.marked ? `${today.present} of ${today.marked}` : "Not marked yet",
+          value: today === null ? undefined : today.marked ? today.present : "–",
+          note: today?.marked ? `of ${n(today.marked)} marked` : "Not marked yet",
           tone: pct === null ? undefined : pct >= 90 ? "paid" : pct >= 75 ? "due" : "overdue",
+          ring: pct ?? undefined,
+          rows: today?.marked
+            ? [
+                ["Absent", n(today.absent), today.absent ? "overdue" : undefined],
+                ["On leave", n(today.leave ?? 0)],
+                today.classes !== undefined && ["Classes not marked", `${today.notMarked} of ${today.classes}`, today.notMarked ? "due" : "paid"],
+              ]
+            : undefined,
           onClick: seesAttendance ? () => switchMode("attendance") : undefined,
         },
-        !isAdmin && { label: "Absent today", value: today === null ? undefined : today.marked ? today.absent : "–", note: today?.marked ? "students" : "Not marked yet", tone: today?.absent ? "overdue" : undefined },
       ];
     }
     const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
+    const depts = [...current.reduce((m, p) => m.set(p.department || "Other", (m.get(p.department || "Other") ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
     return [
-      { label: "Staff", value: current.length.toLocaleString("en-IN") },
-      { label: "Teaching", value: teaching, note: `${current.length - teaching} others` },
-      isOwner && { label: "Waiting for access", value: pendingCount, tone: pendingCount ? "due" : undefined, onClick: () => setStaffTab("access") },
+      {
+        label: "Staff",
+        value: current.length,
+        note: `${depts.length} department${depts.length === 1 ? "" : "s"}`,
+        rows: depts.slice(0, 3).map(([d, c]) => [d, n(c)]),
+      },
+      {
+        label: "Teaching",
+        value: teaching,
+        note: `${n(current.length - teaching)} others`,
+        bar: current.length ? { value: teaching, max: current.length, label: "Teaching share" } : undefined,
+      },
+      isOwner && { label: "Waiting for access", value: pendingCount, note: pendingCount ? "Tap to review" : "No one waiting", tone: pendingCount ? "due" : undefined, onClick: () => setStaffTab("access") },
     ];
   })();
   // Header: Students, Inbox, Staff and Transport. Everything about the
@@ -548,21 +598,29 @@ export default function App() {
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
-            <StatCards
-              items={[
-                { label: "Routes", value: routes.length, note: (() => {
-                  const n = routes.reduce((t, r) => t + r.stops.length, 0);
-                  return `${n} stop${n === 1 ? "" : "s"}`;
-                })() },
-                { label: "On the bus", value: current.filter((s) => s.uses_bus).length.toLocaleString("en-IN"), note: "students" },
-                {
-                  label: "Homes pinned",
-                  value: current.filter((s) => s.home_lat != null).length.toLocaleString("en-IN"),
-                  note: `of ${current.length.toLocaleString("en-IN")}`,
-                  onClick: () => setView("map"),
-                },
-              ]}
-            />
+            {(() => {
+              const onBus = current.filter((s) => s.uses_bus).length;
+              const pinned = current.filter((s) => s.home_lat != null).length;
+              const stops = routes.reduce((t, r) => t + r.stops.length, 0);
+              const perRoute = routes
+                .map((r) => [r.name, current.filter((s) => s.uses_bus && r.stops.some((st) => st.id === s.bus_stop_id)).length])
+                .sort((a, b) => b[1] - a[1]);
+              return (
+                <StatCards
+                  items={[
+                    { label: "Routes", value: routes.length, note: `${stops} stop${stops === 1 ? "" : "s"}`, rows: perRoute.slice(0, 3).map(([nm, c]) => [nm, `${c} students`]) },
+                    { label: "On the bus", value: onBus, note: `of ${current.length.toLocaleString("en-IN")} students`, bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined },
+                    {
+                      label: "Homes pinned",
+                      value: pinned,
+                      note: `${(current.length - pinned).toLocaleString("en-IN")} still to pin`,
+                      bar: current.length ? { value: pinned, max: current.length, label: "Homes pinned" } : undefined,
+                      onClick: () => setView("map"),
+                    },
+                  ]}
+                />
+              );
+            })()}
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
