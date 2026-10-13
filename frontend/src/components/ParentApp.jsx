@@ -14,7 +14,7 @@ import {
   setParentPassword,
   parentHasOwnPassword,
 } from "../data/api.js";
-import { METHODS, rupees } from "../data/money.js";
+import { METHODS, rupees, rupeesShort } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
 import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
@@ -23,9 +23,11 @@ import InstallPrompt from "./InstallPrompt.jsx";
 import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
+import StatCards from "./StatCards.jsx";
 import "./parent.css";
 
 const TABS = [
+  ["home", "Home", "home"],
   ["fees", "Fees", "rupee"],
   ["results", "Results", "chart"],
   ["homework", "Homework", "book"],
@@ -46,7 +48,8 @@ export default function ParentApp({ phone }) {
   const [children, setChildren] = useState(null);
   const [error, setError] = useState("");
   const [childId, setChildId] = useState(null);
-  const [tab, setTab] = useState("fees");
+  // Parents land on Home: everything about the child at a glance.
+  const [tab, setTab] = useState("home");
   const [pwOpen, setPwOpen] = useState(false);
   // First sign-in (still on the child's name + birth year): choose a
   // password before anything else. null while checking.
@@ -108,7 +111,7 @@ export default function ParentApp({ phone }) {
 
   // Opening a section marks it seen; keep the previous time to show "New".
   useEffect(() => {
-    if (!childId) return;
+    if (!childId || tab === "home") return;
     const key = `${childId}:${tab}`;
     setSince(unread.get(key)?.seen_at ?? null);
     if (!unread.has(key)) return; // dots not loaded yet
@@ -200,6 +203,7 @@ export default function ParentApp({ phone }) {
               ))}
             </nav>
 
+            {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
@@ -209,6 +213,182 @@ export default function ParentApp({ phone }) {
         </>
         )}
       </main>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------- home ---
+
+const n = (v) => Number(v || 0).toLocaleString("en-IN");
+const greeting = () => {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+};
+const plural = (k, word) => `${k} ${word}${k === 1 ? "" : "s"}`;
+
+// Home for a parent, like the staff Home: what needs them now (tap to go
+// there) and a card per part of the child's school life. Each card fills in
+// as its data arrives.
+function ParentHome({ child, news, onGo }) {
+  const [fees, setFees] = useState(null);
+  const [results, setResults] = useState(null);
+  const [homework, setHomework] = useState(null);
+  const [days, setDays] = useState(null);
+  useEffect(() => {
+    parentFees(child.id, child.school_id).then(setFees, () => setFees(false));
+    (child.session ? listResults(child.id, child.session.id) : Promise.resolve([])).then(setResults, () => setResults(false));
+    childHomework(child.id).then(setHomework, () => setHomework(false));
+    attendanceMonth(child.id, today()).then(setDays, () => setDays(false));
+  }, [child.id, child.school_id, child.session]);
+
+  const now = today();
+  const first = child.name.split(" ")[0];
+
+  // Fees
+  const open = fees ? fees.dues.filter((d) => Number(d.balance) > 0.009) : [];
+  const dueNow = open.filter((d) => !d.due_date || d.due_date <= now);
+  const overdue = dueNow.filter((d) => d.due_date && d.due_date < now);
+  const dueTotal = dueNow.reduce((t, d) => t + Number(d.balance), 0);
+  const next = open.filter((d) => d.due_date && d.due_date > now).sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
+  const paid = fees ? fees.payments.filter((p) => p.status === "success").reduce((t, p) => t + Number(p.amount), 0) : 0;
+  const openTotal = open.reduce((t, d) => t + Number(d.balance), 0);
+
+  // Attendance this month
+  const marked = days || [];
+  const todayMark = marked.find((d) => d.day === now);
+  const present = marked.filter((d) => d.status === "present" || d.status === "late").length;
+  const absent = marked.filter((d) => d.status === "absent").length;
+  const leave = marked.filter((d) => d.status === "leave").length;
+  const attPct = marked.length ? Math.round((present / marked.length) * 100) : null;
+
+  // Latest exam
+  const exam = useMemo(() => {
+    if (!results || !results.length) return null;
+    const m = new Map();
+    for (const row of results) m.set(row.exam, [...(m.get(row.exam) ?? []), row]);
+    const [name, rows] = [...m].sort(
+      (a, b) => Math.max(...b[1].map((x) => Date.parse(x.updated_at) || 0)) - Math.max(...a[1].map((x) => Date.parse(x.updated_at) || 0))
+    )[0];
+    const scored = rows.filter((x) => x.marks != null && Number(x.max_marks) > 0).map((x) => ({ ...x, pct: (Number(x.marks) / Number(x.max_marks)) * 100 }));
+    const got = scored.reduce((t, x) => t + Number(x.marks), 0);
+    const max = scored.reduce((t, x) => t + Number(x.max_marks), 0);
+    const sorted = [...scored].sort((a, b) => b.pct - a.pct);
+    return { name, pct: max ? Math.round((got / max) * 100) : null, best: sorted[0], low: sorted.length > 1 ? sorted[sorted.length - 1] : null };
+  }, [results]);
+
+  // Homework
+  const hw = homework || [];
+  const hwToday = hw.filter((h) => h.due_date === now).length;
+  const tomorrow = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const hwTomorrow = hw.filter((h) => h.due_date === tomorrow).length;
+  const hwUpcoming = hw.filter((h) => h.due_date && h.due_date >= now).length;
+
+  const unread = news("inbox");
+  const needs = [
+    overdue.length > 0 && { key: "overdue", icon: "rupee", text: `${rupees(overdue.reduce((t, d) => t + Number(d.balance), 0))} fees overdue`, go: "fees", tone: "overdue" },
+    !overdue.length && dueTotal > 0 && { key: "due", icon: "rupee", text: `${rupees(dueTotal)} fees due now`, go: "fees", tone: "due" },
+    unread > 0 && { key: "msg", icon: "plane", text: `${plural(unread, "new message")}`, go: "inbox", tone: "due" },
+    hwToday > 0 && { key: "hwt", icon: "book", text: `${hwToday} homework due today`, go: "homework", tone: "due" },
+    hwTomorrow > 0 && { key: "hwn", icon: "book", text: `${hwTomorrow} homework due tomorrow`, go: "homework" },
+    news("results") > 0 && { key: "res", icon: "chart", text: `${plural(news("results"), "new result")}`, go: "results" },
+    todayMark?.status === "absent" && { key: "abs", icon: "register", text: `${first} was marked absent today`, go: "inbox", tone: "overdue" },
+  ].filter(Boolean);
+
+  const go = (to) => () => onGo(to);
+  const cards = [
+    days !== false && {
+      icon: "register",
+      label: "Attendance this month",
+      value: days === null ? undefined : present,
+      note: marked.length ? `days present of ${marked.length}` : "Nothing marked yet",
+      tone: attPct === null ? undefined : attPct >= 90 ? "paid" : attPct >= 75 ? "due" : "overdue",
+      ring: attPct,
+      rows: marked.length
+        ? [
+            ["Today", todayMark ? MARK_TEXT[todayMark.status] : "Not marked yet", todayMark?.status === "absent" ? "overdue" : todayMark ? "paid" : undefined],
+            ["Absent", n(absent), absent ? "overdue" : undefined],
+            leave > 0 && ["On leave", n(leave)],
+          ]
+        : undefined,
+    },
+    fees !== false && {
+      icon: "rupee",
+      label: "Fees due now",
+      value: fees === null ? undefined : dueTotal,
+      format: rupeesShort,
+      note: dueTotal ? plural(dueNow.length, "fee") : "Nothing due right now",
+      tone: overdue.length ? "overdue" : dueTotal ? "due" : "paid",
+      bar: paid + openTotal > 0 ? { value: paid, max: paid + openTotal, label: "Paid so far" } : undefined,
+      rows:
+        paid + openTotal > 0
+          ? [
+              ["Paid so far", rupees(paid), "paid"],
+              next && ["Next due", `${rupees(next.balance)} · ${dateText(next.due_date, { day: "numeric", month: "short" })}`],
+            ]
+          : undefined,
+      onClick: go("fees"),
+    },
+    results !== false && {
+      icon: "chart",
+      label: exam ? exam.name : "Results",
+      value: results === null ? undefined : exam?.pct ?? "–",
+      format: (v) => `${v}%`,
+      note: exam ? "overall" : "No results yet",
+      tone: exam?.pct == null ? undefined : exam.pct >= 75 ? "paid" : exam.pct >= 50 ? "due" : "overdue",
+      rows: exam?.best && exam?.low ? [["Best", `${exam.best.subject} · ${Math.round(exam.best.pct)}%`, "paid"], ["Lowest", `${exam.low.subject} · ${Math.round(exam.low.pct)}%`, exam.low.pct < 50 ? "overdue" : undefined]] : undefined,
+      onClick: go("results"),
+    },
+    homework !== false && {
+      icon: "book",
+      label: "Homework",
+      value: homework === null ? undefined : hwUpcoming,
+      note: `to do · ${hwToday} due today`,
+      tone: hwToday ? "due" : undefined,
+      onClick: go("homework"),
+    },
+    {
+      icon: "plane",
+      label: "Messages",
+      value: unread,
+      note: unread ? "new" : "all read",
+      tone: unread ? "due" : undefined,
+      onClick: go("inbox"),
+    },
+  ];
+
+  return (
+    <div className="home pa-home">
+      <header className="home-hero">
+        <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+        <h1>{greeting()}</h1>
+        <p className="home-sub">{needs.length ? `${plural(needs.length, "thing")} need${needs.length === 1 ? "s" : ""} you today` : `All caught up on ${first}`}</p>
+      </header>
+
+      {needs.length > 0 ? (
+        <ul className="home-needs">
+          {needs.map((x, i) => (
+            <li key={x.key} style={{ "--d": `${i * 50}ms` }}>
+              <button className={`home-need is-${x.tone ?? "info"}`} onClick={() => onGo(x.go)}>
+                <span className="home-need-icon">
+                  <Icon name={x.icon} size={18} />
+                </span>
+                <span>{x.text}</span>
+                <Icon name="arrowRight" size={16} className="home-need-go" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="home-clear">
+          <Icon name="check" size={18} /> Nothing waiting on you. Nice.
+        </p>
+      )}
+
+      <StatCards items={cards} className="home-cards" />
     </div>
   );
 }
