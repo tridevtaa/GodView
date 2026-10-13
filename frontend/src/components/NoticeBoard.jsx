@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { deleteNotice, listNotices, postNotice, updateNotice } from "../data/api.js";
+import { createPortal } from "react-dom";
+import { NOTICE_IMAGE_DAYS, clearExpiredNoticeImages, deleteNotice, listNotices, noticeImageUrls, postNotice, removeNoticeImage, updateNotice, uploadNoticeImage } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Icon from "./Icon.jsx";
 
@@ -11,14 +12,44 @@ const when = (d) => {
   return t.toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(days > 300 ? { year: "numeric" } : {}) });
 };
 
+// A notice's date as a little tear-off calendar leaf: month, day, weekday.
+export function DateLeaf({ date, small = false }) {
+  const d = new Date(`${date}T00:00:00`);
+  return (
+    <span className={`date-leaf${small ? " is-small" : ""}`} aria-label={d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}>
+      <span className="date-leaf-month">{d.toLocaleDateString("en-IN", { month: "short" })}</span>
+      <span className="date-leaf-day">{d.getDate()}</span>
+      {!small && <span className="date-leaf-week">{d.toLocaleDateString("en-IN", { weekday: "short" })}</span>}
+    </span>
+  );
+}
+
+// A notice's picture is shown for NOTICE_IMAGE_DAYS after posting, then
+// removed (even before the clean-up has run, it stops showing).
+const showsImage = (n) => Boolean(n.image_path) && Date.now() - new Date(n.created_at) < NOTICE_IMAGE_DAYS * 864e5;
+
+// Links for the notices' pictures (private), fetched once per session.
+function useImageUrls(notices) {
+  const [urls, setUrls] = useState(new Map());
+  const paths = (notices ?? []).filter(showsImage).map((n) => n.image_path);
+  const key = paths.join("|");
+  useEffect(() => {
+    if (key) noticeImageUrls(key.split("|")).then(setUrls, () => {});
+  }, [key]);
+  return urls;
+}
+
 // The school's notices, shared by Home (a few) and the Noticeboard page.
 // Remembered for the session so Home and the page open filled.
-export function useNotices(schoolId) {
+// staff: also clear out expired pictures first (once a visit).
+export function useNotices(schoolId, staff = false) {
   const key = `notices:${schoolId}`;
   const [notices, setNotices] = useState(() => peek(key) ?? null);
   useEffect(() => {
-    if (schoolId) swr(key, () => listNotices(schoolId), setNotices).catch(() => setNotices((n) => n ?? []));
-  }, [schoolId, key]);
+    if (!schoolId) return;
+    const load = () => listNotices(schoolId);
+    swr(key, staff ? () => clearExpiredNoticeImages(schoolId).catch(() => {}).then(load) : load, setNotices).catch(() => setNotices((n) => n ?? []));
+  }, [schoolId, key, staff]);
   const update = (fn) =>
     setNotices((n) => {
       const next = fn(n ?? []);
@@ -33,8 +64,10 @@ export function useNotices(schoolId) {
 // me: the signed-in staff email (none for parents). since: last visit, to
 // mark notices New.
 export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, onCompose, since }) {
-  const [notices, setNotices] = useNotices(schoolId);
+  const [notices, setNotices] = useNotices(schoolId, Boolean(me));
   const [error, setError] = useState("");
+  const [viewing, setViewing] = useState(null); // picture shown full size
+  const urls = useImageUrls(notices);
   const canPost = Boolean(me);
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
 
@@ -50,7 +83,7 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
   async function remove(n) {
     setError("");
     try {
-      await deleteNotice(n.id);
+      await deleteNotice(n);
       setNotices((all) => all.filter((x) => x.id !== n.id));
     } catch {
       setError("Couldn’t remove that. Check your connection.");
@@ -78,10 +111,11 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
       {notices?.length > 0 && (
         <ul className="nb-list">
           {notices.map((n, i) => (
-            <Notice key={n.id} n={n} index={i} fresh={Boolean(since && n.created_at > since)} staffView={canPost} manage={canManage(n)} onPin={() => pin(n)} onRemove={() => remove(n)} />
+            <Notice key={n.id} n={n} image={urls.get(n.image_path)} onView={setViewing} index={i} fresh={Boolean(since && n.created_at > since)} staffView={canPost} manage={canManage(n)} onPin={() => pin(n)} onRemove={() => remove(n)} />
           ))}
         </ul>
       )}
+      {viewing && <ImageViewer src={viewing} onClose={() => setViewing(null)} />}
       {compose && <Compose schoolId={schoolId} onClose={() => onCompose(false)} onPosted={(n) => setNotices((all) => sortNotices([n, ...all]))} />}
     </div>
   );
@@ -89,7 +123,7 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
 
 // One notice. Long text is cut to four lines with Read more, only when it
 // really is cut (measured, so wide screens don't offer it for nothing).
-function Notice({ n, index, fresh, staffView, manage, onPin, onRemove }) {
+function Notice({ n, image, onView, index, fresh, staffView, manage, onPin, onRemove }) {
   const [expanded, setExpanded] = useState(false);
   const [cut, setCut] = useState(false);
   const body = useRef(null);
@@ -103,8 +137,16 @@ function Notice({ n, index, fresh, staffView, manage, onPin, onRemove }) {
     return () => ro.disconnect();
   }, [n.body, expanded]);
   return (
-    <li className={`nb-item${n.pinned ? " is-pinned" : ""}`} style={{ "--d": `${Math.min(index, 8) * 45}ms` }}>
+    <li className={`nb-item${n.pinned ? " is-pinned" : ""}${showsImage(n) ? " has-image" : ""}`} style={{ "--d": `${Math.min(index, 8) * 45}ms` }}>
+      {/* The picture as a cover, the date leaf pinned on it */}
+      {showsImage(n) && (
+        <button className="nb-cover" onClick={() => image && onView(image)} aria-label="View picture">
+          {image ? <img src={image} alt="" loading="lazy" onLoad={(e) => e.currentTarget.classList.add("is-in")} /> : <span className="nb-cover-wait" />}
+          {n.event_on && <DateLeaf date={n.event_on} />}
+        </button>
+      )}
       <div className="nb-head">
+        {n.event_on && !showsImage(n) && <DateLeaf date={n.event_on} />}
         <h3>{n.title}</h3>
         {n.pinned && !manage && (
           <span className="nb-pin" title="Pinned" aria-label="Pinned">
@@ -166,7 +208,10 @@ function RemoveButton({ onRemove }) {
 
 // Title, message, and who sees it. Short, so one step.
 function Compose({ schoolId, onClose, onPosted }) {
-  const [form, setForm] = useState({ title: "", body: "", for_parents: true });
+  const [form, setForm] = useState({ title: "", body: "", for_parents: true, event_on: "" });
+  const [picture, setPicture] = useState(null); // { file, preview }
+  const fileInput = useRef(null);
+  useEffect(() => () => picture && URL.revokeObjectURL(picture.preview), [picture]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -180,11 +225,14 @@ function Compose({ schoolId, onClose, onPosted }) {
     if (!form.title.trim()) return;
     setBusy(true);
     setError("");
+    let image_path = null;
     try {
-      onPosted(await postNotice(schoolId, form));
+      if (picture) image_path = await uploadNoticeImage(schoolId, picture.file);
+      onPosted(await postNotice(schoolId, { ...form, image_path }));
       onClose();
     } catch {
-      setError("Couldn’t post. Check your connection and try again.");
+      removeNoticeImage(image_path); // don't leave an unused picture behind
+      setError(picture && !image_path ? "Couldn’t upload the picture. Try a different one." : "Couldn’t post. Check your connection and try again.");
       setBusy(false);
     }
   }
@@ -202,7 +250,44 @@ function Compose({ schoolId, onClose, onPosted }) {
         </header>
         <div className="modal-body nb-form">
           <input className="textarea nb-title-input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Title, e.g. Sports day on Friday" maxLength={140} required autoFocus />
-          <textarea className="textarea nb-body-input" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder="Details (optional)" maxLength={4000} rows={6} />
+          <textarea className="textarea nb-body-input" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} placeholder="Details (optional)" maxLength={4000} rows={5} />
+          {picture && (
+            <div className="nb-pick-preview">
+              <img src={picture.preview} alt="" />
+              <span className="nb-pick-note">Shown for {NOTICE_IMAGE_DAYS} days</span>
+              <button type="button" className="nb-pick-remove" onClick={() => setPicture(null)} aria-label="Remove picture">
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          )}
+          <div className="nb-extras">
+            <label className={`nb-chip${form.event_on ? " is-set" : ""}`}>
+              <Icon name="calendar" size={16} />
+              {form.event_on ? new Date(`${form.event_on}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) : "Add a date"}
+              <input type="date" value={form.event_on} onChange={(e) => setForm({ ...form, event_on: e.target.value })} aria-label="Date (optional)" />
+            </label>
+            {form.event_on && (
+              <button type="button" className="icon-btn-sm" onClick={() => setForm({ ...form, event_on: "" })} aria-label="Remove date">
+                <Icon name="x" size={14} />
+              </button>
+            )}
+            {!picture && (
+              <button type="button" className="nb-chip" onClick={() => fileInput.current?.click()} title={`Pictures are removed ${NOTICE_IMAGE_DAYS} days after posting`}>
+                <Icon name="image" size={16} /> Add a picture
+              </button>
+            )}
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file?.type.startsWith("image/")) setPicture({ file, preview: URL.createObjectURL(file) });
+              }}
+            />
+          </div>
           <div className="segmented segmented-sm nb-audience" role="radiogroup" aria-label="Who can see it">
             <button type="button" role="radio" aria-checked={form.for_parents} className={form.for_parents ? "active" : ""} onClick={() => setForm({ ...form, for_parents: true })}>
               <Icon name="users" size={16} /> Parents & staff
@@ -227,8 +312,8 @@ function Compose({ schoolId, onClose, onPosted }) {
 }
 
 // A few notices for Home, with a link to the page.
-export function NoticePeek({ schoolId, onOpen, newCount = 0 }) {
-  const [notices] = useNotices(schoolId);
+export function NoticePeek({ schoolId, onOpen, newCount = 0, staff = false }) {
+  const [notices] = useNotices(schoolId, staff);
   if (!notices?.length) return null;
   const top = notices.slice(0, 2);
   return (
@@ -245,6 +330,7 @@ export function NoticePeek({ schoolId, onOpen, newCount = 0 }) {
       </button>
       {top.map((n) => (
         <button key={n.id} className="nb-peek-item" onClick={onOpen}>
+          {n.event_on && <DateLeaf date={n.event_on} small />}
           <span className="nb-peek-title">
             {n.pinned && <Icon name="pushpin" size={13} weight="fill" />}
             {n.title}
@@ -253,5 +339,23 @@ export function NoticePeek({ schoolId, onOpen, newCount = 0 }) {
         </button>
       ))}
     </section>
+  );
+}
+
+// A notice's picture, full screen; tap anywhere or Escape to close.
+function ImageViewer({ src, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return createPortal(
+    <div className="nb-viewer" onClick={onClose} role="dialog" aria-label="Picture">
+      <img src={src} alt="" />
+      <button className="nb-viewer-close" aria-label="Close">
+        <Icon name="x" size={20} />
+      </button>
+    </div>,
+    document.body
   );
 }

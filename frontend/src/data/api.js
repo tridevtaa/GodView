@@ -1183,20 +1183,111 @@ export async function listNotices(schoolId) {
   );
 }
 
-export async function postNotice(schoolId, { title, body, for_parents }) {
+export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null }) {
   return must(
     await supabase
       .from("notices")
-      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents })
+      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, event_on: event_on || null, image_path })
       .select()
       .single()
   );
+}
+
+// A notice's picture: at most 1600 px on the long side, WebP (JPEG where
+// WebP can't be made), in the school's folder. Returns its path.
+const NOTICE_IMAGES = "notice-images";
+export async function uploadNoticeImage(schoolId, file) {
+  if (!file.type.startsWith("image/")) throw new Error("not-an-image");
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
+  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const encode = (type, q) => new Promise((resolve) => canvas.toBlob(resolve, type, q));
+  const webp = await encode("image/webp", 0.8);
+  const blob = webp?.type === "image/webp" ? webp : await encode("image/jpeg", 0.82);
+  const path = `${schoolId}/${crypto.randomUUID()}.${blob.type === "image/webp" ? "webp" : "jpg"}`;
+  const { error } = await supabase.storage.from(NOTICE_IMAGES).upload(path, blob, { contentType: blob.type });
+  if (error) throw error;
+  return path;
+}
+
+// Pictures go 30 days after posting (the notice stays). Staff call this
+// once a visit: the database takes the expired ones off their notices and
+// the files are deleted here.
+export const NOTICE_IMAGE_DAYS = 30;
+const tidied = new Set();
+export async function clearExpiredNoticeImages(schoolId) {
+  if (tidied.has(schoolId)) return;
+  tidied.add(schoolId);
+  const { data } = await supabase.rpc("take_expired_notice_images", { school: schoolId });
+  const paths = (data ?? []).map((r) => (typeof r === "string" ? r : r.take_expired_notice_images)).filter(Boolean);
+  if (paths.length) await supabase.storage.from(NOTICE_IMAGES).remove(paths);
+}
+
+export async function removeNoticeImage(path) {
+  if (path) await supabase.storage.from(NOTICE_IMAGES).remove([path]); // best effort
+}
+
+// Links to notice pictures (private bucket), remembered for the session.
+const noticeLinks = new Map();
+export async function noticeImageUrls(paths) {
+  const missing = [...new Set(paths.filter((p) => p && !noticeLinks.has(p)))];
+  if (missing.length) {
+    const { data } = await supabase.storage.from(NOTICE_IMAGES).createSignedUrls(missing, 60 * 60 * 24);
+    (data ?? []).forEach((d) => d.signedUrl && noticeLinks.set(d.path, d.signedUrl));
+  }
+  return new Map(paths.filter((p) => noticeLinks.has(p)).map((p) => [p, noticeLinks.get(p)]));
 }
 
 export async function updateNotice(id, changes) {
   return must(await supabase.from("notices").update(changes).eq("id", id).select().single());
 }
 
-export async function deleteNotice(id) {
-  must(await supabase.from("notices").delete().eq("id", id));
+export async function deleteNotice(notice) {
+  must(await supabase.from("notices").delete().eq("id", notice.id));
+  await removeNoticeImage(notice.image_path);
+}
+
+// ------------------------------------------------------------- calendar ---
+
+// The school's calendar from a year back to a year ahead. Staff see every
+// entry; parents only those meant for them (the database decides).
+export async function listCalendar(schoolId) {
+  const d = new Date();
+  const from = `${d.getFullYear() - 1}-01-01`;
+  const to = `${d.getFullYear() + 1}-12-31`;
+  return must(
+    await supabase
+      .from("calendar_events")
+      .select("*")
+      .eq("school_id", schoolId)
+      .gte("starts_on", from)
+      .lte("starts_on", to)
+      .order("starts_on")
+      .limit(1000)
+  );
+}
+
+const calendarRow = ({ title, kind, starts_on, ends_on, note, for_parents }) => ({
+  title: title.trim(),
+  kind,
+  starts_on,
+  ends_on: ends_on && ends_on !== starts_on ? ends_on : null,
+  note: (note ?? "").trim(),
+  for_parents,
+});
+
+export async function addCalendarEvent(schoolId, entry) {
+  return must(await supabase.from("calendar_events").insert({ school_id: schoolId, ...calendarRow(entry) }).select().single());
+}
+
+export async function updateCalendarEvent(id, entry) {
+  return must(await supabase.from("calendar_events").update(calendarRow(entry)).eq("id", id).select().single());
+}
+
+export async function deleteCalendarEvent(id) {
+  must(await supabase.from("calendar_events").delete().eq("id", id));
 }

@@ -5,6 +5,7 @@ import { rupeesShort } from "../data/money.js";
 import StatCards from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
 import { NoticePeek } from "./NoticeBoard.jsx";
+import { CalendarPeek } from "./CalendarPage.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -169,7 +170,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </p>
       )}
 
-      <NoticePeek schoolId={school.id} onOpen={() => onGo("notices")} />
+      <div className="home-peeks">
+        <CalendarPeek schoolId={school.id} staff onOpen={() => onGo("calendar")} />
+        <NoticePeek schoolId={school.id} staff onOpen={() => onGo("notices")} />
+      </div>
 
       <StatCards items={cards} className="home-cards" />
     </div>
