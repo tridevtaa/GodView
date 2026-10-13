@@ -69,5 +69,10 @@ export function usePeople(kind, schoolId, sessionId) {
     setPeople((prev) => prev.map((p) => (p.id === id ? { ...p, ...fields } : p)));
   }, []);
 
-  return { people, loading: loading || !ready, source, add, patch, reload };
+  // Take a deleted profile off the list.
+  const drop = useCallback((id) => {
+    setPeople((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  return { people, loading: loading || !ready, source, add, patch, drop, reload };
 }

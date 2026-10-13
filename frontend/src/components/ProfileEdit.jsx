@@ -57,7 +57,7 @@ const GENDER_LABEL = { "": "Not set", F: "Female", M: "Male" };
 const optionLabel = (key, opt) =>
   key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "Not set";
 
-export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel, routes = [] }) {
+export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel, onDelete, routes = [] }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);
   const initial = Object.fromEntries(
     fields.map(([key]) => [key, String(person[key] ?? (key === "status" ? "active" : ""))])
@@ -193,6 +193,12 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
       )}
 
       {error && <p className="field-error">{error}</p>}
+      {/* Owner only, apart from Save: deleting the whole profile */}
+      {onDelete && step === 0 && (
+        <button type="button" className="link-btn link-danger edit-delete" onClick={onDelete}>
+          <Icon name="trash" size={15} /> Delete this profile
+        </button>
+      )}
       <div className="modal-footer modal-footer-sticky edit-foot">
         {step === 0 ? (
           <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>

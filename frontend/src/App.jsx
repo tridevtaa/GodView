@@ -174,7 +174,7 @@ export default function App() {
   const sessionId = pickedSession ?? currentSession?.id;
   // Fees, Requests and Team work on the session's students.
   const dataMode = mode === "employees" ? "employees" : "students";
-  const { people, loading, source, add, patch, reload } = usePeople(dataMode, school.id, sessionId);
+  const { people, loading, source, add, patch, drop, reload } = usePeople(dataMode, school.id, sessionId);
 
   // Past sessions are history: shown, not edited.
   const viewOnly = mode !== "employees" && Boolean(currentSession) && sessionId !== currentSession.id;
@@ -584,6 +584,12 @@ export default function App() {
             canEdit={canEdit}
             canWrite={canWrite}
             onUpdate={patch}
+            isOwner={isOwner}
+            onDeleted={(id) => {
+              closeProfile();
+              drop(id);
+              forget("people:");
+            }}
             onFeesChanged={reload}
             onClose={closeProfile}
             grades={schoolGrades}
@@ -862,6 +868,12 @@ export default function App() {
           canEdit={canEdit}
           canWrite={canWrite}
           onUpdate={patch}
+          isOwner={isOwner}
+          onDeleted={(id) => {
+            closeProfile();
+            drop(id);
+            forget("people:");
+          }}
           onFeesChanged={reload}
           onClose={closeProfile}
           grades={schoolGrades}
