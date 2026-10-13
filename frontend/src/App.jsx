@@ -503,7 +503,6 @@ export default function App() {
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
     ...(!isPrincipal ? [["message", "New message", "plane"]] : []),
-    ...(isAdmin ? [["staff", "Add staff", "teacher"]] : []),
     ["notice", "Post notice", "notice"],
   ];
   function runAction(kind) {
