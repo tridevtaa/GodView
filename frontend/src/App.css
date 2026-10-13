@@ -12102,3 +12102,105 @@ input[type="date"]::-webkit-date-and-time-value {
     height: 46px;
   }
 }
+
+/* =========================================================
+   Collect fee pop-up
+   ========================================================= */
+.modal.collect {
+  width: min(520px, 100%);
+}
+
+.modal.collect .modal-header {
+  gap: 8px;
+}
+
+.modal.collect .modal-header h2 {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal.collect .modal-header h2 .icon {
+  color: var(--brand);
+}
+
+.collect-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.collect-who .inbox-photo {
+  flex: none;
+  width: 44px;
+  height: 44px;
+}
+
+.collect-name {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.collect-name strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.collect-due {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.collect-due strong {
+  font-size: 18px;
+}
+
+.collect-due .is-due {
+  color: var(--warning);
+}
+
+.collect-due .is-paid {
+  color: var(--success);
+}
+
+.collect-hint {
+  margin: 10px 2px 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.picker-list .collect-photo {
+  flex: none;
+  width: 34px;
+  height: 34px;
+}
+
+.modal.collect .picker-list button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal.collect .picker-list button > span:nth-child(2) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .modal.collect {
+    align-self: flex-end;
+    max-height: 88dvh;
+    border-radius: 22px 22px 0 0;
+  }
+}

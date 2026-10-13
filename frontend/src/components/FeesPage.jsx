@@ -27,17 +27,13 @@ function sessionMonths(session) {
 // pays). Admins see the overview only.
 // pastSession: a past session is open (picked on Students); say which.
 // heading: the Students section switch, shown first in the header.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged, heading, collectAt = 0 }) {
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, refreshAt = 0 }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
   const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
   const [error, setError] = useState("");
-  const [dialog, setDialog] = useState(null); // "collect" | "balances"
-  // The + button in the tab bar: open Collect fee.
-  useEffect(() => {
-    if (collectAt) setDialog("collect");
-  }, [collectAt]);
+  const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {
@@ -64,9 +60,10 @@ export default function FeesPage({ school, role, session, pastSession = false, s
     );
   }, [session]);
 
+  // Again after a payment (refreshAt), so the figures move at once.
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshAt]);
 
   const months = useMemo(() => {
     if (!session) return [];
@@ -125,7 +122,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             <Icon name="upload" />
             Old balances
           </button>
-          <button className="btn btn-primary" onClick={() => setDialog("collect")}>
+          <button className="btn btn-primary" onClick={() => onCollect()}>
             <Icon name="plus" />
             Collect fee
           </button>
@@ -221,7 +218,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
                     </span>
                   </span>
                   <span className={`badge ${s.fee_status === "overdue" ? "badge-danger" : "badge-warning"}`}>{rupees(s.fee_due)}</span>
-                  <button className="btn btn-secondary btn-sm" onClick={() => onOpenStudent(s.id, "fees")}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => onCollect(s)}>
                     Collect
                   </button>
                 </div>
@@ -231,17 +228,6 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         )}
       </section>
 
-      {dialog === "collect" && (
-        <Dialog title="Collect a payment" onClose={() => setDialog(null)}>
-          <StudentPicker
-            students={students}
-            onPick={(s) => {
-              setDialog(null);
-              onOpenStudent(s.id, "fees");
-            }}
-          />
-        </Dialog>
-      )}
       {dialog === "balances" && (
         <Dialog title="Bring in old balances" onClose={() => setDialog(null)}>
           <OpeningBalances
@@ -289,42 +275,6 @@ function Dialog({ title, onClose, children }) {
         </div>
         <div className="modal-body">{children}</div>
       </section>
-    </div>
-  );
-}
-
-function StudentPicker({ students, onPick }) {
-  const [q, setQ] = useState("");
-  const matches = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return [];
-    return students
-      .filter((s) => `${s.name} ${s.admission_no} ${s.parent_name ?? ""} ${s.parent_phone ?? ""}`.toLowerCase().includes(t))
-      .slice(0, 8);
-  }, [students, q]);
-  return (
-    <div className="picker">
-      <label className="search">
-        <Icon name="search" />
-        <input autoFocus placeholder="Student name, admission no. or parent’s phone" value={q} onChange={(e) => setQ(e.target.value)} />
-      </label>
-      <ul className="picker-list">
-        {matches.map((s) => (
-          <li key={s.id}>
-            <button onClick={() => onPick(s)}>
-              <span>
-                <strong>{s.name}</strong>
-                <span className="row-sub">
-                  {s.admission_no} · {gradeLabel(s.class)}
-                  {s.section ? ` · ${s.section}` : ""}
-                </span>
-              </span>
-              {s.fee_due > 0 ? <span className="badge badge-warning">{rupees(s.fee_due)} due</span> : <span className="badge badge-success">Nothing due</span>}
-            </button>
-          </li>
-        ))}
-        {q && matches.length === 0 && <li className="row-sub picker-empty">No student found.</li>}
-      </ul>
     </div>
   );
 }

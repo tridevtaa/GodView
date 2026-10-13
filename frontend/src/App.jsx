@@ -19,7 +19,7 @@ import { rupeesShort } from "./data/money.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
-import { swr } from "./data/cache.js";
+import { forget, swr } from "./data/cache.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -40,6 +40,7 @@ const SCREENS = {
   FeesPage: () => import("./components/FeesPage.jsx"),
   InboxPage: () => import("./components/InboxPage.jsx"),
   MarksPage: () => import("./components/MarksPage.jsx"),
+  CollectFee: () => import("./components/CollectFee.jsx"),
 };
 const HomeworkPage = lazy(SCREENS.HomeworkPage);
 const AttendancePage = lazy(SCREENS.AttendancePage);
@@ -51,6 +52,7 @@ const TransportRoutes = lazy(SCREENS.TransportRoutes);
 const FeesPage = lazy(SCREENS.FeesPage);
 const InboxPage = lazy(SCREENS.InboxPage);
 const MarksPage = lazy(SCREENS.MarksPage);
+const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   // Everyone lands on Home.
@@ -467,6 +469,10 @@ export default function App() {
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
   const [noticeCompose, setNoticeCompose] = useState(false);
+  // Collect fee pop-up, over whatever page is open: {} to pick a student,
+  // { student } when one was tapped. feesAt nudges the Fees page to refresh.
+  const [collect, setCollect] = useState(null);
+  const [feesAt, setFeesAt] = useState(0);
   // The common search: the session's students (kept from the Students
   // load, so it works on every page) and a conversation to open in Inbox.
   const [searchStudents, setSearchStudents] = useState([]);
@@ -506,6 +512,10 @@ export default function App() {
     ["notice", "Post notice", "notice"],
   ];
   function runAction(kind) {
+    if (kind === "fee") {
+      setCollect({});
+      return;
+    }
     if (kind === "notice") {
       switchMode("notices");
       setNoticeCompose(true);
@@ -632,7 +642,8 @@ export default function App() {
         ) : mode === "fees" ? (
           <FeesPage
             heading={studentsSwitch}
-            collectAt={quick.kind === "fee" ? quick.at : 0}
+            onCollect={(student) => setCollect({ student })}
+            refreshAt={feesAt}
             school={school}
             role={role}
             grades={schoolGrades}
@@ -640,7 +651,6 @@ export default function App() {
             session={selectedSession}
             pastSession={Boolean(currentSession) && sessionId !== currentSession.id}
             students={current}
-            onOpenStudent={openStudent}
             onChanged={reload}
           />
         ) : mode === "marks" && canWrite ? (
@@ -803,6 +813,19 @@ export default function App() {
       <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
+        {collect && isAdmin && (
+          <CollectFee
+            school={school}
+            students={dataMode === "students" ? current : searchStudents}
+            student={collect.student}
+            onClose={() => setCollect(null)}
+            onPaid={() => {
+              forget("fees:");
+              setFeesAt(Date.now());
+              reload();
+            }}
+          />
+        )}
       {openIndex !== -1 && !studentPage && (
         <ProfileModal
           key={`${openId}-${openTab}`}
