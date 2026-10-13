@@ -207,7 +207,7 @@ const PAY_METHODS = ["cash", "upi", "cheque", "card", "bank_transfer"];
 
 // Amount and how it was paid; reference only when the method has one; date
 // and note tucked away (today, no note) until asked for.
-function PaymentForm({ suggested, onSave, onCancel }) {
+export function PaymentForm({ suggested, onSave, onCancel }) {
   const [form, setForm] = useState({ amount: suggested ? String(suggested) : "", method: "cash", reference: "", paid_on: today(), note: "" });
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);

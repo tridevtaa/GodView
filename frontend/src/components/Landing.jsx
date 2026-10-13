@@ -78,7 +78,7 @@ const JOURNEY = [
 ];
 
 const NEXT = [
-  ["message", "Parent app", "Parents see results and dues, chat with teachers and the office, and ask for leave or certificates in the same chat."],
+  ["plane", "Parent app", "Parents see results and dues, chat with teachers and the office, and ask for leave or certificates in the same chat."],
   ["bus", "Live bus tracking", "Parents and the school see where the bus is and when it will reach each stop."],
   ["phone", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
 ];

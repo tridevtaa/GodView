@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import { logoUrl, removeSchoolLogo, setLogoScale, updateSchool, uploadSchoolLogo } from "../data/api.js";
-import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
 import { StepBar } from "./Steps.jsx";
 
@@ -39,7 +38,7 @@ export default function SchoolProfile({ school, onSaved, aside }) {
   const [state, setState] = useState("idle"); // idle | saving | logo
   const [error, setError] = useState("");
   const [step, setStep] = useState(0);
-  // Logo size in the header, previewed live beside the Godview mark.
+  // Logo size in the header, previewed live.
   const [scale, setScale] = useState(Number(school.logo_scale ?? 1));
   const [scaleState, setScaleState] = useState("");
   const scaleTimer = useRef(null);
@@ -158,8 +157,6 @@ export default function SchoolProfile({ school, onSaved, aside }) {
           {step === 0 && school.logo_path && (
             <div className="logo-size">
               <span className="logo-size-preview" aria-hidden="true">
-                <LogoMark size={26} />
-                <span className="logo-x">×</span>
                 <img className="logo-partner" src={logoUrl(school.logo_path)} alt="" style={{ "--logo-scale": scale }} />
               </span>
               <label className="logo-size-range">

@@ -4,6 +4,7 @@ import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import StatCards from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
+import { NoticePeek } from "./NoticeBoard.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -167,6 +168,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
           <Icon name="check" size={18} /> Nothing waiting on you. Nice.
         </p>
       )}
+
+      <NoticePeek schoolId={school.id} onOpen={() => onGo("notices")} />
 
       <StatCards items={cards} className="home-cards" />
     </div>

@@ -85,7 +85,7 @@ export function relation(gender) {
 // Photo-first card: the photo fills the card and the name sits on a soft
 // fade at the bottom. Students show their class; staff their role. Fees are
 // a small coloured dot (owners and admins), not a coin.
-export default function PersonCard({ person, mode, index, showFee = true, onOpen }) {
+export default function PersonCard({ person, mode, index, showFee = false, onOpen }) {
   const isStudent = mode === "students";
   const fee = person.fee_status || "unknown";
   const sub = isStudent
