@@ -1,80 +1,65 @@
 import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon.jsx";
 
-// The overview at the top of a page: up to three key numbers, each with the
-// details that belong to it. Computers: side by side. Phones: one full-width
-// card at a time, swiped sideways, with dots.
+// Overview cards. A card is short (label, number, one line) unless it has
+// real detail to show: a ring or bar plus breakdown rows. Short cards sit
+// side by side; detailed ones take the full width on phones.
 //
 // items: [{
-//   label, value,            value: number (counts up) or text; undefined = loading
-//   format?: (n) => text,    how a counted number is shown (e.g. rupees)
+//   label, icon?, value,     value: number (counts up) or text; undefined = loading
+//   format?: (n) => text,
 //   note?, tone?: "paid" | "due" | "overdue",
-//   ring?: 0..100,           a ring beside the number (e.g. attendance %)
-//   bar?: { value, max, label? },  a bar that fills (e.g. fees paid of billed)
-//   rows?: [[label, value, tone?]],  short breakdown lines
+//   ring?: 0..100, bar?: { value, max, label? }, rows?: [[label, value, tone?]],
 //   onClick?
 // }]
-export default function StatCards({ items }) {
+export default function StatCards({ items, className = "" }) {
   const shown = items.filter(Boolean);
-  const track = useRef(null);
-  const [at, setAt] = useState(0);
   if (!shown.length) return null;
-
-  // The card nearest the left edge is the current one.
-  const onScroll = () => {
-    const el = track.current;
-    if (!el) return;
-    const kids = [...el.children];
-    let best = 0;
-    kids.forEach((k, i) => {
-      if (Math.abs(k.offsetLeft - el.offsetLeft - el.scrollLeft) < Math.abs(kids[best].offsetLeft - el.offsetLeft - el.scrollLeft)) best = i;
-    });
-    setAt(best);
-  };
-  const go = (i) => {
-    const el = track.current;
-    const k = el?.children[i];
-    if (k) el.scrollTo({ left: k.offsetLeft - el.offsetLeft, behavior: "smooth" });
-  };
-
   return (
-    <section className="stat-cards-wrap">
-      <div className="stat-cards" style={{ "--n": shown.length }} ref={track} onScroll={onScroll}>
-        {shown.map((item) => (
-          <Card key={item.label} {...item} />
-        ))}
-      </div>
-      {shown.length > 1 && (
-        <div className="stat-dots" role="tablist" aria-label="Overview">
-          {shown.map((item, i) => (
-            <button key={item.label} type="button" role="tab" aria-selected={at === i} aria-label={item.label} className={at === i ? "is-on" : ""} onClick={() => go(i)} />
-          ))}
-        </div>
-      )}
+    <section className={`stat-cards ${className}`}>
+      {shown.map((item, i) => (
+        <Card key={item.label} {...item} index={i} />
+      ))}
     </section>
   );
 }
 
-function Card({ label, value, format, note, tone, ring, bar, rows, onClick }) {
+const hasDetail = ({ ring, bar, rows }) => {
+  const r = (rows ?? []).filter(Boolean).length;
+  const viz = (ring !== undefined && ring !== null) || (bar && bar.max > 0);
+  return (viz && r >= 1) || r >= 2;
+};
+
+function Card({ label, icon, value, format, note, tone, ring, bar, rows, onClick, index }) {
+  const rich = hasDetail({ ring, bar, rows });
   const Tag = onClick ? "button" : "div";
+  const list = (rows ?? []).filter(Boolean);
   return (
-    <Tag type={onClick ? "button" : undefined} className={`stat-card${onClick ? " is-link" : ""}`} onClick={onClick}>
+    <Tag
+      type={onClick ? "button" : undefined}
+      className={`stat-card${rich ? " is-rich" : ""}${onClick ? " is-link" : ""}`}
+      onClick={onClick}
+      style={{ "--d": `${index * 70}ms` }}
+    >
+      <span className="stat-label">
+        {icon && <Icon name={icon} size={15} />}
+        {label}
+      </span>
       <div className="stat-main">
         <div className="stat-head">
-          <span className="stat-label">{label}</span>
           <strong className={tone ? `is-${tone}` : ""}>{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
           {note && <span className="row-sub stat-note">{note}</span>}
         </div>
-        {ring !== undefined && ring !== null && <Ring pct={ring} tone={tone} />}
+        {rich && ring !== undefined && ring !== null && <Ring pct={ring} tone={tone} />}
       </div>
-      {bar && bar.max > 0 && (
+      {rich && bar && bar.max > 0 && (
         <div className="stat-bar" title={bar.label}>
           <span className="stat-bar-fill" style={{ "--to": `${Math.min(100, (bar.value / bar.max) * 100)}%` }} />
-          {bar.label && <span className="stat-bar-label">{bar.label}</span>}
         </div>
       )}
-      {rows?.length > 0 && (
+      {rich && list.length > 0 && (
         <ul className="stat-rows">
-          {rows.filter(Boolean).map(([k, v, t]) => (
+          {list.map(([k, v, t]) => (
             <li key={k}>
               <span>{k}</span>
               <b className={t ? `is-${t}` : ""}>{v}</b>
@@ -87,19 +72,15 @@ function Card({ label, value, format, note, tone, ring, bar, rows, onClick }) {
 }
 
 // The number counts up the first time it's shown (and eases to new values).
+// Counting isn't motion, so it runs even with reduced motion on.
 export function CountUp({ to, format = (n) => n.toLocaleString("en-IN") }) {
   const [n, setN] = useState(0);
   const from = useRef(0);
   useEffect(() => {
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const start = from.current;
-    if (reduce || start === to) {
-      setN(to);
-      from.current = to;
-      return;
-    }
+    if (start === to) return setN(to);
     const t0 = performance.now();
-    const dur = 700;
+    const dur = 900;
     let raf;
     const step = (t) => {
       const p = Math.min(1, (t - t0) / dur);

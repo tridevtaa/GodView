@@ -11583,3 +11583,170 @@ input[type="date"]::-webkit-date-and-time-value {
     transform: none;
   }
 }
+
+/* =========================================================
+   Overview cards v3: short by default, full width only with detail;
+   cards rise in one after another, numbers count, rings/bars fill.
+   ========================================================= */
+.stat-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.stat-cards > .stat-card {
+  flex: 1 1 0;
+  min-width: 0;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  animation: card-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d);
+}
+
+.stat-cards > .stat-card .stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.stat-cards > .stat-card .stat-label .icon {
+  color: var(--brand);
+}
+
+.stat-cards > .stat-card strong {
+  font-size: 24px;
+}
+
+.stat-cards > .stat-card.is-rich {
+  gap: 10px;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+/* Home: more cards, so they wrap; a few per row on computers */
+.home-cards > .stat-card {
+  flex: 1 1 210px;
+}
+
+.home-cards > .stat-card.is-rich {
+  flex: 1 1 320px;
+}
+
+@media (max-width: 760px) {
+  .stat-cards {
+    gap: 10px;
+  }
+
+  /* Short cards: up to three in a row (two on Home); detailed ones full width */
+  .stat-cards > .stat-card {
+    flex: 1 1 0;
+    padding: 12px 13px;
+  }
+
+  .stat-cards > .stat-card strong {
+    font-size: 20px;
+  }
+
+  .stat-cards > .stat-card .stat-note {
+    font-size: 11.5px;
+  }
+
+  .stat-cards > .stat-card.is-rich {
+    flex: 1 1 100%;
+    order: 2;
+    padding: 14px 16px;
+  }
+
+  .stat-cards > .stat-card.is-rich strong {
+    font-size: 26px;
+  }
+
+  .home-cards > .stat-card {
+    flex: 1 1 calc(50% - 5px);
+  }
+}
+
+/* Reduced motion: a gentle fade, no movement (numbers still count) */
+@media (prefers-reduced-motion: reduce) {
+  .stat-cards > .stat-card {
+    animation: card-fade 0.4s ease both !important;
+    animation-delay: var(--d) !important;
+  }
+
+  @keyframes card-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .stat-ring-fg,
+  .stat-bar-fill {
+    animation-duration: 0.01s !important;
+  }
+}
+
+/* Inbox: room for the cards above the list */
+.stat-cards + .inbox {
+  height: calc(100dvh - 64px - 56px - 170px);
+  min-height: 420px;
+}
+
+@media (max-width: 760px) {
+  .stat-cards + .inbox {
+    height: auto;
+    min-height: 0;
+  }
+
+  .stat-cards:has(+ .inbox.has-open) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-cards > .stat-card {
+    flex: 0 1 calc(50% - 5px);
+  }
+
+  .home-cards > .stat-card.is-rich {
+    flex: 1 1 100%;
+    order: -1;
+  }
+}
+
+/* Home: short cards keep their own height; detailed ones come first */
+.home-cards {
+  align-items: flex-start;
+}
+
+.home-cards > .stat-card.is-rich {
+  order: -1;
+}
+
+@media (min-width: 761px) {
+  /* Detailed cards take 2 columns × 2 rows; short ones fill in around them */
+  .home-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: dense;
+    align-items: stretch;
+  }
+
+  .home-cards > .stat-card {
+    flex: none;
+  }
+
+  .home-cards > .stat-card.is-rich {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+}

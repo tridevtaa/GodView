@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { feeSessionSummary, listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { CountUp, Ring } from "./StatCards.jsx";
+import StatCards from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
@@ -61,72 +61,80 @@ export default function HomePage({ school, me, name, role, students, loading, se
     !leads && dueTomorrow > 0 && { key: "hw", icon: "book", text: `${dueTomorrow} homework due tomorrow`, go: "homework" },
   ].filter(Boolean);
 
-  const tiles = [
+  // Short cards for a number and a line; the ones with real detail (marked
+  // attendance, fees) grow full width with a ring or bar and a few rows.
+  const go = (to) => () => onGo(to);
+  const cards = [
     {
-      key: "students",
       icon: "scholar",
       label: leads ? "Students" : "My students",
       value: loading ? undefined : students.length,
-      line: `${n(students.filter((p) => p.gender === "M").length)} boys · ${n(students.filter((p) => p.gender === "F").length)} girls`,
-      go: "students",
+      note: `${n(students.filter((p) => p.gender === "M").length)} boys · ${n(students.filter((p) => p.gender === "F").length)} girls`,
+      onClick: go("students"),
     },
     (leads || today) && {
-      key: "attendance",
       icon: "register",
       label: "Attendance today",
       value: today === null ? undefined : today.marked ? today.present : "–",
-      line: today?.marked ? `of ${n(today.marked)} present · ${n(today.absent)} absent` : "Not marked yet",
-      ring: attPct,
+      note: today?.marked ? `present of ${n(today.marked)} marked` : "Not marked yet",
       tone: attPct === null ? undefined : attPct >= 90 ? "paid" : attPct >= 75 ? "due" : "overdue",
-      go: "attendance",
+      ring: attPct,
+      rows: today?.marked
+        ? [
+            ["Absent", n(today.absent), today.absent ? "overdue" : undefined],
+            ["On leave", n(today.leave ?? 0)],
+            today.classes !== undefined && ["Classes not marked", `${today.notMarked} of ${today.classes}`, today.notMarked ? "due" : "paid"],
+          ]
+        : undefined,
+      onClick: go("attendance"),
     },
     isAdmin && {
-      key: "fees",
       icon: "rupee",
       label: "Fees due now",
       value: loading ? undefined : due,
       format: rupeesShort,
-      line: `${n(owing.length)} owe · ${rupeesShort(collected)} collected`,
-      bar: billed ? collected / billed : null,
+      note: `${n(owing.length)} students owe`,
       tone: due > 0 ? "due" : "paid",
-      go: "fees",
+      bar: billed ? { value: collected, max: billed, label: "Collected this session" } : undefined,
+      rows: billed
+        ? [
+            ["Collected", `${rupeesShort(collected)} · ${Math.round((collected / billed) * 100)}%`, "paid"],
+            ["Overdue (15+ days)", n(overdue), overdue ? "overdue" : undefined],
+          ]
+        : undefined,
+      onClick: go("fees"),
     },
     {
-      key: "inbox",
       icon: "plane",
       label: "Inbox",
       value: threads === null ? undefined : unread,
-      line: threads === null ? "" : `unread · ${requests} request${requests === 1 ? "" : "s"} waiting`,
+      note: `unread · ${requests} request${requests === 1 ? "" : "s"}`,
       tone: unread ? "due" : undefined,
-      go: "requests",
+      onClick: go("requests"),
     },
     {
-      key: "homework",
       icon: "book",
       label: "Homework",
       value: homework === null ? undefined : thisWeek,
-      line: `this week · ${dueTomorrow} due tomorrow`,
-      go: "homework",
+      note: `this week · ${dueTomorrow} due tomorrow`,
+      onClick: go("homework"),
     },
     leads && {
-      key: "staff",
       icon: "teacher",
       label: "Staff",
       value: staff === null ? undefined : staff.length,
-      line: isOwner && pendingCount ? `${pendingCount} waiting for access` : "in the team",
+      note: isOwner && pendingCount ? `${pendingCount} waiting for access` : "in the team",
       tone: isOwner && pendingCount ? "due" : undefined,
-      go: "employees",
+      onClick: go("employees"),
     },
     isAdmin && {
-      key: "transport",
       icon: "bus",
       label: "Transport",
       value: loading ? undefined : onBus,
-      line: `on the bus · ${routes.length} route${routes.length === 1 ? "" : "s"}`,
-      bar: students.length ? onBus / students.length : null,
-      go: "transport",
+      note: `on the bus · ${routes.length} route${routes.length === 1 ? "" : "s"}`,
+      onClick: go("transport"),
     },
-  ].filter(Boolean);
+  ];
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
@@ -160,30 +168,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </p>
       )}
 
-      <section className="home-tiles">
-        {tiles.map((t, i) => (
-          <button key={t.key} className={`home-tile is-${t.key}`} onClick={() => onGo(t.go)} style={{ "--d": `${i * 45}ms` }}>
-            <span className="home-tile-top">
-              <span className="home-tile-icon">
-                <Icon name={t.icon} size={20} />
-              </span>
-              <span className="home-tile-label">{t.label}</span>
-            </span>
-            <span className="home-tile-body">
-              <strong className={t.tone ? `is-${t.tone}` : ""}>
-                {t.value === undefined ? "…" : typeof t.value === "number" ? <CountUp to={t.value} format={t.format} /> : t.value}
-              </strong>
-              {t.ring !== undefined && t.ring !== null && <Ring pct={t.ring} tone={t.tone} />}
-            </span>
-            {t.bar !== undefined && t.bar !== null && (
-              <span className="stat-bar">
-                <span className="stat-bar-fill" style={{ "--to": `${Math.min(100, t.bar * 100)}%` }} />
-              </span>
-            )}
-            <span className="home-tile-line">{t.line}</span>
-          </button>
-        ))}
-      </section>
+      <StatCards items={cards} className="home-cards" />
     </div>
   );
 }
