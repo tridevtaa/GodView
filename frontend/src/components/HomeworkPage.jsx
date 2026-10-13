@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { addHomework, deleteHomework, listHomework } from "../data/api.js";
+import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
@@ -18,7 +19,11 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // remove any.
 // giveAt: when set (a time), open the form (the + button in the tab bar).
 export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0 }) {
-  const [items, setItems] = useState(null);
+  const [items, setItems] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
+  // Keep the remembered list in step with what's on screen (new, removed).
+  useEffect(() => {
+    if (session && items) remember(`homework:${session.id}`, items);
+  }, [items, session]);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
   useEffect(() => {
@@ -45,7 +50,9 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
 
   useEffect(() => {
     if (!session) return;
-    listHomework(school.id, session.id).then(setItems, () => setError("Couldn’t load homework. Check your connection and try again."));
+    swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setItems).catch(() =>
+      setError("Couldn’t load homework. Check your connection and try again.")
+    );
   }, [school.id, session]);
 
   const shown = (items ?? []).filter((h) => {

@@ -1,6 +1,12 @@
-import React from 'react'
+// Montserrat, served from godview.in (no extra connection to Google).
+import "@fontsource/montserrat/latin-400.css";
+import "@fontsource/montserrat/latin-500.css";
+import "@fontsource/montserrat/latin-600.css";
+import "@fontsource/montserrat/latin-700.css";
+import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
+// The staff app loads only after sign-in (visitors get just the landing page).
+const App = lazy(() => import('./App.jsx'))
 import AuthGate from './components/AuthGate.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './App.css'
@@ -11,7 +17,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
       <AuthGate>
-        <App />
+        <Suspense fallback={<main className="auth-screen" aria-busy="true" />}>
+          <App />
+        </Suspense>
       </AuthGate>
     </ErrorBoundary>
   </React.StrictMode>

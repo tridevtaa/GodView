@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { listSessions } from "./api.js";
+import { peek, swr } from "./cache.js";
 
 // The school's academic sessions, newest first, and which one is current
 // (the session whose dates include today, else the newest).
 export function useSessions(schoolId) {
-  const [sessions, setSessions] = useState([]);
+  // Kept on the device: the student list waits for the session, so a
+  // remembered one lets it show at once.
+  const [sessions, setSessions] = useState(() => peek(`sessions:${schoolId}`) ?? []);
   useEffect(() => {
     if (!schoolId) return;
     let cancelled = false;
-    listSessions(schoolId).then(
-      (rows) => !cancelled && setSessions(rows),
-      () => !cancelled && setSessions([])
+    swr(`sessions:${schoolId}`, () => listSessions(schoolId), (rows) => !cancelled && setSessions(rows), { persist: true }).catch(
+      () => !cancelled && setSessions((s) => s)
     );
     return () => {
       cancelled = true;

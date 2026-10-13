@@ -2,27 +2,19 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
+import Grid from "./components/Grid.jsx";
 import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
-import HomeworkPage from "./components/HomeworkPage.jsx";
-import AttendancePage from "./components/AttendancePage.jsx";
-import AddModal from "./components/AddModal.jsx";
-import ProfileModal from "./components/ProfileModal.jsx";
-import ImportModal from "./components/ImportModal.jsx";
 import GradeFilter, { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
 import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
-import TeamPage from "./components/TeamPage.jsx";
-import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
-import FeesPage from "./components/FeesPage.jsx";
-import InboxPage from "./components/InboxPage.jsx";
-import MarksPage from "./components/MarksPage.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
 import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
+import { swr } from "./data/cache.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -30,6 +22,30 @@ const SEARCH_KEYS = {
 };
 
 
+// Each screen's code loads when it's first needed, and is fetched in the
+// background once the app is up, so switching tabs never waits for it.
+const SCREENS = {
+  HomeworkPage: () => import("./components/HomeworkPage.jsx"),
+  AttendancePage: () => import("./components/AttendancePage.jsx"),
+  AddModal: () => import("./components/AddModal.jsx"),
+  ProfileModal: () => import("./components/ProfileModal.jsx"),
+  ImportModal: () => import("./components/ImportModal.jsx"),
+  TeamPage: () => import("./components/TeamPage.jsx"),
+  TransportRoutes: () => import("./components/TransportRoutes.jsx"),
+  FeesPage: () => import("./components/FeesPage.jsx"),
+  InboxPage: () => import("./components/InboxPage.jsx"),
+  MarksPage: () => import("./components/MarksPage.jsx"),
+};
+const HomeworkPage = lazy(SCREENS.HomeworkPage);
+const AttendancePage = lazy(SCREENS.AttendancePage);
+const AddModal = lazy(SCREENS.AddModal);
+const ProfileModal = lazy(SCREENS.ProfileModal);
+const ImportModal = lazy(SCREENS.ImportModal);
+const TeamPage = lazy(SCREENS.TeamPage);
+const TransportRoutes = lazy(SCREENS.TransportRoutes);
+const FeesPage = lazy(SCREENS.FeesPage);
+const InboxPage = lazy(SCREENS.InboxPage);
+const MarksPage = lazy(SCREENS.MarksPage);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
   const [mode, setMode] = useState("students");
@@ -62,14 +78,33 @@ export default function App() {
   const [pendingCount, setPendingCount] = useState(0);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
+  // Badges refresh on opening, every minute, and when the app comes back to
+  // the screen; not on every tab switch. (Inbox and Staff update them too.)
   useEffect(() => {
-    if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => setPendingCount(0));
-    staffInbox(school.id).then(
-      (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
-      () => {}
-    );
-  }, [isOwner, school.id, mode]);
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => {});
+      staffInbox(school.id).then(
+        (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
+        () => {}
+      );
+    };
+    refresh();
+    const t = setInterval(refresh, 60000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [isOwner, school.id]);
   const { sessions, current: currentSession } = useSessions(school.id);
+
+  // Warm the other screens' code in the background.
+  useEffect(() => {
+    const warm = () => Object.values(SCREENS).forEach((load) => load().catch(() => {}));
+    const id = "requestIdleCallback" in window ? requestIdleCallback(warm, { timeout: 2500 }) : setTimeout(warm, 1500);
+    return () => ("cancelIdleCallback" in window ? cancelIdleCallback(id) : clearTimeout(id));
+  }, []);
 
   // The pinned search strip frosts only once the page has scrolled.
   useEffect(() => {
@@ -98,13 +133,15 @@ export default function App() {
   // The school's grade list (names and sections); grade names everywhere use it.
   const [schoolGrades, setSchoolGrades] = useState([]);
   const loadGrades = useCallback(() => {
-    listGrades(school.id).then(
+    swr(
+      `grades:${school.id}`,
+      () => listGrades(school.id),
       (rows) => {
         setGradeLabels(rows);
         setSchoolGrades(rows);
       },
-      () => setSchoolGrades([])
-    );
+      { persist: true }
+    ).catch(() => {});
   }, [school.id]);
   useEffect(() => {
     loadGrades();
@@ -117,7 +154,7 @@ export default function App() {
   // School settings (profile) or the Transport tab.
   const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
-    () => listRoutes(school.id).then(setRoutes, () => setRoutes([])),
+    () => swr(`routes:${school.id}`, () => listRoutes(school.id), setRoutes, { persist: true }).catch(() => {}),
     [school.id]
   );
   useEffect(() => {
@@ -392,6 +429,7 @@ export default function App() {
       <InstallPrompt />
 
       <main className="page">
+        <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>
         {studentPage ? (
           <ProfileModal
             asPage
@@ -564,16 +602,18 @@ export default function App() {
             </p>
           </div>
         ) : (
-          <div className="grid">
-            {ordered.map((p, i) => (
-              <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />
-            ))}
-          </div>
+          <Grid
+            items={ordered}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}`}
+            render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
+          />
         )}
         </>
         )}
+        </Suspense>
       </main>
 
+      <Suspense fallback={null}>
       {openIndex !== -1 && !studentPage && (
         <ProfileModal
           key={`${openId}-${openTab}`}
@@ -613,6 +653,7 @@ export default function App() {
           onManageRoutes={isOwner ? () => (setAdding(false), openOwner("transport")) : null}
         />
       )}
+      </Suspense>
     </div>
   );
 }

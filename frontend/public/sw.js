@@ -1,7 +1,7 @@
 // Godview service worker: makes the installed app open fast and show its
 // shell offline. School data always comes fresh from the network; only the
 // app's own files are cached, plus small student photos (see PHOTOS).
-const CACHE = "godview-shell-v4";
+const CACHE = "godview-shell-v5";
 // Student photos (small thumbnails), kept on the device so they appear
 // instantly. Survives app updates; cleared on logout.
 const PHOTOS = "godview-photos-v1";
@@ -35,16 +35,24 @@ self.addEventListener("fetch", (event) => {
 
   if (url.origin !== self.location.origin) return; // other Supabase calls, fonts, map tiles: straight to network
 
-  // Pages: network first so a new release shows at once; cached shell offline.
+  // Pages: the fresh page if it arrives within 0.8s (so new releases show
+  // at once on a good connection), else the stored one straight away; the
+  // fresh copy is stored for next time either way. Offline: the stored one.
   if (req.mode === "navigate") {
+    const net = fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put("/", copy));
+      }
+      return res;
+    });
+    event.waitUntil(net.catch(() => {}));
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("/", copy));
-          return res;
-        })
-        .catch(() => caches.match("/"))
+      caches.match("/").then((stored) => {
+        if (!stored) return net;
+        const slow = new Promise((resolve) => setTimeout(() => resolve(stored), 800));
+        return Promise.race([net.catch(() => stored), slow]);
+      })
     );
     return;
   }

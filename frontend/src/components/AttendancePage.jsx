@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { attendanceOverview, leaveOn, listAssignments, loadAttendance, saveAttendance } from "../data/api.js";
+import { peek, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
@@ -274,11 +275,13 @@ function Overview({ session, day, onOpen }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
-    setRows(null);
-    attendanceOverview(session.id, day).then(
-      (r) => setRows(r.sort((a, b) => gradeRank(a.class) - gradeRank(b.class) || a.section.localeCompare(b.section))),
-      () => setError("Couldn’t load the overview.")
-    );
+    const key = `att-overview:${session.id}:${day}`;
+    if (!peek(key)) setRows(null);
+    swr(
+      key,
+      () => attendanceOverview(session.id, day).then((r) => r.sort((a, b) => gradeRank(a.class) - gradeRank(b.class) || a.section.localeCompare(b.section))),
+      setRows
+    ).catch(() => setError("Couldn’t load the overview."));
   }, [session.id, day]);
 
   if (error) return <p className="notice notice-error">{error}</p>;

@@ -10802,3 +10802,7 @@ input[type="date"]::-webkit-date-and-time-value {
 .map-full .smap-panel * {
   flex-shrink: 0;
 }
+
+.grid-more {
+  height: 1px;
+}

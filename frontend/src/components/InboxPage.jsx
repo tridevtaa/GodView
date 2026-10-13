@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { staffInbox } from "../data/api.js";
+import { peek, remember, swr } from "../data/cache.js";
 import Chat from "./Chat.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
@@ -24,7 +25,7 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
 export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, newAt = 0, openThread }) {
-  const [threads, setThreads] = useState(null);
+  const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(null);
@@ -44,14 +45,11 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
 
   const load = useCallback(
     () =>
-      staffInbox(school.id).then(
-        (rows) => {
-          setThreads(rows);
-          setError("");
-          onCount?.(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length);
-        },
-        () => setError("Couldn’t load the inbox. Check your connection.")
-      ),
+      swr(`inbox:${school.id}`, () => staffInbox(school.id), (rows) => {
+        setThreads(rows);
+        setError("");
+        onCount?.(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length);
+      }).catch(() => setError("Couldn’t load the inbox. Check your connection.")),
     [school.id, onCount]
   );
 
