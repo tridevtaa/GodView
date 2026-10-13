@@ -12942,6 +12942,15 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 }
 
+/* Parent app: the child's admission number under the class */
+.pa-adm {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 /* "Remove?" (tap again to confirm): a soft red pill, not a stretched circle */
 .icon-btn-sm.is-danger,
 .nb-actions .icon-btn-sm.is-danger,
