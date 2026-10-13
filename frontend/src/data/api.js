@@ -214,14 +214,48 @@ export async function applyImport(schoolId, sessionName, { upserts, leaving }, o
 const BUCKET = "photos";
 const SIGNED_FOR = 60 * 60 * 12; // seconds
 
+// Signed photo links are reused while they have hours left (kept on the
+// device), so each load doesn't re-sign hundreds of photos and the same
+// link keeps hitting the phone's image cache.
+const SIGNED_KEY = "godview.signed";
+const REUSE_MIN = 3 * 60 * 60 * 1000; // reuse links with 3h+ left
+function signedStore() {
+  try {
+    return JSON.parse(localStorage.getItem(SIGNED_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
 // Adds `photo_src` (a temporary signed URL) to people with an uploaded photo.
 export async function withPhotoUrls(people) {
   const paths = [...new Set(people.map((p) => p.photo_path).filter(Boolean))];
   if (!paths.length) return people;
+  const now = Date.now();
+  const store = signedStore();
   const urls = new Map();
-  for (let i = 0; i < paths.length; i += 500) {
-    const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(paths.slice(i, i + 500), SIGNED_FOR));
-    signed.forEach((s) => s.signedUrl && urls.set(s.path, s.signedUrl));
+  const missing = [];
+  for (const path of paths) {
+    const hit = store[path];
+    if (hit && hit[1] - now > REUSE_MIN) urls.set(path, hit[0]);
+    else missing.push(path);
+  }
+  for (let i = 0; i < missing.length; i += 500) {
+    const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(missing.slice(i, i + 500), SIGNED_FOR));
+    signed.forEach((s) => {
+      if (!s.signedUrl) return;
+      urls.set(s.path, s.signedUrl);
+      store[s.path] = [s.signedUrl, now + SIGNED_FOR * 1000];
+    });
+  }
+  if (missing.length) {
+    // Drop expired links, then save.
+    for (const [k, v] of Object.entries(store)) if (v[1] < now) delete store[k];
+    try {
+      localStorage.setItem(SIGNED_KEY, JSON.stringify(store));
+    } catch {
+      // Storage full or private mode: links just aren't reused.
+    }
   }
   return people.map((p) => (p.photo_path && urls.has(p.photo_path) ? { ...p, photo_src: urls.get(p.photo_path) } : p));
 }
@@ -238,6 +272,14 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
   if (kind === "students") must(await supabase.rpc("set_student_photo", { student: person.id, path }));
   else must(await supabase.from(kind).update({ photo_path: path }).eq("id", person.id));
   const { signedUrl } = must(await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_FOR));
+  // Use the new link from now on (not a reused one for the old photo).
+  try {
+    const store = signedStore();
+    store[path] = [signedUrl, Date.now() + SIGNED_FOR * 1000];
+    localStorage.setItem(SIGNED_KEY, JSON.stringify(store));
+  } catch {
+    // not stored: fine
+  }
   // Drop the device's stored copy of the old photo so the new one shows.
   try {
     const u = new URL(signedUrl);
@@ -1081,7 +1123,18 @@ export async function attendanceOverview(sessionId, day) {
 }
 
 // One student's marks for the month containing `day`.
-export async function attendanceMonth(studentId, day) {
+// Same student and day asked twice at once (header and details): one request.
+const monthAsk = new Map();
+export function attendanceMonth(studentId, day) {
+  const key = `${studentId}:${day}`;
+  if (!monthAsk.has(key)) {
+    monthAsk.set(key, attendanceMonthFresh(studentId, day));
+    setTimeout(() => monthAsk.delete(key), 15000);
+  }
+  return monthAsk.get(key);
+}
+
+async function attendanceMonthFresh(studentId, day) {
   return must(await supabase.rpc("attendance_month", { student: studentId, month: day }));
 }
 

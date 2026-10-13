@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { addHomework, deleteHomework, listHomework } from "../data/api.js";
+import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import StatCards from "./StatCards.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
@@ -18,7 +20,11 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // remove any.
 // giveAt: when set (a time), open the form (the + button in the tab bar).
 export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0 }) {
-  const [items, setItems] = useState(null);
+  const [items, setItems] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
+  // Keep the remembered list in step with what's on screen (new, removed).
+  useEffect(() => {
+    if (session && items) remember(`homework:${session.id}`, items);
+  }, [items, session]);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
   useEffect(() => {
@@ -45,7 +51,9 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
 
   useEffect(() => {
     if (!session) return;
-    listHomework(school.id, session.id).then(setItems, () => setError("Couldn’t load homework. Check your connection and try again."));
+    swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setItems).catch(() =>
+      setError("Couldn’t load homework. Check your connection and try again.")
+    );
   }, [school.id, session]);
 
   const shown = (items ?? []).filter((h) => {
@@ -93,6 +101,34 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           </div>
         )}
       </div>
+
+      {!writing && items && (
+        <StatCards
+          items={(() => {
+            const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+            const due = items.filter((h) => h.due_date === tomorrow());
+            const week = items.filter((h) => h.created_at >= weekAgo);
+            const bySubject = [...week.reduce((m, h) => m.set(h.subject || "Other", (m.get(h.subject || "Other") ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
+            const classesWith = new Set(week.map((h) => `${h.class}|${h.section ?? ""}`)).size;
+            return [
+              {
+                label: "Due tomorrow",
+                value: due.length,
+                note: due.length ? "pieces of homework" : "Nothing due",
+                tone: due.length ? "due" : undefined,
+                rows: due.slice(0, 3).map((h) => [h.subject || "Homework", `${gradeLabel(h.class)}${h.section ? ` · ${h.section}` : ""}`]),
+              },
+              { label: "This week", value: week.length, note: "given", rows: bySubject.slice(0, 3).map(([sub, c]) => [sub, String(c)]) },
+              {
+                label: "Classes",
+                value: classesWith,
+                note: `of ${groups.length} got homework this week`,
+                bar: groups.length ? { value: classesWith, max: groups.length, label: "Classes with homework this week" } : undefined,
+              },
+            ];
+          })()}
+        />
+      )}
 
       {error && <p className="notice notice-error">{error}</p>}
       {!groups.length && <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>}

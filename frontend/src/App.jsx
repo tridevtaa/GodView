@@ -2,27 +2,23 @@ import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import InstallPrompt from "./components/InstallPrompt.jsx";
 import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
+import Grid from "./components/Grid.jsx";
 import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
-import HomeworkPage from "./components/HomeworkPage.jsx";
-import AttendancePage from "./components/AttendancePage.jsx";
-import AddModal from "./components/AddModal.jsx";
-import ProfileModal from "./components/ProfileModal.jsx";
-import ImportModal from "./components/ImportModal.jsx";
 import GradeFilter, { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
 import Icon from "./components/Icon.jsx";
 import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
-import TeamPage from "./components/TeamPage.jsx";
-import TransportRoutes from "./components/TransportRoutes.jsx";
 import ExportButton from "./components/ExportButton.jsx";
-import FeesPage from "./components/FeesPage.jsx";
-import InboxPage from "./components/InboxPage.jsx";
-import MarksPage from "./components/MarksPage.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
-import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
+import QuickActions from "./components/QuickActions.jsx";
+import HomePage from "./components/HomePage.jsx";
+import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
+import StatCards from "./components/StatCards.jsx";
+import { rupeesShort } from "./data/money.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
+import { swr } from "./data/cache.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -30,9 +26,34 @@ const SEARCH_KEYS = {
 };
 
 
+// Each screen's code loads when it's first needed, and is fetched in the
+// background once the app is up, so switching tabs never waits for it.
+const SCREENS = {
+  HomeworkPage: () => import("./components/HomeworkPage.jsx"),
+  AttendancePage: () => import("./components/AttendancePage.jsx"),
+  AddModal: () => import("./components/AddModal.jsx"),
+  ProfileModal: () => import("./components/ProfileModal.jsx"),
+  ImportModal: () => import("./components/ImportModal.jsx"),
+  TeamPage: () => import("./components/TeamPage.jsx"),
+  TransportRoutes: () => import("./components/TransportRoutes.jsx"),
+  FeesPage: () => import("./components/FeesPage.jsx"),
+  InboxPage: () => import("./components/InboxPage.jsx"),
+  MarksPage: () => import("./components/MarksPage.jsx"),
+};
+const HomeworkPage = lazy(SCREENS.HomeworkPage);
+const AttendancePage = lazy(SCREENS.AttendancePage);
+const AddModal = lazy(SCREENS.AddModal);
+const ProfileModal = lazy(SCREENS.ProfileModal);
+const ImportModal = lazy(SCREENS.ImportModal);
+const TeamPage = lazy(SCREENS.TeamPage);
+const TransportRoutes = lazy(SCREENS.TransportRoutes);
+const FeesPage = lazy(SCREENS.FeesPage);
+const InboxPage = lazy(SCREENS.InboxPage);
+const MarksPage = lazy(SCREENS.MarksPage);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
-  const [mode, setMode] = useState("students");
+  // Everyone lands on Home.
+  const [mode, setMode] = useState("home");
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -59,17 +80,38 @@ export default function App() {
   // Principal: sees students, attendance, homework, requests and employees
   // across the school, and changes nothing (no imports, exports or edits).
   const isPrincipal = role === "principal";
+  // Owners, admins and the principal: they see the whole school.
+  const leads = isAdmin || isPrincipal;
   const [pendingCount, setPendingCount] = useState(0);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
+  // Badges refresh on opening, every minute, and when the app comes back to
+  // the screen; not on every tab switch. (Inbox and Staff update them too.)
   useEffect(() => {
-    if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => setPendingCount(0));
-    staffInbox(school.id).then(
-      (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
-      () => {}
-    );
-  }, [isOwner, school.id, mode]);
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => {});
+      staffInbox(school.id).then(
+        (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
+        () => {}
+      );
+    };
+    refresh();
+    const t = setInterval(refresh, 60000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [isOwner, school.id]);
   const { sessions, current: currentSession } = useSessions(school.id);
+
+  // Warm the other screens' code in the background.
+  useEffect(() => {
+    const warm = () => Object.values(SCREENS).forEach((load) => load().catch(() => {}));
+    const id = "requestIdleCallback" in window ? requestIdleCallback(warm, { timeout: 2500 }) : setTimeout(warm, 1500);
+    return () => ("cancelIdleCallback" in window ? cancelIdleCallback(id) : clearTimeout(id));
+  }, []);
 
   // The pinned search strip frosts only once the page has scrolled.
   useEffect(() => {
@@ -98,13 +140,15 @@ export default function App() {
   // The school's grade list (names and sections); grade names everywhere use it.
   const [schoolGrades, setSchoolGrades] = useState([]);
   const loadGrades = useCallback(() => {
-    listGrades(school.id).then(
+    swr(
+      `grades:${school.id}`,
+      () => listGrades(school.id),
       (rows) => {
         setGradeLabels(rows);
         setSchoolGrades(rows);
       },
-      () => setSchoolGrades([])
-    );
+      { persist: true }
+    ).catch(() => {});
   }, [school.id]);
   useEffect(() => {
     loadGrades();
@@ -117,7 +161,7 @@ export default function App() {
   // School settings (profile) or the Transport tab.
   const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
-    () => listRoutes(school.id).then(setRoutes, () => setRoutes([])),
+    () => swr(`routes:${school.id}`, () => listRoutes(school.id), setRoutes, { persist: true }).catch(() => {}),
     [school.id]
   );
   useEffect(() => {
@@ -278,14 +322,122 @@ export default function App() {
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
   const title = isStudents ? "Students" : "Staff";
+
+  // Today's attendance for the overview cards: the whole school for leads
+  // (the same remembered numbers as the Attendance page), a teacher's own
+  // students otherwise.
+  const todayIso = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const [today, setToday] = useState(null); // { present, absent, marked }
+  useEffect(() => {
+    if ((mode !== "students" && mode !== "home") || !currentSession || viewOnly) return;
+    if (leads) {
+      swr(`att-overview:${currentSession.id}:${todayIso}`, () => attendanceOverview(currentSession.id, todayIso), (rows) =>
+        setToday({
+          present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
+          absent: rows.reduce((t, r) => t + Number(r.absent), 0),
+          leave: rows.reduce((t, r) => t + Number(r.on_leave), 0),
+          marked: rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0),
+          notMarked: rows.filter((r) => Number(r.unmarked) === Number(r.students)).length,
+          classes: rows.length,
+        })
+      ).catch(() => {});
+    } else {
+      swr(`att-day:${currentSession.id}:${todayIso}`, () => loadAttendance(currentSession.id, todayIso), (rows) => {
+        const mine = new Set(current.map((p) => p.id));
+        const own = rows.filter((r) => mine.has(r.student_id));
+        setToday({
+          present: own.filter((r) => r.status === "present" || r.status === "late").length,
+          absent: own.filter((r) => r.status === "absent").length,
+          leave: own.filter((r) => r.status === "leave").length,
+          marked: own.length,
+        });
+      }).catch(() => {});
+    }
+  }, [mode, currentSession, viewOnly, leads, todayIso, current]);
+
+  const overview = (() => {
+    if (loading) return null;
+    const n = (v) => v.toLocaleString("en-IN");
+    if (isStudents) {
+      const boys = current.filter((p) => p.gender === "M").length;
+      const girls = current.filter((p) => p.gender === "F").length;
+      const owing = current.filter((p) => Number(p.fee_due) > 0);
+      const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
+      const paid = current.reduce((t, p) => t + (Number(p.fee_paid) || 0), 0);
+      const billed = current.reduce((t, p) => t + (Number(p.fee_billed) || 0), 0);
+      const overdue = current.filter((p) => p.fee_status === "overdue").length;
+      const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+      const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
+      return [
+        {
+          label: leads ? "Students" : "My students",
+          value: current.length,
+          note: leads ? `${gradeChoices.length} grades · ${classes} classes` : `${classes} class${classes === 1 ? "" : "es"}`,
+          rows: [
+            ["Boys · Girls", `${n(boys)} · ${n(girls)}`],
+            leads && ["New admissions", n(current.filter((p) => /new/i.test(p.admission_type ?? "")).length)],
+            ["On the bus", n(current.filter((p) => p.uses_bus).length)],
+          ],
+        },
+        isAdmin && {
+          label: "Due now",
+          value: due,
+          format: rupeesShort,
+          note: `${n(owing.length)} students owe`,
+          tone: due > 0 ? "due" : "paid",
+          bar: billed ? { value: paid, max: billed, label: `${Math.round((paid / billed) * 100)}% of the year collected` } : undefined,
+          rows: [
+            ["Collected", `${rupeesShort(paid)}${billed ? ` · ${Math.round((paid / billed) * 100)}%` : ""}`, "paid"],
+            ["Overdue (15+ days)", n(overdue), overdue ? "overdue" : undefined],
+          ],
+          onClick: () => switchMode("fees"),
+        },
+        {
+          label: "Present today",
+          value: today === null ? undefined : today.marked ? today.present : "–",
+          note: today?.marked ? `of ${n(today.marked)} marked` : "Not marked yet",
+          tone: pct === null ? undefined : pct >= 90 ? "paid" : pct >= 75 ? "due" : "overdue",
+          ring: pct ?? undefined,
+          rows: today?.marked
+            ? [
+                ["Absent", n(today.absent), today.absent ? "overdue" : undefined],
+                ["On leave", n(today.leave ?? 0)],
+                today.classes !== undefined && ["Classes not marked", `${today.notMarked} of ${today.classes}`, today.notMarked ? "due" : "paid"],
+              ]
+            : undefined,
+          onClick: seesAttendance ? () => switchMode("attendance") : undefined,
+        },
+      ];
+    }
+    const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
+    const depts = [...current.reduce((m, p) => m.set(p.department || "Other", (m.get(p.department || "Other") ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
+    return [
+      {
+        label: "Staff",
+        value: current.length,
+        note: `${depts.length} department${depts.length === 1 ? "" : "s"}`,
+        rows: depts.slice(0, 3).map(([d, c]) => [d, n(c)]),
+      },
+      {
+        label: "Teaching",
+        value: teaching,
+        note: `${n(current.length - teaching)} others`,
+        bar: current.length ? { value: teaching, max: current.length, label: "Teaching share" } : undefined,
+      },
+      isOwner && { label: "Waiting for access", value: pendingCount, note: pendingCount ? "Tap to review" : "No one waiting", tone: pendingCount ? "due" : undefined, onClick: () => setStaffTab("access") },
+    ];
+  })();
   // Header: Students, Inbox, Staff and Transport. Everything about the
   // students (attendance, homework, fees) lives inside Students, behind a
   // switch at the top; each role sees the parts it can use. School settings
   // are in the account menu (owner only).
-  const leads = isAdmin || isPrincipal;
   // Teachers: their daily work gets its own tabs (Attendance for class
   // in-charges, Homework). Leads find these inside Students instead.
   const sections = [
+    ["home", "Home"],
     ["students", "Students"],
     ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
@@ -383,15 +535,14 @@ export default function App() {
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
-        actions={plusActions}
         search={globalSearch}
-        onAction={runAction}
       />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
 
       <main className="page">
+        <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>
         {studentPage ? (
           <ProfileModal
             asPage
@@ -422,6 +573,25 @@ export default function App() {
             </div>
             <TeamPage view="access" school={school} session={currentSession} me={user.email} onCount={setPendingCount} />
           </>
+        ) : mode === "home" ? (
+          <HomePage
+            school={school}
+            me={user.email}
+            name={user.displayName}
+            role={role}
+            students={current}
+            loading={loading}
+            session={currentSession}
+            today={today}
+            pendingCount={pendingCount}
+            routes={routes}
+            onGo={(go) => {
+              if (go === "access") {
+                switchMode("employees");
+                setStaffTab("access");
+              } else switchMode(go);
+            }}
+          />
         ) : mode === "team" ? (
           <TeamPage
             view="school"
@@ -449,6 +619,29 @@ export default function App() {
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
+            {(() => {
+              const onBus = current.filter((s) => s.uses_bus).length;
+              const pinned = current.filter((s) => s.home_lat != null).length;
+              const stops = routes.reduce((t, r) => t + r.stops.length, 0);
+              const perRoute = routes
+                .map((r) => [r.name, current.filter((s) => s.uses_bus && r.stops.some((st) => st.id === s.bus_stop_id)).length])
+                .sort((a, b) => b[1] - a[1]);
+              return (
+                <StatCards
+                  items={[
+                    { label: "Routes", value: routes.length, note: `${stops} stop${stops === 1 ? "" : "s"}`, rows: perRoute.slice(0, 3).map(([nm, c]) => [nm, `${c} students`]) },
+                    { label: "On the bus", value: onBus, note: `of ${current.length.toLocaleString("en-IN")} students`, bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined },
+                    {
+                      label: "Homes pinned",
+                      value: pinned,
+                      note: `${(current.length - pinned).toLocaleString("en-IN")} still to pin`,
+                      bar: current.length ? { value: pinned, max: current.length, label: "Homes pinned" } : undefined,
+                      onClick: () => setView("map"),
+                    },
+                  ]}
+                />
+              );
+            })()}
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
@@ -549,6 +742,8 @@ export default function App() {
           )}
         </div>
 
+        {overview && !viewOnly && <StatCards items={overview} />}
+
         {loading ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
@@ -564,16 +759,21 @@ export default function App() {
             </p>
           </div>
         ) : (
-          <div className="grid">
-            {ordered.map((p, i) => (
-              <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />
-            ))}
-          </div>
+          <Grid
+            items={ordered}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}`}
+            render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
+          />
         )}
         </>
         )}
+        </Suspense>
       </main>
 
+      {/* Phones: the + in the bottom-right corner, above the search. */}
+      <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
+
+      <Suspense fallback={null}>
       {openIndex !== -1 && !studentPage && (
         <ProfileModal
           key={`${openId}-${openTab}`}
@@ -613,6 +813,7 @@ export default function App() {
           onManageRoutes={isOwner ? () => (setAdding(false), openOwner("transport")) : null}
         />
       )}
+      </Suspense>
     </div>
   );
 }

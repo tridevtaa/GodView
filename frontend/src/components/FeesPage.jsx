@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { feeClassSummary, feeMonthlyCollection, feeSessionSummary } from "../data/api.js";
+import { peek, remember, swr } from "../data/cache.js";
 import { rupees, rupeesShort } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -28,9 +29,9 @@ function sessionMonths(session) {
 // heading: the Students section switch, shown first in the header.
 export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onOpenStudent, onChanged, heading, collectAt = 0 }) {
   const [tab, setTab] = useState("overview");
-  const [summary, setSummary] = useState(null);
-  const [monthly, setMonthly] = useState([]);
-  const [byClass, setByClass] = useState([]);
+  const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
+  const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
+  const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "collect" | "balances"
   // The + button in the tab bar: open Collect fee.
@@ -42,7 +43,12 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   const load = useCallback(async () => {
     if (!session) return;
     // Each part loads on its own, so one slow chart doesn't blank the page.
-    const [s, m, c] = await Promise.allSettled([feeSessionSummary(session.id), feeMonthlyCollection(session.id), feeClassSummary(session.id)]);
+    // Last numbers show at once; fresh ones replace them when they arrive.
+    const [s, m, c] = await Promise.allSettled([
+      swr(`fees:summary:${session.id}`, () => feeSessionSummary(session.id), setSummary),
+      swr(`fees:monthly:${session.id}`, () => feeMonthlyCollection(session.id), setMonthly),
+      swr(`fees:class:${session.id}`, () => feeClassSummary(session.id), setByClass),
+    ]);
     if (s.status === "fulfilled") setSummary(s.value);
     if (m.status === "fulfilled") setMonthly(m.value);
     if (c.status === "fulfilled") setByClass(c.value);

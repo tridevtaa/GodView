@@ -5,7 +5,6 @@ import { saveJoinPhoto } from "../data/photos.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
-import Landing from "./Landing.jsx";
 import ParentSignIn from "./ParentSignIn.jsx";
 import { StepBar } from "./Steps.jsx";
 import Icon from "./Icon.jsx";
@@ -13,6 +12,8 @@ import { isStandalone, parentLoginLive } from "../pwa/install.js";
 
 // Parents get their own, separate screens (loaded only for them).
 const ParentApp = lazy(() => import("./ParentApp.jsx"));
+// The landing page only loads for visitors who aren't signed in.
+const Landing = lazy(() => import("./Landing.jsx"));
 
 // { user: { email, displayName, photoURL }, school, role, setSchool }
 const AuthContext = createContext(null);
@@ -37,6 +38,13 @@ export async function logOut() {
   await supabase.auth.signOut();
   // Photos kept on this device go with the session (shared computers).
   await globalThis.caches?.delete("godview-photos-v1").catch(() => {});
+  // So is everything remembered for speed (lists, photo links).
+  await import("../data/cache.js").then((c) => c.clearCache()).catch(() => {});
+  try {
+    localStorage.removeItem("godview.signed");
+  } catch {
+    // nothing stored
+  }
   await clearLegacyCaches();
   window.location.assign("/");
 }
@@ -398,7 +406,11 @@ export default function AuthGate({ children }) {
     if (parentLogin) return <ParentSignIn onBack={() => showParentLogin(false)} />;
     // Opened from the home screen: an app sign-in, not the marketing page.
     if (isStandalone()) return <AppWelcome onStaff={signIn} onParent={() => showParentLogin(true)} error={error} />;
-    return <Landing onLogin={signIn} onParentLogin={() => showParentLogin(true)} error={error} />;
+    return (
+      <Suspense fallback={<main className="auth-screen" aria-busy="true" />}>
+        <Landing onLogin={signIn} onParentLogin={() => showParentLogin(true)} error={error} />
+      </Suspense>
+    );
   }
 
   // Signed-in session still resolving: a quiet screen rather than a flash of
