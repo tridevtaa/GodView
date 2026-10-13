@@ -495,16 +495,16 @@ export default function App() {
     />
   );
   const plusActions = [
-    ...(canEdit ? [["student", "Add student", "scholar"]] : []),
-    ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
+    ...(canEdit ? [["student", "Add student", "scholar", "Student"]] : []),
+    ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee", "Fee"]] : []),
     // Teachers' daily work: their class register (class in-charges), homework
     // and marks. Owners, admins and the principal see these, not give them.
-    ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
-    ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
-    ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
-    ...(!isPrincipal ? [["message", "New message", "plane"]] : []),
-    ...(isAdmin ? [["staff", "Add staff", "teacher"]] : []),
-    ["notice", "Post notice", "notice"],
+    ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register", "Attendance"]] : []),
+    ...(role === "teacher" ? [["homework", "Give homework", "book", "Homework"]] : []),
+    ...(role === "teacher" && canWrite ? [["result", "Add result", "chart", "Result"]] : []),
+    ...(!isPrincipal ? [["message", "New message", "plane", "Message"]] : []),
+    ...(isAdmin ? [["staff", "Add staff", "teacher", "Staff"]] : []),
+    ["notice", "Post notice", "notice", "Notice"],
   ];
   function runAction(kind) {
     if (kind === "notice") {
