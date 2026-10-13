@@ -87,7 +87,7 @@ function Card({ label, value, format, note, tone, ring, bar, rows, onClick }) {
 }
 
 // The number counts up the first time it's shown (and eases to new values).
-function CountUp({ to, format = (n) => n.toLocaleString("en-IN") }) {
+export function CountUp({ to, format = (n) => n.toLocaleString("en-IN") }) {
   const [n, setN] = useState(0);
   const from = useRef(0);
   useEffect(() => {
@@ -115,7 +115,7 @@ function CountUp({ to, format = (n) => n.toLocaleString("en-IN") }) {
 }
 
 // A ring that fills to pct.
-function Ring({ pct, tone }) {
+export function Ring({ pct, tone }) {
   const r = 22;
   const c = 2 * Math.PI * r;
   return (

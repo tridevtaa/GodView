@@ -11140,3 +11140,446 @@ input[type="date"]::-webkit-date-and-time-value {
     scroll-padding: 0 var(--gutter);
   }
 }
+
+/* =========================================================
+   Floating + (phones): bottom-right, above the search; actions fan out
+   on a half circle. Hidden on computers (pages keep their buttons).
+   ========================================================= */
+.fab {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .fab {
+    position: fixed;
+    right: 16px;
+    /* tab bar (80) + search (--dock-h) + install banner, then a gap */
+    bottom: calc(86px + env(safe-area-inset-bottom) + var(--dock-h, 0px) + var(--banner-h, 0px));
+    z-index: 31;
+    display: block;
+    width: 56px;
+    height: 56px;
+    transition: bottom 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s, transform 0.2s;
+  }
+
+  .fab-main {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    background: linear-gradient(160deg, #6b78d6, var(--brand) 55%, #4652ad);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(70, 82, 173, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .fab-main:active {
+    transform: scale(0.92);
+  }
+
+  .fab.is-open .fab-main {
+    transform: rotate(45deg);
+  }
+
+  /* The page dims a little while the actions are out */
+  .fab-dim {
+    position: fixed;
+    inset: -100vh -100vw;
+    z-index: 0;
+    background: rgba(29, 35, 102, 0.12);
+    animation: fade-in 0.2s both;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .fab-actions {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .fab-action {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 48px;
+    padding: 0;
+    border: 0;
+    background: none;
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+    transition:
+      transform 0.38s cubic-bezier(0.34, 1.4, 0.64, 1) var(--d),
+      opacity 0.2s var(--d);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .fab.is-open .fab-actions {
+    pointer-events: auto;
+  }
+
+  .fab.is-open .fab-action {
+    opacity: 1;
+    transform: translate(var(--x), var(--y)) scale(1);
+  }
+
+  .fab-action-icon {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    background: linear-gradient(180deg, #fff, #f1f2fb);
+    color: var(--brand);
+    box-shadow: 0 8px 20px rgba(29, 35, 102, 0.2), inset 0 1px 0 #fff;
+  }
+
+  .fab-action:active .fab-action-icon {
+    transform: scale(0.92);
+  }
+
+  .fab-action-label {
+    position: absolute;
+    top: 52px;
+    width: 84px;
+    color: var(--text);
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-align: center;
+    text-shadow: 0 1px 2px #fff, 0 0 6px #fff;
+  }
+
+  /* Edge cases */
+  /* Marking attendance: Save sits where the search goes, so sit above it */
+  .app:has(.att-save) .fab {
+    bottom: calc(86px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + 64px);
+  }
+
+  /* Typing in search (keyboard up), an open conversation, the marks sheet,
+     or the full-screen map: out of the way */
+  .is-typing .fab,
+  .app:has(.inbox.has-open) .fab,
+  .app:has(.marks) .fab,
+  .map-open .fab {
+    opacity: 0;
+    transform: scale(0.6);
+    pointer-events: none;
+  }
+
+  /* The old + inside the tab bar is gone */
+  .tab-plus-wrap {
+    display: none;
+  }
+
+  /* Room at the bottom of pages so the + never covers the last row */
+  .app {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fab-action,
+  .fab-main {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   Home: greeting, what needs you, a tile per part of the app
+   ========================================================= */
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.home-hero h1 {
+  margin: 2px 0 4px;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  background: linear-gradient(90deg, #2b2f7c, var(--brand) 60%, #7c8ae0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: home-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.home-date {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.home-sub {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 15px;
+}
+
+.home-needs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-needs li {
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d);
+}
+
+.home-need {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-need-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.home-need.is-due .home-need-icon {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.home-need.is-overdue .home-need-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.home-need > span:nth-child(2) {
+  flex: 1;
+}
+
+.home-need-go {
+  color: var(--text-3);
+}
+
+.home-clear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 600;
+}
+
+.home-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: home-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d);
+  transition: transform 0.15s;
+}
+
+.home-tile:active {
+  transform: scale(0.98);
+}
+
+/* A soft colour wash per tile */
+.home-tile::before {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--wash, rgba(91, 104, 196, 0.1));
+  content: "";
+}
+
+.home-tile.is-attendance { --wash: rgba(76, 175, 80, 0.12); }
+.home-tile.is-fees { --wash: rgba(240, 180, 41, 0.16); }
+.home-tile.is-inbox { --wash: rgba(91, 104, 196, 0.14); }
+.home-tile.is-homework { --wash: rgba(229, 83, 61, 0.1); }
+.home-tile.is-staff { --wash: rgba(111, 66, 193, 0.1); }
+.home-tile.is-transport { --wash: rgba(0, 150, 136, 0.12); }
+
+.home-tile-top {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-tile-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.home-tile-label {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-tile-body {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-tile-body strong {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.home-tile-body strong.is-paid { color: var(--success); }
+.home-tile-body strong.is-due { color: var(--warning); }
+.home-tile-body strong.is-overdue { color: var(--danger); }
+
+.home-tile .stat-ring {
+  width: 48px;
+  height: 48px;
+}
+
+.home-tile-line {
+  position: relative;
+  overflow: hidden;
+  color: var(--text-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@keyframes home-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-hero h1 {
+    font-size: 24px;
+  }
+
+  .home-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .home-tile {
+    gap: 8px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .home-tile-body strong {
+    font-size: 24px;
+  }
+
+  .home-tile .stat-ring {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-tile,
+  .home-needs li,
+  .home-hero h1 {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  /* Readable over any page: a frosted dim and pill labels */
+  .fab-dim {
+    background: rgba(29, 35, 102, 0.22);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  .fab-action-label {
+    top: 54px;
+    left: 50%;
+    width: auto;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 2px 8px rgba(29, 35, 102, 0.15);
+    font-size: 11px;
+    white-space: nowrap;
+    text-shadow: none;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 760px) {
+  .fab-action.is-edge .fab-action-label {
+    right: -4px;
+    left: auto;
+    transform: none;
+  }
+}

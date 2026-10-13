@@ -10,6 +10,8 @@ import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
+import QuickActions from "./components/QuickActions.jsx";
+import HomePage from "./components/HomePage.jsx";
 import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
 import { rupeesShort } from "./data/money.js";
@@ -50,7 +52,8 @@ const InboxPage = lazy(SCREENS.InboxPage);
 const MarksPage = lazy(SCREENS.MarksPage);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 export default function App() {
-  const [mode, setMode] = useState("students");
+  // Everyone lands on Home.
+  const [mode, setMode] = useState("home");
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -329,7 +332,7 @@ export default function App() {
   })();
   const [today, setToday] = useState(null); // { present, absent, marked }
   useEffect(() => {
-    if (mode !== "students" || !currentSession || viewOnly) return;
+    if ((mode !== "students" && mode !== "home") || !currentSession || viewOnly) return;
     if (leads) {
       swr(`att-overview:${currentSession.id}:${todayIso}`, () => attendanceOverview(currentSession.id, todayIso), (rows) =>
         setToday({
@@ -434,6 +437,7 @@ export default function App() {
   // Teachers: their daily work gets its own tabs (Attendance for class
   // in-charges, Homework). Leads find these inside Students instead.
   const sections = [
+    ["home", "Home"],
     ["students", "Students"],
     ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
@@ -531,9 +535,7 @@ export default function App() {
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
-        actions={plusActions}
         search={globalSearch}
-        onAction={runAction}
       />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
@@ -571,6 +573,25 @@ export default function App() {
             </div>
             <TeamPage view="access" school={school} session={currentSession} me={user.email} onCount={setPendingCount} />
           </>
+        ) : mode === "home" ? (
+          <HomePage
+            school={school}
+            me={user.email}
+            name={user.displayName}
+            role={role}
+            students={current}
+            loading={loading}
+            session={currentSession}
+            today={today}
+            pendingCount={pendingCount}
+            routes={routes}
+            onGo={(go) => {
+              if (go === "access") {
+                switchMode("employees");
+                setStaffTab("access");
+              } else switchMode(go);
+            }}
+          />
         ) : mode === "team" ? (
           <TeamPage
             view="school"
@@ -748,6 +769,9 @@ export default function App() {
         )}
         </Suspense>
       </main>
+
+      {/* Phones: the + in the bottom-right corner, above the search. */}
+      <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
       {openIndex !== -1 && !studentPage && (
