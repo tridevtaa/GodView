@@ -13,22 +13,19 @@ export function LogoMark({ size = 28 }) {
   );
 }
 
-// Godview mark × the school's logo if it has one, else its name.
+// Signed in: just the school's logo (else its name). The Godview mark only
+// shows when there's no school yet.
 export default function Logo() {
   const school = useAuth()?.school;
   const label = school?.short_name || school?.name;
   return (
-    <a className="logo" href="/" aria-label={`Godview${label ? ` for ${label}` : ""} home`}>
-      <LogoMark size={26} />
-      {school && (
-        <>
-          <span className="logo-x" aria-hidden="true">×</span>
-          {school.logo_path ? (
-            <img className="logo-partner" src={logoUrl(school.logo_path)} alt={label} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
-          ) : (
-            <span className="logo-school">{label}</span>
-          )}
-        </>
+    <a className="logo" href="/" aria-label={`${label || "Godview"} home`}>
+      {!school ? (
+        <LogoMark size={26} />
+      ) : school.logo_path ? (
+        <img className="logo-partner" src={logoUrl(school.logo_path)} alt={label} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
+      ) : (
+        <span className="logo-school">{label}</span>
       )}
     </a>
   );

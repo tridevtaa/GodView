@@ -124,16 +124,13 @@ export default function ParentApp({ phone }) {
       <header className="pa-top">
         <div className="pa-top-inner">
           <span className="pa-brand">
-            <LogoMark size={24} />
-            {school && (
-              <>
-                <span className="logo-x" aria-hidden="true">×</span>
-                {school.logo_path ? (
-                  <img className="pa-school-logo" src={logoUrl(school.logo_path)} alt={school.short_name || school.name} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
-                ) : (
-                  <span className="pa-school-name">{school.short_name || school.name}</span>
-                )}
-              </>
+            {/* Just the school's logo (else its name); Godview only before it loads */}
+            {!school ? (
+              <LogoMark size={24} />
+            ) : school.logo_path ? (
+              <img className="pa-school-logo" src={logoUrl(school.logo_path)} alt={school.short_name || school.name} style={{ "--logo-scale": school.logo_scale ?? 1 }} />
+            ) : (
+              <span className="pa-school-name">{school.short_name || school.name}</span>
             )}
           </span>
           <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} />

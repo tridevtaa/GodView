@@ -11750,3 +11750,22 @@ input[type="date"]::-webkit-date-and-time-value {
     grid-row: span 2;
   }
 }
+
+/* The school's logo stands alone in the header now: a touch bigger */
+.logo .logo-partner {
+  height: calc(30px * var(--logo-scale, 1));
+}
+
+.logo-size-preview .logo-partner {
+  height: calc(30px * var(--logo-scale, 1));
+}
+
+.pa-school-logo {
+  height: calc(28px * var(--logo-scale, 1)) !important;
+}
+
+@media (max-width: 760px) {
+  .logo .logo-partner {
+    height: calc(28px * var(--logo-scale, 1));
+  }
+}
