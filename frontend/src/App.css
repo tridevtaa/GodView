@@ -12949,6 +12949,7 @@ input[type="date"]::-webkit-date-and-time-value {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
 
 /* "Remove?" (tap again to confirm): a soft red pill, not a stretched circle */
 .icon-btn-sm.is-danger,
