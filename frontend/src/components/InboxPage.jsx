@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { staffInbox } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Chat from "./Chat.jsx";
+import StatCards from "./StatCards.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
@@ -83,7 +84,18 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     setQuery("");
   }
 
+  const all = threads ?? [];
   return (
+    <>
+    {threads && (
+      <StatCards
+        items={[
+          { label: "Unread", value: counts.unread, note: "conversations", tone: counts.unread ? "due" : undefined, onClick: () => setFilter("unread") },
+          { label: "Open requests", value: counts.requests, note: "leave, certificates", tone: counts.requests ? "overdue" : undefined, onClick: () => setFilter("requests") },
+          { label: "Conversations", value: all.length, onClick: () => setFilter("all") },
+        ]}
+      />
+    )}
     <div className={`inbox${open ? " has-open" : ""}`}>
       <section className="inbox-list">
         <div className="inbox-head">
@@ -182,5 +194,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
         )}
       </section>
     </div>
+    </>
   );
 }

@@ -4,6 +4,7 @@ import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import StatCards from "./StatCards.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
@@ -100,6 +101,20 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           </div>
         )}
       </div>
+
+      {!writing && items && (
+        <StatCards
+          items={(() => {
+            const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+            const due = items.filter((h) => h.due_date === tomorrow());
+            return [
+              { label: "Due tomorrow", value: due.length, note: due.length ? [...new Set(due.map((h) => h.subject).filter(Boolean))].slice(0, 2).join(", ") || "homework" : "nothing due", tone: due.length ? "due" : undefined },
+              { label: "This week", value: items.filter((h) => h.created_at >= weekAgo).length, note: "given" },
+              { label: "Classes", value: new Set(items.filter((h) => h.created_at >= weekAgo).map((h) => `${h.class}|${h.section ?? ""}`)).size, note: `of ${groups.length} this week` },
+            ];
+          })()}
+        />
+      )}
 
       {error && <p className="notice notice-error">{error}</p>}
       {!groups.length && <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>}

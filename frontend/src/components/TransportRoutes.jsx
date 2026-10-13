@@ -14,8 +14,6 @@ export default function TransportRoutes({ school, routes, students, onChanged })
     students.forEach((s) => s.uses_bus && s.bus_stop_id && m.set(s.bus_stop_id, (m.get(s.bus_stop_id) ?? 0) + 1));
     return m;
   }, [students]);
-  const onBus = students.filter((s) => s.uses_bus).length;
-  const pinnedHomes = students.filter((s) => s.home_lat != null).length;
 
   const act = (fn) => async (...args) => {
     setError("");
@@ -33,18 +31,6 @@ export default function TransportRoutes({ school, routes, students, onChanged })
     <>
       {error && <p className="notice notice-error">{error}</p>}
 
-      {/* One line instead of four counters. */}
-      <p className="tr-line">
-        {(() => {
-          const stops = routes.reduce((n, r) => n + r.stops.length, 0);
-          return [
-            `${routes.length} route${routes.length === 1 ? "" : "s"}`,
-            `${stops} stop${stops === 1 ? "" : "s"}`,
-            `${onBus} on the bus`,
-            `${pinnedHomes} of ${students.length} homes pinned`,
-          ].join(" · ");
-        })()}
-      </p>
 
       <form
         className="tr-add"

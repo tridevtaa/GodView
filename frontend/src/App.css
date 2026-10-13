@@ -10806,3 +10806,105 @@ input[type="date"]::-webkit-date-and-time-value {
 .grid-more {
   height: 1px;
 }
+
+/* Overview cards at the top of each page */
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 20px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.stat-card.is-link {
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.stat-card.is-link:hover {
+  transform: translateY(-1px);
+}
+
+.stat-card .stat-label {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.stat-card strong {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.stat-card strong.is-paid {
+  color: var(--success);
+}
+
+.stat-card strong.is-due {
+  color: var(--warning);
+}
+
+.stat-card strong.is-overdue {
+  color: var(--danger);
+}
+
+.stat-card .row-sub {
+  overflow: hidden;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  .stat-cards {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+    border-radius: 14px;
+  }
+
+  .stat-card .stat-label {
+    font-size: 12px;
+  }
+
+  .stat-card strong {
+    font-size: 18px;
+  }
+
+  .stat-card .row-sub {
+    font-size: 11px;
+  }
+}
+
+/* Inbox: room for the cards above the list and conversation */
+.stat-cards + .inbox {
+  height: calc(100dvh - 64px - 56px - 116px);
+}
+
+@media (max-width: 760px) {
+  .stat-cards + .inbox {
+    height: auto;
+  }
+
+  .stat-cards:has(+ .inbox.has-open) {
+    display: none;
+  }
+}

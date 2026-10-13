@@ -10,7 +10,9 @@ import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
-import { countPendingRequests, listAssignments, listGrades, listRoutes, sessionResultPercents, staffInbox } from "./data/api.js";
+import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
+import StatCards from "./components/StatCards.jsx";
+import { rupeesShort } from "./data/money.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -75,6 +77,8 @@ export default function App() {
   // Principal: sees students, attendance, homework, requests and employees
   // across the school, and changes nothing (no imports, exports or edits).
   const isPrincipal = role === "principal";
+  // Owners, admins and the principal: they see the whole school.
+  const leads = isAdmin || isPrincipal;
   const [pendingCount, setPendingCount] = useState(0);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
@@ -315,11 +319,68 @@ export default function App() {
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
   })();
   const title = isStudents ? "Students" : "Staff";
+
+  // Today's attendance for the overview cards: the whole school for leads
+  // (the same remembered numbers as the Attendance page), a teacher's own
+  // students otherwise.
+  const todayIso = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const [today, setToday] = useState(null); // { present, absent, marked }
+  useEffect(() => {
+    if (mode !== "students" || !currentSession || viewOnly) return;
+    if (leads) {
+      swr(`att-overview:${currentSession.id}:${todayIso}`, () => attendanceOverview(currentSession.id, todayIso), (rows) =>
+        setToday({
+          present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
+          absent: rows.reduce((t, r) => t + Number(r.absent), 0),
+          marked: rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0),
+        })
+      ).catch(() => {});
+    } else {
+      swr(`att-day:${currentSession.id}:${todayIso}`, () => loadAttendance(currentSession.id, todayIso), (rows) => {
+        const mine = new Set(current.map((p) => p.id));
+        const own = rows.filter((r) => mine.has(r.student_id));
+        setToday({
+          present: own.filter((r) => r.status === "present" || r.status === "late").length,
+          absent: own.filter((r) => r.status === "absent").length,
+          marked: own.length,
+        });
+      }).catch(() => {});
+    }
+  }, [mode, currentSession, viewOnly, leads, todayIso, current]);
+
+  const overview = (() => {
+    if (loading) return null;
+    if (isStudents) {
+      const owing = current.filter((p) => Number(p.fee_due) > 0);
+      const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
+      const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+      return [
+        { label: leads ? "Students" : "My students", value: current.length.toLocaleString("en-IN"), note: leads ? `${gradeChoices.length} grades` : countLabel.replace(/^[\d,]+ students ?/, "") || undefined },
+        isAdmin && { label: "Due now", value: rupeesShort(due), note: `${owing.length.toLocaleString("en-IN")} students owe`, tone: due > 0 ? "due" : "paid", onClick: () => switchMode("fees") },
+        {
+          label: "Present today",
+          value: today === null ? undefined : today.marked ? `${pct}%` : "–",
+          note: today?.marked ? `${today.present} of ${today.marked}` : "Not marked yet",
+          tone: pct === null ? undefined : pct >= 90 ? "paid" : pct >= 75 ? "due" : "overdue",
+          onClick: seesAttendance ? () => switchMode("attendance") : undefined,
+        },
+        !isAdmin && { label: "Absent today", value: today === null ? undefined : today.marked ? today.absent : "–", note: today?.marked ? "students" : "Not marked yet", tone: today?.absent ? "overdue" : undefined },
+      ];
+    }
+    const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
+    return [
+      { label: "Staff", value: current.length.toLocaleString("en-IN") },
+      { label: "Teaching", value: teaching, note: `${current.length - teaching} others` },
+      isOwner && { label: "Waiting for access", value: pendingCount, tone: pendingCount ? "due" : undefined, onClick: () => setStaffTab("access") },
+    ];
+  })();
   // Header: Students, Inbox, Staff and Transport. Everything about the
   // students (attendance, homework, fees) lives inside Students, behind a
   // switch at the top; each role sees the parts it can use. School settings
   // are in the account menu (owner only).
-  const leads = isAdmin || isPrincipal;
   // Teachers: their daily work gets its own tabs (Attendance for class
   // in-charges, Homework). Leads find these inside Students instead.
   const sections = [
@@ -487,6 +548,21 @@ export default function App() {
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
+            <StatCards
+              items={[
+                { label: "Routes", value: routes.length, note: (() => {
+                  const n = routes.reduce((t, r) => t + r.stops.length, 0);
+                  return `${n} stop${n === 1 ? "" : "s"}`;
+                })() },
+                { label: "On the bus", value: current.filter((s) => s.uses_bus).length.toLocaleString("en-IN"), note: "students" },
+                {
+                  label: "Homes pinned",
+                  value: current.filter((s) => s.home_lat != null).length.toLocaleString("en-IN"),
+                  note: `of ${current.length.toLocaleString("en-IN")}`,
+                  onClick: () => setView("map"),
+                },
+              ]}
+            />
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
@@ -586,6 +662,8 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {overview && !viewOnly && <StatCards items={overview} />}
 
         {loading ? (
           <div className="grid" aria-busy="true">
