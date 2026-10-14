@@ -522,7 +522,6 @@ export default function App() {
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
-    ...(!isPrincipal ? [["message", "New message", "plane"]] : []),
     ["notice", "Post notice", "notice"],
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
@@ -541,7 +540,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", message: "requests", staff: "employees", attendance: "attendance", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", staff: "employees", attendance: "attendance", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -750,7 +749,6 @@ export default function App() {
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
-            newAt={quick.kind === "message" ? quick.at : 0}
             openThread={openThread}
             readOnly={isPrincipal}
             school={school}
@@ -849,7 +847,7 @@ export default function App() {
         </Suspense>
       </main>
 
-      {/* Phones: the + in the bottom-right corner, above the search. */}
+      {/* Phones: the + at the right end of the search row. */}
       <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
