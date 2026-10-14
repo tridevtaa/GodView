@@ -21,7 +21,7 @@ import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
 import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
-import { onOpenThread, syncPush } from "../pwa/push.js";
+import { onNotificationOpen, syncPush } from "../pwa/push.js";
 import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
@@ -101,12 +101,13 @@ export default function ParentApp({ phone }) {
       .catch(() => setError("Couldn’t load your children’s details. Check your connection and reload."));
   }, []);
 
-  // Notifications: keep this device's subscription current, and open the
-  // conversation a tapped notification is about.
+  // Notifications: keep this device's subscription current, and open what
+  // a tapped notification is about (a conversation or the noticeboard).
   useEffect(() => {
     syncPush().catch(() => {});
-    return onOpenThread((id) => {
-      setChildId(id);
+    return onNotificationOpen(({ thread, notice }) => {
+      if (notice) return setTab("notices");
+      setChildId(thread);
       setTab("inbox");
     });
   }, []);
@@ -247,7 +248,7 @@ export default function ParentApp({ phone }) {
                 <NoticeBoard schoolId={child.school_id} since={since} />
               </>
             )}
-            {tab === "home" && <NotifyPrompt text="Get notified when the school writes to you." />}
+            {tab === "home" && <NotifyPrompt text="Get notified about school messages and notices." />}
             {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}

@@ -1,6 +1,6 @@
 import { supabase } from "../supabase.js";
 import { clean, splitFields, toPerson } from "./personMapping.js";
-import { announceMessage } from "../pwa/push.js";
+import { announceMessage, announceNotice } from "../pwa/push.js";
 
 // Supabase access for the app. Screens work with "person" objects whose field
 // names predate the database (parent_name, aadhaar, fee_due…); this module maps
@@ -1184,13 +1184,15 @@ export async function listNotices(schoolId) {
 }
 
 export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null }) {
-  return must(
+  const saved = must(
     await supabase
       .from("notices")
       .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, event_on: event_on || null, image_path })
       .select()
       .single()
   );
+  announceNotice(saved.id); // notify the school, without waiting
+  return saved;
 }
 
 // A notice's picture: at most 1600 px on the long side, WebP (JPEG where

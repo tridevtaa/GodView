@@ -21,7 +21,7 @@ import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
 import { forget, swr } from "./data/cache.js";
-import { onOpenThread, syncPush } from "./pwa/push.js";
+import { onNotificationOpen, syncPush } from "./pwa/push.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -483,16 +483,17 @@ export default function App() {
     if (dataMode === "students" && !loading) setSearchStudents(current);
   }, [dataMode, loading, current]);
   const [openThread, setOpenThread] = useState({ id: null, at: 0 });
-  // Notifications: keep this device's subscription current, and open the
-  // conversation a tapped notification is about.
-  const showThread = useRef(null);
-  showThread.current = (id) => {
+  // Notifications: keep this device's subscription current, and open what
+  // a tapped notification is about (a conversation or the noticeboard).
+  const showTarget = useRef(null);
+  showTarget.current = ({ thread, notice }) => {
+    if (notice) return switchMode("notices");
     switchMode("requests");
-    setOpenThread({ id, at: Date.now() });
+    setOpenThread({ id: thread, at: Date.now() });
   };
   useEffect(() => {
     syncPush().catch(() => {});
-    return onOpenThread((id) => showThread.current(id));
+    return onNotificationOpen((to) => showTarget.current(to));
   }, []);
   const globalSearch = (
     <GlobalSearch
