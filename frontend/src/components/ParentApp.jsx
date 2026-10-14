@@ -14,7 +14,7 @@ import {
   setParentPassword,
   parentHasOwnPassword,
 } from "../data/api.js";
-import { METHODS, rupees, rupeesShort } from "../data/money.js";
+import { METHODS, rupees } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
 import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
@@ -26,9 +26,9 @@ import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
-import StatCards from "./StatCards.jsx";
-import NoticeBoard, { NoticePeek } from "./NoticeBoard.jsx";
-import CalendarPage, { CalendarPeek } from "./CalendarPage.jsx";
+import NoticeBoard from "./NoticeBoard.jsx";
+import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
+import { Tile, WideTile } from "./Widgets.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -266,7 +266,6 @@ export default function ParentApp({ phone }) {
 
 // ----------------------------------------------------------------- home ---
 
-const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -280,17 +279,13 @@ function ParentHome({ child, news, onGo }) {
   const [fees, setFees] = useState(null);
   const [results, setResults] = useState(null);
   const [homework, setHomework] = useState(null);
-  const [days, setDays] = useState(null);
   useEffect(() => {
     parentFees(child.id, child.school_id).then(setFees, () => setFees(false));
     (child.session ? listResults(child.id, child.session.id) : Promise.resolve([])).then(setResults, () => setResults(false));
     childHomework(child.id).then(setHomework, () => setHomework(false));
-    attendanceMonth(child.id, today()).then(setDays, () => setDays(false));
   }, [child.id, child.school_id, child.session]);
 
   const now = today();
-  const first = child.name.split(" ")[0];
-
   // Fees
   const open = fees ? fees.dues.filter((d) => Number(d.balance) > 0.009) : [];
   const dueNow = open.filter((d) => !d.due_date || d.due_date <= now);
@@ -299,14 +294,6 @@ function ParentHome({ child, news, onGo }) {
   const next = open.filter((d) => d.due_date && d.due_date > now).sort((a, b) => a.due_date.localeCompare(b.due_date))[0];
   const paid = fees ? fees.payments.filter((p) => p.status === "success").reduce((t, p) => t + Number(p.amount), 0) : 0;
   const openTotal = open.reduce((t, d) => t + Number(d.balance), 0);
-
-  // Attendance this month
-  const marked = days || [];
-  const todayMark = marked.find((d) => d.day === now);
-  const present = marked.filter((d) => d.status === "present" || d.status === "late").length;
-  const absent = marked.filter((d) => d.status === "absent").length;
-  const leave = marked.filter((d) => d.status === "leave").length;
-  const attPct = marked.length ? Math.round((present / marked.length) * 100) : null;
 
   // Latest exam
   const exam = useMemo(() => {
@@ -335,111 +322,84 @@ function ParentHome({ child, news, onGo }) {
   const hwUpcoming = hw.filter((h) => h.due_date && h.due_date >= now).length;
 
   const unread = news("inbox");
-  const needs = [
-    overdue.length > 0 && { key: "overdue", icon: "rupee", text: `${rupees(overdue.reduce((t, d) => t + Number(d.balance), 0))} fees overdue`, go: "fees", tone: "overdue" },
-    !overdue.length && dueTotal > 0 && { key: "due", icon: "rupee", text: `${rupees(dueTotal)} fees due now`, go: "fees", tone: "due" },
-    unread > 0 && { key: "msg", icon: "plane", text: `${plural(unread, "new message")}`, go: "inbox", tone: "due" },
-    hwToday > 0 && { key: "hwt", icon: "book", text: `${hwToday} homework due today`, go: "homework", tone: "due" },
-    hwTomorrow > 0 && { key: "hwn", icon: "book", text: `${hwTomorrow} homework due tomorrow`, go: "homework" },
-    news("results") > 0 && { key: "res", icon: "chart", text: `${plural(news("results"), "new result")}`, go: "results" },
-    todayMark?.status === "absent" && { key: "abs", icon: "register", text: `${first} was marked absent today`, go: "inbox", tone: "overdue" },
-  ].filter(Boolean);
-
   const go = (to) => () => onGo(to);
-  const cards = [
-    days !== false && {
-      icon: "register",
-      label: "Attendance this month",
-      value: days === null ? undefined : present,
-      note: marked.length ? `days present of ${marked.length}` : "Nothing marked yet",
-      tone: attPct === null ? undefined : attPct >= 90 ? "paid" : attPct >= 75 ? "due" : "overdue",
-      ring: attPct,
-      rows: marked.length
-        ? [
-            ["Today", todayMark ? MARK_TEXT[todayMark.status] : "Not marked yet", todayMark?.status === "absent" ? "overdue" : todayMark ? "paid" : undefined],
-            ["Absent", n(absent), absent ? "overdue" : undefined],
-            leave > 0 && ["On leave", n(leave)],
-          ]
-        : undefined,
-    },
-    fees !== false && {
-      icon: "rupee",
-      label: "Fees due now",
-      value: fees === null ? undefined : dueTotal,
-      format: rupeesShort,
-      note: dueTotal ? plural(dueNow.length, "fee") : "Nothing due right now",
-      tone: overdue.length ? "overdue" : dueTotal ? "due" : "paid",
-      bar: paid + openTotal > 0 ? { value: paid, max: paid + openTotal, label: "Paid so far" } : undefined,
-      rows:
-        paid + openTotal > 0
-          ? [
-              ["Paid so far", rupees(paid), "paid"],
-              next && ["Next due", `${rupees(next.balance)} · ${dateText(next.due_date, { day: "numeric", month: "short" })}`],
-            ]
-          : undefined,
-      onClick: go("fees"),
-    },
+
+  // Fees, the wide tile: what's due now (red when overdue, amber when due,
+  // green when all paid) and a ring of how much of the year is paid.
+  const overdueTotal = overdue.reduce((t, d) => t + Number(d.balance), 0);
+  const paidPct = paid + openTotal > 0 ? Math.round((paid / (paid + openTotal)) * 100) : null;
+  const feeTone = overdue.length ? "red" : dueTotal ? "amber" : "green";
+
+  // One tile each, with a red badge for anything new or waiting.
+  const tiles = [
     results !== false && {
+      key: "results",
       icon: "chart",
+      tone: "violet",
       label: exam ? exam.name : "Results",
       value: results === null ? undefined : exam?.pct ?? "–",
       format: (v) => `${v}%`,
-      note: exam ? "overall" : "No results yet",
-      tone: exam?.pct == null ? undefined : exam.pct >= 75 ? "paid" : exam.pct >= 50 ? "due" : "overdue",
-      rows: exam?.best && exam?.low ? [["Best", `${exam.best.subject} · ${Math.round(exam.best.pct)}%`, "paid"], ["Lowest", `${exam.low.subject} · ${Math.round(exam.low.pct)}%`, exam.low.pct < 50 ? "overdue" : undefined]] : undefined,
+      badge: news("results"),
+      badgeLabel: `${plural(news("results"), "new result")}`,
       onClick: go("results"),
     },
     homework !== false && {
+      key: "homework",
       icon: "book",
+      tone: "teal",
       label: "Homework",
       value: homework === null ? undefined : hwUpcoming,
-      note: `to do · ${hwToday} due today`,
-      tone: hwToday ? "due" : undefined,
+      badge: hwToday + hwTomorrow,
+      badgeLabel: `${hwToday} due today, ${hwTomorrow} due tomorrow`,
       onClick: go("homework"),
     },
     {
+      key: "inbox",
       icon: "plane",
-      label: "Messages",
+      tone: "indigo",
+      label: unread ? "New messages" : "Messages",
       value: unread,
-      note: unread ? "new" : "all read",
-      tone: unread ? "due" : undefined,
+      hot: unread > 0,
       onClick: go("inbox"),
     },
-  ];
+  ].filter(Boolean);
 
   return (
-    <div className="home pa-home">
+    <div className="home hw pa-home">
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>{greeting()}</h1>
       </header>
 
-      {needs.length > 0 ? (
-        <ul className="home-needs">
-          {needs.map((x, i) => (
-            <li key={x.key} style={{ "--d": `${i * 50}ms` }}>
-              <button className={`home-need is-${x.tone ?? "info"}`} onClick={() => onGo(x.go)}>
-                <span className="home-need-icon">
-                  <Icon name={x.icon} size={18} />
-                </span>
-                <span>{x.text}</span>
-                <Icon name="arrowRight" size={16} className="home-need-go" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="home-clear">
-          <Icon name="check" size={18} /> Nothing waiting on you. Nice.
-        </p>
-      )}
-
-      <div className="home-peeks">
-        <CalendarPeek schoolId={child.school_id} onOpen={() => onGo("calendar")} />
-        <NoticePeek schoolId={child.school_id} onOpen={() => onGo("notices")} newCount={news("notices")} />
+      <div className="hw-grid">
+        {fees !== false && (
+          <WideTile
+            tone={fees === null ? "indigo" : feeTone}
+            hot={overdue.length > 0}
+            kicker="Fees"
+            title={fees === null ? "…" : dueTotal ? `${rupees(dueTotal)} due` : "All paid"}
+            sub={
+              fees === null
+                ? ""
+                : overdue.length
+                ? `${rupees(overdueTotal)} overdue`
+                : next
+                ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}`
+                : dueTotal
+                ? plural(dueNow.length, "fee")
+                : "Nothing due right now"
+            }
+            pct={paidPct}
+            icon="rupee"
+            onClick={go("fees")}
+          />
+        )}
+        {tiles.map((t, i) => (
+          <Tile key={t.key} {...t} index={i} />
+        ))}
       </div>
 
-      <StatCards items={cards} className="home-cards" />
+      <ComingUp schoolId={child.school_id} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
     </div>
   );
 }
