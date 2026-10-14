@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { staffInbox } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
-import Chat from "./Chat.jsx";
+import Chat, { useBackToClose } from "./Chat.jsx";
 import StatCards from "./StatCards.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
+import { onFresh } from "../pwa/fresh.js";
 
 const FILTERS = [
   ["all", "All"],
@@ -31,6 +32,8 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(null);
+  // Phones: the conversation is a screen of its own; Back closes it.
+  const close = useBackToClose(open !== null, () => setOpen(null));
   // A conversation picked in the common search.
   useEffect(() => {
     if (openThread?.id) setOpen(openThread.id);
@@ -51,10 +54,16 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     [school.id, onCount]
   );
 
+  // Now, when the app comes back on screen or a notification comes in, and
+  // every 30 seconds while the screen is on.
   useEffect(() => {
     load();
     const t = setInterval(() => document.visibilityState === "visible" && load(), 30000);
-    return () => clearInterval(t);
+    const stop = onFresh(load);
+    return () => {
+      clearInterval(t);
+      stop();
+    };
   }, [load]);
 
   const q = find.trim().toLowerCase();
@@ -194,24 +203,33 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
 
       <section className="inbox-chat">
         {open ? (
-          <>
-            <header className="inbox-chat-head">
-              <button className="btn-icon inbox-back" onClick={() => setOpen(null)} aria-label="Back to inbox">
-                <Icon name="arrowLeft" size={18} />
-              </button>
-              <button className="inbox-who" onClick={() => onOpenStudent?.(open)} title="Open the student's page">
-                <Photo person={openStudent ?? { id: open, name: "?" }} className="inbox-photo" />
-                <span className="inbox-main">
-                  <strong>{openStudent?.name ?? "Student"}</strong>
-                  <span className="row-sub">
-                    {classLine(openStudent)}
-                    {openStudent?.parent_name ? ` · ${openStudent.parent_name}` : ""}
+          <Chat
+            key={open}
+            screen
+            studentId={open}
+            viewer="staff"
+            me={me}
+            canSend={!readOnly}
+            canAnswer={!readOnly && canAnswer}
+            onRead={load}
+            head={
+              <>
+                <button className="btn-icon chat-back" onClick={close} aria-label="Back to inbox">
+                  <Icon name="arrowLeft" size={20} />
+                </button>
+                <button className="inbox-who" onClick={() => onOpenStudent?.(open)} title="Open the student's page">
+                  <Photo person={openStudent ?? { id: open, name: "?" }} className="inbox-photo" />
+                  <span className="inbox-main">
+                    <strong>{openStudent?.name ?? "Student"}</strong>
+                    <span className="row-sub">
+                      {classLine(openStudent)}
+                      {openStudent?.parent_name ? ` · ${openStudent.parent_name}` : ""}
+                    </span>
                   </span>
-                </span>
-              </button>
-            </header>
-            <Chat key={open} studentId={open} viewer="staff" me={me} canSend={!readOnly} canAnswer={!readOnly && canAnswer} onRead={load} />
-          </>
+                </button>
+              </>
+            }
+          />
         ) : (
           <p className="row-sub inbox-pick-hint">Pick a conversation.</p>
         )}

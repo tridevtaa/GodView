@@ -964,9 +964,6 @@
   padding: 0;
 }
 
-.pa-main .pa-chat .chat-compose {
-  background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
-}
 
 @media (max-width: 520px) {
   .pa-hero {

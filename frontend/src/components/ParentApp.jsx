@@ -22,8 +22,9 @@ import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
 import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
 import { onNotificationOpen, syncPush } from "../pwa/push.js";
+import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
-import Chat from "./Chat.jsx";
+import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import StatCards from "./StatCards.jsx";
 import NoticeBoard, { NoticePeek } from "./NoticeBoard.jsx";
@@ -78,14 +79,14 @@ export default function ParentApp({ phone }) {
     []
   );
 
-  // Refresh the dots when the parent comes back to the app, and every minute.
+  // Refresh the dots when the parent comes back to the app or a
+  // notification comes in, and every minute.
   useEffect(() => {
     loadUnread();
-    const onShow = () => document.visibilityState === "visible" && loadUnread();
-    document.addEventListener("visibilitychange", onShow);
+    const stop = onFresh(loadUnread);
     const t = setInterval(loadUnread, 60000);
     return () => {
-      document.removeEventListener("visibilitychange", onShow);
+      stop();
       clearInterval(t);
     };
   }, [loadUnread]);
@@ -253,7 +254,7 @@ export default function ParentApp({ phone }) {
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
-            {tab === "inbox" && <MessagesTab key={child.id} child={child} phone={phone} />}
+            {tab === "inbox" && <MessagesTab key={child.id} child={child} phone={phone} onClose={() => setTab("home")} />}
           </>
         )}
         </>
@@ -837,19 +838,38 @@ const CERTIFICATES = ["Bonafide certificate", "Character certificate", "Transfer
 
 // The child's conversation with the school (teachers and office), with
 // Leave and Certificate buttons that send a request card into it.
-function MessagesTab({ child, phone }) {
+// Phones: a screen of its own (Back returns to Home), with the child at the
+// top. Computers: in the page, under the child.
+function MessagesTab({ child, phone, onClose }) {
   const [form, setForm] = useState(null); // "leave" | "certificate"
   const [tick, setTick] = useState(0);
   const me = `+91${String(phone).replace(/\D/g, "").slice(-10)}`;
+  const close = useBackToClose(true, onClose);
   return (
     <>
       {form && <RequestForm child={child} kind={form} onCancel={() => setForm(null)} onSent={() => (setForm(null), setTick((t) => t + 1))} />}
       <section className="pa-chat">
         <Chat
+          screen
           studentId={child.id}
           viewer="parent"
           me={me}
           refreshKey={tick}
+          headOnPhone
+          head={
+            <>
+              <button className="btn-icon chat-back" onClick={close} aria-label="Back to Home">
+                <Icon name="arrowLeft" size={20} />
+              </button>
+              <span className="inbox-who">
+                <Photo person={child} className="inbox-photo" />
+                <span className="inbox-main">
+                  <strong>{child.name}</strong>
+                  <span className="row-sub">Teachers and school office</span>
+                </span>
+              </span>
+            </>
+          }
           actions={
             <span className="chat-actions">
               <button type="button" className="chat-chip" onClick={() => setForm("leave")}>
@@ -904,8 +924,10 @@ function RequestForm({ child, kind, onCancel, onSent }) {
     }
   }
 
+  // A sheet over the conversation (phones: from the bottom).
   return (
-    <form className="pa-card pa-form" onSubmit={submit}>
+    <div className="modal-backdrop" onClick={onCancel}>
+    <form className="modal pa-card pa-form pa-request-sheet" onSubmit={submit} onClick={(e) => e.stopPropagation()}>
       <h2 className="pa-h2">{kind === "leave" ? `Leave for ${first}` : `Certificate for ${first}`}</h2>
       {form.kind === "leave" && (
         <div className="pa-dates">
@@ -943,6 +965,7 @@ function RequestForm({ child, kind, onCancel, onSent }) {
         </button>
       </div>
     </form>
+    </div>
   );
 }
 

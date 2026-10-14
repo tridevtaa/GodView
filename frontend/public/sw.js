@@ -108,14 +108,21 @@ self.addEventListener("push", (event) => {
     data = { body: event.data?.text() };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "Godview", {
-      body: data.body || "",
-      icon: "/icon-192.png?v=3",
-      badge: "/icon-192.png?v=3",
-      tag: data.url || "godview",
-      renotify: true,
-      data: { url: data.url || "/" },
-    })
+    Promise.all([
+      self.registration.showNotification(data.title || "Godview", {
+        body: data.body || "",
+        icon: "/icon-192.png?v=3",
+        badge: "/icon-192.png?v=3",
+        tag: data.url || "godview",
+        renotify: true,
+        data: { url: data.url || "/" },
+      }),
+      // An open app reloads its lists now (pwa/fresh.js), so the new
+      // message is there as soon as the notification is.
+      self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((wins) => wins.forEach((w) => w.postMessage({ type: "push", url: data.url }))),
+    ])
   );
 });
 

@@ -3,7 +3,7 @@ import { savePhoto } from "../data/photos.js";
 import { attendanceMonth, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
-import Chat from "./Chat.jsx";
+import Chat, { useBackToClose } from "./Chat.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
 import StudentParents from "./StudentParents.jsx";
@@ -333,6 +333,8 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState(initialTab);
+  // Phones: Messages opens as a screen of its own; Back returns to Details.
+  const closeChat = useBackToClose(tab === "messages", () => setTab("details"));
 
   // Esc leaves edit mode first, so unsaved changes aren't lost with the pop-up.
   useEffect(() => {
@@ -447,7 +449,32 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
           ) : isStudent && !editing && tab === "messages" ? (
-            <Chat studentId={person.id} viewer="staff" me={me} canSend={canWrite} canAnswer={canWrite} />
+            <Chat
+              screen
+              studentId={person.id}
+              viewer="staff"
+              me={me}
+              canSend={canWrite}
+              canAnswer={canWrite}
+              headOnPhone
+              head={
+                <>
+                  <button className="btn-icon chat-back" onClick={closeChat} aria-label="Back to the student">
+                    <Icon name="arrowLeft" size={20} />
+                  </button>
+                  <span className="inbox-who">
+                    <Photo person={person} className="inbox-photo" />
+                    <span className="inbox-main">
+                      <strong>{person.name}</strong>
+                      <span className="row-sub">
+                        {person.class ? gradeLabel(person.class) : ""}
+                        {person.section ? ` · ${person.section}` : ""}
+                      </span>
+                    </span>
+                  </span>
+                </>
+              }
+            />
           ) : isStudent && !editing && tab === "results" ? (
             <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={initialTab === "results"} />
           ) : editing ? (

@@ -22,6 +22,7 @@ import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
 import { forget, swr } from "./data/cache.js";
 import { onNotificationOpen, syncPush } from "./pwa/push.js";
+import { onFresh } from "./pwa/fresh.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -103,10 +104,10 @@ export default function App() {
     };
     refresh();
     const t = setInterval(refresh, 60000);
-    document.addEventListener("visibilitychange", refresh);
+    const stop = onFresh(refresh); // back on screen, or a notification came in
     return () => {
       clearInterval(t);
-      document.removeEventListener("visibilitychange", refresh);
+      stop();
     };
   }, [isOwner, school.id]);
   const { sessions, current: currentSession } = useSessions(school.id);

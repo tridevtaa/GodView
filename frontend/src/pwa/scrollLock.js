@@ -27,6 +27,10 @@ function unlock() {
   window.scrollTo(0, y);
 }
 
-const sync = () => (document.querySelector(".modal-backdrop") ? lock() : unlock());
+// A conversation open full screen on a phone (Chat.jsx) counts as a pop-up.
+const sync = () =>
+  document.querySelector(".modal-backdrop") || (matchMedia("(max-width: 760px)").matches && document.querySelector(".chat.is-screen"))
+    ? lock()
+    : unlock();
 
 new MutationObserver(sync).observe(document.body, { childList: true, subtree: true });
