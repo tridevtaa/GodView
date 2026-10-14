@@ -27,22 +27,33 @@ function dayLabel(iso) {
 // A child's conversation, like a messaging app: parents, the child's
 // teachers and the office in one thread. Leave and certificate requests show
 // as cards; staff approve or decline them here.
+//
+// The messages scroll inside the conversation and the box sits under them,
+// so the page itself never moves. With screen, phones show it as a screen
+// of its own (the part of the screen the keyboard leaves, see
+// pwa/viewport.js) over the tab bar, with head as its top bar; Back closes
+// it (onClose). On computers it fills whatever box it is put in.
+//
 // viewer: "staff" or "parent". me: staff email or parent phone (+91…).
 // canSend: may write. canAnswer: staff who may approve requests.
 // actions: extra buttons beside the box (the parent's Leave / Certificate).
-export default function Chat({ studentId, viewer, me, canSend = true, canAnswer = false, actions, refreshKey = 0, onRead }) {
+// head: the top bar (who this is about); headOnPhone: only on phones.
+export default function Chat({ studentId, viewer, me, canSend = true, canAnswer = false, actions, refreshKey = 0, onRead, head, headOnPhone = false, screen = false }) {
   const [items, setItems] = useState(null);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const end = useRef(null);
+  const scroller = useRef(null);
   const box = useRef(null);
-  const count = useRef(0);
+  // Follow new messages only while reading the newest (not when scrolled up
+  // to read older ones), and always after sending.
+  const atEnd = useRef(true);
+  const stick = useRef(true);
 
   const load = useCallback(async () => {
     try {
       const rows = await loadThread(studentId);
-      setItems(rows);
+      // Keep messages still being sent (not saved yet) at the end.
+      setItems((x) => [...rows, ...(x ?? []).filter((m) => m.pending)]);
       setError("");
       if (viewer === "staff") markThreadRead(studentId).then(onRead, () => {});
     } catch {
@@ -62,29 +73,67 @@ export default function Chat({ studentId, viewer, me, canSend = true, canAnswer 
     };
   }, [load, refreshKey]);
 
-  // Keep the latest message in view.
+  // Newest at the bottom, in view.
+  const toEnd = () => {
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
   useLayoutEffect(() => {
-    if (items && items.length !== count.current) {
-      end.current?.scrollIntoView({ block: "end" });
-      count.current = items.length;
-    }
+    if (items && (stick.current || atEnd.current)) toEnd();
+    stick.current = false;
   }, [items]);
+  // The keyboard opening (or the box growing) makes the list shorter: stay
+  // at the newest message if that's where the reader was.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => atEnd.current && toEnd());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const onScroll = () => {
+    const el = scroller.current;
+    atEnd.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
+  // The box grows with what's typed, up to a few lines.
+  const grow = () => {
+    const el = box.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  };
+  useLayoutEffect(grow, [text]);
+
+  // Shown at once, marked as sending; replaced by the saved message.
   async function send(e) {
     e?.preventDefault();
     const body = text.trim();
-    if (!body || busy) return;
-    setBusy(true);
+    if (!body) return;
+    const temp = {
+      id: `sending-${Date.now()}`,
+      type: "message",
+      pending: true,
+      body,
+      author: me,
+      from_parent: viewer === "parent",
+      created_at: new Date().toISOString(),
+    };
+    stick.current = true;
+    setItems((x) => [...(x ?? []), temp]);
+    setText("");
     setError("");
     try {
       const saved = await sendMessage(studentId, body);
-      setItems((x) => [...(x ?? []), saved]);
-      setText("");
-      box.current?.focus();
+      setItems((x) => {
+        const list = x ?? [];
+        if (list.some((m) => m.id === saved.id)) return list.filter((m) => m.id !== temp.id);
+        return list.some((m) => m.id === temp.id) ? list.map((m) => (m.id === temp.id ? saved : m)) : [...list, saved];
+      });
     } catch {
+      setItems((x) => (x ?? []).filter((m) => m.id !== temp.id));
+      setText((t) => t || body);
       setError("Couldn’t send. Try again.");
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -109,75 +158,113 @@ export default function Chat({ studentId, viewer, me, canSend = true, canAnswer 
   const mine = (m) => (viewer === "staff" ? !m.from_parent && m.author === me : m.from_parent && m.author === me);
 
   return (
-    <div className="chat">
-      {items === null && !error && <p className="row-sub chat-empty">Loading…</p>}
-      {items?.length === 0 && (
-        <p className="row-sub chat-empty">
-          {viewer === "staff" ? "No messages yet. Write to the parents below." : "No messages yet. Write to the school below."}
-        </p>
-      )}
-      <ol className="chat-list">
-        {items?.map((m, i) => {
-          const prev = items[i - 1];
-          const newDay = !prev || dayLabel(prev.created_at) !== dayLabel(m.created_at);
-          const sameAuthor = prev && !newDay && prev.type === "message" && m.type === "message" && prev.author === m.author;
-          return (
-            <li key={`${m.type}-${m.id}`} className="chat-item">
-              {newDay && <div className="chat-day">{dayLabel(m.created_at)}</div>}
-              {m.type === "request" ? (
-                <RequestCard
-                  r={m}
-                  canAnswer={canAnswer}
-                  canWithdraw={viewer === "parent" && m.status === "open"}
-                  onAnswer={(status) => answer(m, status)}
-                  onWithdraw={() => withdraw(m)}
-                />
-              ) : (
-                <div className={`bubble-row${mine(m) ? " is-mine" : ""}${m.from_parent ? " is-parent" : ""}`}>
-                  <div className="bubble">
-                    {!mine(m) && !sameAuthor && (
-                      <span className="bubble-who">
-                        {m.author_name || (m.from_parent ? "Parent" : "School")}
-                        {ROLE[m.author_role] && <span> · {ROLE[m.author_role]}</span>}
-                      </span>
-                    )}
-                    <p>{m.body}</p>
-                    <time dateTime={m.created_at}>{time(m.created_at)}</time>
+    <div className={`chat${screen ? " is-screen" : ""}`}>
+      {head && <header className={`chat-head${headOnPhone ? " is-phone-only" : ""}`}>{head}</header>}
+      <div className="chat-scroll" ref={scroller} onScroll={onScroll}>
+        {items === null && !error && <p className="row-sub chat-empty">Loading…</p>}
+        {items?.length === 0 && (
+          <p className="row-sub chat-empty">
+            {viewer === "staff" ? "No messages yet. Write to the parents below." : "No messages yet. Write to the school below."}
+          </p>
+        )}
+        <ol className="chat-list">
+          {items?.map((m, i) => {
+            const prev = items[i - 1];
+            const newDay = !prev || dayLabel(prev.created_at) !== dayLabel(m.created_at);
+            const sameAuthor = prev && !newDay && prev.type === "message" && m.type === "message" && prev.author === m.author;
+            return (
+              <li key={`${m.type}-${m.id}`} className={`chat-item${sameAuthor ? " is-same" : ""}`}>
+                {newDay && <div className="chat-day">{dayLabel(m.created_at)}</div>}
+                {m.type === "request" ? (
+                  <RequestCard
+                    r={m}
+                    canAnswer={canAnswer}
+                    canWithdraw={viewer === "parent" && m.status === "open"}
+                    onAnswer={(status) => answer(m, status)}
+                    onWithdraw={() => withdraw(m)}
+                  />
+                ) : (
+                  <div className={`bubble-row${mine(m) ? " is-mine" : ""}${m.from_parent ? " is-parent" : ""}${m.pending ? " is-pending" : ""}`}>
+                    <div className="bubble">
+                      {!mine(m) && !sameAuthor && (
+                        <span className="bubble-who">
+                          {m.author_name || (m.from_parent ? "Parent" : "School")}
+                          {ROLE[m.author_role] && <span> · {ROLE[m.author_role]}</span>}
+                        </span>
+                      )}
+                      <p>{m.body}</p>
+                      <time dateTime={m.created_at}>{m.pending ? "Sending…" : time(m.created_at)}</time>
+                    </div>
                   </div>
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ol>
-      {error && <p className="field-error">{error}</p>}
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      {error && <p className="field-error chat-error">{error}</p>}
       {canSend && (
         <form className="chat-compose" onSubmit={send}>
           {actions}
-          <textarea
-            ref={box}
-            className="chat-input"
-            rows={1}
-            maxLength={2000}
-            placeholder="Message"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              // Enter sends on a computer; Shift+Enter for a new line.
-              if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <button className="chat-send" disabled={busy || !text.trim()} aria-label="Send">
-            <Icon name="send" size={18} />
-          </button>
+          <div className="chat-box">
+            <textarea
+              ref={box}
+              className="chat-input"
+              rows={1}
+              maxLength={2000}
+              placeholder="Message"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter sends on a computer; Shift+Enter for a new line.
+                if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer: coarse)").matches) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            {/* Keeps the keyboard up: tapping Send doesn't take focus from the box. */}
+            <button className="chat-send" disabled={!text.trim()} aria-label="Send" onPointerDown={(e) => e.preventDefault()}>
+              <Icon name="send" size={18} />
+            </button>
+          </div>
         </form>
       )}
-      <div ref={end} className="chat-end" />
     </div>
   );
+}
+
+// Phones: an open conversation is a screen of its own, so the phone's Back
+// (or the arrow in its top bar) closes it instead of leaving the page under
+// it. Returns close() for that arrow.
+export function useBackToClose(active, onClose) {
+  const pushed = useRef(false);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(() => {
+    if (!active || !matchMedia("(max-width: 760px)").matches) return;
+    window.history.pushState({ ...window.history.state, chat: true }, "");
+    pushed.current = true;
+    const onPop = () => {
+      if (window.history.state?.chat) return;
+      pushed.current = false;
+      closeRef.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // Closed some other way: this entry no longer opens anything.
+      if (pushed.current) {
+        pushed.current = false;
+        const { chat, ...rest } = window.history.state ?? {};
+        window.history.replaceState(rest, "");
+      }
+    };
+  }, [active]);
+  return useCallback(() => {
+    if (pushed.current) window.history.back();
+    else closeRef.current();
+  }, []);
 }
 
 function RequestCard({ r, canAnswer, canWithdraw, onAnswer, onWithdraw }) {

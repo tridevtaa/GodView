@@ -8201,18 +8201,14 @@ input[type="date"]::-webkit-date-and-time-value {
   gap: 8px;
 }
 
-/* The message box stays at the bottom while the conversation scrolls. */
+/* The message box sits under the messages (they scroll, it doesn't). */
 .chat-compose {
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
   display: flex;
+  flex: none;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
-  margin-top: 12px;
-  padding: 10px 0;
-  background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
+  padding: 10px 0 12px;
 }
 
 .chat-input {
@@ -8375,16 +8371,6 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 600;
 }
 
-/* Scrolling to the newest message leaves room for the box (and tab bar). */
-.chat-end {
-  scroll-margin-bottom: 16px;
-}
-
-@media (max-width: 760px) {
-  .chat-end {
-    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
-  }
-}
 
 .inbox-main {
   display: flex;
@@ -8437,20 +8423,6 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 600;
 }
 
-.inbox-chat-head {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 0 -20px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-}
-
 .inbox-who {
   padding: 4px 8px;
 }
@@ -8458,10 +8430,6 @@ input[type="date"]::-webkit-date-and-time-value {
 .inbox-who .inbox-photo {
   width: 38px;
   height: 38px;
-}
-
-.inbox-back {
-  display: none;
 }
 
 .inbox-empty,
@@ -8479,19 +8447,12 @@ input[type="date"]::-webkit-date-and-time-value {
   margin: 0 8px;
 }
 
-.inbox-chat .chat-compose {
-  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.92) 35%);
-}
 
 /* Parent app: the conversation sits in a card */
 .pa-chat {
   padding-bottom: 0;
 }
 
-.pa-chat .chat-compose,
-.profile-full .chat-compose {
-  background: linear-gradient(rgba(255, 255, 255, 0), #fff 35%);
-}
 
 @media (max-width: 760px) {
   /* Phones: the list, or the conversation full screen. */
@@ -8522,7 +8483,8 @@ input[type="date"]::-webkit-date-and-time-value {
     padding-right: 0;
   }
 
-  .inbox.has-open .inbox-list,
+  /* The list stays under an open conversation (a screen of its own), so
+     Back lands exactly where you were. */
   .inbox:not(.has-open) .inbox-chat {
     display: none;
   }
@@ -8531,29 +8493,10 @@ input[type="date"]::-webkit-date-and-time-value {
     padding: 0;
   }
 
-  .inbox-chat-head {
-    top: 56px;
-    margin: -12px calc(-1 * var(--gutter)) 8px;
-    padding: 8px 8px;
-  }
-
-  .inbox-back {
-    display: grid;
-  }
-
   .inbox-row {
     padding: 10px 4px;
   }
 
-  /* Above the bottom tab bar and the install banner */
-  .chat-compose {
-    bottom: calc(64px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
-  }
-
-  .inbox-chat .chat-compose,
-  .profile-full .chat-compose {
-    background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 35%);
-  }
 
 
   .bubble {
@@ -10415,24 +10358,15 @@ input[type="date"]::-webkit-date-and-time-value {
     bottom: calc(78px + env(safe-area-inset-bottom));
   }
 
-  .chat-compose,
   .att-save,
   .marks-save,
   .profile-full .edit-foot {
     bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 
-  .pa .chat-compose {
-    bottom: calc(80px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
-  }
-
   .app .install,
   .pa .install {
     bottom: calc(86px + env(safe-area-inset-bottom) + var(--dock-h, 0px));
-  }
-
-  .chat-end {
-    scroll-margin-bottom: calc(96px + env(safe-area-inset-bottom) + var(--banner-h, 0px) + var(--dock-h, 0px));
   }
 }
 
@@ -10911,9 +10845,7 @@ input[type="date"]::-webkit-date-and-time-value {
     min-height: 0;
   }
 
-  .stat-cards-wrap:has(+ .inbox.has-open) {
-    display: none;
-  }
+
 }
 
 /* ---------------------------------------------------------------
@@ -11852,9 +11784,7 @@ input[type="date"]::-webkit-date-and-time-value {
     min-height: 0;
   }
 
-  .stat-cards:has(+ .inbox.has-open) {
-    display: none;
-  }
+
 }
 
 @media (max-width: 760px) {
@@ -13317,4 +13247,208 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .menu-item:disabled:hover {
   background: none;
+}
+
+/* =========================================================
+   Conversations (Chat.jsx): the messages scroll inside the
+   conversation and the box sits under them; the page never moves.
+   ========================================================= */
+.chat {
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 2px 4px;
+}
+
+/* Messages from the same person sit closer together */
+.chat-item.is-same {
+  margin-top: -1px;
+}
+
+.bubble-row.is-pending .bubble {
+  opacity: 0.6;
+}
+
+.chat-error {
+  flex: none;
+  margin: 4px 0 0;
+}
+
+/* The top bar: back (phones), who the conversation is about */
+.chat-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.chat-head .inbox-who {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 14px;
+}
+
+.chat-head .inbox-main strong,
+.chat-head .inbox-main .row-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chat-back {
+  display: none;
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.chat-head.is-phone-only {
+  display: none;
+}
+
+/* The box: one rounded field with Send inside it */
+.chat-box {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 4px 4px 0;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.chat-box:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.chat-box .chat-input {
+  max-height: 140px;
+  padding: 9px 4px 9px 16px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  overflow-y: auto;
+}
+
+.chat-box .chat-input:focus {
+  box-shadow: none;
+}
+
+.chat-box .chat-send {
+  width: 36px;
+  height: 36px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.chat-box .chat-send:not(:disabled):active {
+  transform: scale(0.9);
+}
+
+/* Computers: a box of its own height wherever it sits */
+.inbox-chat {
+  padding: 0 16px;
+}
+
+.inbox-chat > .chat {
+  flex: 1;
+}
+
+.inbox-chat .chat-head {
+  margin: 0 -16px;
+  padding: 8px 12px;
+}
+
+.profile-body .chat,
+.pa-chat .chat {
+  height: min(680px, calc(var(--vv-h, 100dvh) - 220px));
+  min-height: 380px;
+}
+
+/* Phones: an open conversation is a screen of its own, over the tab bar,
+   exactly the part of the screen the keyboard leaves (pwa/viewport.js).
+   Pop-ups (40) still open above it. */
+@media (max-width: 760px) {
+  .chat.is-screen {
+    position: fixed;
+    top: var(--vv-top, 0px);
+    right: 0;
+    left: 0;
+    z-index: 35;
+    height: var(--vv-h, 100dvh);
+    min-height: 0;
+    margin: 0;
+    background: var(--bg);
+    animation: chat-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes chat-in {
+    from {
+      opacity: 0;
+      transform: translateX(24px);
+    }
+  }
+
+  .chat.is-screen .chat-head,
+  .chat.is-screen .chat-head.is-phone-only {
+    display: flex;
+    margin: 0;
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px 4px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .chat.is-screen .chat-back {
+    display: grid;
+  }
+
+  .chat.is-screen .chat-scroll {
+    padding: 8px var(--gutter) 4px;
+  }
+
+  .chat.is-screen .chat-error {
+    padding: 0 var(--gutter);
+  }
+
+  .chat.is-screen .chat-compose {
+    padding: 8px var(--gutter) calc(8px + env(safe-area-inset-bottom));
+    background: linear-gradient(rgba(238, 240, 248, 0), var(--bg) 40%);
+  }
+
+  /* Keyboard up: it covers the home-bar space, so no room for it */
+  .kb-open .chat.is-screen .chat-compose {
+    padding-bottom: 8px;
+  }
+
+  /* Nothing else floats over it */
+  body:has(.chat.is-screen) .install,
+  body:has(.chat.is-screen) .notify {
+    display: none;
+  }
+
+  .bubble {
+    max-width: 84%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat.is-screen {
+    animation: none;
+  }
 }
