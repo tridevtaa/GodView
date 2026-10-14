@@ -43,7 +43,7 @@ function Card({ label, icon, value, format, note, tone, ring, bar, rows, onClick
     >
       <span className="stat-label">
         {icon && <Icon name={icon} size={15} />}
-        {label}
+        <span className="stat-label-text">{label}</span>
       </span>
       <div className="stat-main">
         <div className="stat-head">
