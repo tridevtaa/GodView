@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { answerRequest, cancelParentRequest, loadThread, markThreadRead, sendMessage } from "../data/api.js";
 import Icon from "./Icon.jsx";
+import { onFresh } from "../pwa/fresh.js";
 
 const KIND = { leave: "Leave", certificate: "Certificate", message: "Message" };
 const STATUS = {
@@ -49,11 +50,16 @@ export default function Chat({ studentId, viewer, me, canSend = true, canAnswer 
     }
   }, [studentId, viewer, onRead]);
 
-  // Load now, when asked, and every 15 seconds while the screen is on.
+  // Load now, when asked, when the app comes back on screen or a
+  // notification comes in, and every 15 seconds while the screen is on.
   useEffect(() => {
     load();
     const t = setInterval(() => document.visibilityState === "visible" && load(), 15000);
-    return () => clearInterval(t);
+    const stop = onFresh(load);
+    return () => {
+      clearInterval(t);
+      stop();
+    };
   }, [load, refreshKey]);
 
   // Keep the latest message in view.

@@ -22,6 +22,7 @@ import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
 import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
 import { onNotificationOpen, syncPush } from "../pwa/push.js";
+import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
@@ -78,14 +79,14 @@ export default function ParentApp({ phone }) {
     []
   );
 
-  // Refresh the dots when the parent comes back to the app, and every minute.
+  // Refresh the dots when the parent comes back to the app or a
+  // notification comes in, and every minute.
   useEffect(() => {
     loadUnread();
-    const onShow = () => document.visibilityState === "visible" && loadUnread();
-    document.addEventListener("visibilitychange", onShow);
+    const stop = onFresh(loadUnread);
     const t = setInterval(loadUnread, 60000);
     return () => {
-      document.removeEventListener("visibilitychange", onShow);
+      stop();
       clearInterval(t);
     };
   }, [loadUnread]);
