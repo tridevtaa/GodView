@@ -147,7 +147,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
           {greeting()}
           {first ? `, ${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""}
         </h1>
-        <p className="home-sub">{needs.length ? `${needs.length} thing${needs.length === 1 ? "" : "s"} need${needs.length === 1 ? "s" : ""} you today` : "All caught up"}</p>
       </header>
 
       {needs.length > 0 ? (

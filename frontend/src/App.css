@@ -11271,12 +11271,6 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 500;
 }
 
-.home-sub {
-  margin: 0;
-  color: var(--text-2);
-  font-size: 15px;
-}
-
 .home-needs {
   display: flex;
   flex-direction: column;
@@ -13450,5 +13444,138 @@ input[type="date"]::-webkit-date-and-time-value {
 @media (prefers-reduced-motion: reduce) {
   .chat.is-screen {
     animation: none;
+  }
+}
+
+/* =========================================================
+   Phones: scrolling down squeezes the bottom bars into a smaller
+   size, like Instagram (pwa/compactBars.js sets bars-compact);
+   scrolling up brings them back. Tab bar 62 to 48px and narrower,
+   icons 28 to 22px, search and + 42 to 36px, all moving down with it.
+   ========================================================= */
+@media (max-width: 760px) {
+  .tabbar {
+    transition:
+      transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.2s,
+      height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      padding 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .tabbar .tab-icon,
+  .tabbar button.active .tab-icon {
+    transition: transform 0.16s ease-out, width 0.3s, height 0.3s;
+  }
+
+  .glass-pill {
+    transition:
+      left 0.55s cubic-bezier(0.32, 1.35, 0.45, 1),
+      top 0.3s,
+      bottom 0.3s,
+      width 0.3s;
+  }
+
+  .gsearch {
+    transition:
+      bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      padding 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .fab {
+    transition:
+      bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      right 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      width 0.3s,
+      height 0.3s,
+      opacity 0.2s,
+      transform 0.2s;
+  }
+
+  .gsearch .search input {
+    transition: height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), font-size 0.3s;
+  }
+
+  .fab-main {
+    transition:
+      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+      height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Squeezed */
+  .bars-compact:not(.is-typing) .tabbar {
+    right: 48px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 48px;
+    height: 48px;
+    padding: 4px;
+  }
+
+  .bars-compact:not(.is-typing) .glass-pill {
+    top: 4px;
+    bottom: 4px;
+    left: calc(4px + (100% - 8px) / var(--n) * var(--i));
+    width: calc((100% - 8px) / var(--n));
+  }
+
+  .bars-compact:not(.is-typing) .tabbar .tab-icon,
+  .bars-compact:not(.is-typing) .tabbar button.active .tab-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .bars-compact:not(.is-typing) .tabbar .seg-count {
+    top: 1px;
+  }
+
+  /* Search and + line up with the narrower bar */
+  .bars-compact:not(.is-typing) .gsearch {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    padding-right: 48px;
+    padding-left: 48px;
+  }
+
+  .bars-compact:not(.is-typing) .gsearch .search input {
+    height: 36px;
+    font-size: 14px;
+    text-overflow: ellipsis;
+  }
+
+  .bars-compact:not(.is-typing) .has-plus .gsearch {
+    padding-right: 94px;
+  }
+
+  .bars-compact:not(.is-typing) .fab {
+    right: 48px;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    width: 36px;
+    height: 36px;
+  }
+
+  .bars-compact:not(.is-typing) .fab-main {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Marking attendance: Save holds the search's spot, the + stays above it */
+  .bars-compact:not(.is-typing) .app:has(.att-save) .fab {
+    bottom: calc(146px + env(safe-area-inset-bottom) + var(--banner-h, 0px));
+  }
+
+  .bars-compact:not(.is-typing) .fab-action {
+    top: -6px;
+    left: -6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tabbar,
+  .gsearch,
+  .gsearch .search input,
+  .fab-main {
+    transition: none !important;
   }
 }
