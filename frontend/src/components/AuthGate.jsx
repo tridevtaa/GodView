@@ -35,6 +35,9 @@ async function clearLegacyCaches() {
 }
 
 export async function logOut() {
+  // This device stops getting the person's notifications (while still
+  // signed in, so the database lets us remove it).
+  await import("../pwa/push.js").then((p) => p.disablePush()).catch(() => {});
   await supabase.auth.signOut();
   // Photos kept on this device go with the session (shared computers).
   await globalThis.caches?.delete("godview-photos-v2").catch(() => {});

@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { logOut, useAuth } from "./AuthGate.jsx";
 import { useDismiss } from "./useDismiss.js";
 import Icon from "./Icon.jsx";
+import { NotifyMenuItem } from "./Notify.jsx";
 
 export default function AccountMenu({ onSettings }) {
   const { user, school, role } = useAuth();
@@ -36,6 +37,7 @@ export default function AccountMenu({ onSettings }) {
               School settings
             </button>
           )}
+          <NotifyMenuItem />
           <button role="menuitem" className="menu-item" onClick={logOut}>
             <Icon name="logout" />
             Sign out

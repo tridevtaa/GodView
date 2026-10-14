@@ -20,6 +20,8 @@ import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
+import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
+import { onOpenThread, syncPush } from "../pwa/push.js";
 import Icon from "./Icon.jsx";
 import Chat from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
@@ -94,9 +96,19 @@ export default function ParentApp({ phone }) {
         // The school's own grade names ("KG 1", "Class 5"…), best effort.
         if (kids[0]) await listGrades(kids[0].school_id).then(setGradeLabels, () => {});
         setChildren(kids);
-        setChildId(kids[0]?.id ?? null);
+        setChildId((id) => (kids.some((k) => k.id === id) ? id : kids[0]?.id ?? null));
       })
       .catch(() => setError("Couldn’t load your children’s details. Check your connection and reload."));
+  }, []);
+
+  // Notifications: keep this device's subscription current, and open the
+  // conversation a tapped notification is about.
+  useEffect(() => {
+    syncPush().catch(() => {});
+    return onOpenThread((id) => {
+      setChildId(id);
+      setTab("inbox");
+    });
   }, []);
 
   const child = children?.find((c) => c.id === childId);
@@ -235,6 +247,7 @@ export default function ParentApp({ phone }) {
                 <NoticeBoard schoolId={child.school_id} since={since} />
               </>
             )}
+            {tab === "home" && <NotifyPrompt text="Get notified when the school writes to you." />}
             {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
@@ -482,6 +495,7 @@ function ParentMenu({ phone, onPassword }) {
             <Icon name="edit" />
             Change password
           </button>
+          <NotifyMenuItem />
           <button role="menuitem" className="menu-item" onClick={logOut}>
             <Icon name="logout" />
             Log out
