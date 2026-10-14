@@ -6,6 +6,7 @@ import StatCards from "./StatCards.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
+import { onFresh } from "../pwa/fresh.js";
 
 const FILTERS = [
   ["all", "All"],
@@ -51,10 +52,16 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     [school.id, onCount]
   );
 
+  // Now, when the app comes back on screen or a notification comes in, and
+  // every 30 seconds while the screen is on.
   useEffect(() => {
     load();
     const t = setInterval(() => document.visibilityState === "visible" && load(), 30000);
-    return () => clearInterval(t);
+    const stop = onFresh(load);
+    return () => {
+      clearInterval(t);
+      stop();
+    };
   }, [load]);
 
   const q = find.trim().toLowerCase();
