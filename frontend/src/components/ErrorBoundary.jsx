@@ -1,20 +1,23 @@
 import { Component } from "react";
+import { isStaleRelease, reloadForNewRelease } from "../pwa/release.js";
 
 // If a screen crashes, show what happened and a way out instead of a blank
-// page.
+// page. Code left over from the previous release just reloads.
 export default class ErrorBoundary extends Component {
-  state = { error: null };
+  state = { error: null, reloading: false };
 
   static getDerivedStateFromError(error) {
     return { error };
   }
 
   componentDidCatch(error, info) {
+    if (isStaleRelease(error) && reloadForNewRelease()) return this.setState({ reloading: true });
     console.error("Godview crashed:", error, info?.componentStack);
   }
 
   render() {
     if (!this.state.error) return this.props.children;
+    if (this.state.reloading) return <main className="auth-screen" aria-busy="true" />;
     return (
       <main className="auth-screen">
         <div className="auth-card">

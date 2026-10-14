@@ -12,6 +12,12 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './App.css'
 import './pwa/install.js'
 import './pwa/scrollLock.js'
+import { reloadForNewRelease } from './pwa/release.js'
+
+// A screen's code from the previous release is gone: load the new release.
+window.addEventListener('vite:preloadError', (e) => {
+  if (reloadForNewRelease()) e.preventDefault()
+})
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
