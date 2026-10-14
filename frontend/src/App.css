@@ -11400,6 +11400,101 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--text-3);
 }
 
+/* Today's tasks stand out: a card tinted in the task's colour with an edge
+   of it, a solid icon that glows softly, and a shine across the card as
+   it comes in. Indigo for plain tasks, amber for due, red for overdue. */
+.home-need {
+  --c: var(--brand);
+  --c2: #8591e0;
+  --tint: var(--brand-soft);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--c) 22%, transparent);
+  background: linear-gradient(105deg, var(--tint), var(--surface) 75%);
+  box-shadow: inset 4px 0 0 var(--c), 0 6px 18px color-mix(in srgb, var(--c) 16%, transparent);
+  font-weight: 600;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.home-need.is-due {
+  --c: #d98a0b;
+  --c2: var(--fee-due);
+  --tint: #fff1d6;
+}
+
+.home-need.is-overdue {
+  --c: var(--fee-overdue);
+  --c2: #f2846f;
+  --tint: #ffe3dd;
+}
+
+.home-need:hover {
+  transform: translateY(-1px);
+  box-shadow: inset 4px 0 0 var(--c), 0 10px 24px color-mix(in srgb, var(--c) 24%, transparent);
+}
+
+.home-need:active {
+  transform: scale(0.99);
+}
+
+.home-need .home-need-icon,
+.home-need.is-due .home-need-icon,
+.home-need.is-overdue .home-need-icon {
+  background: linear-gradient(145deg, var(--c2), var(--c));
+  color: #fff;
+  animation: need-glow 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--d, 0ms) + 0.5s);
+}
+
+@keyframes need-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--c) 45%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--c) 0%, transparent);
+  }
+}
+
+.home-need-go {
+  color: var(--c);
+  transition: transform 0.15s;
+}
+
+.home-need:hover .home-need-go {
+  transform: translateX(3px);
+}
+
+/* The shine: one sweep as the card comes in */
+.home-need::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.75) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: need-shine 1.1s ease-out both;
+  animation-delay: calc(var(--d, 0ms) + 0.35s);
+  content: "";
+  pointer-events: none;
+}
+
+@keyframes need-shine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-need .home-need-icon,
+  .home-need::after {
+    animation: none !important;
+  }
+
+  .home-need::after {
+    display: none;
+  }
+}
+
 .home-clear {
   display: flex;
   align-items: center;
@@ -11804,13 +11899,20 @@ input[type="date"]::-webkit-date-and-time-value {
   height: calc(30px * var(--logo-scale, 1));
 }
 
+/* The parent app's header shows it exactly as the staff header does */
 .pa-school-logo {
-  height: calc(28px * var(--logo-scale, 1)) !important;
+  width: auto;
+  max-width: none;
+  height: calc(30px * var(--logo-scale, 1)) !important;
+  max-height: 52px;
+  object-fit: contain;
 }
 
 @media (max-width: 760px) {
-  .logo .logo-partner {
-    height: calc(28px * var(--logo-scale, 1));
+  .logo .logo-partner,
+  .pa-school-logo {
+    height: calc(28px * var(--logo-scale, 1)) !important;
+    max-height: 44px;
   }
 }
 

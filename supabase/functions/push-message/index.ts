@@ -36,15 +36,21 @@ Deno.serve(async (req) => {
   let sent = 0;
   await Promise.all(
     (rows ?? []).map(async (r: Record<string, string>) => {
+      // Logged (push service, its answer, time taken) to tell our delays
+      // from the push service's: Logs in the dashboard's function page.
+      const host = new URL(r.sub_endpoint).host;
+      const t0 = Date.now();
       try {
-        await webpush.sendNotification(
+        const res = await webpush.sendNotification(
           { endpoint: r.sub_endpoint, keys: { p256dh: r.sub_p256dh, auth: r.sub_auth } },
           JSON.stringify({ title: r.title, body: r.body, url: r.url }),
           { TTL: 24 * 60 * 60, urgency: "high" }
         );
+        console.log(`push ${host} ${res.statusCode} ${Date.now() - t0}ms`);
         sent++;
       } catch (e) {
-        const status = (e as { statusCode?: number }).statusCode;
+        const { statusCode: status, body } = e as { statusCode?: number; body?: string };
+        console.log(`push ${host} failed ${status ?? "?"} ${Date.now() - t0}ms ${String(body ?? e).slice(0, 200)}`);
         if (status === 404 || status === 410) await admin.rpc("forget_push_subscription", { p_endpoint: r.sub_endpoint });
       }
     })
