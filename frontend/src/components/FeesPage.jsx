@@ -8,6 +8,7 @@ import { BarChart, ColumnChart } from "./charts.jsx";
 import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
+import StatCards from "./StatCards.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -178,11 +179,28 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         </div>
       )}
 
-      <section className="fee-cards">
-        <Stat label="Collected" value={summary?.collected} tone="paid" note={billed ? `${rate}% of ${rupeesShort(billed)}` : ""} />
-        <Stat label="Due now" value={summary?.due_now} tone="due" note={summary ? `${summary.students_due} students` : ""} />
-        <Stat label="Due later" value={summary ? summary.outstanding - summary.due_now : undefined} note="this session" />
-      </section>
+      <StatCards
+        items={[
+          {
+            icon: "rupee",
+            label: "Collected",
+            value: summary ? Number(summary.collected) : undefined,
+            format: rupeesShort,
+            tone: "paid",
+            bar: billed ? { value: collected, max: billed, label: `${rate}% of ${rupees(billed)}` } : undefined,
+          },
+          {
+            icon: "rupee",
+            label: "Due now",
+            value: summary ? Number(summary.due_now) : undefined,
+            format: rupeesShort,
+            tone: "due",
+            badge: summary ? Number(summary.students_due) : 0,
+            badgeLabel: `${summary?.students_due ?? 0} students owe`,
+          },
+          { icon: "calendar", color: "indigo", label: "Due later", value: summary ? Number(summary.outstanding) - Number(summary.due_now) : undefined, format: rupeesShort },
+        ]}
+      />
 
       <div className="fees-charts">
         <section className="panel chart-panel">
@@ -243,18 +261,6 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         </Dialog>
       )}
     </>
-  );
-}
-
-function Stat({ label, value, tone, note }) {
-  return (
-    <div className="fee-card">
-      <span>{label}</span>
-      <strong className={tone ? `is-${tone}` : ""} title={value === undefined ? undefined : rupees(value)}>
-        {value === undefined ? "…" : rupeesShort(value)}
-      </strong>
-      {note && <span className="row-sub">{note}</span>}
-    </div>
   );
 }
 

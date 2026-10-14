@@ -383,39 +383,3 @@ export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotice
   );
 }
 
-export function CalendarPeek({ schoolId, staff = false, onOpen }) {
-  const { items, loading } = useItems(schoolId, staff);
-  const today = todayIso();
-  const soon = iso(new Date(Date.now() + 60 * 864e5));
-  const next = items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon).slice(0, 3);
-  if (loading) return null;
-  return (
-    <section className="nb-peek cal-peek">
-      <button className="nb-peek-head" onClick={onOpen}>
-        <span className="home-need-icon">
-          <Icon name="calendar" size={18} />
-        </span>
-        <strong>Coming up</strong>
-        <span className="nb-peek-all">
-          Calendar <Icon name="arrowRight" size={14} />
-        </span>
-      </button>
-      {next.length === 0 ? (
-        <p className="row-sub cal-peek-empty">Nothing in the next two months.</p>
-      ) : (
-        next.map((it) => (
-          <button key={it.id} className="cal-peek-item" onClick={onOpen}>
-            <DateLeaf date={it.start < today ? today : it.start} small />
-            <span className="cal-peek-main">
-              <strong>{it.title}</strong>
-              <span className="row-sub">{it.start <= today ? (it.end && it.end > today ? `Today, until ${short(it.end)}` : "Today") : range(it)}</span>
-            </span>
-            <span className={`cal-dot-lg k-${it.kind}`} title={KIND_LABEL[it.kind]}>
-              <Icon name={KIND_ICON[it.kind]} size={14} />
-            </span>
-          </button>
-        ))
-      )}
-    </section>
-  );
-}

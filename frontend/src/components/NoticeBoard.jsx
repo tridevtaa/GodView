@@ -311,37 +311,6 @@ function Compose({ schoolId, onClose, onPosted }) {
   );
 }
 
-// A few notices for Home, with a link to the page.
-export function NoticePeek({ schoolId, onOpen, newCount = 0, staff = false }) {
-  const [notices] = useNotices(schoolId, staff);
-  if (!notices?.length) return null;
-  const top = notices.slice(0, 2);
-  return (
-    <section className="nb-peek">
-      <button className="nb-peek-head" onClick={onOpen}>
-        <span className="home-need-icon">
-          <Icon name="notice" size={18} />
-        </span>
-        <strong>Noticeboard</strong>
-        {newCount > 0 && <span className="seg-count">{newCount > 99 ? "99+" : newCount}</span>}
-        <span className="nb-peek-all">
-          See all <Icon name="arrowRight" size={14} />
-        </span>
-      </button>
-      {top.map((n) => (
-        <button key={n.id} className="nb-peek-item" onClick={onOpen}>
-          {n.event_on && <DateLeaf date={n.event_on} small />}
-          <span className="nb-peek-title">
-            {n.pinned && <Icon name="pushpin" size={13} weight="fill" />}
-            {n.title}
-          </span>
-          <span className="row-sub">{when(n.created_at)}</span>
-        </button>
-      ))}
-    </section>
-  );
-}
-
 // A notice's picture, full screen; tap anywhere or Escape to close.
 function ImageViewer({ src, onClose }) {
   useEffect(() => {

@@ -108,22 +108,16 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
             const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
             const due = items.filter((h) => h.due_date === tomorrow());
             const week = items.filter((h) => h.created_at >= weekAgo);
-            const bySubject = [...week.reduce((m, h) => m.set(h.subject || "Other", (m.get(h.subject || "Other") ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
             const classesWith = new Set(week.map((h) => `${h.class}|${h.section ?? ""}`)).size;
             return [
+              { icon: "calendar", label: "Due tomorrow", value: due.length, tone: due.length ? "due" : undefined, color: due.length ? undefined : "indigo" },
+              { icon: "book", color: "teal", label: "This week", value: week.length },
               {
-                label: "Due tomorrow",
-                value: due.length,
-                note: due.length ? "pieces of homework" : "Nothing due",
-                tone: due.length ? "due" : undefined,
-                rows: due.slice(0, 3).map((h) => [h.subject || "Homework", `${gradeLabel(h.class)}${h.section ? ` · ${h.section}` : ""}`]),
-              },
-              { label: "This week", value: week.length, note: "given", rows: bySubject.slice(0, 3).map(([sub, c]) => [sub, String(c)]) },
-              {
+                icon: "academics",
+                color: "violet",
                 label: "Classes",
                 value: classesWith,
-                note: `of ${groups.length} got homework this week`,
-                bar: groups.length ? { value: classesWith, max: groups.length, label: "Classes with homework this week" } : undefined,
+                bar: groups.length ? { value: classesWith, max: groups.length, label: `${classesWith} of ${groups.length} classes got homework this week` } : undefined,
               },
             ];
           })()}
