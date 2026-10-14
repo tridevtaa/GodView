@@ -26,7 +26,7 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // on phones the conversation opens full screen.
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
-export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, newAt = 0, openThread }) {
+export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, openThread }) {
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
@@ -36,10 +36,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     if (openThread?.id) setOpen(openThread.id);
   }, [openThread]);
   const [picking, setPicking] = useState(false);
-  // The + button in the tab bar: start a new message.
-  useEffect(() => {
-    if (newAt && !readOnly) setPicking(true);
-  }, [newAt, readOnly]);
   const [query, setQuery] = useState("");
   // Search the conversations by student, parent or the last message.
   const [find, setFind] = useState("");
