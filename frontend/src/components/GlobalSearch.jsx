@@ -30,23 +30,6 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
   const typing = (on) => document.documentElement.classList.toggle("is-typing", on);
   useEffect(() => () => typing(false), []);
 
-  // How much of the layout is covered by the keyboard (when iOS doesn't
-  // shrink the page for it), so the search can sit right on top of it.
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const root = document.documentElement.style;
-    const fit = () => root.setProperty("--kb", `${Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))}px`);
-    fit();
-    vv.addEventListener("resize", fit);
-    vv.addEventListener("scroll", fit);
-    return () => {
-      vv.removeEventListener("resize", fit);
-      vv.removeEventListener("scroll", fit);
-      root.removeProperty("--kb");
-    };
-  }, []);
-
   // "/" focuses the search on computers.
   useEffect(() => {
     const onKey = (e) => {

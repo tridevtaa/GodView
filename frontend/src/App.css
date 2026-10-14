@@ -813,7 +813,12 @@ a:hover {
 
 .modal-backdrop {
   position: fixed;
-  inset: 0;
+  /* Exactly the visible screen (pwa/viewport.js): with the iPhone keyboard
+     up, pop-ups and sheets sit above it instead of under it. */
+  top: var(--vv-top, 0px);
+  right: 0;
+  left: 0;
+  height: var(--vv-h, 100%);
   z-index: 40;
   display: grid;
   place-items: center;
@@ -829,6 +834,7 @@ a:hover {
   max-width: 560px;
   max-height: calc(100vh - 32px);
   max-height: calc(100dvh - 32px); /* the visible screen on phones, not behind Safari's bars */
+  max-height: calc(var(--vv-h, 100dvh) - 32px); /* and not behind the keyboard */
   overflow: hidden;
   background: var(--surface);
   border-radius: var(--r-xl);
@@ -9752,7 +9758,7 @@ input[type="date"]::-webkit-date-and-time-value {
   flex-direction: column;
   gap: 12px;
   width: min(440px, calc(100vw - 32px));
-  max-height: min(640px, calc(100dvh - 48px));
+  max-height: min(640px, calc(var(--vv-h, 100dvh) - 48px));
   padding: 18px;
 }
 
@@ -12346,7 +12352,7 @@ input[type="date"]::-webkit-date-and-time-value {
 @media (max-width: 760px) {
   .modal.collect {
     align-self: flex-end;
-    max-height: 88dvh;
+    max-height: calc(var(--vv-h, 100dvh) * 0.88);
     border-radius: 22px 22px 0 0;
   }
 }

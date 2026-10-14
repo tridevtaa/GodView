@@ -12,6 +12,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx'
 import './App.css'
 import './pwa/install.js'
 import './pwa/scrollLock.js'
+import './pwa/viewport.js'
 import { reloadForNewRelease } from './pwa/release.js'
 
 // A screen's code from the previous release is gone: load the new release.
