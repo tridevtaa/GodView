@@ -63,14 +63,19 @@ export async function syncPush() {
   if (sub) await save(sub);
 }
 
-// A tapped notification: the student whose conversation to open. Called
-// with the ?thread= the app was opened with, then again for each tap while
+// A tapped notification: what to open, { thread: studentId } for a
+// conversation or { notice: id } for the noticeboard. Called with what the
+// app was opened with (?thread= or ?notice=), then again for each tap while
 // the app is already open. Returns a function that stops listening.
-export function onOpenThread(fn) {
+const target = (params) =>
+  params.get("thread") ? { thread: params.get("thread") } : params.get("notice") ? { notice: params.get("notice") } : null;
+
+export function onNotificationOpen(fn) {
   const params = new URLSearchParams(window.location.search);
-  const first = params.get("thread");
+  const first = target(params);
   if (first) {
     params.delete("thread");
+    params.delete("notice");
     const rest = params.toString();
     window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : ""));
     fn(first);
@@ -78,14 +83,19 @@ export function onOpenThread(fn) {
   if (!("serviceWorker" in navigator)) return () => {};
   const listen = (e) => {
     if (e.data?.type !== "open") return;
-    const id = new URL(e.data.url).searchParams.get("thread");
-    if (id) fn(id);
+    const to = target(new URL(e.data.url).searchParams);
+    if (to) fn(to);
   };
   navigator.serviceWorker.addEventListener("message", listen);
   return () => navigator.serviceWorker.removeEventListener("message", listen);
 }
 
-// After a message is sent: tell the other side. Best effort.
+// After a message is sent or a notice posted: tell the people it is for.
+// Best effort.
 export function announceMessage(id) {
   supabase.functions.invoke("push-message", { body: { message: id } }).catch(() => {});
+}
+
+export function announceNotice(id) {
+  supabase.functions.invoke("push-message", { body: { notice: id } }).catch(() => {});
 }

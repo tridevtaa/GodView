@@ -1,6 +1,7 @@
-// Notifications for a new message: the app calls this right after sending
-// one. message_push() in the database decides who hears about it (once per
-// message, only while it is new), and each of their devices gets a push.
+// Notifications for a new message or notice: the app calls this right
+// after sending one ({ message } or { notice }). message_push() or
+// notice_push() in the database decides who hears about it (once, only
+// while it is new), and each of their devices gets a push.
 // Devices the push service says are gone are forgotten. Deploy with:
 //   npx supabase functions deploy push-message
 // Needs the VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets (the public key
@@ -24,36 +25,40 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ sent: 0 }, 405);
 
-  const { message } = await req.json().catch(() => ({}));
-  if (typeof message !== "string" || !/^[0-9a-f-]{36}$/.test(message)) return reply({ sent: 0 }, 400);
+  const { message, notice } = await req.json().catch(() => ({}));
+  const id = message ?? notice;
+  if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) return reply({ sent: 0 }, 400);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: rows, error } = await admin.rpc("message_push", { p_message: message });
+  const { data: rows, error } = message
+    ? await admin.rpc("message_push", { p_message: id })
+    : await admin.rpc("notice_push", { p_notice: id });
   if (error) return reply({ sent: 0 }, 500);
 
   let sent = 0;
-  await Promise.all(
-    (rows ?? []).map(async (r: Record<string, string>) => {
-      // Logged (push service, its answer, time taken) to tell our delays
-      // from the push service's: Logs in the dashboard's function page.
-      const host = new URL(r.sub_endpoint).host;
-      const t0 = Date.now();
-      try {
-        const res = await webpush.sendNotification(
-          { endpoint: r.sub_endpoint, keys: { p256dh: r.sub_p256dh, auth: r.sub_auth } },
-          JSON.stringify({ title: r.title, body: r.body, url: r.url }),
-          { TTL: 24 * 60 * 60, urgency: "high" }
-        );
-        console.log(`push ${host} ${res.statusCode} ${Date.now() - t0}ms`);
-        sent++;
-      } catch (e) {
-        const { statusCode: status, body } = e as { statusCode?: number; body?: string };
-        console.log(`push ${host} failed ${status ?? "?"} ${Date.now() - t0}ms ${String(body ?? e).slice(0, 200)}`);
-        if (status === 404 || status === 410) await admin.rpc("forget_push_subscription", { p_endpoint: r.sub_endpoint });
-      }
-    })
-  );
+  const send = async (r: Record<string, string>) => {
+    // Logged (push service, its answer, time taken) to tell our delays
+    // from the push service's: Logs in the dashboard's function page.
+    const host = new URL(r.sub_endpoint).host;
+    const t0 = Date.now();
+    try {
+      const res = await webpush.sendNotification(
+        { endpoint: r.sub_endpoint, keys: { p256dh: r.sub_p256dh, auth: r.sub_auth } },
+        JSON.stringify({ title: r.title, body: r.body, url: r.url }),
+        { TTL: 24 * 60 * 60, urgency: "high" }
+      );
+      console.log(`push ${host} ${res.statusCode} ${Date.now() - t0}ms`);
+      sent++;
+    } catch (e) {
+      const { statusCode: status, body } = e as { statusCode?: number; body?: string };
+      console.log(`push ${host} failed ${status ?? "?"} ${Date.now() - t0}ms ${String(body ?? e).slice(0, 200)}`);
+      if (status === 404 || status === 410) await admin.rpc("forget_push_subscription", { p_endpoint: r.sub_endpoint });
+    }
+  };
+  // A notice can go to a whole school: 50 devices at a time.
+  const all = (rows ?? []) as Record<string, string>[];
+  for (let i = 0; i < all.length; i += 50) await Promise.all(all.slice(i, i + 50).map(send));
   return reply({ sent });
 });
