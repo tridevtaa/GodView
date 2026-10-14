@@ -159,12 +159,6 @@
   min-width: 0;
 }
 
-.pa-school-logo {
-  max-width: 140px;
-  height: 26px;
-  object-fit: contain;
-}
-
 .pa-school-name {
   overflow: hidden;
   font-weight: 600;
