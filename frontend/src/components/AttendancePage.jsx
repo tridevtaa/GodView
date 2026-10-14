@@ -4,6 +4,7 @@ import { peek, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import StatCards from "./StatCards.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 
 // Present, Absent or on Leave. (Days already saved as late still count
@@ -290,30 +291,28 @@ function Overview({ session, day, onOpen }) {
   const present = rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0);
   const marked = rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0);
   const notMarked = rows.filter((r) => Number(r.unmarked) === Number(r.students));
-  const onLeave = rows.reduce((t, r) => t + Number(r.on_leave), 0);
   const noTeacher = rows.filter((r) => !r.class_teacher).length;
 
   return (
     <>
-      <section className="fee-cards att-stats">
-        <div className="fee-card">
-          <span>Present</span>
-          <strong className="is-paid">{marked ? `${Math.round((present / marked) * 100)}%` : "–"}</strong>
-          <span className="row-sub">
-            {present} of {marked}
-          </span>
-        </div>
-        <div className="fee-card">
-          <span>Absent</span>
-          <strong className="is-due">{rows.reduce((t, r) => t + Number(r.absent), 0)}</strong>
-          {onLeave > 0 && <span className="row-sub">{onLeave} on leave</span>}
-        </div>
-        <div className="fee-card">
-          <span>Not marked</span>
-          <strong className={notMarked.length ? "is-overdue" : "is-paid"}>{notMarked.length ? notMarked.length : "All done"}</strong>
-          <span className="row-sub">{notMarked.length ? `of ${rows.length} classes` : `${rows.length} classes`}</span>
-        </div>
-      </section>
+      <StatCards
+        items={[
+          {
+            icon: "register",
+            label: "Present",
+            value: marked ? present : "–",
+            color: "green",
+            ring: marked ? Math.round((present / marked) * 100) : undefined,
+          },
+          { icon: "users", label: "Absent", value: rows.reduce((t, r) => t + Number(r.absent), 0), color: "red" },
+          {
+            icon: "flag",
+            label: "Not marked",
+            value: notMarked.length ? notMarked.length : "All done",
+            color: notMarked.length ? "amber" : "teal",
+          },
+        ]}
+      />
       <section className="panel">
         <h2 className="panel-title">Classes</h2>
         {noTeacher > 0 && <p className="row-sub att-ov-hint">{noTeacher} without a class teacher. Star one in Staff, App access.</p>}

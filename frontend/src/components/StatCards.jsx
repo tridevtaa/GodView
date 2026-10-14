@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 
-// Overview cards. A card is short (label, number, one line) unless it has
-// real detail to show: a ring or bar plus breakdown rows. Short cards sit
-// side by side; detailed ones take the full width on phones.
+// Overview tiles at the top of a page, in the same style as Home's
+// widgets: each a colour, an icon (or a small ring for a percentage), one
+// big number and a short label; a thin bar under it for "how much of";
+// a red badge for what's waiting. No sentences.
 //
 // items: [{
 //   label, icon?, value,     value: number (counts up) or text; undefined = loading
 //   format?: (n) => text,
-//   note?, tone?: "paid" | "due" | "overdue",
-//   ring?: 0..100, bar?: { value, max, label? }, rows?: [[label, value, tone?]],
-//   onClick?
+//   tone?: "paid" | "due" | "overdue"   (green, amber, red)
+//   color?: indigo | violet | teal | pink | orange | amber | green | red
+//   ring?: 0..100, bar?: { value, max, label? },
+//   badge?, badgeLabel?, onClick?
 // }]
+const TONE_COLOR = { paid: "green", due: "amber", overdue: "red" };
+const PALETTE = ["indigo", "violet", "teal", "pink", "orange"];
+
 export default function StatCards({ items, className = "" }) {
   const shown = items.filter(Boolean);
   if (!shown.length) return null;
   return (
-    <section className={`stat-cards ${className}`}>
+    <section className={`sw-row ${className}`} style={{ "--n": shown.length }}>
       {shown.map((item, i) => (
         <Card key={item.label} {...item} index={i} />
       ))}
@@ -24,48 +29,37 @@ export default function StatCards({ items, className = "" }) {
   );
 }
 
-const hasDetail = ({ ring, bar, rows }) => {
-  const r = (rows ?? []).filter(Boolean).length;
-  const viz = (ring !== undefined && ring !== null) || (bar && bar.max > 0);
-  return (viz && r >= 1) || r >= 2;
-};
-
-function Card({ label, icon, value, format, note, tone, ring, bar, rows, onClick, index }) {
-  const rich = hasDetail({ ring, bar, rows });
+function Card({ label, icon = "chart", value, format, tone, color, ring, bar, badge = 0, badgeLabel, onClick, index }) {
   const Tag = onClick ? "button" : "div";
-  const list = (rows ?? []).filter(Boolean);
+  const c = color ?? TONE_COLOR[tone] ?? PALETTE[index % PALETTE.length];
+  const pct = bar && bar.max > 0 ? Math.min(100, (bar.value / bar.max) * 100) : null;
   return (
     <Tag
       type={onClick ? "button" : undefined}
-      className={`stat-card${rich ? " is-rich" : ""}${onClick ? " is-link" : ""}`}
+      className={`sw-tile t-${c}${onClick ? " is-link" : ""}${badge > 0 ? " is-hot" : ""}`}
       onClick={onClick}
-      style={{ "--d": `${index * 70}ms` }}
+      style={{ "--d": `${index * 60}ms` }}
     >
-      <span className="stat-label">
-        {icon && <Icon name={icon} size={15} />}
-        <span className="stat-label-text">{label}</span>
+      <span className="sw-top">
+        {ring !== undefined && ring !== null ? (
+          <Ring pct={ring} />
+        ) : (
+          <span className="sw-icon">
+            <Icon name={icon} size={16} weight="fill" />
+          </span>
+        )}
+        {badge > 0 && (
+          <span className="hw-badge sw-badge" aria-label={badgeLabel} title={badgeLabel}>
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
       </span>
-      <div className="stat-main">
-        <div className="stat-head">
-          <strong className={tone ? `is-${tone}` : ""}>{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
-          {note && <span className="row-sub stat-note">{note}</span>}
-        </div>
-        {rich && ring !== undefined && ring !== null && <Ring pct={ring} tone={tone} />}
-      </div>
-      {rich && bar && bar.max > 0 && (
-        <div className="stat-bar" title={bar.label}>
-          <span className="stat-bar-fill" style={{ "--to": `${Math.min(100, (bar.value / bar.max) * 100)}%` }} />
-        </div>
-      )}
-      {rich && list.length > 0 && (
-        <ul className="stat-rows">
-          {list.map(([k, v, t]) => (
-            <li key={k}>
-              <span>{k}</span>
-              <b className={t ? `is-${t}` : ""}>{v}</b>
-            </li>
-          ))}
-        </ul>
+      <strong className="sw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
+      <span className="sw-label">{label}</span>
+      {pct !== null && (
+        <span className="sw-bar" title={bar.label}>
+          <span style={{ "--to": `${pct}%` }} />
+        </span>
       )}
     </Tag>
   );

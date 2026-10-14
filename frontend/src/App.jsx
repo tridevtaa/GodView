@@ -364,76 +364,55 @@ export default function App() {
     }
   }, [mode, currentSession, viewOnly, leads, todayIso, current]);
 
+  // Tiles at the top of Students and Staff: one number and a word each.
   const overview = (() => {
     if (loading) return null;
-    const n = (v) => v.toLocaleString("en-IN");
     if (isStudents) {
-      const boys = current.filter((p) => p.gender === "M").length;
-      const girls = current.filter((p) => p.gender === "F").length;
       const owing = current.filter((p) => Number(p.fee_due) > 0);
       const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
       const paid = current.reduce((t, p) => t + (Number(p.fee_paid) || 0), 0);
       const billed = current.reduce((t, p) => t + (Number(p.fee_billed) || 0), 0);
       const overdue = current.filter((p) => p.fee_status === "overdue").length;
       const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
-      const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
       return [
-        {
-          label: leads ? "Students" : "My students",
-          value: current.length,
-          note: leads ? `${gradeChoices.length} grades · ${classes} classes` : `${classes} class${classes === 1 ? "" : "es"}`,
-          rows: [
-            ["Boys · Girls", `${n(boys)} · ${n(girls)}`],
-            leads && ["New admissions", n(current.filter((p) => /new/i.test(p.admission_type ?? "")).length)],
-            ["On the bus", n(current.filter((p) => p.uses_bus).length)],
-          ],
-        },
+        { icon: "scholar", color: "indigo", label: leads ? "Students" : "My students", value: current.length },
         isAdmin && {
+          icon: "rupee",
           label: "Due now",
           value: due,
           format: rupeesShort,
-          note: `${n(owing.length)} students owe`,
           tone: due > 0 ? "due" : "paid",
           bar: billed ? { value: paid, max: billed, label: `${Math.round((paid / billed) * 100)}% of the year collected` } : undefined,
-          rows: [
-            ["Collected", `${rupeesShort(paid)}${billed ? ` · ${Math.round((paid / billed) * 100)}%` : ""}`, "paid"],
-            ["Overdue (15+ days)", n(overdue), overdue ? "overdue" : undefined],
-          ],
+          badge: overdue,
+          badgeLabel: `${overdue.toLocaleString("en-IN")} students overdue`,
           onClick: () => switchMode("fees"),
         },
         {
+          icon: "register",
           label: "Present today",
           value: today === null ? undefined : today.marked ? today.present : "–",
-          note: today?.marked ? `of ${n(today.marked)} marked` : "Not marked yet",
           tone: pct === null ? undefined : pct >= 90 ? "paid" : pct >= 75 ? "due" : "overdue",
+          color: pct === null ? "teal" : undefined,
           ring: pct ?? undefined,
-          rows: today?.marked
-            ? [
-                ["Absent", n(today.absent), today.absent ? "overdue" : undefined],
-                ["On leave", n(today.leave ?? 0)],
-                today.classes !== undefined && ["Classes not marked", `${today.notMarked} of ${today.classes}`, today.notMarked ? "due" : "paid"],
-              ]
-            : undefined,
+          badge: today?.notMarked ?? 0,
+          badgeLabel: `${today?.notMarked ?? 0} classes not marked`,
           onClick: seesAttendance ? () => switchMode("attendance") : undefined,
         },
       ];
     }
     const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
-    const depts = [...current.reduce((m, p) => m.set(p.department || "Other", (m.get(p.department || "Other") ?? 0) + 1), new Map())].sort((a, b) => b[1] - a[1]);
     return [
-      {
-        label: "Staff",
-        value: current.length,
-        note: `${depts.length} department${depts.length === 1 ? "" : "s"}`,
-        rows: depts.slice(0, 3).map(([d, c]) => [d, n(c)]),
+      { icon: "users", color: "pink", label: "Staff", value: current.length },
+      { icon: "teacher", color: "violet", label: "Teaching", value: teaching, bar: current.length ? { value: teaching, max: current.length, label: "Teaching share" } : undefined },
+      isOwner && {
+        icon: "idcard",
+        color: pendingCount ? "amber" : "teal",
+        label: "Waiting",
+        value: pendingCount,
+        badge: pendingCount,
+        badgeLabel: `${pendingCount} waiting for access`,
+        onClick: () => setStaffTab("access"),
       },
-      {
-        label: "Teaching",
-        value: teaching,
-        note: `${n(current.length - teaching)} others`,
-        bar: current.length ? { value: teaching, max: current.length, label: "Teaching share" } : undefined,
-      },
-      isOwner && { label: "Waiting for access", value: pendingCount, note: pendingCount ? "Tap to review" : "No one waiting", tone: pendingCount ? "due" : undefined, onClick: () => setStaffTab("access") },
     ];
   })();
   // Header: Students, Inbox, Staff and Transport. Everything about the
@@ -702,19 +681,16 @@ export default function App() {
             {(() => {
               const onBus = current.filter((s) => s.uses_bus).length;
               const pinned = current.filter((s) => s.home_lat != null).length;
-              const stops = routes.reduce((t, r) => t + r.stops.length, 0);
-              const perRoute = routes
-                .map((r) => [r.name, current.filter((s) => s.uses_bus && r.stops.some((st) => st.id === s.bus_stop_id)).length])
-                .sort((a, b) => b[1] - a[1]);
               return (
                 <StatCards
                   items={[
-                    { label: "Routes", value: routes.length, note: `${stops} stop${stops === 1 ? "" : "s"}`, rows: perRoute.slice(0, 3).map(([nm, c]) => [nm, `${c} students`]) },
-                    { label: "On the bus", value: onBus, note: `of ${current.length.toLocaleString("en-IN")} students`, bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined },
+                    { icon: "bus", color: "orange", label: "Routes", value: routes.length },
+                    { icon: "scholar", color: "indigo", label: "On the bus", value: onBus, bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined },
                     {
+                      icon: "pin",
+                      color: "teal",
                       label: "Homes pinned",
                       value: pinned,
-                      note: `${(current.length - pinned).toLocaleString("en-IN")} still to pin`,
                       bar: current.length ? { value: pinned, max: current.length, label: "Homes pinned" } : undefined,
                       onClick: () => setView("map"),
                     },
