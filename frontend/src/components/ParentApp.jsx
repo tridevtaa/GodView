@@ -412,7 +412,6 @@ function ParentHome({ child, news, onGo }) {
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>{greeting()}</h1>
-        <p className="home-sub">{needs.length ? `${plural(needs.length, "thing")} need${needs.length === 1 ? "s" : ""} you today` : `All caught up on ${first}`}</p>
       </header>
 
       {needs.length > 0 ? (
