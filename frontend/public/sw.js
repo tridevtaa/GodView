@@ -1,7 +1,8 @@
 // Godview service worker: makes the installed app open fast and show its
 // shell offline. School data always comes fresh from the network; only the
 // app's own files are cached, plus small student photos (see PHOTOS).
-const CACHE = "godview-shell-v5";
+// v6: drops pages stored by mistake under a missing file's name.
+const CACHE = "godview-shell-v6";
 // Student photos (small thumbnails), kept on the device so they appear
 // instantly. Survives app updates; cleared on logout.
 // v2: photos used to keep one file name when changed, so phones kept the
@@ -60,13 +61,15 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Built files have content hashes in their names, so they never change.
+  // A file from an older release is gone, and the server answers with the
+  // page instead: never store that as the file.
   if (url.pathname.startsWith("/assets/") || /\.(png|svg|webmanifest)$/.test(url.pathname)) {
     event.respondWith(
       caches.match(req).then(
         (hit) =>
           hit ||
           fetch(req).then((res) => {
-            if (res.ok) {
+            if (res.ok && !(res.headers.get("content-type") || "").includes("text/html")) {
               const copy = res.clone();
               caches.open(CACHE).then((c) => c.put(req, copy));
             }
