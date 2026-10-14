@@ -11680,6 +11680,46 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 }
 
+/* Labels wrap inside the card instead of spilling out of it (long words
+   hyphenate), at most two lines. */
+.stat-label-text {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+@media (max-width: 760px) {
+  /* Three short cards in a row on a narrow phone: every label gets two
+     lines' room, so the numbers line up across the row whether a label
+     wraps or not; the note may wrap to two lines too. */
+  .stat-cards:not(.home-cards) > .stat-card:not(.is-rich) .stat-label-text {
+    min-height: 2.6em;
+  }
+
+  .stat-cards > .stat-card:not(.is-rich) .stat-note {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.3;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 400px) {
+  .stat-cards > .stat-card:not(.is-rich) {
+    padding: 11px 10px;
+  }
+
+  .stat-cards > .stat-card .stat-label {
+    font-size: 11.5px;
+  }
+}
+
 /* Reduced motion: a gentle fade, no movement (numbers still count) */
 @media (prefers-reduced-motion: reduce) {
   .stat-cards > .stat-card {

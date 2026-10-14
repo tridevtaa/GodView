@@ -109,7 +109,7 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
               onClick: () => setFilter("requests"),
             },
             {
-              label: "Conversations",
+              label: "Chats",
               value: all.length,
               note: `${all.filter((t) => new Date(t.last_at).toDateString() === todayStr).length} active today`,
               onClick: () => setFilter("all"),
