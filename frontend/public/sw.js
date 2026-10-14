@@ -94,3 +94,39 @@ async function photo(event, req, key) {
   }
   return refresh();
 }
+
+// Notifications (new messages, sent by the push-message function). One per
+// conversation: a newer message replaces the older one but still alerts.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data?.json() ?? {};
+  } catch {
+    data = { body: event.data?.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Godview", {
+      body: data.body || "",
+      icon: "/icon-192.png?v=3",
+      badge: "/icon-192.png?v=3",
+      tag: data.url || "godview",
+      renotify: true,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+// Tapping one opens that conversation: in the app if it is already open
+// (the page listens for "open"), else in a new window.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
+      const win = wins.find((w) => new URL(w.url).origin === self.location.origin);
+      if (!win) return self.clients.openWindow(url);
+      win.postMessage({ type: "open", url });
+      return win.focus();
+    })
+  );
+});

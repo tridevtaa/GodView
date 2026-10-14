@@ -69,7 +69,7 @@ export default function InstallPrompt() {
       ) : (
         <div className="install-text">
           <strong>Get the Godview app</strong>
-          <span>Open it from your home screen, full screen, in one tap.</span>
+          <span>One tap from your home screen, with notifications.</span>
         </div>
       )}
       {!steps && (

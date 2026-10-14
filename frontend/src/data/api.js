@@ -1,5 +1,6 @@
 import { supabase } from "../supabase.js";
 import { clean, splitFields, toPerson } from "./personMapping.js";
+import { announceMessage } from "../pwa/push.js";
 
 // Supabase access for the app. Screens work with "person" objects whose field
 // names predate the database (parent_name, aadhaar, fee_due…); this module maps
@@ -765,7 +766,9 @@ export async function loadThread(studentId) {
 }
 
 export async function sendMessage(studentId, body) {
-  return { ...must(await supabase.rpc("send_message", { student: studentId, p_body: body })), type: "message" };
+  const saved = must(await supabase.rpc("send_message", { student: studentId, p_body: body }));
+  announceMessage(saved.id); // notify the other side, without waiting
+  return { ...saved, type: "message" };
 }
 
 export async function markThreadRead(studentId) {

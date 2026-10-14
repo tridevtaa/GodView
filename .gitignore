@@ -14,5 +14,6 @@ frontend/.wrangler/
 
 # Real school data used to seed/migrate; never commit
 supabase/*.local.sql
+supabase/*.local.json
 supabase/.temp/
 scripts/*.local.json

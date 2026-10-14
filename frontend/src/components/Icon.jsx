@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowRight,
+  Bell,
   BookOpenText,
   Briefcase,
   Bus,
@@ -122,6 +123,7 @@ const PHOSPHOR = {
   male: GenderMale,
   female: GenderFemale,
   file: FileText,
+  bell: Bell,
 };
 
 // Father and mother, drawn in Phosphor's style (256 grid, soft fill under a
