@@ -813,16 +813,17 @@ a:hover {
 
 .modal-backdrop {
   position: fixed;
-  /* Exactly the visible screen (pwa/viewport.js): with the iPhone keyboard
-     up, pop-ups and sheets sit above it instead of under it. */
+  /* From the top of the visible screen to the bottom of the page, dimming
+     behind the keyboard too; the bottom padding keeps pop-ups and sheets
+     out from under it (pwa/viewport.js), so they sit right on top of it. */
   top: var(--vv-top, 0px);
   right: 0;
+  bottom: 0;
   left: 0;
-  height: var(--vv-h, 100%);
   z-index: 40;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 16px 16px calc(16px + var(--kb, 0px));
   background: rgba(17, 24, 39, 0.45);
   animation: fade 0.12s ease-out;
 }
@@ -11335,6 +11336,28 @@ input[type="date"]::-webkit-date-and-time-value {
   .nb-compose {
     align-self: flex-end;
     border-radius: 22px 22px 0 0;
+  }
+
+  /* Keyboard up: sheets sit flush on it */
+  .kb-open .modal-backdrop {
+    padding-bottom: var(--kb, 0px);
+  }
+
+  /* and the new notice takes the room left, the details box giving way so
+     the audience and Post always show */
+  .kb-open .nb-compose {
+    height: calc(var(--vv-h, 100dvh) - 16px);
+    max-height: none;
+  }
+
+  .kb-open .nb-compose .modal-body {
+    min-height: 0;
+  }
+
+  .kb-open .nb-compose .nb-body-input {
+    flex: 1 1 0;
+    min-height: 56px;
+    resize: none;
   }
 }
 
