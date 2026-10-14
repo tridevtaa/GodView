@@ -341,6 +341,48 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
 }
 
 // Home: the next few things coming up, with a link to the calendar.
+// Home: what's coming up (calendar entries in the next two months) and
+// the latest notices, as one row of small cards to swipe through. Hidden
+// when there's nothing. Taps open the calendar or the noticeboard.
+export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotices }) {
+  const { items, loading } = useItems(schoolId, staff);
+  const [notices] = useNotices(schoolId, staff);
+  const today = todayIso();
+  const soon = iso(new Date(Date.now() + 60 * 864e5));
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const cards = [
+    ...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon).slice(0, 6),
+    ...(notices ?? [])
+      .filter((n) => !n.event_on && (n.pinned || n.created_at >= weekAgo))
+      .slice(0, 3)
+      .map((n) => ({ id: `new-${n.id}`, source: "notice", title: n.title, kind: "notice", start: n.created_at.slice(0, 10), fresh: true })),
+  ];
+  if (loading || !cards.length) return null;
+  return (
+    <section className="hw-strip">
+      <button className="hw-strip-head" onClick={onOpenCalendar}>
+        <strong>Coming up</strong>
+        <span>
+          Calendar <Icon name="arrowRight" size={14} />
+        </span>
+      </button>
+      <div className="hw-strip-row">
+        {cards.map((it, i) => (
+          <button key={it.id} className={`hw-card k-${it.kind}`} style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
+            <span className="hw-card-top">
+              <DateLeaf date={it.fresh || it.start >= today ? it.start : today} small />
+              <span className={`cal-dot-lg k-${it.kind}`} title={KIND_LABEL[it.kind]}>
+                <Icon name={KIND_ICON[it.kind]} size={14} />
+              </span>
+            </span>
+            <strong className="hw-card-title">{it.title}</strong>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function CalendarPeek({ schoolId, staff = false, onOpen }) {
   const { items, loading } = useItems(schoolId, staff);
   const today = todayIso();

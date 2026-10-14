@@ -13579,3 +13579,344 @@ input[type="date"]::-webkit-date-and-time-value {
     transition: none !important;
   }
 }
+
+/* =========================================================
+   Home, like phone widgets (HomePage.jsx): a wide Today tile,
+   then a colourful tile per part of the app (icon, one number,
+   one word, a red badge for what's waiting), then Coming up to
+   swipe through. Each tile has its own colour (--c, --c2, --tint).
+   ========================================================= */
+.hw .t-indigo { --c: #5b68c4; --c2: #8b97e6; --tint: #e9ecfb; }
+.hw .t-violet { --c: #7c4ddb; --c2: #b195f5; --tint: #f0eafd; }
+.hw .t-teal { --c: #0e9384; --c2: #4fcab9; --tint: #def5f1; }
+.hw .t-pink { --c: #d1427a; --c2: #f290b6; --tint: #fde7ef; }
+.hw .t-orange { --c: #e2662a; --c2: #f7a36d; --tint: #feece2; }
+.hw .t-amber { --c: #d48806; --c2: #f6c445; --tint: #fff2d6; }
+.hw .t-green { --c: #4f9a12; --c2: #a8d64a; --tint: #eaf6d9; }
+.hw .t-red { --c: #d9432e; --c2: #f4876f; --tint: #ffe5df; }
+
+.hw-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+/* A tile */
+.hw-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 128px;
+  padding: 14px 16px 14px;
+  border: 1px solid color-mix(in srgb, var(--c) 14%, transparent);
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--c2) 30%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--tint), #fff 85%);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--c) 12%, transparent);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+  transition: transform 0.15s, box-shadow 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hw-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--c) 20%, transparent);
+}
+
+.hw-tile:active {
+  transform: scale(0.97);
+}
+
+.hw-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: auto;
+  border-radius: 14px;
+  background: linear-gradient(145deg, var(--c2), var(--c));
+  color: #fff;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--c) 35%, transparent);
+}
+
+.hw-value {
+  margin-top: 14px;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.hw-label {
+  color: color-mix(in srgb, var(--c) 70%, #333);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Something waiting: a red count in the corner, with a soft pulse */
+.hw-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--fee-overdue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 0 0 0 rgba(229, 83, 61, 0.5);
+  animation: hw-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes hw-pulse {
+  50% {
+    box-shadow: 0 0 0 7px rgba(229, 83, 61, 0);
+  }
+}
+
+.hw-tile.is-hot {
+  border-color: color-mix(in srgb, var(--c) 35%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--c) 24%, transparent);
+}
+
+/* Today: wide, in full colour, white text and a white ring */
+.hw-today {
+  display: flex;
+  grid-column: span 2;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  min-height: 128px;
+  padding: 18px 20px;
+  border: 0;
+  border-radius: 24px;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
+    linear-gradient(135deg, var(--c2), var(--c));
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--c) 35%, transparent);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hw-today:active {
+  transform: scale(0.98);
+}
+
+.hw-today-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hw-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.hw-today strong {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.hw-today-sub {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.hw-today .stat-ring {
+  flex: none;
+  width: 76px;
+  height: 76px;
+}
+
+.hw-today .stat-ring-bg {
+  stroke: rgba(255, 255, 255, 0.28);
+}
+
+.hw-today .stat-ring-fg {
+  stroke: #fff;
+}
+
+.hw-today .stat-ring text {
+  fill: #fff;
+}
+
+.hw-today-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.hw-today.is-hot .hw-today-icon {
+  animation: hw-pulse-white 2.2s ease-in-out infinite;
+}
+
+@keyframes hw-pulse-white {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+  }
+}
+
+/* Coming up: small cards in a row, swiped */
+.hw-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hw-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.hw-strip-head strong {
+  font-size: 17px;
+}
+
+.hw-strip-head span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hw-strip-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 2px var(--gutter) 10px;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 var(--gutter);
+  scrollbar-width: none;
+}
+
+.hw-strip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.hw-card {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 10px;
+  width: 156px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  scroll-snap-align: start;
+  cursor: pointer;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.hw-card:active {
+  transform: scale(0.97);
+}
+
+.hw-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.hw-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Phones: two tiles a row, Today across both */
+@media (max-width: 760px) {
+  .hw-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .hw-today {
+    min-height: 112px;
+    padding: 16px 18px;
+  }
+
+  .hw-tile {
+    min-height: 118px;
+    padding: 12px 14px;
+  }
+
+  .hw-value {
+    font-size: 26px;
+  }
+
+  /* An odd one out at the end takes the whole row (Today, when there,
+     is the first child, so the count shifts by one) */
+  .hw-today ~ .hw-tile:last-child:nth-child(even),
+  .hw-grid:not(:has(.hw-today)) > .hw-tile:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-tile,
+  .hw-today,
+  .hw-card,
+  .hw-badge,
+  .hw-today-icon {
+    animation: none !important;
+  }
+}

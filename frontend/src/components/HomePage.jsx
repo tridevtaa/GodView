@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { feeSessionSummary, listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
+import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import StatCards from "./StatCards.jsx";
+import { CountUp, Ring } from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
-import { NoticePeek } from "./NoticeBoard.jsx";
-import { CalendarPeek } from "./CalendarPage.jsx";
+import { ComingUp } from "./CalendarPage.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -13,17 +12,18 @@ const greeting = () => {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 };
 
-// Home: everything this person can reach, at a glance. A greeting, what
-// needs them now (tap to go there), and a tile for each part of the app
-// with its key number. Uses the same remembered data as the pages, so it's
-// quick and the pages open already filled.
-export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, routes, onGo }) {
+// Home, like phone widgets: a greeting, today's attendance in one wide
+// tile, then a colourful tile for each part of the app with one number
+// and one word. Anything waiting on this person shows as a red badge on
+// its tile (overdue fees, open requests, staff waiting for access…).
+// Then what's coming up, to swipe through. Uses the same remembered data
+// as the pages, so it's quick and the pages open already filled.
+export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, onGo }) {
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
-  const [fees, setFees] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const staffKey = `people:employees:${school.id}:`;
   const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
 
@@ -34,8 +34,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
   useEffect(() => {
     if (!session) return;
     swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setHomework).catch(() => setHomework([]));
-    if (isAdmin) swr(`fees:summary:${session.id}`, () => feeSessionSummary(session.id), setFees).catch(() => {});
-  }, [school.id, session, isAdmin]);
+  }, [school.id, session]);
 
   // Numbers
   const unread = (threads ?? []).filter((t) => Number(t.unread) > 0).length;
@@ -47,100 +46,69 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const owing = students.filter((p) => Number(p.fee_due) > 0);
   const overdue = students.filter((p) => p.fee_status === "overdue").length;
   const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
-  const billed = Number(fees?.billed) || students.reduce((t, p) => t + (Number(p.fee_billed) || 0), 0);
-  const collected = Number(fees?.collected) || students.reduce((t, p) => t + (Number(p.fee_paid) || 0), 0);
   const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
   const onBus = students.filter((p) => p.uses_bus).length;
 
-  // What needs this person now
-  const needs = [
-    unread > 0 && { key: "unread", icon: "plane", text: `${unread} unread conversation${unread === 1 ? "" : "s"}`, go: "requests", tone: "due" },
-    requests > 0 && { key: "req", icon: "file", text: `${requests} request${requests === 1 ? "" : "s"} waiting`, go: "requests", tone: "overdue" },
-    leads && today?.notMarked > 0 && { key: "att", icon: "register", text: `${today.notMarked} class${today.notMarked === 1 ? "" : "es"} not marked today`, go: "attendance", tone: "due" },
-    !leads && today && today.marked === 0 && role === "teacher" && { key: "mark", icon: "register", text: "Today’s attendance isn’t marked", go: "attendance", tone: "due" },
-    isOwner && pendingCount > 0 && { key: "access", icon: "teacher", text: `${pendingCount} staff waiting for access`, go: "access", tone: "due" },
-    isAdmin && overdue > 0 && { key: "overdue", icon: "rupee", text: `${n(overdue)} students overdue on fees`, go: "fees", tone: "overdue" },
-    !leads && dueTomorrow > 0 && { key: "hw", icon: "book", text: `${dueTomorrow} homework due tomorrow`, go: "homework" },
-  ].filter(Boolean);
-
-  // Short cards for a number and a line; the ones with real detail (marked
-  // attendance, fees) grow full width with a ring or bar and a few rows.
+  // One tile per part of the app: a number and a word. badge: what's
+  // waiting on this person there; hot: something new, the tile glows.
   const go = (to) => () => onGo(to);
-  const cards = [
-    {
-      icon: "scholar",
-      label: leads ? "Students" : "My students",
-      value: loading ? undefined : students.length,
-      note: `${n(students.filter((p) => p.gender === "M").length)} boys · ${n(students.filter((p) => p.gender === "F").length)} girls`,
-      onClick: go("students"),
-    },
-    (leads || today) && {
-      icon: "register",
-      label: "Attendance today",
-      value: today === null ? undefined : today.marked ? today.present : "–",
-      note: today?.marked ? `present of ${n(today.marked)} marked` : "Not marked yet",
-      tone: attPct === null ? undefined : attPct >= 90 ? "paid" : attPct >= 75 ? "due" : "overdue",
-      ring: attPct,
-      rows: today?.marked
-        ? [
-            ["Absent", n(today.absent), today.absent ? "overdue" : undefined],
-            ["On leave", n(today.leave ?? 0)],
-            today.classes !== undefined && ["Classes not marked", `${today.notMarked} of ${today.classes}`, today.notMarked ? "due" : "paid"],
-          ]
-        : undefined,
-      onClick: go("attendance"),
-    },
+  const tiles = [
+    { key: "students", icon: "scholar", tone: "indigo", label: leads ? "Students" : "My students", value: loading ? undefined : students.length, onClick: go("students") },
     isAdmin && {
+      key: "fees",
       icon: "rupee",
-      label: "Fees due now",
+      tone: due > 0 ? "amber" : "green",
+      label: "Fees due",
       value: loading ? undefined : due,
       format: rupeesShort,
-      note: `${n(owing.length)} students owe`,
-      tone: due > 0 ? "due" : "paid",
-      bar: billed ? { value: collected, max: billed, label: "Collected this session" } : undefined,
-      rows: billed
-        ? [
-            ["Collected", `${rupeesShort(collected)} · ${Math.round((collected / billed) * 100)}%`, "paid"],
-            ["Overdue (15+ days)", n(overdue), overdue ? "overdue" : undefined],
-          ]
-        : undefined,
+      badge: overdue,
+      badgeLabel: `${n(overdue)} students overdue`,
       onClick: go("fees"),
     },
     {
+      key: "inbox",
       icon: "plane",
-      label: "Inbox",
+      tone: "violet",
+      label: "Unread",
       value: threads === null ? undefined : unread,
-      note: `unread · ${requests} request${requests === 1 ? "" : "s"}`,
-      tone: unread ? "due" : undefined,
+      badge: requests,
+      badgeLabel: `${requests} request${requests === 1 ? "" : "s"} waiting`,
+      hot: unread > 0,
       onClick: go("requests"),
     },
     {
+      key: "homework",
       icon: "book",
+      tone: "teal",
       label: "Homework",
       value: homework === null ? undefined : thisWeek,
-      note: `this week · ${dueTomorrow} due tomorrow`,
+      badge: leads ? 0 : dueTomorrow,
+      badgeLabel: `${dueTomorrow} due tomorrow`,
       onClick: go("homework"),
     },
     leads && {
+      key: "staff",
       icon: "teacher",
+      tone: "pink",
       label: "Staff",
       value: staff === null ? undefined : staff.length,
-      note: isOwner && pendingCount ? `${pendingCount} waiting for access` : "in the team",
-      tone: isOwner && pendingCount ? "due" : undefined,
-      onClick: go("employees"),
+      badge: isOwner ? pendingCount : 0,
+      badgeLabel: `${pendingCount} waiting for access`,
+      onClick: go(isOwner && pendingCount ? "access" : "employees"),
     },
-    isAdmin && {
-      icon: "bus",
-      label: "Transport",
-      value: loading ? undefined : onBus,
-      note: `on the bus · ${routes.length} route${routes.length === 1 ? "" : "s"}`,
-      onClick: go("transport"),
-    },
-  ];
+    isAdmin && { key: "bus", icon: "bus", tone: "orange", label: "On the bus", value: loading ? undefined : onBus, onClick: go("transport") },
+  ].filter(Boolean);
+
+  // Today's attendance: green, amber or red by how many are in; indigo
+  // (and glowing) while it still needs marking.
+  const showToday = leads || today;
+  const unmarked = today && today.marked === 0;
+  const attTone = attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
+  const left = today?.notMarked ?? 0;
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
-    <div className="home">
+    <div className="home hw">
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>
@@ -149,32 +117,56 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </h1>
       </header>
 
-      {needs.length > 0 ? (
-        <ul className="home-needs">
-          {needs.map((x, i) => (
-            <li key={x.key} style={{ "--d": `${i * 50}ms` }}>
-              <button className={`home-need is-${x.tone ?? "info"}`} onClick={() => onGo(x.go)}>
-                <span className="home-need-icon">
-                  <Icon name={x.icon} size={18} />
-                </span>
-                <span>{x.text}</span>
-                <Icon name="arrowRight" size={16} className="home-need-go" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="home-clear">
-          <Icon name="check" size={18} /> Nothing waiting on you. Nice.
-        </p>
-      )}
-
-      <div className="home-peeks">
-        <CalendarPeek schoolId={school.id} staff onOpen={() => onGo("calendar")} />
-        <NoticePeek schoolId={school.id} staff onOpen={() => onGo("notices")} />
+      <div className="hw-grid">
+        {showToday && (
+          <button className={`hw-today t-${attTone}${unmarked || left ? " is-hot" : ""}`} onClick={go("attendance")}>
+            <span className="hw-today-text">
+              <span className="hw-kicker">Today</span>
+              <strong>
+                {today === null ? "…" : today.marked ? (
+                  <>
+                    <CountUp to={today.present} /> present
+                  </>
+                ) : (
+                  "Attendance"
+                )}
+              </strong>
+              <span className="hw-today-sub">
+                {today === null ? "" : !today.marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}
+              </span>
+            </span>
+            {attPct !== null ? (
+              <Ring pct={attPct} />
+            ) : (
+              <span className="hw-today-icon">
+                <Icon name="register" size={26} />
+              </span>
+            )}
+          </button>
+        )}
+        {tiles.map((t, i) => (
+          <Tile key={t.key} {...t} index={i} />
+        ))}
       </div>
 
-      <StatCards items={cards} className="home-cards" />
+      <ComingUp schoolId={school.id} staff onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
     </div>
+  );
+}
+
+function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, onClick, index }) {
+  return (
+    <button className={`hw-tile t-${tone}${hot || badge > 0 ? " is-hot" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
+      <span className="hw-icon">
+        <Icon name={icon} size={20} weight="fill" />
+      </span>
+      {badge > 0 && (
+        <span className="hw-badge" aria-label={badgeLabel} title={badgeLabel}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+      <strong className="hw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
+      <span className="hw-label">{label}</span>
+    </button>
   );
 }
