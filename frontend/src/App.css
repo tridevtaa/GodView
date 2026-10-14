@@ -13694,8 +13694,8 @@ input[type="date"]::-webkit-date-and-time-value {
   box-shadow: 0 10px 26px color-mix(in srgb, var(--c) 24%, transparent);
 }
 
-/* Today: wide, in full colour, white text and a white ring */
-.hw-today {
+/* The wide tile (Today, Fees): in full colour, white text and ring */
+.hw-wide {
   display: flex;
   grid-column: span 2;
   align-items: center;
@@ -13719,11 +13719,11 @@ input[type="date"]::-webkit-date-and-time-value {
   -webkit-tap-highlight-color: transparent;
 }
 
-.hw-today:active {
+.hw-wide:active {
   transform: scale(0.98);
 }
 
-.hw-today-text {
+.hw-wide-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -13738,38 +13738,38 @@ input[type="date"]::-webkit-date-and-time-value {
   opacity: 0.85;
 }
 
-.hw-today strong {
+.hw-wide strong {
   font-size: 26px;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
 
-.hw-today-sub {
+.hw-wide-sub {
   font-size: 13px;
   font-weight: 500;
   opacity: 0.9;
 }
 
-.hw-today .stat-ring {
+.hw-wide .stat-ring {
   flex: none;
   width: 76px;
   height: 76px;
 }
 
-.hw-today .stat-ring-bg {
+.hw-wide .stat-ring-bg {
   stroke: rgba(255, 255, 255, 0.28);
 }
 
-.hw-today .stat-ring-fg {
+.hw-wide .stat-ring-fg {
   stroke: #fff;
 }
 
-.hw-today .stat-ring text {
+.hw-wide .stat-ring text {
   fill: #fff;
 }
 
-.hw-today-icon {
+.hw-wide-icon {
   display: grid;
   flex: none;
   place-items: center;
@@ -13779,7 +13779,7 @@ input[type="date"]::-webkit-date-and-time-value {
   background: rgba(255, 255, 255, 0.22);
 }
 
-.hw-today.is-hot .hw-today-icon {
+.hw-wide.is-hot .hw-wide-icon {
   animation: hw-pulse-white 2.2s ease-in-out infinite;
 }
 
@@ -13882,14 +13882,14 @@ input[type="date"]::-webkit-date-and-time-value {
   line-height: 1.3;
 }
 
-/* Phones: two tiles a row, Today across both */
+/* Phones: two tiles a row, the wide one across both */
 @media (max-width: 760px) {
   .hw-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 
-  .hw-today {
+  .hw-wide {
     min-height: 112px;
     padding: 16px 18px;
   }
@@ -13903,20 +13903,35 @@ input[type="date"]::-webkit-date-and-time-value {
     font-size: 26px;
   }
 
-  /* An odd one out at the end takes the whole row (Today, when there,
-     is the first child, so the count shifts by one) */
-  .hw-today ~ .hw-tile:last-child:nth-child(even),
-  .hw-grid:not(:has(.hw-today)) > .hw-tile:last-child:nth-child(odd) {
+  /* An odd one out at the end takes the whole row (the wide tile, when
+     there, is the first child, so the count shifts by one) */
+  .hw-wide ~ .hw-tile:last-child:nth-child(even),
+  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
     grid-column: span 2;
+    min-height: 0;
+  }
+
+  /* Laid out in a line: icon, number, word */
+  .hw-wide ~ .hw-tile:last-child:nth-child(even) .hw-icon,
+  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) .hw-icon {
+    margin-bottom: 0;
+  }
+
+  .hw-wide ~ .hw-tile:last-child:nth-child(even) .hw-value,
+  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) .hw-value {
+    margin-top: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .hw-tile,
-  .hw-today,
+  .hw-wide,
   .hw-card,
   .hw-badge,
-  .hw-today-icon {
+  .hw-wide-icon {
     animation: none !important;
   }
 }

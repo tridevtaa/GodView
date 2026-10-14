@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { CountUp, Ring } from "./StatCards.jsx";
-import Icon from "./Icon.jsx";
+import { CountUp } from "./StatCards.jsx";
+import { Tile, WideTile } from "./Widgets.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
@@ -119,30 +119,24 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
       <div className="hw-grid">
         {showToday && (
-          <button className={`hw-today t-${attTone}${unmarked || left ? " is-hot" : ""}`} onClick={go("attendance")}>
-            <span className="hw-today-text">
-              <span className="hw-kicker">Today</span>
-              <strong>
-                {today === null ? "…" : today.marked ? (
-                  <>
-                    <CountUp to={today.present} /> present
-                  </>
-                ) : (
-                  "Attendance"
-                )}
-              </strong>
-              <span className="hw-today-sub">
-                {today === null ? "" : !today.marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}
-              </span>
-            </span>
-            {attPct !== null ? (
-              <Ring pct={attPct} />
-            ) : (
-              <span className="hw-today-icon">
-                <Icon name="register" size={26} />
-              </span>
-            )}
-          </button>
+          <WideTile
+            tone={attTone}
+            hot={unmarked || left > 0}
+            kicker="Today"
+            title={
+              today === null ? "…" : today.marked ? (
+                <>
+                  <CountUp to={today.present} /> present
+                </>
+              ) : (
+                "Attendance"
+              )
+            }
+            sub={today === null ? "" : !today.marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}
+            pct={attPct}
+            icon="register"
+            onClick={go("attendance")}
+          />
         )}
         {tiles.map((t, i) => (
           <Tile key={t.key} {...t} index={i} />
@@ -154,19 +148,3 @@ export default function HomePage({ school, me, name, role, students, loading, se
   );
 }
 
-function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, onClick, index }) {
-  return (
-    <button className={`hw-tile t-${tone}${hot || badge > 0 ? " is-hot" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
-      <span className="hw-icon">
-        <Icon name={icon} size={20} weight="fill" />
-      </span>
-      {badge > 0 && (
-        <span className="hw-badge" aria-label={badgeLabel} title={badgeLabel}>
-          {badge > 99 ? "99+" : badge}
-        </span>
-      )}
-      <strong className="hw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
-      <span className="hw-label">{label}</span>
-    </button>
-  );
-}
