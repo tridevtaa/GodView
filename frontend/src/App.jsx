@@ -464,10 +464,16 @@ export default function App() {
   }, [dataMode, loading, current]);
   const [openThread, setOpenThread] = useState({ id: null, at: 0 });
   // Notifications: keep this device's subscription current, and open what
-  // a tapped notification is about (a conversation or the noticeboard).
+  // a tapped notification is about (a conversation, the noticeboard, or a
+  // page for the everyday ones).
   const showTarget = useRef(null);
-  showTarget.current = ({ thread, notice }) => {
+  showTarget.current = ({ thread, notice, go }) => {
     if (notice) return switchMode("notices");
+    if (go === "access") {
+      switchMode("employees");
+      return setStaffTab("access");
+    }
+    if (go) return switchMode(go);
     switchMode("requests");
     setOpenThread({ id: thread, at: Date.now() });
   };

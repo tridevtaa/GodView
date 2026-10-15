@@ -64,18 +64,25 @@ export async function syncPush() {
 }
 
 // A tapped notification: what to open, { thread: studentId } for a
-// conversation or { notice: id } for the noticeboard. Called with what the
-// app was opened with (?thread= or ?notice=), then again for each tap while
-// the app is already open. Returns a function that stops listening.
+// conversation, { notice: id } for the noticeboard, or { go: section,
+// child? } for a page (the everyday ones: attendance, fees…). Called with
+// what the app was opened with (?thread=, ?notice=, ?go=), then again for
+// each tap while the app is already open. Returns a function that stops
+// listening.
 const target = (params) =>
-  params.get("thread") ? { thread: params.get("thread") } : params.get("notice") ? { notice: params.get("notice") } : null;
+  params.get("thread")
+    ? { thread: params.get("thread") }
+    : params.get("notice")
+    ? { notice: params.get("notice") }
+    : params.get("go")
+    ? { go: params.get("go"), child: params.get("child") }
+    : null;
 
 export function onNotificationOpen(fn) {
   const params = new URLSearchParams(window.location.search);
   const first = target(params);
   if (first) {
-    params.delete("thread");
-    params.delete("notice");
+    for (const k of ["thread", "notice", "go", "child"]) params.delete(k);
     const rest = params.toString();
     window.history.replaceState(window.history.state, "", window.location.pathname + (rest ? `?${rest}` : ""));
     fn(first);

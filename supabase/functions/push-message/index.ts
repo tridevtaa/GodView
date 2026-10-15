@@ -2,6 +2,8 @@
 // after sending one ({ message } or { notice }). message_push() or
 // notice_push() in the database decides who hears about it (once, only
 // while it is new), and each of their devices gets a push.
+// The everyday ones ({ slot }: attendance reminders, morning to-do…) come
+// from pg_cron; daily_push() decides those (see its migration).
 // Devices the push service says are gone are forgotten. Deploy with:
 //   npx supabase functions deploy push-message
 // Needs the VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets (the public key
@@ -25,14 +27,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ sent: 0 }, 405);
 
-  const { message, notice } = await req.json().catch(() => ({}));
+  const { message, notice, slot } = await req.json().catch(() => ({}));
   const id = message ?? notice;
-  if (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id)) return reply({ sent: 0 }, 400);
+  const daily = typeof slot === "string" && /^[a-z-]{2,30}$/.test(slot);
+  if (!daily && (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id))) return reply({ sent: 0 }, 400);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: rows, error } = message
+  const { data: rows, error } = daily
+    ? await admin.rpc("daily_push", { p_slot: slot })
+    : message
     ? await admin.rpc("message_push", { p_message: id })
     : await admin.rpc("notice_push", { p_notice: id });
   if (error) return reply({ sent: 0 }, 500);
@@ -57,7 +62,7 @@ Deno.serve(async (req) => {
       if (status === 404 || status === 410) await admin.rpc("forget_push_subscription", { p_endpoint: r.sub_endpoint });
     }
   };
-  // A notice can go to a whole school: 50 devices at a time.
+  // A notice (or an everyday one) can go to a whole school: 50 devices at a time.
   const all = (rows ?? []) as Record<string, string>[];
   for (let i = 0; i < all.length; i += 50) await Promise.all(all.slice(i, i + 50).map(send));
   return reply({ sent });

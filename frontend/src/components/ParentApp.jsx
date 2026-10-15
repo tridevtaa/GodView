@@ -103,11 +103,16 @@ export default function ParentApp({ phone }) {
   }, []);
 
   // Notifications: keep this device's subscription current, and open what
-  // a tapped notification is about (a conversation or the noticeboard).
+  // a tapped notification is about (a conversation, the noticeboard, or a
+  // section for the everyday ones: fees, homework, calendar).
   useEffect(() => {
     syncPush().catch(() => {});
-    return onNotificationOpen(({ thread, notice }) => {
+    return onNotificationOpen(({ thread, notice, go, child }) => {
       if (notice) return setTab("notices");
+      if (go) {
+        if (child) setChildId(child);
+        return setTab(go);
+      }
       setChildId(thread);
       setTab("inbox");
     });
