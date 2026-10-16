@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { saveClassResults, sessionTests, testResults } from "../data/api.js";
+import { parseMarksSheet } from "../data/marksImport.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { StepBar } from "./Steps.jsx";
@@ -22,7 +23,19 @@ export default function MarksPage({ school, session, students, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(0);
+  const [importing, setImporting] = useState(false);
+  const [importNote, setImportNote] = useState(null); // { matched, unmatched, invalid }
+  const [toast, setToast] = useState("");
   const inputs = useRef([]);
+  const fileInput = useRef(null);
+  const toastTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
+  function flash(msg) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(""), 2200);
+  }
 
   useEffect(() => {
     if (session) sessionTests(session.id).then(setKnown, () => {});
@@ -90,6 +103,54 @@ export default function MarksPage({ school, session, students, onClose }) {
     }
   }
 
+  // Blocks a bad keystroke before it lands, rather than only flagging it
+  // after the fact: negative, over the max, or finer than half marks.
+  function enterMark(raw, kidId) {
+    if (raw === "") {
+      setMarks((m) => ({ ...m, [kidId]: "" }));
+      setSaved(0);
+      return;
+    }
+    const num = Number(raw);
+    if (Number.isNaN(num)) return;
+    if (num < 0) return flash("Marks can't be negative");
+    if (num > max) return flash(`Marks can't be more than ${max}`);
+    if ((num * 2) % 1 !== 0) return flash("Enter a whole number or a half mark, e.g. 32 or 32.5");
+    setMarks((m) => ({ ...m, [kidId]: raw }));
+    setSaved(0);
+  }
+
+  // Lets a teacher upload a sheet (Roll No / Name + one marks column) instead
+  // of typing every value. Matched rows fill the inputs below for review;
+  // nothing is saved until "Save marks" is pressed.
+  async function importFile(e) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f || !group) return;
+    setImporting(true);
+    setError("");
+    setImportNote(null);
+    try {
+      const XLSX = await import("xlsx"); // loaded only when importing
+      const book = XLSX.read(await f.arrayBuffer(), { cellDates: true });
+      const sheet = book.Sheets[book.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+      if (!rows.length) throw new Error("That sheet looks empty");
+      const { matched, unmatched } = parseMarksSheet(rows, group.kids, max);
+      setMarks((m) => {
+        const next = { ...m };
+        for (const r of matched) next[r.id] = r.value;
+        return next;
+      });
+      setSaved(0);
+      setImportNote({ matched: matched.length, unmatched, invalid: matched.filter((r) => r.invalid).length });
+    } catch (err) {
+      setError(err.message || "Couldn't read that file.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="marks">
       <div className="marks-top">
@@ -152,11 +213,30 @@ export default function MarksPage({ school, session, students, onClose }) {
       {step === 1 && group && (
         <section className="marks-sheet">
           <header className="marks-sheet-head">
-            <strong>{classText(group.klass, group.section)}</strong>
-            <span className="row-sub">
-              {test.exam} · {test.subject} · out of {max}
-            </span>
+            <div className="marks-sheet-head-text">
+              <strong>{classText(group.klass, group.section)}</strong>
+              <span className="row-sub">
+                {test.exam} · {test.subject} · out of {max}
+              </span>
+            </div>
+            <label className="btn btn-secondary btn-sm marks-upload-btn">
+              <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" onChange={importFile} disabled={importing} />
+              <Icon name="upload" size={16} />
+              {importing ? "Reading…" : "Upload a sheet"}
+            </label>
           </header>
+          {importNote && (
+            <p className="marks-import-note row-sub">
+              <Icon name="check" size={14} /> {importNote.matched} matched from the file
+              {importNote.invalid ? `, ${importNote.invalid} out of range` : ""}
+              {importNote.unmatched.length
+                ? ` · ${importNote.unmatched.length} not found: ${importNote.unmatched
+                    .slice(0, 5)
+                    .map((u) => u.name || `Roll ${u.roll_no}`)
+                    .join(", ")}${importNote.unmatched.length > 5 ? "…" : ""}`
+                : ""}
+            </p>
+          )}
           <ol className="marks-list">
             {group.kids.map((k, i) => {
               const v = marks[k.id] ?? "";
@@ -178,7 +258,7 @@ export default function MarksPage({ school, session, students, onClose }) {
                     value={v}
                     placeholder="–"
                     aria-label={`${k.name} marks`}
-                    onChange={(e) => (setMarks({ ...marks, [k.id]: e.target.value }), setSaved(0))}
+                    onChange={(e) => enterMark(e.target.value, k.id)}
                     onKeyDown={(e) => {
                       // Enter moves down the list, like a register.
                       if (e.key === "Enter") {
@@ -210,6 +290,7 @@ export default function MarksPage({ school, session, students, onClose }) {
           </div>
         </section>
       )}
+      {toast && <p className="marks-toast">{toast}</p>}
     </div>
   );
 }
