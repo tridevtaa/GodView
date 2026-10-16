@@ -1095,6 +1095,84 @@ export async function childHomework(studentId) {
   return must(await supabase.rpc("child_homework", { student: studentId }));
 }
 
+// ---------------------------------------------------- datesheet & syllabus ---
+
+// The exam schedule the signed-in staff member can see this session.
+export async function listDatesheet(schoolId, sessionId) {
+  return must(
+    await supabase
+      .from("datesheets")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .order("exam_date", { ascending: true })
+      .limit(500)
+  );
+}
+
+// Adds one exam to the schedule for a class (section null = every section).
+export async function addDatesheetEntry(schoolId, sessionId, { klass, section, exam_name, subject, exam_date, start_time, notes }) {
+  return must(
+    await supabase
+      .from("datesheets")
+      .insert({
+        school_id: schoolId,
+        session_id: sessionId,
+        class: klass,
+        section: section || null,
+        exam_name: exam_name.trim(),
+        subject: subject.trim(),
+        exam_date,
+        start_time: start_time?.trim() || null,
+        notes: notes?.trim() || null,
+      })
+      .select()
+      .single()
+  );
+}
+
+export async function deleteDatesheetEntry(id) {
+  must(await supabase.from("datesheets").delete().eq("id", id));
+}
+
+// One child's exam schedule (for their parents, and staff who can see them).
+export async function childDatesheet(studentId) {
+  return must(await supabase.rpc("child_datesheet", { student: studentId }));
+}
+
+// The syllabus entries the signed-in staff member can see this session.
+export async function listSyllabus(schoolId, sessionId) {
+  return must(
+    await supabase
+      .from("syllabus")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: false })
+      .limit(500)
+  );
+}
+
+// Sets the syllabus for a subject in a class (section null = every section).
+export async function addSyllabusEntry(schoolId, sessionId, { klass, section, subject, body }) {
+  return must(
+    await supabase
+      .from("syllabus")
+      .insert({ school_id: schoolId, session_id: sessionId, class: klass, section: section || null, subject: subject.trim(), body: body.trim() })
+      .select()
+      .single()
+  );
+}
+
+export async function deleteSyllabusEntry(id) {
+  must(await supabase.from("syllabus").delete().eq("id", id));
+}
+
+// One child's syllabus (for their parents, and staff who can see them).
+export async function childSyllabus(studentId) {
+  return must(await supabase.rpc("child_syllabus", { student: studentId }));
+}
+
 // ----------------------------------------------------------- attendance ---
 
 // Marks already saved for a day (the caller's students only).

@@ -34,6 +34,7 @@ const SEARCH_KEYS = {
 // background once the app is up, so switching tabs never waits for it.
 const SCREENS = {
   HomeworkPage: () => import("./components/HomeworkPage.jsx"),
+  DatesheetPage: () => import("./components/DatesheetPage.jsx"),
   AttendancePage: () => import("./components/AttendancePage.jsx"),
   AddModal: () => import("./components/AddModal.jsx"),
   ProfileModal: () => import("./components/ProfileModal.jsx"),
@@ -46,6 +47,7 @@ const SCREENS = {
   CollectFee: () => import("./components/CollectFee.jsx"),
 };
 const HomeworkPage = lazy(SCREENS.HomeworkPage);
+const DatesheetPage = lazy(SCREENS.DatesheetPage);
 const AttendancePage = lazy(SCREENS.AttendancePage);
 const AddModal = lazy(SCREENS.AddModal);
 const ProfileModal = lazy(SCREENS.ProfileModal);
@@ -424,17 +426,18 @@ export default function App() {
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
-    ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"]] : []),
+    ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"], ["datesheet", "Datesheet"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
-  const STUDENT_PARTS = ["students", "attendance", "homework", "fees", "marks"];
+  const STUDENT_PARTS = ["students", "attendance", "homework", "datesheet", "fees", "marks"];
   const studentParts = leads
     ? [
         ["students", "Students"],
         ["attendance", "Attendance"],
         ["homework", "Homework"],
+        ["datesheet", "Datesheet"],
         ...(isAdmin ? [["fees", "Fees"]] : []),
       ]
     : [["students", "Students"]];
@@ -509,6 +512,7 @@ export default function App() {
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
+    ...(role === "teacher" ? [["datesheet", "Datesheet & syllabus", "exam"]] : []),
     ["notice", "Post notice", "notice"],
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
@@ -527,7 +531,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", staff: "employees", attendance: "attendance", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "datesheet", staff: "employees", attendance: "attendance", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -731,6 +735,8 @@ export default function App() {
           <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
+        ) : mode === "datesheet" ? (
+          <DatesheetPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} createAt={quick.kind === "datesheet" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
             openThread={openThread}
