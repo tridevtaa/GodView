@@ -9,6 +9,8 @@ import {
   parentFamily,
   parentFees,
   childHomework,
+  childDatesheet,
+  childSyllabus,
   parentUnread,
   attendanceMonth,
   setParentPassword,
@@ -36,6 +38,7 @@ const TABS = [
   ["fees", "Fees", "rupee"],
   ["results", "Results", "chart"],
   ["homework", "Homework", "book"],
+  ["datesheet", "Datesheet", "exam"],
   ["inbox", "Messages", "plane"],
 ];
 // Local date (India), not UTC: before 5:30 am UTC is still yesterday.
@@ -259,6 +262,7 @@ export default function ParentApp({ phone }) {
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
+            {tab === "datesheet" && <DatesheetTab key={child.id} child={child} since={since} />}
             {tab === "inbox" && <MessagesTab key={child.id} child={child} phone={phone} onClose={() => setTab("home")} />}
           </>
         )}
@@ -793,6 +797,71 @@ function HomeworkTab({ child, since }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// --------------------------------------------------- datesheet & syllabus ---
+
+function DatesheetTab({ child, since }) {
+  const [view, setView] = useState("datesheet");
+  const loadDates = useCallback(() => childDatesheet(child.id), [child.id]);
+  const loadSyllabus = useCallback(() => childSyllabus(child.id), [child.id]);
+  const dates = useLoad(loadDates);
+  const syll = useLoad(loadSyllabus);
+  const { data, error } = view === "datesheet" ? dates : syll;
+
+  return (
+    <>
+      <nav className="segmented segmented-sm ds-tabs" aria-label="Datesheet or syllabus">
+        <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
+          <Icon name="exam" size={15} /> Datesheet
+        </button>
+        <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
+          <Icon name="academics" size={15} /> Syllabus
+        </button>
+      </nav>
+      {error ? (
+        <p className="notice notice-error">{error}</p>
+      ) : !data ? (
+        <div className="pa-card pa-skeleton" aria-busy="true" />
+      ) : !data.length ? (
+        view === "datesheet" ? (
+          <Empty icon="exam" title="No exams on the datesheet yet" text="The exam schedule appears here as soon as the school sets it." />
+        ) : (
+          <Empty icon="academics" title="No syllabus posted yet" text="The syllabus appears here as soon as the teacher posts it." />
+        )
+      ) : view === "datesheet" ? (
+        <ul className="pa-hw">
+          {data.map((d) => (
+            <li key={d.id} className={`pa-card pa-hw-item${isNew(d.created_at, since) ? " is-new" : ""}`}>
+              <div className="pa-hw-head">
+                <strong>{d.subject}</strong>
+                {isNew(d.created_at, since) && <NewTag />}
+                <span className="badge badge-brand">{d.exam_name}</span>
+              </div>
+              <p className="pa-hw-body">
+                {dateText(d.exam_date, { weekday: "short", day: "numeric", month: "short" })}
+                {d.start_time ? ` · ${d.start_time}` : ""}
+                {d.notes ? ` · ${d.notes}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <ul className="pa-hw">
+          {data.map((y) => (
+            <li key={y.id} className={`pa-card pa-hw-item${isNew(y.created_at, since) ? " is-new" : ""}`}>
+              <div className="pa-hw-head">
+                <strong>{y.subject}</strong>
+                {isNew(y.created_at, since) && <NewTag />}
+              </div>
+              <p className="pa-hw-body">{y.body}</p>
+              {y.author_name && <span className="row-sub">By {y.author_name}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

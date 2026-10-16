@@ -1502,6 +1502,17 @@ a:hover {
   font-size: 13px;
 }
 
+.ds-tabs {
+  margin-bottom: 14px;
+}
+
+.ds-next {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 14px;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;
