@@ -1261,11 +1261,11 @@ export async function listNotices(schoolId) {
   );
 }
 
-export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null }) {
+export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null, category = null }) {
   const saved = must(
     await supabase
       .from("notices")
-      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, event_on: event_on || null, image_path })
+      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, event_on: event_on || null, image_path, category: category || null })
       .select()
       .single()
   );

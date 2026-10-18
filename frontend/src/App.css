@@ -11081,6 +11081,741 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 500;
 }
 
+.home-sub {
+  margin: 2px 0 0;
+  color: var(--text-3);
+  font-size: 14px;
+}
+
+/* Row 1: today's attendance next to a small calendar on the left, the
+   noticeboard as a banner on the right. */
+.home-row1 {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-row1-left {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  min-width: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.home-att {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 18px 20px;
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
+    linear-gradient(135deg, var(--c2), var(--c));
+  color: #fff;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.home-att-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.home-att.is-hot .home-att-icon {
+  animation: hw-pulse-white 2.2s ease-in-out infinite;
+}
+
+.home-att-title {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.home-att-sub {
+  margin-top: -4px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.home-att-bar {
+  display: block;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+}
+
+.home-att-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #fff;
+  transition: width 0.4s ease;
+}
+
+.home-att-hint {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.home-att-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: auto;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--c);
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-att-cta:hover {
+  transform: translateY(-1px);
+}
+
+.home-att-cta:active {
+  transform: scale(0.97);
+}
+
+/* The mini calendar: plain dates, today picked out. Tapping it (or the
+   month arrows) opens the full Calendar. */
+.home-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 18px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: 60ms;
+}
+
+.home-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-cal-head strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.home-cal-nav {
+  display: flex;
+  gap: 2px;
+}
+
+.home-cal-week,
+.home-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.home-cal-week span {
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.home-cal-grid {
+  row-gap: 4px;
+}
+
+.home-cal-day {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+.home-cal-day.is-out {
+  color: var(--text-3);
+  opacity: 0.4;
+}
+
+.home-cal-day.is-today {
+  background: var(--brand);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* The noticeboard, as a banner, and News & Achievements, as a row of
+   cards: both share the same little header (an icon, a title and
+   subtitle, a "View all" link). The noticeboard sits in its own cream
+   card; achievements sit straight on the page, like the tiles below it. */
+.home-news {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.home-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 24px;
+  background: linear-gradient(160deg, #fffaf0, #fff3da);
+  box-shadow: var(--shadow-sm);
+}
+
+.home-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.home-notice-icon,
+.home-news-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f6c445, #d48806);
+  color: #fff;
+}
+
+.home-notice-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.home-notice-text strong {
+  font-size: 15px;
+}
+
+.home-section-all {
+  margin-left: auto;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The noticeboard's "View all" is a solid pill (it sits on the amber
+   banner's cream card); everyone else's is a plain link. */
+.home-notice-cta {
+  padding: 7px 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-weight: 700;
+}
+
+.home-notice-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.home-notice-slide {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  min-height: 150px;
+  padding: 18px 130px 18px 22px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.4) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 65%, rgba(255, 255, 255, 0.3) 0 2px, transparent 3px),
+    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.35) 0 2px, transparent 3px),
+    radial-gradient(circle at 40% 10%, rgba(255, 255, 255, 0.25) 0 2px, transparent 3px),
+    linear-gradient(135deg, #ffe3a6, #ffc670);
+  background-size: 54px 54px, 68px 68px, 46px 46px, 60px 60px, 100% 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-notice-slide.is-empty {
+  flex: 1;
+  justify-content: center;
+  padding: 18px;
+  background: var(--surface);
+  cursor: default;
+}
+
+.home-notice-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-width: 62%;
+}
+
+.home-notice-date {
+  color: #7a4d00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.home-notice-copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #1c2566;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.home-notice-copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin: 0;
+  color: #565b76;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.home-notice-pic {
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  width: 120px;
+  height: 128px;
+  object-fit: contain;
+  object-position: bottom;
+}
+
+.home-notice-pic-icon {
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--k-exam) 16%, transparent);
+  color: var(--k-exam);
+}
+
+.home-notice-nav {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.home-notice-nav.is-prev {
+  margin-right: -15px;
+}
+
+.home-notice-nav.is-next {
+  margin-left: -15px;
+}
+
+.home-notice-dots {
+  display: flex;
+  align-self: center;
+  gap: 5px;
+}
+
+.home-notice-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #1c2566 20%, transparent);
+}
+
+.home-notice-dots span.is-on {
+  background: #1c2566;
+}
+
+.home-news-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-news-arrow {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.home-news-row {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.home-news-row::-webkit-scrollbar {
+  display: none;
+}
+
+.home-news-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  scroll-snap-align: start;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.home-news-card img {
+  width: 100%;
+  height: 120px;
+  margin-bottom: 4px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.home-news-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.home-news-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.home-news-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* A small coloured pill: a notice's category, on the noticeboard, in News
+   & Achievements, and as the picker in Compose. Reuses the t-* tones
+   (--c, --tint) shared with the home tiles. */
+.achv-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tint);
+  color: var(--c);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+button.achv-tag {
+  cursor: pointer;
+}
+
+.achv-tag.is-on {
+  background: var(--c);
+  color: #fff;
+}
+
+.nb-category {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nb-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Bottom row: Upcoming Events next to Quick Actions. */
+.home-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.home-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.home-events-icon,
+.home-quick-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #8b97e6, #5b68c4);
+  color: #fff;
+}
+
+.home-events-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.home-events-row::-webkit-scrollbar {
+  display: none;
+}
+
+.home-event-card {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.home-event-date {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #8b97e6, #5b68c4);
+  color: #fff;
+}
+
+.home-event-month {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.home-event-day {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.home-event-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.home-event-body strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.home-event-body .row-sub {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.home-event-kind {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--k) 16%, transparent);
+  color: var(--k);
+}
+
+.home-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.home-quick-row {
+  display: flex;
+  gap: 12px;
+}
+
+.home-quick-btn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 8px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.home-quick-btn:hover {
+  transform: translateY(-1px);
+}
+
+.home-quick-btn:active {
+  transform: scale(0.97);
+}
+
+.home-quick-badge {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--c);
+}
+
+@media (max-width: 760px) {
+  .home-bottom-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-quick-row {
+    flex-wrap: wrap;
+  }
+
+  .home-quick-btn {
+    min-width: calc(50% - 6px);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-row1,
+  .home-row1-left {
+    grid-template-columns: 1fr;
+  }
+
+  .home-notice-slide {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+
+  .home-notice-copy {
+    max-width: 100%;
+  }
+
+  .home-notice-pic {
+    position: static;
+    order: -1;
+    width: 100%;
+    height: 120px;
+    margin-bottom: 8px;
+  }
+
+  .home-news-card {
+    width: 200px;
+  }
+}
+
 /* Today's tasks stand out: a card tinted in the task's colour with an edge
    of it, a solid icon that glows softly, and a shine across the card as
    it comes in. Indigo for plain tasks, amber for due, red for overdue. */
@@ -11918,6 +12653,11 @@ input[type="date"]::-webkit-date-and-time-value {
   grid-template-columns: minmax(300px, 420px) 1fr;
   gap: 18px;
   align-items: start;
+}
+
+.cal > .ds-tabs,
+.cal-datesheet {
+  grid-column: 1 / -1;
 }
 
 .cal-card,

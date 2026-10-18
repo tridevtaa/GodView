@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addHomework, deleteHomework, listHomework } from "../data/api.js";
+import { addHomework, addSyllabusEntry, deleteHomework, deleteSyllabusEntry, listHomework, listSyllabus } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
@@ -13,22 +13,28 @@ const tomorrow = () => iso(new Date(Date.now() + 864e5));
 const dayText = (d) => new Date(d).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 
-// Teachers set homework for a class (or only some students in it); parents
-// see it in their app. Teachers see their own classes; owners and admins
-// see every class and can set work for a whole class across sections.
-// readOnly: the principal sees every class's homework but can't give or
-// remove any.
-// giveAt: when set (a time), open the form (the + button in the tab bar).
+// One screen, two tabs: homework, and the syllabus (topics covered) per
+// subject. Teachers set homework for a class (or only some students in it);
+// parents see it in their app. Teachers see their own classes; owners and
+// admins see every class and can set work for a whole class across sections.
+// readOnly: the principal sees every class's homework and syllabus but can't
+// give, post or remove any.
+// giveAt: when set (a time), open the homework form (the + button).
 export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0 }) {
-  const [items, setItems] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
-  // Keep the remembered list in step with what's on screen (new, removed).
+  const [view, setView] = useState("homework"); // "homework" | "syllabus"
+  const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
+  const [syllabus, setSyllabus] = useState(() => (session ? peek(`syllabus:${session.id}`) ?? null : null));
+  // Keep the remembered lists in step with what's on screen (new, removed).
   useEffect(() => {
-    if (session && items) remember(`homework:${session.id}`, items);
-  }, [items, session]);
+    if (session && homework) remember(`homework:${session.id}`, homework);
+  }, [homework, session]);
+  useEffect(() => {
+    if (session && syllabus) remember(`syllabus:${session.id}`, syllabus);
+  }, [syllabus, session]);
   const [error, setError] = useState("");
   const [writing, setWriting] = useState(false);
   useEffect(() => {
-    if (giveAt && !readOnly) setWriting(true);
+    if (giveAt && !readOnly) (setView("homework"), setWriting(true));
   }, [giveAt, readOnly]);
   const [filter, setFilter] = useState(""); // "class|section" or ""
 
@@ -51,16 +57,22 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
 
   useEffect(() => {
     if (!session) return;
-    swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setItems).catch(() =>
+    swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setHomework).catch(() =>
       setError("Couldn’t load homework. Check your connection and try again.")
+    );
+    swr(`syllabus:${session.id}`, () => listSyllabus(school.id, session.id), setSyllabus).catch(() =>
+      setError("Couldn’t load the syllabus. Check your connection and try again.")
     );
   }, [school.id, session]);
 
-  const shown = (items ?? []).filter((h) => {
+  const inFilter = (c, s) => {
     if (!filter) return true;
-    const [c, s] = filter.split("|");
-    return h.class === c && (!h.section || !s || h.section === s);
-  });
+    const [fc, fs] = filter.split("|");
+    return c === fc && (!s || !fs || s === fs);
+  };
+
+  const shown = (homework ?? []).filter((h) => inFilter(h.class, h.section));
+  const shownSyllabus = (syllabus ?? []).filter((y) => inFilter(y.class, y.section));
 
   // Group by the day it was set.
   const byDay = useMemo(() => {
@@ -75,19 +87,29 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
   async function remove(id) {
     try {
       await deleteHomework(id);
-      setItems((xs) => xs.filter((x) => x.id !== id));
+      setHomework((xs) => xs.filter((x) => x.id !== id));
     } catch {
       setError("Couldn’t remove that homework.");
     }
   }
+  async function removeSyllabus(id) {
+    try {
+      await deleteSyllabusEntry(id);
+      setSyllabus((xs) => xs.filter((x) => x.id !== id));
+    } catch {
+      setError("Couldn’t remove that syllabus entry.");
+    }
+  }
 
-  if (!session) return <p className="notice">Import your students first; homework is kept per session.</p>;
+  if (!session) return <p className="notice">Import your students first; homework and the syllabus are kept per session.</p>;
+
+  const items = view === "homework" ? homework : syllabus;
 
   return (
     <>
       <div className="page-header">
         <div>
-          <h1 className="sr-only">Homework</h1>
+          <h1 className="sr-only">Homework &amp; syllabus</h1>
           <div className="page-meta">
             {heading}
           </div>
@@ -96,18 +118,29 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           <div className="page-actions">
             <button className="btn btn-primary" onClick={() => setWriting(true)}>
               <Icon name="plus" />
-              Give homework
+              {view === "homework" ? "Give homework" : "Add syllabus"}
             </button>
           </div>
         )}
       </div>
 
-      {!writing && items && (
+      {!writing && (
+        <nav className="segmented segmented-sm ds-tabs" aria-label="Homework or syllabus">
+          <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
+            <Icon name="book" size={15} /> Homework
+          </button>
+          <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
+            <Icon name="academics" size={15} /> Syllabus
+          </button>
+        </nav>
+      )}
+
+      {!writing && view === "homework" && homework && (
         <StatCards
           items={(() => {
             const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-            const due = items.filter((h) => h.due_date === tomorrow());
-            const week = items.filter((h) => h.created_at >= weekAgo);
+            const due = homework.filter((h) => h.due_date === tomorrow());
+            const week = homework.filter((h) => h.created_at >= weekAgo);
             const classesWith = new Set(week.map((h) => `${h.class}|${h.section ?? ""}`)).size;
             return [
               { icon: "calendar", label: "Due tomorrow", value: due.length, tone: due.length ? "due" : undefined, color: due.length ? undefined : "indigo" },
@@ -127,7 +160,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
       {error && <p className="notice notice-error">{error}</p>}
       {!groups.length && <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>}
 
-      {writing && (
+      {writing && view === "homework" && (
         <HomeworkForm
           schoolId={school.id}
           sessionId={session.id}
@@ -136,59 +169,103 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           initial={filter}
           onCancel={() => setWriting(false)}
           onSaved={(h) => {
-            setItems((xs) => [h, ...(xs ?? [])]);
+            setHomework((xs) => [h, ...(xs ?? [])]);
+            setWriting(false);
+          }}
+        />
+      )}
+      {writing && view === "syllabus" && (
+        <SyllabusForm
+          schoolId={school.id}
+          sessionId={session.id}
+          groups={groups}
+          isAdmin={isAdmin}
+          initial={filter}
+          onCancel={() => setWriting(false)}
+          onSaved={(y) => {
+            setSyllabus((xs) => [y, ...(xs ?? [])]);
             setWriting(false);
           }}
         />
       )}
 
       {/* While writing, just the form. The class filter only when there's
-          homework to filter. */}
+          something to filter. */}
       {!writing && groups.length > 1 && items?.length > 0 && (
         <ClassSwitcher groups={groups} value={filter} onChange={setFilter} allLabel="All classes" />
       )}
 
       {writing ? null : items === null ? (
         <div className="card card-skeleton hw-skeleton" />
-      ) : !byDay.length ? (
+      ) : view === "homework" ? (
+        !byDay.length ? (
+          <section className="hw-empty">
+            <span className="hw-empty-icon">
+              <Icon name="book" size={22} />
+            </span>
+            <strong>No homework yet</strong>
+            <p className="row-sub">{readOnly ? "Homework teachers give appears here." : "Homework you give appears here and in parents’ Godview app the moment you send it."}</p>
+          </section>
+        ) : (
+          byDay.map(([d, list]) => (
+            <section key={d} className="hw-day">
+              <h2 className="hw-day-title">{d === iso(new Date()) ? "Today" : dayText(d)}</h2>
+              <ul className="hw-list">
+                {list.map((h) => {
+                  const some = h.students?.length ?? 0;
+                  return (
+                    <li key={h.id} className="hw-card">
+                      <div className="hw-card-head">
+                        <span className="tag">{h.section ? classText(h.class, h.section) : `${gradeLabel(h.class)} · all sections`}</span>
+                        {h.subject && <strong>{h.subject}</strong>}
+                        {some > 0 && <span className="badge badge-brand">For {some} student{some === 1 ? "" : "s"}</span>}
+                      </div>
+                      <p className="hw-body">{h.body}</p>
+                      <div className="hw-foot">
+                        <span className="row-sub">
+                          {h.due_date ? `Due ${dayText(h.due_date)}` : "No due date"} · {h.author_name || h.created_by}
+                        </span>
+                        {!readOnly && (h.created_by === me || isAdmin) && (
+                          <button className="icon-btn-sm" onClick={() => remove(h.id)} aria-label="Remove homework" title="Remove">
+                            <Icon name="trash" size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))
+        )
+      ) : !shownSyllabus.length ? (
         <section className="hw-empty">
           <span className="hw-empty-icon">
-            <Icon name="book" size={22} />
+            <Icon name="academics" size={22} />
           </span>
-          <strong>No homework yet</strong>
-          <p className="row-sub">{readOnly ? "Homework teachers give appears here." : "Homework you give appears here and in parents’ Godview app the moment you send it."}</p>
+          <strong>No syllabus posted yet</strong>
+          <p className="row-sub">{readOnly ? "The syllabus teachers post appears here." : "Syllabus you post appears here and in parents’ Godview app right away."}</p>
         </section>
       ) : (
-        byDay.map(([d, list]) => (
-          <section key={d} className="hw-day">
-            <h2 className="hw-day-title">{d === iso(new Date()) ? "Today" : dayText(d)}</h2>
-            <ul className="hw-list">
-              {list.map((h) => {
-                const some = h.students?.length ?? 0;
-                return (
-                  <li key={h.id} className="hw-card">
-                    <div className="hw-card-head">
-                      <span className="tag">{h.section ? classText(h.class, h.section) : `${gradeLabel(h.class)} · all sections`}</span>
-                      {h.subject && <strong>{h.subject}</strong>}
-                      {some > 0 && <span className="badge badge-brand">For {some} student{some === 1 ? "" : "s"}</span>}
-                    </div>
-                    <p className="hw-body">{h.body}</p>
-                    <div className="hw-foot">
-                      <span className="row-sub">
-                        {h.due_date ? `Due ${dayText(h.due_date)}` : "No due date"} · {h.author_name || h.created_by}
-                      </span>
-                      {!readOnly && (h.created_by === me || isAdmin) && (
-                        <button className="icon-btn-sm" onClick={() => remove(h.id)} aria-label="Remove homework" title="Remove">
-                          <Icon name="trash" size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ))
+        <ul className="hw-list">
+          {shownSyllabus.map((y) => (
+            <li key={y.id} className="hw-card">
+              <div className="hw-card-head">
+                <span className="tag">{y.section ? classText(y.class, y.section) : `${gradeLabel(y.class)} · all sections`}</span>
+                <strong>{y.subject}</strong>
+              </div>
+              <p className="hw-body">{y.body}</p>
+              <div className="hw-foot">
+                <span className="row-sub">{y.author_name || y.created_by}</span>
+                {!readOnly && (y.created_by === me || isAdmin) && (
+                  <button className="icon-btn-sm" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
+                    <Icon name="trash" size={15} />
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   );
@@ -296,6 +373,68 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
         </button>
         <button className="btn btn-primary" disabled={busy || !form.body.trim()}>
           {busy ? "Sending…" : some ? `Send to ${picked.length || "selected"} student${picked.length === 1 ? "" : "s"}` : "Send to class"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel, onSaved }) {
+  const [target, setTarget] = useState(initial || groups[0]?.key || "");
+  const [whole, setWhole] = useState(false);
+  const [form, setForm] = useState({ subject: "", body: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const group = groups.find((g) => g.key === target);
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const ok = group && form.subject.trim() && form.body.trim();
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!ok) return;
+    setBusy(true);
+    setError("");
+    try {
+      onSaved(await addSyllabusEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form }));
+    } catch {
+      setError("Couldn’t save the syllabus. Check you teach this class and try again.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="hw-form" onSubmit={submit}>
+      <ClassSwitcher groups={groups} value={target} onChange={setTarget} ariaLabel="Syllabus for" />
+      {isAdmin && group?.section && (
+        <label className="checkbox checkbox-inline">
+          <input type="checkbox" checked={whole} onChange={(e) => setWhole(e.target.checked)} />
+          <span>All sections of {gradeLabel(group.klass)}</span>
+        </label>
+      )}
+      <input className="input" list="syl-subjects" value={form.subject} onChange={set("subject")} placeholder="Subject, e.g. Maths" maxLength={80} required />
+      <datalist id="syl-subjects">
+        {SUBJECTS.map((x) => (
+          <option key={x} value={x} />
+        ))}
+      </datalist>
+      <textarea
+        className="textarea"
+        rows={4}
+        maxLength={4000}
+        value={form.body}
+        onChange={set("body")}
+        placeholder="Topics covered, e.g. Chapters 1-3: Numbers, Addition, Subtraction"
+        aria-label="Syllabus"
+        required
+      />
+
+      {error && <p className="field-error">{error}</p>}
+      <div className="hw-form-foot">
+        <button type="button" className="btn btn-secondary" onClick={onCancel}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" disabled={busy || !ok}>
+          {busy ? "Saving…" : "Post syllabus"}
         </button>
       </div>
     </form>

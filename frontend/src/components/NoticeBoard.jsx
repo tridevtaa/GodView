@@ -4,6 +4,18 @@ import { NOTICE_IMAGE_DAYS, clearExpiredNoticeImages, deleteNotice, listNotices,
 import { peek, remember, swr } from "../data/cache.js";
 import Icon from "./Icon.jsx";
 
+// A notice can be tagged with one of these, for the homepage's achievements
+// strip (and a small tag on the noticeboard itself). tone matches the t-*
+// colour classes shared across the app (Widgets.jsx, StatCards.jsx).
+export const CATEGORIES = [
+  ["sports", "Sports", "indigo"],
+  ["academic", "Academic", "violet"],
+  ["cultural", "Cultural", "pink"],
+  ["environment", "Environment", "green"],
+  ["other", "Other", "amber"],
+];
+export const CATEGORY = Object.fromEntries(CATEGORIES.map(([k, label, tone]) => [k, { label, tone }]));
+
 const when = (d) => {
   const t = new Date(d);
   const days = Math.floor((Date.now() - t) / 864e5);
@@ -26,10 +38,10 @@ export function DateLeaf({ date, small = false }) {
 
 // A notice's picture is shown for NOTICE_IMAGE_DAYS after posting, then
 // removed (even before the clean-up has run, it stops showing).
-const showsImage = (n) => Boolean(n.image_path) && Date.now() - new Date(n.created_at) < NOTICE_IMAGE_DAYS * 864e5;
+export const showsImage = (n) => Boolean(n.image_path) && Date.now() - new Date(n.created_at) < NOTICE_IMAGE_DAYS * 864e5;
 
 // Links for the notices' pictures (private), fetched once per session.
-function useImageUrls(notices) {
+export function useImageUrls(notices) {
   const [urls, setUrls] = useState(new Map());
   const paths = (notices ?? []).filter(showsImage).map((n) => n.image_path);
   const key = paths.join("|");
@@ -148,6 +160,7 @@ function Notice({ n, image, onView, index, fresh, staffView, manage, onPin, onRe
       <div className="nb-head">
         {n.event_on && !showsImage(n) && <DateLeaf date={n.event_on} />}
         <h3>{n.title}</h3>
+        {n.category && CATEGORY[n.category] && <span className={`achv-tag t-${CATEGORY[n.category].tone}`}>{CATEGORY[n.category].label}</span>}
         {n.pinned && !manage && (
           <span className="nb-pin" title="Pinned" aria-label="Pinned">
             <Icon name="pushpin" size={15} weight="fill" />
@@ -208,7 +221,7 @@ function RemoveButton({ onRemove }) {
 
 // Title, message, and who sees it. Short, so one step.
 function Compose({ schoolId, onClose, onPosted }) {
-  const [form, setForm] = useState({ title: "", body: "", for_parents: true, event_on: "" });
+  const [form, setForm] = useState({ title: "", body: "", for_parents: true, event_on: "", category: "" });
   const [picture, setPicture] = useState(null); // { file, preview }
   const fileInput = useRef(null);
   useEffect(() => () => picture && URL.revokeObjectURL(picture.preview), [picture]);
@@ -228,7 +241,7 @@ function Compose({ schoolId, onClose, onPosted }) {
     let image_path = null;
     try {
       if (picture) image_path = await uploadNoticeImage(schoolId, picture.file);
-      onPosted(await postNotice(schoolId, { ...form, image_path }));
+      onPosted(await postNotice(schoolId, { ...form, image_path, category: form.category || null }));
       onClose();
     } catch {
       removeNoticeImage(image_path); // don't leave an unused picture behind
@@ -295,6 +308,23 @@ function Compose({ schoolId, onClose, onPosted }) {
             <button type="button" role="radio" aria-checked={!form.for_parents} className={!form.for_parents ? "active" : ""} onClick={() => setForm({ ...form, for_parents: false })}>
               <Icon name="teacher" size={16} /> Staff only
             </button>
+          </div>
+          <div className="nb-category" role="radiogroup" aria-label="A milestone to celebrate? (optional)">
+            <span className="row-sub">A win to celebrate? (optional, shows on the homepage with a picture)</span>
+            <div className="nb-category-chips">
+              {CATEGORIES.map(([k, label, tone]) => (
+                <button
+                  type="button"
+                  key={k}
+                  role="radio"
+                  aria-checked={form.category === k}
+                  className={`achv-tag t-${tone}${form.category === k ? " is-on" : ""}`}
+                  onClick={() => setForm({ ...form, category: form.category === k ? "" : k })}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {error && <p className="field-error">{error}</p>}
         </div>

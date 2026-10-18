@@ -50,27 +50,33 @@ export function remember(key, value, persist = false) {
 
 // Calls set() with the remembered value straight away (memory, else the
 // device copy), then with fresh data when it arrives. Returns a promise for
-// the fresh data. A newer call for the same key wins.
+// the fresh data. Several components asking for the same key at once (e.g.
+// two widgets on Home both reading notices) share one request: each still
+// gets its own set() call when it resolves, but only one fetch goes out.
 // maxAge (ms): skip the refresh if this was fetched that recently.
-const latest = new Map();
 const fetchedAt = new Map();
+const inflight = new Map();
 export function swr(key, fetcher, set, { persist = false, maxAge = 0 } = {}) {
-  const ticket = {};
-  latest.set(key, ticket);
   let fresh = false;
   if (mem.has(key)) {
     set(mem.get(key));
     if (maxAge && Date.now() - (fetchedAt.get(key) ?? 0) < maxAge) return Promise.resolve(mem.get(key));
   } else if (persist) {
     idbGet(key).then((v) => {
-      if (v !== undefined && !fresh && !mem.has(key) && latest.get(key) === ticket) set(v);
+      if (v !== undefined && !fresh && !mem.has(key)) set(v);
     });
   }
-  return fetcher().then((v) => {
+  if (!inflight.has(key)) {
+    inflight.set(
+      key,
+      fetcher().finally(() => inflight.delete(key))
+    );
+  }
+  return inflight.get(key).then((v) => {
     fresh = true;
     fetchedAt.set(key, Date.now());
     remember(key, v, persist);
-    if (latest.get(key) === ticket) set(v);
+    set(v);
     return v;
   });
 }

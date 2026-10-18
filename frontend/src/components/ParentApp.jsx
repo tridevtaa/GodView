@@ -769,52 +769,23 @@ function ResultsTab({ child, since }) {
   });
 }
 
-// ------------------------------------------------------------- homework ---
+// ------------------------------------------------------- homework & syllabus ---
 
 function HomeworkTab({ child, since }) {
-  const load = useCallback(() => childHomework(child.id), [child.id]);
-  const { data, error } = useLoad(load);
-  if (error) return <p className="notice notice-error">{error}</p>;
-  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
-  if (!data.length) return <Empty icon="book" title="No homework yet" text="Homework from the teachers appears here as soon as it’s given." />;
+  const [view, setView] = useState("homework");
+  const loadHomework = useCallback(() => childHomework(child.id), [child.id]);
+  const loadSyllabus = useCallback(() => childSyllabus(child.id), [child.id]);
+  const hw = useLoad(loadHomework);
+  const syll = useLoad(loadSyllabus);
+  const { data, error } = view === "homework" ? hw : syll;
   const now = today();
   const due = (d) => (!d ? "" : d < now ? "Was due" : d === now ? "Due today" : `Due ${dateText(d, { weekday: "short", day: "numeric", month: "short" })}`);
-  return (
-    <ul className="pa-hw">
-      {data.map((h) => (
-        <li key={h.id} className={`pa-card pa-hw-item${isNew(h.created_at, since) ? " is-new" : ""}`}>
-          <div className="pa-hw-head">
-            <strong>{h.subject || "Homework"}</strong>
-            {isNew(h.created_at, since) && <NewTag />}
-            {h.just_some && <span className="badge badge-brand">Just for {child.name.split(" ")[0]}</span>}
-            {h.due_date && <span className={`pa-hw-due${h.due_date <= now ? " is-soon" : ""}`}>{due(h.due_date)}</span>}
-          </div>
-          <p className="pa-hw-body">{h.body}</p>
-          <span className="row-sub">
-            Given {dateText(h.created_at, { day: "numeric", month: "short" })}
-            {h.author_name ? ` by ${h.author_name}` : ""}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// --------------------------------------------------- datesheet & syllabus ---
-
-function DatesheetTab({ child, since }) {
-  const [view, setView] = useState("datesheet");
-  const loadDates = useCallback(() => childDatesheet(child.id), [child.id]);
-  const loadSyllabus = useCallback(() => childSyllabus(child.id), [child.id]);
-  const dates = useLoad(loadDates);
-  const syll = useLoad(loadSyllabus);
-  const { data, error } = view === "datesheet" ? dates : syll;
 
   return (
     <>
-      <nav className="segmented segmented-sm ds-tabs" aria-label="Datesheet or syllabus">
-        <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
-          <Icon name="exam" size={15} /> Datesheet
+      <nav className="segmented segmented-sm ds-tabs" aria-label="Homework or syllabus">
+        <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
+          <Icon name="book" size={15} /> Homework
         </button>
         <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
           <Icon name="academics" size={15} /> Syllabus
@@ -825,25 +796,26 @@ function DatesheetTab({ child, since }) {
       ) : !data ? (
         <div className="pa-card pa-skeleton" aria-busy="true" />
       ) : !data.length ? (
-        view === "datesheet" ? (
-          <Empty icon="exam" title="No exams on the datesheet yet" text="The exam schedule appears here as soon as the school sets it." />
+        view === "homework" ? (
+          <Empty icon="book" title="No homework yet" text="Homework from the teachers appears here as soon as it’s given." />
         ) : (
           <Empty icon="academics" title="No syllabus posted yet" text="The syllabus appears here as soon as the teacher posts it." />
         )
-      ) : view === "datesheet" ? (
+      ) : view === "homework" ? (
         <ul className="pa-hw">
-          {data.map((d) => (
-            <li key={d.id} className={`pa-card pa-hw-item${isNew(d.created_at, since) ? " is-new" : ""}`}>
+          {data.map((h) => (
+            <li key={h.id} className={`pa-card pa-hw-item${isNew(h.created_at, since) ? " is-new" : ""}`}>
               <div className="pa-hw-head">
-                <strong>{d.subject}</strong>
-                {isNew(d.created_at, since) && <NewTag />}
-                <span className="badge badge-brand">{d.exam_name}</span>
+                <strong>{h.subject || "Homework"}</strong>
+                {isNew(h.created_at, since) && <NewTag />}
+                {h.just_some && <span className="badge badge-brand">Just for {child.name.split(" ")[0]}</span>}
+                {h.due_date && <span className={`pa-hw-due${h.due_date <= now ? " is-soon" : ""}`}>{due(h.due_date)}</span>}
               </div>
-              <p className="pa-hw-body">
-                {dateText(d.exam_date, { weekday: "short", day: "numeric", month: "short" })}
-                {d.start_time ? ` · ${d.start_time}` : ""}
-                {d.notes ? ` · ${d.notes}` : ""}
-              </p>
+              <p className="pa-hw-body">{h.body}</p>
+              <span className="row-sub">
+                Given {dateText(h.created_at, { day: "numeric", month: "short" })}
+                {h.author_name ? ` by ${h.author_name}` : ""}
+              </span>
             </li>
           ))}
         </ul>
@@ -862,6 +834,34 @@ function DatesheetTab({ child, since }) {
         </ul>
       )}
     </>
+  );
+}
+
+// ------------------------------------------------------------- datesheet ---
+
+function DatesheetTab({ child, since }) {
+  const load = useCallback(() => childDatesheet(child.id), [child.id]);
+  const { data, error } = useLoad(load);
+  if (error) return <p className="notice notice-error">{error}</p>;
+  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
+  if (!data.length) return <Empty icon="exam" title="No exams on the datesheet yet" text="The exam schedule appears here as soon as the school sets it." />;
+  return (
+    <ul className="pa-hw">
+      {data.map((d) => (
+        <li key={d.id} className={`pa-card pa-hw-item${isNew(d.created_at, since) ? " is-new" : ""}`}>
+          <div className="pa-hw-head">
+            <strong>{d.subject}</strong>
+            {isNew(d.created_at, since) && <NewTag />}
+            <span className="badge badge-brand">{d.exam_name}</span>
+          </div>
+          <p className="pa-hw-body">
+            {dateText(d.exam_date, { weekday: "short", day: "numeric", month: "short" })}
+            {d.start_time ? ` · ${d.start_time}` : ""}
+            {d.notes ? ` · ${d.notes}` : ""}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 

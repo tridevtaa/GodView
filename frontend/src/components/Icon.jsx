@@ -32,6 +32,7 @@ import {
   Exam,
   Flag,
   ImageSquare,
+  Lightning,
   SunHorizon,
   UsersFour,
   MegaphoneSimple,
@@ -52,6 +53,7 @@ import {
   Tag,
   Trash,
   Tray,
+  Trophy,
   UploadSimple,
   UserPlus,
   UsersThree,
@@ -124,6 +126,8 @@ const PHOSPHOR = {
   female: GenderFemale,
   file: FileText,
   bell: Bell,
+  trophy: Trophy,
+  lightning: Lightning,
 };
 
 // Father and mother, drawn in Phosphor's style (256 grid, soft fill under a

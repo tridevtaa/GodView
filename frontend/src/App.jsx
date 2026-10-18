@@ -34,8 +34,6 @@ const SEARCH_KEYS = {
 // background once the app is up, so switching tabs never waits for it.
 const SCREENS = {
   HomeworkPage: () => import("./components/HomeworkPage.jsx"),
-  DatesheetPage: () => import("./components/DatesheetPage.jsx"),
-  AttendancePage: () => import("./components/AttendancePage.jsx"),
   AddModal: () => import("./components/AddModal.jsx"),
   ProfileModal: () => import("./components/ProfileModal.jsx"),
   ImportModal: () => import("./components/ImportModal.jsx"),
@@ -47,8 +45,6 @@ const SCREENS = {
   CollectFee: () => import("./components/CollectFee.jsx"),
 };
 const HomeworkPage = lazy(SCREENS.HomeworkPage);
-const DatesheetPage = lazy(SCREENS.DatesheetPage);
-const AttendancePage = lazy(SCREENS.AttendancePage);
 const AddModal = lazy(SCREENS.AddModal);
 const ProfileModal = lazy(SCREENS.ProfileModal);
 const ImportModal = lazy(SCREENS.ImportModal);
@@ -398,7 +394,7 @@ export default function App() {
           ring: pct ?? undefined,
           badge: today?.notMarked ?? 0,
           badgeLabel: `${today?.notMarked ?? 0} classes not marked`,
-          onClick: seesAttendance ? () => switchMode("attendance") : undefined,
+          onClick: seesAttendance ? () => (switchMode("calendar"), setQuick({ kind: "attendance", at: Date.now() })) : undefined,
         },
       ];
     }
@@ -418,26 +414,25 @@ export default function App() {
     ];
   })();
   // Header: Students, Inbox, Staff and Transport. Everything about the
-  // students (attendance, homework, fees) lives inside Students, behind a
-  // switch at the top; each role sees the parts it can use. School settings
-  // are in the account menu (owner only).
-  // Teachers: their daily work gets its own tabs (Attendance for class
-  // in-charges, Homework). Leads find these inside Students instead.
+  // students (homework, fees) lives inside Students, behind a switch at the
+  // top; each role sees the parts it can use. School settings are in the
+  // account menu (owner only). Attendance and the exam datesheet live in
+  // the Calendar instead, since they're both dated, day-by-day information.
+  // Teachers: their daily work gets its own tab (Homework). Leads find it
+  // inside Students instead.
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
-    ...(!leads ? [...(seesAttendance ? [["attendance", "Attendance"]] : []), ["homework", "Homework"], ["datesheet", "Datesheet"]] : []),
+    ...(!leads ? [["homework", "Homework"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
-  const STUDENT_PARTS = ["students", "attendance", "homework", "datesheet", "fees", "marks"];
+  const STUDENT_PARTS = ["students", "homework", "fees", "marks"];
   const studentParts = leads
     ? [
         ["students", "Students"],
-        ["attendance", "Attendance"],
         ["homework", "Homework"],
-        ["datesheet", "Datesheet"],
         ...(isAdmin ? [["fees", "Fees"]] : []),
       ]
     : [["students", "Students"]];
@@ -512,7 +507,7 @@ export default function App() {
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
-    ...(role === "teacher" ? [["datesheet", "Datesheet & syllabus", "exam"]] : []),
+    ...(role === "teacher" ? [["datesheet", "Add exam", "exam"]] : []),
     ["notice", "Post notice", "notice"],
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
@@ -531,7 +526,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "datesheet", staff: "employees", attendance: "attendance", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", attendance: "calendar", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -623,6 +618,12 @@ export default function App() {
               if (go === "access") {
                 switchMode("employees");
                 setStaffTab("access");
+              } else if (go === "attendance") {
+                switchMode("calendar");
+                setQuick({ kind: "attendance", at: Date.now() });
+              } else if (go === "notice") {
+                switchMode("notices");
+                setNoticeCompose(true);
               } else switchMode(go);
             }}
           />
@@ -638,7 +639,25 @@ export default function App() {
                 </h1>
               </div>
             </div>
-            <CalendarPage schoolId={school.id} canEdit={isAdmin} staff adding={calAdding} onAdding={setCalAdding} onOpenNotices={() => switchMode("notices")} />
+            <CalendarPage
+              schoolId={school.id}
+              canEdit={isAdmin}
+              staff
+              adding={calAdding}
+              onAdding={setCalAdding}
+              onOpenNotices={() => switchMode("notices")}
+              session={currentSession}
+              students={current}
+              me={user.email}
+              dsIsAdmin={isAdmin}
+              dsReadOnly={leads}
+              dsCreateAt={quick.kind === "datesheet" ? quick.at : 0}
+              seesAttendance={seesAttendance}
+              attIsAdmin={leads}
+              attReadOnly={isPrincipal}
+              attOpenAt={quick.kind === "attendance" ? quick.at : 0}
+              onOpenStudent={(id) => openStudent(id)}
+            />
           </>
         ) : mode === "notices" ? (
           <>
@@ -731,12 +750,8 @@ export default function App() {
               </div>
             )}
           </>
-        ) : mode === "attendance" && seesAttendance ? (
-          <AttendancePage school={school} session={currentSession} students={current} isAdmin={leads} readOnly={isPrincipal} me={user.email} heading={leads ? studentsSwitch : null} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
-        ) : mode === "datesheet" ? (
-          <DatesheetPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} createAt={quick.kind === "datesheet" ? quick.at : 0} />
         ) : mode === "requests" ? (
           <InboxPage
             openThread={openThread}

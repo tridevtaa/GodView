@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { addCalendarEvent, deleteCalendarEvent, listCalendar, updateCalendarEvent } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { DateLeaf, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
+
+const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
+const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
 
 // What goes on the calendar, each with its icon (and colour, in CSS).
 export const KINDS = [
@@ -53,10 +56,36 @@ function useItems(schoolId, staff) {
   return { items, loading: events === null, setEvents };
 }
 
-// The calendar page: a month at a glance and what's on. Owners and admins
-// add, change and remove entries; everyone else reads. adding: open the
-// "add" form (from the +).
-export default function CalendarPage({ schoolId, canEdit = false, staff = false, adding = false, onAdding = () => {}, onOpenNotices }) {
+// The calendar page: a month at a glance and what's on, plus attendance and
+// the exam datesheet as two more tabs (they're both dated, day-by-day
+// information too, just kept per class rather than school-wide). Owners and
+// admins add, change and remove calendar entries; everyone else reads.
+// Attendance and the datesheet keep their own per-class permissions (see
+// AttendancePage and DatesheetPage), unrelated to canEdit here.
+// adding: open the calendar "add" form (from the +). dsCreateAt: open the
+// datesheet's add-exam form (from the + on the exam quick action).
+// attOpenAt: switch to the attendance tab (from Home or the + on Mark
+// attendance). seesAttendance: hide the tab for teachers who aren't a class
+// in-charge this session.
+export default function CalendarPage({
+  schoolId,
+  canEdit = false,
+  staff = false,
+  adding = false,
+  onAdding = () => {},
+  onOpenNotices,
+  session,
+  students = [],
+  me,
+  dsIsAdmin = false,
+  dsReadOnly = false,
+  dsCreateAt = 0,
+  seesAttendance = true,
+  attIsAdmin = false,
+  attReadOnly = false,
+  attOpenAt = 0,
+  onOpenStudent,
+}) {
   const { items, loading, setEvents } = useItems(schoolId, staff);
   const [month, setMonth] = useState(() => {
     const d = new Date();
@@ -64,10 +93,17 @@ export default function CalendarPage({ schoolId, canEdit = false, staff = false,
   });
   const [picked, setPicked] = useState(null); // a day, "YYYY-MM-DD"
   const [editing, setEditing] = useState(null); // an entry's row, or {} for new
+  const [view, setView] = useState("calendar"); // "calendar" | "attendance" | "datesheet"
 
   useEffect(() => {
     if (adding) setEditing({ starts_on: picked ?? todayIso() });
   }, [adding]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (dsCreateAt) setView("datesheet");
+  }, [dsCreateAt]);
+  useEffect(() => {
+    if (attOpenAt) setView("attendance");
+  }, [attOpenAt]);
 
   const today = todayIso();
   const first = iso(month);
@@ -99,116 +135,163 @@ export default function CalendarPage({ schoolId, canEdit = false, staff = false,
 
   return (
     <div className="cal">
-      <section className="cal-card">
-        <header className="cal-head">
-          <button className="icon-btn-sm" onClick={() => go(-1)} aria-label="Previous month">
-            <Icon name="chevronLeft" size={18} />
+      {session && (
+        <nav className="segmented segmented-sm ds-tabs" aria-label="Calendar, attendance or datesheet">
+          <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>
+            <Icon name="calendar" size={15} /> Calendar
           </button>
-          <h2 key={first}>{month.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</h2>
-          <button className="icon-btn-sm" onClick={() => go(1)} aria-label="Next month">
-            <Icon name="chevronRight" size={18} />
-          </button>
-          {!thisMonth && (
-            <button
-              className="link-btn cal-today"
-              onClick={() => {
-                const d = new Date();
-                setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                setPicked(null);
-              }}
-            >
-              Today
+          {seesAttendance && (
+            <button className={view === "attendance" ? "active" : ""} onClick={() => setView("attendance")}>
+              <Icon name="register" size={15} /> Attendance
             </button>
           )}
-        </header>
-        <div className="cal-week" aria-hidden="true">
-          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-            <span key={i}>{d}</span>
-          ))}
+          <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
+            <Icon name="exam" size={15} /> Datesheet
+          </button>
+        </nav>
+      )}
+      {view === "attendance" ? (
+        <div className="cal-datesheet">
+          <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
+            <AttendancePage
+              school={{ id: schoolId }}
+              session={session}
+              students={students}
+              me={me}
+              isAdmin={attIsAdmin}
+              readOnly={attReadOnly}
+              onOpenStudent={onOpenStudent}
+            />
+          </Suspense>
         </div>
-        <div className="cal-grid" key={first} role="grid" aria-label="Days">
-          {cells.map((d) => {
-            const day = iso(d);
-            const on = items.filter((it) => covers(it, day));
-            const kinds = [...new Set(on.map((it) => it.kind))].slice(0, 3);
-            const out = d.getMonth() !== month.getMonth();
-            const holiday = on.some((it) => it.kind === "holiday");
-            return (
-              <button
-                key={day}
-                role="gridcell"
-                className={["cal-day", out && "is-out", day === today && "is-today", day === picked && "is-picked", holiday && "is-holiday", d.getDay() === 0 && "is-sunday"].filter(Boolean).join(" ")}
-                onClick={() => {
-                  if (out) setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-                  setPicked(day === picked ? null : day);
-                }}
-                aria-label={`${d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}${on.length ? `, ${on.map((it) => it.title).join(", ")}` : ""}`}
-                aria-selected={day === picked}
-              >
-                <span className="cal-num">{d.getDate()}</span>
-                <span className="cal-dots">
-                  {kinds.map((k) => (
-                    <i key={k} className={`k-${k}`} />
-                  ))}
-                </span>
+      ) : view === "datesheet" ? (
+        <div className="cal-datesheet">
+          <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
+            <DatesheetPage
+              school={{ id: schoolId }}
+              session={session}
+              students={students}
+              me={me}
+              isAdmin={dsIsAdmin}
+              readOnly={dsReadOnly}
+              createAt={dsCreateAt}
+            />
+          </Suspense>
+        </div>
+      ) : (
+        <>
+          <section className="cal-card">
+            <header className="cal-head">
+              <button className="icon-btn-sm" onClick={() => go(-1)} aria-label="Previous month">
+                <Icon name="chevronLeft" size={18} />
               </button>
-            );
-          })}
-        </div>
-        <div className="cal-legend">
-          {[...KINDS.slice(0, 4), ["notice", "Notice"]].map(([k, l]) => (
-            <span key={k}>
-              <i className={`k-${k}`} /> {l}
-            </span>
-          ))}
-        </div>
-      </section>
+              <h2 key={first}>{month.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</h2>
+              <button className="icon-btn-sm" onClick={() => go(1)} aria-label="Next month">
+                <Icon name="chevronRight" size={18} />
+              </button>
+              {!thisMonth && (
+                <button
+                  className="link-btn cal-today"
+                  onClick={() => {
+                    const d = new Date();
+                    setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                    setPicked(null);
+                  }}
+                >
+                  Today
+                </button>
+              )}
+            </header>
+            <div className="cal-week" aria-hidden="true">
+              {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                <span key={i}>{d}</span>
+              ))}
+            </div>
+            <div className="cal-grid" key={first} role="grid" aria-label="Days">
+              {cells.map((d) => {
+                const day = iso(d);
+                const on = items.filter((it) => covers(it, day));
+                const kinds = [...new Set(on.map((it) => it.kind))].slice(0, 3);
+                const out = d.getMonth() !== month.getMonth();
+                const holiday = on.some((it) => it.kind === "holiday");
+                return (
+                  <button
+                    key={day}
+                    role="gridcell"
+                    className={["cal-day", out && "is-out", day === today && "is-today", day === picked && "is-picked", holiday && "is-holiday", d.getDay() === 0 && "is-sunday"].filter(Boolean).join(" ")}
+                    onClick={() => {
+                      if (out) setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+                      setPicked(day === picked ? null : day);
+                    }}
+                    aria-label={`${d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}${on.length ? `, ${on.map((it) => it.title).join(", ")}` : ""}`}
+                    aria-selected={day === picked}
+                  >
+                    <span className="cal-num">{d.getDate()}</span>
+                    <span className="cal-dots">
+                      {kinds.map((k) => (
+                        <i key={k} className={`k-${k}`} />
+                      ))}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="cal-legend">
+              {[...KINDS.slice(0, 4), ["notice", "Notice"]].map(([k, l]) => (
+                <span key={k}>
+                  <i className={`k-${k}`} /> {l}
+                </span>
+              ))}
+            </div>
+          </section>
 
-      <section className="cal-list">
-        <div className="cal-list-head">
-          <h3>{picked ? parse(picked).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) : `In ${month.toLocaleDateString("en-IN", { month: "long" })}`}</h3>
-          {picked && (
-            <button className="link-btn" onClick={() => setPicked(null)}>
-              Whole month
-            </button>
-          )}
-          {canEdit && (
-            <button className="btn btn-primary btn-sm cal-add" onClick={() => setEditing({ starts_on: picked ?? (thisMonth ? today : first) })}>
-              <Icon name="plus" /> Add
-            </button>
-          )}
-        </div>
-        {loading && <div className="nb-skeleton" aria-busy="true" />}
-        {!loading && shown.length === 0 && <p className="row-sub cal-empty">{picked ? "Nothing on this day." : "Nothing on the calendar this month yet."}</p>}
-        <ul>
-          {shown.map((it, i) => (
-            <li key={it.id} style={{ "--d": `${Math.min(i, 8) * 40}ms` }}>
-              <button
-                className={`cal-item k-${it.kind}${it.start < today && (it.end ?? it.start) < today ? " is-past" : ""}`}
-                onClick={() => (it.source === "event" ? canEdit && setEditing(it.row) : onOpenNotices?.())}
-                disabled={it.source === "event" && !canEdit}
-              >
-                <DateLeaf date={it.start} />
-                <span className="cal-item-main">
-                  <strong>{it.title}</strong>
-                  <span className="row-sub">
-                    {range(it)}
-                    {it.note ? ` · ${it.note}` : ""}
-                  </span>
-                </span>
-                <span className="cal-kind">
-                  <Icon name={KIND_ICON[it.kind]} size={14} /> {KIND_LABEL[it.kind]}
-                </span>
-                {staff && !it.forParents && (
-                  <span className="nb-staff-only" title="Only staff can see this">
-                    <Icon name="teacher" size={13} />
-                  </span>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+          <section className="cal-list">
+            <div className="cal-list-head">
+              <h3>{picked ? parse(picked).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) : `In ${month.toLocaleDateString("en-IN", { month: "long" })}`}</h3>
+              {picked && (
+                <button className="link-btn" onClick={() => setPicked(null)}>
+                  Whole month
+                </button>
+              )}
+              {canEdit && (
+                <button className="btn btn-primary btn-sm cal-add" onClick={() => setEditing({ starts_on: picked ?? (thisMonth ? today : first) })}>
+                  <Icon name="plus" /> Add
+                </button>
+              )}
+            </div>
+            {loading && <div className="nb-skeleton" aria-busy="true" />}
+            {!loading && shown.length === 0 && <p className="row-sub cal-empty">{picked ? "Nothing on this day." : "Nothing on the calendar this month yet."}</p>}
+            <ul>
+              {shown.map((it, i) => (
+                <li key={it.id} style={{ "--d": `${Math.min(i, 8) * 40}ms` }}>
+                  <button
+                    className={`cal-item k-${it.kind}${it.start < today && (it.end ?? it.start) < today ? " is-past" : ""}`}
+                    onClick={() => (it.source === "event" ? canEdit && setEditing(it.row) : onOpenNotices?.())}
+                    disabled={it.source === "event" && !canEdit}
+                  >
+                    <DateLeaf date={it.start} />
+                    <span className="cal-item-main">
+                      <strong>{it.title}</strong>
+                      <span className="row-sub">
+                        {range(it)}
+                        {it.note ? ` · ${it.note}` : ""}
+                      </span>
+                    </span>
+                    <span className="cal-kind">
+                      <Icon name={KIND_ICON[it.kind]} size={14} /> {KIND_LABEL[it.kind]}
+                    </span>
+                    {staff && !it.forParents && (
+                      <span className="nb-staff-only" title="Only staff can see this">
+                        <Icon name="teacher" size={13} />
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </>
+      )}
 
       {editing && (
         <EventEditor
@@ -340,10 +423,10 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
   );
 }
 
-// Home: the next few things coming up, with a link to the calendar.
-// Home: what's coming up (calendar entries in the next two months) and
-// the latest notices, as one row of small cards to swipe through. Hidden
-// when there's nothing. Taps open the calendar or the noticeboard.
+// Home: the next few things coming up, with a link to the calendar. What's
+// coming up (calendar entries in the next two months) and the latest
+// notices, as a row of cards. Hidden when there's nothing. Taps open the
+// calendar or the noticeboard.
 export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotices }) {
   const { items, loading } = useItems(schoolId, staff);
   const [notices] = useNotices(schoolId, staff);
@@ -359,27 +442,96 @@ export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotice
   ];
   if (loading || !cards.length) return null;
   return (
-    <section className="hw-strip">
-      <button className="hw-strip-head" onClick={onOpenCalendar}>
-        <strong>Coming up</strong>
-        <span>
-          Calendar <Icon name="arrowRight" size={14} />
+    <section className="home-events">
+      <header className="home-notice-head">
+        <span className="home-events-icon">
+          <Icon name="calendar" size={18} weight="fill" />
         </span>
-      </button>
-      <div className="hw-strip-row">
-        {cards.map((it, i) => (
-          <button key={it.id} className={`hw-card k-${it.kind}`} style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
-            <span className="hw-card-top">
-              <DateLeaf date={it.fresh || it.start >= today ? it.start : today} small />
-              <span className={`cal-dot-lg k-${it.kind}`} title={KIND_LABEL[it.kind]}>
-                <Icon name={KIND_ICON[it.kind]} size={14} />
+        <span className="home-notice-text">
+          <strong>Upcoming Events</strong>
+          <span className="row-sub">Don’t miss what’s coming up</span>
+        </span>
+        <button type="button" className="home-section-all" onClick={onOpenCalendar}>
+          View calendar <Icon name="arrowRight" size={13} />
+        </button>
+      </header>
+      <div className="home-events-row">
+        {cards.map((it, i) => {
+          const d = parse(it.fresh || it.start >= today ? it.start : today);
+          return (
+            <button key={it.id} className="home-event-card" style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
+              <span className="home-event-date">
+                <span className="home-event-month">{d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase()}</span>
+                <span className="home-event-day">{d.getDate()}</span>
               </span>
-            </span>
-            <strong className="hw-card-title">{it.title}</strong>
-          </button>
-        ))}
+              <span className="home-event-body">
+                <strong>{it.title}</strong>
+                {it.note && <span className="row-sub">{it.note}</span>}
+              </span>
+              <span className={`home-event-kind k-${it.kind}`} title={KIND_LABEL[it.kind]}>
+                <Icon name={KIND_ICON[it.kind]} size={15} />
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
+  );
+}
+
+// Home: a small month-at-a-glance, next to the attendance card. Plain dates
+// (no event dots — that detail lives on the full Calendar); tapping it, or
+// the arrows either side of the month name, opens the full page.
+export function MiniCalendar({ onOpen }) {
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1);
+  });
+  const today = todayIso();
+  // Sunday-first weeks, to match the rest of this widget's references.
+  const cells = useMemo(() => {
+    const start = new Date(month);
+    start.setDate(1 - month.getDay());
+    return Array.from({ length: 42 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    }).slice(0, 35);
+  }, [month]);
+  const go = (step, e) => {
+    e.stopPropagation();
+    setMonth((m) => new Date(m.getFullYear(), m.getMonth() + step, 1));
+  };
+
+  return (
+    <div className="home-cal" onClick={onOpen} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()} role="button" tabIndex={0} aria-label="Open the calendar">
+      <header className="home-cal-head">
+        <strong>{month.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</strong>
+        <span className="home-cal-nav">
+          <button type="button" className="icon-btn-sm" onClick={(e) => go(-1, e)} aria-label="Previous month">
+            <Icon name="chevronLeft" size={16} />
+          </button>
+          <button type="button" className="icon-btn-sm" onClick={(e) => go(1, e)} aria-label="Next month">
+            <Icon name="chevronRight" size={16} />
+          </button>
+        </span>
+      </header>
+      <div className="home-cal-week" aria-hidden="true">
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <span key={d}>{d}</span>
+        ))}
+      </div>
+      <div className="home-cal-grid">
+        {cells.map((d) => {
+          const day = iso(d);
+          return (
+            <span key={day} className={["home-cal-day", d.getMonth() !== month.getMonth() && "is-out", day === today && "is-today"].filter(Boolean).join(" ")}>
+              {d.getDate()}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
