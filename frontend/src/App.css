@@ -14380,18 +14380,26 @@ button.achv-tag {
   box-shadow: 0 6px 16px rgba(29, 35, 102, 0.16);
 }
 
-/* Narrow tiles: a compact version up beside the icon, no caption */
+/* Narrow tiles: a compact version up beside the icon, no caption. It never
+   reaches over the icon (54px + an 8px gap): faces drop off from the end
+   until they fit, and "+N" goes (the big number already says how many). */
 @container (max-width: 300px) {
   .hw-visual {
     top: 16px;
     right: 16px;
     bottom: auto;
     gap: 0;
+    max-width: calc(100cqw - 62px);
   }
 
   .tv-caption,
-  .tv-bars {
+  .tv-bars,
+  .tv-more {
     display: none;
+  }
+
+  .tv-faces {
+    padding-left: 9px;
   }
 
   .tv-face {
@@ -14400,6 +14408,16 @@ button.achv-tag {
     margin-left: -9px;
     font-size: 10.5px;
   }
+}
+
+/* Each face takes 23px more: 4 need 163px of tile, 3 need 140px */
+@container (max-width: 162px) {
+  .tv-face:nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (max-width: 300px) {
 
   .tv-ring {
     width: 46px;
@@ -14413,7 +14431,8 @@ button.achv-tag {
   }
 }
 
-@container (max-width: 205px) {
+/* The week strip is 186px wide: it needs 248px of tile beside the icon */
+@container (max-width: 247px) {
   .tv-week {
     display: none;
   }
