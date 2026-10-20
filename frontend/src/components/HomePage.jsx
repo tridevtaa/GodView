@@ -25,10 +25,16 @@ const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric"
 // so it's quick and the pages open already filled.
 // Nothing shows twice: a notice is either in the banner or among the wins,
 // and the quick actions are the + menu's (computers only; phones have the +).
+// Each role sees what it acts on: owners and admins get numbers and tasks
+// (notices are a tile for them, wins live on the Noticeboard); the
+// principal also gets the notice banner; teachers get the banner and the
+// students' wins.
 export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, actions = [], onAction, onGo }) {
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
+  const showBanner = !isAdmin;
+  const showWins = role === "teacher";
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
   const staffKey = `people:employees:${school.id}:`;
@@ -58,7 +64,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const overdue = students.filter((p) => p.fee_status === "overdue").length;
   const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
   const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
-  const onBus = students.filter((p) => p.uses_bus).length;
 
   // One tile per part of the app: a number and a word. badge: what's
   // waiting on this person there; hot: something new, the tile glows.
@@ -107,7 +112,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       badgeLabel: `${n(overdue)} students overdue`,
       onClick: go("fees"),
     },
-    isAdmin && { key: "bus", icon: "bus", tone: "orange", label: "On the Bus", value: loading ? undefined : onBus, onClick: go("transport") },
+    isAdmin && { key: "notices", icon: "notice", tone: "orange", label: "Notices", value: notices === null ? undefined : notices.length, onClick: go("notices") },
   ].filter(Boolean);
 
   // Today's attendance: green, amber or red by how many are in; indigo
@@ -120,7 +125,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // The + menu's actions, less what a card above already offers.
   const quickActions = actions.filter(([key]) => !(key === "attendance" && showToday));
   // The banner shows while there are plain notices (or they're loading).
-  const banner = notices === null || plain.length > 0;
+  const banner = showBanner && (notices === null || plain.length > 0);
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
@@ -156,7 +161,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
         ))}
       </div>
 
-      <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />
+      {showWins && <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />}
 
       <div className={`home-bottom-row${quickActions.length ? "" : " is-solo"}`}>
         <ComingUp schoolId={school.id} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
