@@ -1395,9 +1395,11 @@ a:hover {
 
 .session-btn {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 6px;
   height: 34px;
+  white-space: nowrap;
   padding: 0 14px;
   border: none;
   border-radius: 999px;
@@ -11698,6 +11700,162 @@ button.achv-tag {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+/* Staff Home on computers: room between sections, bigger numbers, and
+   Upcoming Events and Quick Actions as two matching cards. */
+@media (min-width: 761px) {
+  .home-staff {
+    gap: 28px;
+  }
+
+  .home-staff .home-hero h1 {
+    font-size: 32px;
+  }
+
+  .home-staff .home-att {
+    padding: 22px 26px;
+  }
+
+  .home-staff .home-row1.is-solo .home-att {
+    gap: 18px;
+    padding: 22px 26px;
+  }
+
+  .home-staff .home-att-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .home-staff .home-att-title {
+    font-size: 22px;
+  }
+
+  .home-staff .home-att-sub {
+    font-size: 14px;
+  }
+
+  .home-staff .home-att-cta {
+    padding: 12px 22px;
+    font-size: 14px;
+  }
+
+  .home-staff .hw-grid {
+    grid-template-columns: repeat(var(--half), 1fr);
+    gap: 18px;
+  }
+
+  .home-staff .hw-tile {
+    min-height: 168px;
+    padding: 20px 20px 18px;
+  }
+
+  .home-staff .hw-value {
+    font-size: 34px;
+  }
+
+  .home-staff .hw-label {
+    font-size: 14px;
+  }
+
+  .home-staff .home-bottom-row {
+    grid-template-columns: 3fr 2fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .home-staff .home-events,
+  .home-staff .home-quick {
+    gap: 18px;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .home-staff .home-notice-text strong {
+    font-size: 17px;
+  }
+
+  .home-staff .home-events-cal {
+    grid-template-columns: 300px 1fr;
+    gap: 18px;
+  }
+
+  .home-staff .home-cal {
+    gap: 8px;
+    padding: 14px 14px 12px;
+  }
+
+  .home-staff .home-cal-head strong {
+    font-size: 15px;
+  }
+
+  .home-staff .home-cal-week span {
+    font-size: 12px;
+  }
+
+  .home-staff .home-cal-day {
+    height: 36px;
+    font-size: 13.5px;
+  }
+
+  .home-staff .home-cal-day > span {
+    width: 30px;
+    height: 30px;
+  }
+
+  .home-staff .home-event-card {
+    padding: 14px;
+  }
+
+  .home-staff .home-event-date {
+    width: 50px;
+    height: 50px;
+  }
+
+  .home-staff .home-event-body strong {
+    font-size: 15px;
+  }
+
+  /* Quick actions: a 2 by 2 grid filling the card */
+  .home-staff .home-quick-row {
+    flex: 1;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 1fr;
+    gap: 14px;
+  }
+
+  .home-staff .home-quick-btn {
+    justify-content: center;
+    gap: 10px;
+    padding: 18px 10px;
+    font-size: 14px;
+  }
+
+  .home-staff .home-quick-badge {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+/* Wide screens: every tile in one row, events and actions side by side */
+@media (min-width: 1200px) {
+  .home-staff .hw-grid {
+    grid-template-columns: repeat(var(--n), 1fr);
+  }
+}
+
+/* Mid-size screens: events and actions stack, actions four across */
+@media (min-width: 761px) and (max-width: 1199px) {
+  .home-staff .home-bottom-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-staff .home-quick-row {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
 }
 
 /* Bottom row: Upcoming Events next to Quick Actions. */

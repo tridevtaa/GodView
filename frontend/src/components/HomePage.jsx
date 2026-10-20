@@ -84,7 +84,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       key: "homework",
       icon: "book",
       tone: "teal",
-      label: "Homework This Week",
+      label: "New Homework",
       value: homework === null ? undefined : thisWeek,
       badge: leads ? 0 : dueTomorrow,
       badgeLabel: `${dueTomorrow} due tomorrow`,
@@ -129,7 +129,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
-    <div className="home hw">
+    <div className="home hw home-staff">
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>
@@ -155,7 +155,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </div>
       )}
 
-      <div className="hw-grid">
+      {/* Tiles fill whole rows: all in one row on wide screens, two even rows on smaller ones */}
+      <div className="hw-grid" style={{ "--n": tiles.length, "--half": Math.ceil(tiles.length / 2) }}>
         {tiles.map((t, i) => (
           <Tile key={t.key} {...t} index={i} />
         ))}
