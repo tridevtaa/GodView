@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { listClassSections, myClassAllocationRequest, requestClassAllocation } from "../data/api.js";
+import { listGrades, myClassAllocationRequest, requestClassAllocation } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { logOut } from "./AuthGate.jsx";
 import { LogoMark } from "./Logo.jsx";
+
+// The school's classes and their sections, as pickable options. From the
+// class list (any member can read it), not from enrolments: a teacher with
+// no classes yet can't see any students, so that list came back empty.
+// The request is still checked against real enrolments when it's sent.
+const gradeOptions = (grades) =>
+  grades.flatMap((g) => (g.sections?.length ? g.sections.map((s) => ({ class: g.code, section: s })) : [{ class: g.code, section: "" }]));
 
 const classList = (classes = []) =>
   classes.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ");
@@ -21,10 +28,10 @@ export default function ClassAllocationGate({ school, session }) {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([listClassSections(school.id, session.id), myClassAllocationRequest(school.id)]).then(
-      ([options, latest]) => {
+    Promise.all([listGrades(school.id), myClassAllocationRequest(school.id)]).then(
+      ([grades, latest]) => {
         if (!alive) return;
-        setClassOptions(options);
+        setClassOptions(gradeOptions(grades));
         setRequest(latest);
         if (latest && latest.status !== "approved") {
           setClasses(latest.classes ?? []);
