@@ -83,7 +83,8 @@ export default function App() {
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
   // The browser tab shows the school (logo and name), not Godview.
-  useSchoolBranding(school);
+  // An owner's app also makes the school's home screen icon (pwa/branding.js).
+  useSchoolBranding(school, { owner: role === "owner" });
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
   // Principal: sees students, attendance, homework, requests and employees
