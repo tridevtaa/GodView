@@ -26,6 +26,7 @@ import { onNotificationOpen, syncPush } from "./pwa/push.js";
 import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
+import { useSwipeTabs } from "./pwa/swipeTabs.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -450,6 +451,15 @@ export default function App() {
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
   const STUDENT_PARTS = ["students", "homework", "fees", "marks"];
+  // The bottom tab that's lit: pages inside a tab light that tab.
+  const litMode = leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" || mode === "calendar" ? "home" : mode;
+  // Phones: swipe sideways to the next or previous tab (not on a profile).
+  useSwipeTabs(
+    sections.map(([key]) => key),
+    litMode,
+    switchMode,
+    !studentPage
+  );
   const studentParts = leads
     ? [
         ["students", "Students"],
@@ -578,7 +588,7 @@ export default function App() {
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
         // The noticeboard is reached from Home, so Home stays lit there.
-        mode={leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" || mode === "calendar" ? "home" : mode}
+        mode={litMode}
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
