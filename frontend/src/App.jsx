@@ -660,7 +660,7 @@ export default function App() {
           </>
         ) : mode === "notices" ? (
           <>
-            <div className="page-header">
+            <div className="page-header nb-header">
               <div className="page-meta">
                 <button className="back-btn" onClick={() => switchMode("home")} aria-label="Back to Home" title="Back">
                   <Icon name="chevronLeft" size={22} />

@@ -3427,7 +3427,7 @@ a:hover {
 .fees-charts {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  align-items: start;
+  align-items: stretch;
   gap: 20px;
 }
 
@@ -6920,6 +6920,27 @@ input[type="date"]::-webkit-date-and-time-value {
    Attendance: the morning register
    ========================================================= */
 
+/* Class switch on the left, the day on the right, one line */
+.att-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 16px;
+}
+
+.att-bar > .cls-switch,
+.att-bar > .hw-filter,
+.att-bar > .att-class-row,
+.att-bar > .notice {
+  margin: 0;
+}
+
+.att-overview .badge {
+  justify-self: start;
+}
+
 .att-day {
   display: flex;
   align-items: center;
@@ -7123,7 +7144,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .att-overview button {
   display: grid;
-  grid-template-columns: 120px 1fr auto;
+  grid-template-columns: minmax(150px, 220px) 1fr 140px;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -7158,6 +7179,7 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .att-ov-nums {
   color: var(--text-3);
+  text-align: right;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -7210,7 +7232,7 @@ input[type="date"]::-webkit-date-and-time-value {
   }
 
   .att-overview button {
-    grid-template-columns: 90px 1fr auto;
+    grid-template-columns: 110px 1fr auto;
     padding: 10px 14px;
   }
 }
@@ -7288,8 +7310,9 @@ input[type="date"]::-webkit-date-and-time-value {
   margin-bottom: 14px;
 }
 
+/* Same height as the class button beside it */
 .cls-all {
-  height: var(--control-sm);
+  height: var(--control-h);
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -9494,6 +9517,19 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .att-day-pick strong {
   font-size: 14px;
+}
+
+/* A page's switch (Students | Homework | Fees…) is as tall as the
+   buttons and pickers on the same row. */
+.page-switch,
+.page-meta > .segmented {
+  align-items: center;
+  height: var(--control-h);
+}
+
+.page-switch button,
+.page-meta > .segmented button {
+  height: calc(var(--control-h) - 8px);
 }
 
 /* Phones: the same order on every page: the page's switch full width on
@@ -12065,7 +12101,9 @@ button.achv-tag {
   color: var(--brand);
 }
 
-.notices {
+/* The list and its header share one readable column */
+.notices,
+.nb-header {
   max-width: 760px;
 }
 

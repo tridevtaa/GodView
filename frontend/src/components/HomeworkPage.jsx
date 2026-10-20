@@ -110,8 +110,19 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
       <div className="page-header">
         <div>
           <h1 className="sr-only">Homework &amp; syllabus</h1>
+          {/* The page's own switch sits on the same row as the Students one */}
           <div className="page-meta">
             {heading}
+            {!writing && (
+              <nav className="segmented segmented-sm page-switch" aria-label="Homework or syllabus">
+                <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
+                  <Icon name="book" size={15} /> Homework
+                </button>
+                <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
+                  <Icon name="academics" size={15} /> Syllabus
+                </button>
+              </nav>
+            )}
           </div>
         </div>
         {groups.length > 0 && !writing && !readOnly && (
@@ -123,17 +134,6 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           </div>
         )}
       </div>
-
-      {!writing && (
-        <nav className="segmented segmented-sm ds-tabs" aria-label="Homework or syllabus">
-          <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
-            <Icon name="book" size={15} /> Homework
-          </button>
-          <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
-            <Icon name="academics" size={15} /> Syllabus
-          </button>
-        </nav>
-      )}
 
       {!writing && view === "homework" && homework && (
         <StatCards

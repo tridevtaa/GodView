@@ -27,8 +27,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // The morning register. Teachers open their class, everyone starts Present
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
-// heading: replaces the title (Academics puts its Attendance | Homework switch there).
-export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, heading, onOpenStudent }) {
+export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, onOpenStudent }) {
   const [day, setDay] = useState(todayIso());
   // Classes this person is class teacher of (only they mark attendance;
   // owners and admins can mark any class).
@@ -76,13 +75,31 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1 className="sr-only">Attendance</h1>
-          <div className="page-meta">
-            {heading}
-          </div>
-        </div>
+      {/* One row: the class switch on the left, the day on the right */}
+      <div className="att-bar">
+        {mine === null ? (
+          <span />
+        ) : !groups.length ? (
+          <p className="notice">
+            {isAdmin ? "No classes this session yet." : "You’re not a class in-charge this session. The owner sets class in-charges in Staff, App access."}
+          </p>
+        ) : isAdmin ? (
+          <ClassSwitcher groups={groups} value={open ?? ""} onChange={setOpen} allLabel="All classes" />
+        ) : groups.length === 1 ? (
+          // One class in charge: just its name.
+          <p className="att-class-row">
+            <span className="att-class-name">{classText(groups[0].klass, groups[0].section)}</span>
+          </p>
+        ) : (
+          // In charge of more than one class: switch between them.
+          <nav className="hw-filter att-mine" aria-label="Your classes">
+            {groups.map((g) => (
+              <button type="button" key={g.key} className={open === g.key ? "is-on" : ""} onClick={() => setOpen(g.key)}>
+                {classText(g.klass, g.section)}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className="att-day">
           <button className="btn-icon" onClick={() => setDay((d) => shift(d, -1))} aria-label="Previous day">
             <Icon name="arrowLeft" size={18} />
@@ -99,30 +116,6 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
           </button>
         </div>
       </div>
-
-      {mine === null ? null : !groups.length ? (
-        <p className="notice">
-          {isAdmin ? "No classes this session yet." : "You’re not a class in-charge this session. The owner sets class in-charges in Staff, App access."}
-        </p>
-      ) : isAdmin ? (
-        <ClassSwitcher groups={groups} value={open ?? ""} onChange={setOpen} allLabel="All classes" />
-      ) : groups.length === 1 ? (
-        // One class in charge: just its name, under the title.
-        <p className="att-class-row">
-          <span className="att-class-name">{classText(groups[0].klass, groups[0].section)}</span>
-        </p>
-      ) : (
-        groups.length > 1 && (
-          // In charge of more than one class: switch between them.
-          <nav className="hw-filter att-mine" aria-label="Your classes">
-            {groups.map((g) => (
-              <button type="button" key={g.key} className={open === g.key ? "is-on" : ""} onClick={() => setOpen(g.key)}>
-                {classText(g.klass, g.section)}
-              </button>
-            ))}
-          </nav>
-        )
-      )}
 
       {group ? (
         <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} viewer={readOnly} onOpenStudent={onOpenStudent} />
