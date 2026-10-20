@@ -12062,6 +12062,10 @@ button.achv-tag {
   max-width: 760px;
 }
 
+.nb-filter {
+  margin-bottom: 12px;
+}
+
 .nb-list {
   display: flex;
   flex-direction: column;

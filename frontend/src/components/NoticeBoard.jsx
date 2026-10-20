@@ -80,6 +80,10 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
   const [error, setError] = useState("");
   const [viewing, setViewing] = useState(null); // picture shown full size
   const urls = useImageUrls(notices);
+  // All, or only the students' wins (notices tagged with a category).
+  const [only, setOnly] = useState("all");
+  const hasWins = (notices ?? []).some((n) => n.category);
+  const shown = only === "wins" && hasWins ? notices.filter((n) => n.category) : notices;
   const canPost = Boolean(me);
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
 
@@ -120,9 +124,21 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
           )}
         </div>
       )}
-      {notices?.length > 0 && (
+      {hasWins && (
+        <nav className="segmented segmented-sm nb-filter" aria-label="Show">
+          {[
+            ["all", "All"],
+            ["wins", "News & Achievements"],
+          ].map(([v, l]) => (
+            <button key={v} className={only === v ? "active" : ""} onClick={() => setOnly(v)}>
+              {l}
+            </button>
+          ))}
+        </nav>
+      )}
+      {shown?.length > 0 && (
         <ul className="nb-list">
-          {notices.map((n, i) => (
+          {shown.map((n, i) => (
             <Notice key={n.id} n={n} image={urls.get(n.image_path)} onView={setViewing} index={i} fresh={Boolean(since && n.created_at > since)} staffView={canPost} manage={canManage(n)} onPin={() => pin(n)} onRemove={() => remove(n)} />
           ))}
         </ul>
