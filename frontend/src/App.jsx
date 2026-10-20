@@ -24,6 +24,7 @@ import { useSessions } from "./data/useSessions.js";
 import { forget, swr } from "./data/cache.js";
 import { onNotificationOpen, syncPush } from "./pwa/push.js";
 import { onFresh } from "./pwa/fresh.js";
+import { useSchoolBranding } from "./pwa/branding.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -80,6 +81,8 @@ export default function App() {
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
+  // The browser tab shows the school (logo and name), not Godview.
+  useSchoolBranding(school);
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
   // Principal: sees students, attendance, homework, requests and employees
