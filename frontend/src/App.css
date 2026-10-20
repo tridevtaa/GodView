@@ -14084,81 +14084,40 @@ button.achv-tag {
   }
 }
 
-/* Urgent: it needs this person now. Red, with a ring that pulses out and
-   a light sweeping across, slow enough to never strobe. */
-@keyframes urgent-ring {
+/* Urgent: it needs this person now. Red, with one soft glow breathing
+   slowly on the top card; urgent tiles just turn red. */
+@keyframes urgent-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(229, 83, 61, 0.55), 0 10px 26px rgba(229, 83, 61, 0.22);
+    box-shadow: 0 8px 22px rgba(214, 51, 30, 0.18);
   }
 
   50% {
-    box-shadow: 0 0 0 9px rgba(229, 83, 61, 0), 0 12px 30px rgba(229, 83, 61, 0.34);
+    box-shadow: 0 0 0 4px rgba(229, 83, 61, 0.14), 0 10px 26px rgba(214, 51, 30, 0.26);
   }
-}
-
-@keyframes urgent-sweep {
-  0%,
-  55% {
-    transform: translateX(-120%) skewX(-18deg);
-  }
-
-  100% {
-    transform: translateX(320%) skewX(-18deg);
-  }
-}
-
-.hw-tile.is-urgent,
-.home-att.is-urgent {
-  position: relative;
-  overflow: hidden;
-  animation:
-    home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
-    urgent-ring 1.8s ease-in-out 0.5s infinite;
-}
-
-.hw-tile.is-urgent {
-  border-color: color-mix(in srgb, var(--c) 50%, transparent);
-  background:
-    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--c2) 45%, transparent), transparent 60%),
-    linear-gradient(160deg, var(--tint), #fff 85%);
-}
-
-.hw-tile.is-urgent .hw-label {
-  font-weight: 700;
-}
-
-.hw-tile.is-urgent::after,
-.home-att.is-urgent::after {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 35%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
-  animation: urgent-sweep 3.2s ease-in-out infinite;
-  content: "";
-  pointer-events: none;
 }
 
 .home-att.is-urgent {
   background:
     radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
     linear-gradient(135deg, #f2674f, #d6331e);
+  animation:
+    home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    urgent-glow 3.2s ease-in-out 0.5s infinite;
 }
 
-.home-att.is-urgent .home-att-icon {
-  animation: hw-pulse-white 1.8s ease-in-out infinite;
+.hw-tile.is-urgent {
+  border-color: color-mix(in srgb, var(--c) 40%, transparent);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--c) 18%, transparent);
+}
+
+.hw-tile.is-urgent .hw-label {
+  font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hw-tile.is-urgent,
-  .home-att.is-urgent,
-  .home-att.is-urgent .home-att-icon {
+  .home-att.is-urgent {
     animation: none;
-  }
-
-  .hw-tile.is-urgent::after,
-  .home-att.is-urgent::after {
-    display: none;
   }
 }
 

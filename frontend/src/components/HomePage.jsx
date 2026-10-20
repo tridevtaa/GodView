@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { CountUp } from "./StatCards.jsx";
-import { Tile } from "./Widgets.jsx";
+import { PriorityCard, Tile } from "./Widgets.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
@@ -64,6 +63,15 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const overdue = students.filter((p) => p.fee_status === "overdue").length;
   const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
   const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+  const unmarked = today && today.marked === 0;
+  const left = today?.notMarked ?? 0;
+  const needsMarking = Boolean(unmarked || left > 0);
+  const attTone = needsMarking ? "red" : attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
+
+  // The top card is this person's priority: pending fees for owners and
+  // admins, today's attendance for the principal and class teachers,
+  // homework for other teachers.
+  const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
 
   // One tile per part of the app: a number and a word. badge: what's
   // waiting on this person there; hot: something new, the tile glows.
@@ -82,7 +90,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       urgent: unread > 0 || requests > 0,
       onClick: go("requests"),
     },
-    {
+    prio !== "homework" && {
       key: "homework",
       icon: "book",
       tone: "teal",
@@ -104,30 +112,53 @@ export default function HomePage({ school, me, name, role, students, loading, se
       onClick: go(isOwner && pendingCount ? "access" : "employees"),
     },
     { key: "students", icon: "scholar", tone: "indigo", label: leads ? "Students" : "My students", value: loading ? undefined : students.length, onClick: go("students") },
+    // The office's top card is fees, so attendance becomes a tile for them
     isAdmin && {
-      key: "fees",
-      icon: "rupee",
-      tone: due > 0 ? "amber" : "green",
-      label: "Fees Due",
-      value: loading ? undefined : due,
-      format: rupeesShort,
-      badge: overdue,
-      badgeLabel: `${n(overdue)} students overdue`,
-      onClick: go("fees"),
+      key: "attendance",
+      icon: "register",
+      tone: attTone,
+      label: "Present Today",
+      value: today === null ? undefined : today?.marked ? today.present : "–",
+      badge: left,
+      badgeLabel: `${left} class${left === 1 ? "" : "es"} left to mark`,
+      onClick: go("attendance"),
     },
     isAdmin && { key: "notices", icon: "notice", tone: "orange", label: "Notices", value: notices === null ? undefined : notices.length, onClick: go("notices") },
   ].filter(Boolean);
 
-  // Today's attendance: green, amber or red by how many are in; red and
-  // pulsing while it still needs marking.
-  const showToday = leads || today;
-  const unmarked = today && today.marked === 0;
-  const left = today?.notMarked ?? 0;
-  const needsMarking = Boolean(unmarked || left > 0);
-  const attTone = needsMarking ? "red" : attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
+  const priority =
+    prio === "fees"
+      ? {
+          tone: overdue ? "red" : due > 0 ? "amber" : "green",
+          urgent: overdue > 0,
+          icon: "rupee",
+          title: loading ? "…" : due > 0 ? `${rupeesShort(due)} fees pending` : "All fees collected",
+          sub: loading ? "" : overdue ? `${n(overdue)} students overdue` : due > 0 ? `${n(owing.length)} students owe fees` : "Nothing pending",
+          cta: "View fees",
+          onClick: go("fees"),
+        }
+      : prio === "attendance"
+      ? {
+          tone: attTone,
+          urgent: needsMarking,
+          icon: "register",
+          title: today === null ? "…" : today?.marked ? `${n(today.present)} present` : "Today’s Attendance",
+          sub: today === null ? "" : !today?.marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked",
+          pct: today?.marked ? attPct : null,
+          cta: today?.marked ? "View attendance" : "Take attendance",
+          onClick: go("attendance"),
+        }
+      : {
+          tone: dueTomorrow ? "amber" : "teal",
+          icon: "book",
+          title: homework === null ? "…" : dueTomorrow ? `${dueTomorrow} homework due tomorrow` : "Homework",
+          sub: homework === null ? "" : thisWeek ? `${thisWeek} set this week` : "None set this week",
+          cta: actions.some(([k]) => k === "homework") ? "Give homework" : "See homework",
+          onClick: actions.some(([k]) => k === "homework") ? () => onAction("homework") : go("homework"),
+        };
 
-  // The + menu's actions, less what a card above already offers.
-  const quickActions = actions.filter(([key]) => !(key === "attendance" && showToday));
+  // The + menu's actions, less what the top card already offers.
+  const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
   // The banner shows while there are plain notices (or they're loading).
   const banner = showBanner && (notices === null || plain.length > 0);
 
@@ -142,22 +173,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </h1>
       </header>
 
-      {(showToday || banner) && (
-        <div className={`home-row1${showToday && banner ? "" : " is-solo"}`}>
-          {showToday && (
-            <AttendanceCard
-              tone={attTone}
-              urgent={needsMarking}
-              marked={today === null ? null : today?.marked}
-              present={today?.present}
-              pct={attPct}
-              left={left}
-              onClick={go("attendance")}
-            />
-          )}
-          {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
-        </div>
-      )}
+      <div className={`home-row1${banner ? "" : " is-solo"}`}>
+        <PriorityCard {...priority} />
+        {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
+      </div>
 
       {/* Tiles fill whole rows: all in one row on wide screens, two even rows on smaller ones */}
       <div className="hw-grid" style={{ "--n": tiles.length, "--half": Math.ceil(tiles.length / 2) }}>
@@ -172,39 +191,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
         <ComingUp schoolId={school.id} session={session} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
         <QuickActionsPanel actions={quickActions} onAction={onAction} />
       </div>
-    </div>
-  );
-}
-
-// Today's attendance: a card beside the notice banner, or a slim strip when
-// it's alone in the row. marked: null while loading, 0 while nothing's in yet.
-function AttendanceCard({ tone, urgent, marked, present, pct, left, onClick }) {
-  return (
-    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}`}>
-      <span className="home-att-icon">
-        <Icon name="register" size={20} weight="fill" />
-      </span>
-      <span className="home-att-text">
-        <strong className="home-att-title">
-          {marked === null ? "…" : marked ? (
-            <>
-              <CountUp to={present} /> present
-            </>
-          ) : (
-            "Today’s Attendance"
-          )}
-        </strong>
-        <span className="home-att-sub">{marked === null ? "" : !marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}</span>
-        {marked > 0 && (
-          <span className="home-att-bar">
-            <span className="home-att-bar-fill" style={{ width: `${pct ?? 0}%` }} />
-          </span>
-        )}
-      </span>
-      <button type="button" className="home-att-cta" onClick={onClick}>
-        {marked ? "View attendance" : "Take attendance"}
-        <Icon name="arrowRight" size={14} />
-      </button>
     </div>
   );
 }

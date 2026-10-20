@@ -25,6 +25,35 @@ export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, 
   );
 }
 
+// The card at the top of Home: the one thing this person should do next
+// (attendance for class teachers, pending fees for the office, homework or
+// fees for parents), in full colour; red and softly pulsing when urgent.
+// pct: a thin bar under the text. cta: the button's words.
+export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = null, cta, onClick }) {
+  return (
+    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}`}>
+      <span className="home-att-icon">
+        <Icon name={icon} size={20} weight="fill" />
+      </span>
+      <span className="home-att-text">
+        <strong className="home-att-title">{title}</strong>
+        {sub && <span className="home-att-sub">{sub}</span>}
+        {pct !== null && (
+          <span className="home-att-bar">
+            <span className="home-att-bar-fill" style={{ width: `${pct}%` }} />
+          </span>
+        )}
+      </span>
+      {cta && (
+        <button type="button" className="home-att-cta" onClick={onClick}>
+          {cta}
+          <Icon name="arrowRight" size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // The wide tile at the top, in full colour: a small heading, a big line,
 // a short note, and a white ring (pct) or an icon.
 export function WideTile({ tone, hot = false, kicker, title, sub, pct = null, icon, onClick }) {

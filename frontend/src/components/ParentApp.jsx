@@ -30,7 +30,7 @@ import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import NoticeBoard from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
-import { Tile, WideTile } from "./Widgets.jsx";
+import { PriorityCard, Tile, WideTile } from "./Widgets.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -339,6 +339,34 @@ function ParentHome({ child, news, onGo }) {
   const paidPct = paid + openTotal > 0 ? Math.round((paid / (paid + openTotal)) * 100) : null;
   const feeTone = overdue.length ? "red" : dueTotal ? "amber" : "green";
 
+  // The top card: what this parent should do next. Overdue fees first,
+  // then homework due today or tomorrow, then fees due now. Whatever it
+  // shows leaves the tiles below, so nothing repeats.
+  const hwSoon = hwToday + hwTomorrow;
+  const prio = overdue.length ? "fees" : hwSoon ? "homework" : dueTotal ? "fees" : null;
+  const priority =
+    prio === "fees"
+      ? {
+          tone: overdue.length ? "red" : "amber",
+          urgent: overdue.length > 0,
+          icon: "rupee",
+          title: overdue.length ? `${rupees(overdueTotal)} overdue` : `${rupees(dueTotal)} due`,
+          sub: next ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}` : plural(dueNow.length, "fee"),
+          pct: paidPct,
+          cta: "View fees",
+          onClick: go("fees"),
+        }
+      : prio === "homework"
+      ? {
+          tone: "teal",
+          icon: "book",
+          title: hwToday ? `${hwToday} homework due today` : `${hwTomorrow} homework due tomorrow`,
+          sub: hwToday && hwTomorrow ? `${hwTomorrow} more due tomorrow` : `${hwUpcoming} still to hand in`,
+          cta: "See homework",
+          onClick: go("homework"),
+        }
+      : null;
+
   // One tile each, with a red badge for anything new or waiting.
   const tiles = [
     results !== false && {
@@ -352,7 +380,7 @@ function ParentHome({ child, news, onGo }) {
       badgeLabel: `${plural(news("results"), "new result")}`,
       onClick: go("results"),
     },
-    homework !== false && {
+    homework !== false && prio !== "homework" && {
       key: "homework",
       icon: "book",
       tone: "teal",
@@ -380,8 +408,14 @@ function ParentHome({ child, news, onGo }) {
         <h1>{greeting()}</h1>
       </header>
 
+      {priority && (
+        <div className="home-row1 is-solo">
+          <PriorityCard {...priority} />
+        </div>
+      )}
+
       <div className="hw-grid">
-        {fees !== false && (
+        {fees !== false && prio !== "fees" && (
           <WideTile
             tone={fees === null ? "indigo" : feeTone}
             hot={overdue.length > 0}
