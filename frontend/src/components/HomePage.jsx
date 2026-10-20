@@ -4,7 +4,7 @@ import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { CountUp } from "./StatCards.jsx";
 import { Tile } from "./Widgets.jsx";
-import { ComingUp, MiniCalendar } from "./CalendarPage.jsx";
+import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 
@@ -15,10 +15,11 @@ const greeting = () => {
 };
 const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-// Home, like phone widgets: a greeting, today's attendance next to a small
-// calendar, the noticeboard as a banner to swipe through, a colourful tile
+// Home, like phone widgets: a greeting, today's attendance next to the
+// noticeboard as a banner to swipe through, a colourful tile
 // for each part of the app (one number and one word), students' wins
-// (News & Achievements), then what's coming up. Anything waiting on this
+// (News & Achievements), then what's coming up beside a small calendar,
+// and quick actions. Anything waiting on this
 // person shows as a red badge on its tile (overdue fees, open requests,
 // staff waiting for access…). Uses the same remembered data as the pages,
 // so it's quick and the pages open already filled.
@@ -132,8 +133,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </h1>
       </header>
 
-      <div className={`home-row1${banner ? "" : " is-solo"}`}>
-        <div className="home-row1-left">
+      {(showToday || banner) && (
+        <div className={`home-row1${showToday && banner ? "" : " is-solo"}`}>
           {showToday && (
             <AttendanceCard
               tone={attTone}
@@ -145,10 +146,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
               onClick={go("attendance")}
             />
           )}
-          <MiniCalendar onOpen={go("calendar")} />
+          {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
         </div>
-        {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
-      </div>
+      )}
 
       <div className="hw-grid">
         {tiles.map((t, i) => (
@@ -159,36 +159,38 @@ export default function HomePage({ school, me, name, role, students, loading, se
       <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />
 
       <div className={`home-bottom-row${quickActions.length ? "" : " is-solo"}`}>
-        <ComingUp schoolId={school.id} staff withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
+        <ComingUp schoolId={school.id} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
         <QuickActionsPanel actions={quickActions} onAction={onAction} />
       </div>
     </div>
   );
 }
 
-// Today's attendance, in its own card next to the mini calendar. marked:
-// null while loading, 0 while nothing's in yet.
+// Today's attendance: a card beside the notice banner, or a slim strip when
+// it's alone in the row. marked: null while loading, 0 while nothing's in yet.
 function AttendanceCard({ tone, hot, marked, present, pct, left, onClick }) {
   return (
     <div className={`home-att t-${tone}${hot ? " is-hot" : ""}`}>
       <span className="home-att-icon">
         <Icon name="register" size={20} weight="fill" />
       </span>
-      <strong className="home-att-title">
-        {marked === null ? "…" : marked ? (
-          <>
-            <CountUp to={present} /> present
-          </>
-        ) : (
-          "Today’s Attendance"
+      <span className="home-att-text">
+        <strong className="home-att-title">
+          {marked === null ? "…" : marked ? (
+            <>
+              <CountUp to={present} /> present
+            </>
+          ) : (
+            "Today’s Attendance"
+          )}
+        </strong>
+        <span className="home-att-sub">{marked === null ? "" : !marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}</span>
+        {marked > 0 && (
+          <span className="home-att-bar">
+            <span className="home-att-bar-fill" style={{ width: `${pct ?? 0}%` }} />
+          </span>
         )}
-      </strong>
-      <span className="home-att-sub">{marked === null ? "" : !marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}</span>
-      {marked > 0 && (
-        <span className="home-att-bar">
-          <span className="home-att-bar-fill" style={{ width: `${pct ?? 0}%` }} />
-        </span>
-      )}
+      </span>
       <button type="button" className="home-att-cta" onClick={onClick}>
         {marked ? "View attendance" : "Take attendance"}
         <Icon name="arrowRight" size={14} />
