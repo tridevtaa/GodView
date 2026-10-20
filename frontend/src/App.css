@@ -14197,12 +14197,17 @@ button.achv-tag {
 
 /* Text keeps clear of the picture */
 @container (min-width: 301px) {
-  .hw-sub {
+  .hw-sub,
+  .hw-note {
     max-width: 50%;
   }
 }
 
 .tv-caption {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: var(--text-2);
   font-size: 12.5px;
   font-weight: 600;
@@ -14532,16 +14537,11 @@ button.achv-tag {
   line-height: 1.3;
 }
 
-/* Phones: two tiles a row, the wide one across both */
+/* Phones: two tiles a row; a big one (or an odd one out) across both */
 @media (max-width: 760px) {
   .hw-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-  }
-
-  .hw-wide {
-    min-height: 112px;
-    padding: 16px 18px;
   }
 
   .hw-tile {
@@ -14551,28 +14551,6 @@ button.achv-tag {
 
   .hw-value {
     font-size: 26px;
-  }
-
-  /* An odd one out at the end takes the whole row (the wide tile, when
-     there, is the first child, so the count shifts by one) */
-  .hw-wide ~ .hw-tile:last-child:nth-child(even),
-  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) {
-    flex-direction: row;
-    align-items: center;
-    gap: 14px;
-    grid-column: span 2;
-    min-height: 0;
-  }
-
-  /* Laid out in a line: icon, number, word */
-  .hw-wide ~ .hw-tile:last-child:nth-child(even) .hw-icon,
-  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) .hw-icon {
-    margin-bottom: 0;
-  }
-
-  .hw-wide ~ .hw-tile:last-child:nth-child(even) .hw-value,
-  .hw-grid:not(:has(.hw-wide)) > .hw-tile:last-child:nth-child(odd) .hw-value {
-    margin-top: 0;
   }
 }
 
