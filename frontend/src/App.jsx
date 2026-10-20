@@ -614,6 +614,8 @@ export default function App() {
             today={today}
             pendingCount={pendingCount}
             routes={routes}
+            actions={plusActions}
+            onAction={runAction}
             onGo={(go) => {
               if (go === "access") {
                 switchMode("employees");
@@ -621,9 +623,6 @@ export default function App() {
               } else if (go === "attendance") {
                 switchMode("calendar");
                 setQuick({ kind: "attendance", at: Date.now() });
-              } else if (go === "notice") {
-                switchMode("notices");
-                setNoticeCompose(true);
               } else switchMode(go);
             }}
           />
