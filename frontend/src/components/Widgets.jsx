@@ -15,7 +15,7 @@ export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, 
   return (
     <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}${big ? " is-big" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
       <span className="hw-icon">
-        <Icon name={icon} size={20} weight="fill" />
+        <Icon name={icon} size={28} weight="fill" />
       </span>
       {badge > 0 && (
         <span className="hw-badge" aria-label={badgeLabel} title={badgeLabel}>
@@ -59,7 +59,7 @@ export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = nul
   return (
     <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}`}>
       <span className="home-att-icon">
-        <Icon name={icon} size={20} weight="fill" />
+        <Icon name={icon} size={26} weight="fill" />
       </span>
       <span className="home-att-text">
         <strong className="home-att-title">{title}</strong>
