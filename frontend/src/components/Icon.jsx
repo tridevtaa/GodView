@@ -1,6 +1,8 @@
 import {
+  ArrowDown,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   Bell,
   BookOpenText,
   Briefcase,
@@ -111,6 +113,8 @@ const PHOSPHOR = {
   bus: Bus,
   arrowLeft: ArrowLeft,
   arrowRight: ArrowRight,
+  arrowUp: ArrowUp,
+  arrowDown: ArrowDown,
   users: UsersThree,
   rupee: CurrencyInr,
   inbox: Tray,

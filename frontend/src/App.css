@@ -15124,3 +15124,235 @@ button.achv-tag {
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+
+/* Home's top card on computers: the heading as a strip, then a few
+   numbers beside this period against the last one (white on the card's
+   colour; last period striped). Phones never get the chart. */
+.home-att-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.home-att-head .home-att-icon {
+  flex: none;
+  margin: 0;
+}
+
+.home-att-head .home-att-text {
+  flex: 1;
+  gap: 6px;
+}
+
+.home-att-head .home-att-cta {
+  flex: none;
+  margin: 0;
+}
+
+.home-att.has-trend,
+.home-row1.is-solo .home-att.has-trend,
+.home-roomy .home-row1.is-solo .home-att.has-trend {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+}
+
+.home-trend {
+  display: grid;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.home-trend.is-loading {
+  min-height: 210px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border-top: 0;
+}
+
+.trend-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+}
+
+.trend-stats dt {
+  font-size: 12.5px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.trend-stats dd {
+  margin: 2px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-stats div:not(:first-child) dd {
+  font-size: 19px;
+}
+
+.trend-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.trend-delta em {
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.trend-chart {
+  position: relative;
+  min-width: 0;
+}
+
+.trend-chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.trend-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trend-legend span,
+.trend-tip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trend-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: #fff;
+}
+
+.trend-key.is-prev {
+  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.9) 0 2px, rgba(255, 255, 255, 0.25) 2px 4px);
+}
+
+.trend-tip .trend-key {
+  background: var(--c);
+}
+
+.trend-tip .trend-key.is-prev {
+  background: repeating-linear-gradient(45deg, var(--c) 0 2px, color-mix(in srgb, var(--c) 25%, transparent) 2px 4px);
+}
+
+.trend-grid {
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-dasharray: 3 4;
+}
+
+.trend-base {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+
+.trend-axis {
+  fill: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.trend-now {
+  stroke: rgba(255, 255, 255, 0.55);
+}
+
+.trend-now-label {
+  fill: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.trend-cur {
+  fill: #fff;
+}
+
+.trend-prev-bg {
+  fill: rgba(255, 255, 255, 0.22);
+}
+
+.trend-prev-line {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 2;
+}
+
+.trend-hover {
+  fill: rgba(255, 255, 255, 0.12);
+}
+
+.trend-chart rect[tabindex]:focus {
+  outline: none;
+}
+
+.trend-tip {
+  position: absolute;
+  top: 20px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 6px 20px rgba(20, 24, 60, 0.18);
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.trend-tip b {
+  margin-left: 4px;
+}
+
+@media (min-width: 761px) {
+  .home-row1.has-trend {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  .home-row1.has-trend.is-solo {
+    grid-template-columns: 1fr;
+  }
+
+  /* The bigger card leads; the owner's access card sits beside it */
+  .home-row1.has-trend.is-pair > .home-att:not(.has-trend) {
+    order: 2;
+  }
+
+  .home-roomy .home-att.has-trend {
+    padding: 22px 26px 18px;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-trend {
+    display: none;
+  }
+}
