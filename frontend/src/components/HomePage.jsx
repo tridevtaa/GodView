@@ -165,7 +165,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       {showWins && <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />}
 
       <div className={`home-bottom-row${quickActions.length ? "" : " is-solo"}`}>
-        <ComingUp schoolId={school.id} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
+        <ComingUp schoolId={school.id} session={session} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
         <QuickActionsPanel actions={quickActions} onAction={onAction} />
       </div>
     </div>

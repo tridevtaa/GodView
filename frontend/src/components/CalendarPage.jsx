@@ -1,8 +1,9 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { addCalendarEvent, deleteCalendarEvent, listCalendar, updateCalendarEvent } from "../data/api.js";
+import { addCalendarEvent, deleteCalendarEvent, listCalendar, listDatesheet, updateCalendarEvent } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { DateLeaf, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
+import { gradeLabel } from "./PersonCard.jsx";
 
 const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
 const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
@@ -429,24 +430,28 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
 // calendar or the noticeboard.
 // withNotices: also list notices from the last week (off where Home already
 // shows them in its banner). limit: at most this many. calendar: a small
-// month beside the list (staff Home), its dates dotted where something's on.
-export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 9, calendar = false, onOpenCalendar, onOpenNotices }) {
+// month beside the list (staff Home), its dates dotted where something's on,
+// and the next holiday and exam under the list (session: for the datesheet).
+export function ComingUp({ schoolId, session = null, staff = false, withNotices = true, limit = 9, calendar = false, onOpenCalendar, onOpenNotices }) {
   const { items, loading } = useItems(schoolId, staff);
   const [notices] = useNotices(schoolId, staff);
   const today = todayIso();
   const soon = iso(new Date(Date.now() + 60 * 864e5));
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const next = useNextUp(schoolId, calendar ? session : null, items);
+  const featured = new Set(next.map((c) => c.id).filter(Boolean));
   const cards = [
-    ...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon).slice(0, 6),
+    ...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon && !featured.has(it.id)).slice(0, 6),
     ...(withNotices ? notices ?? [] : [])
       .filter((n) => !n.event_on && (n.pinned || n.created_at >= weekAgo))
       .slice(0, 3)
       .map((n) => ({ id: `new-${n.id}`, source: "notice", title: n.title, kind: "notice", start: n.created_at.slice(0, 10), fresh: true })),
   ].slice(0, limit);
   if (loading || (!cards.length && !calendar)) return null;
+  const nothing = !cards.length && !next.length;
   const list = (
     <div className="home-events-row">
-      {!cards.length && <p className="row-sub home-events-none">Nothing planned yet.</p>}
+      {nothing && <p className="row-sub home-events-none">Nothing planned yet.</p>}
       {cards.map((it, i) => {
         const d = parse(it.fresh || it.start >= today ? it.start : today);
         return (
@@ -483,12 +488,74 @@ export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 
       {calendar ? (
         <div className="home-events-cal">
           <MiniCalendar items={items} onOpen={onOpenCalendar} />
-          {list}
+          <div className="home-events-side">
+            {list}
+            <NextUp cards={next} onOpen={onOpenCalendar} />
+          </div>
         </div>
       ) : (
         list
       )}
     </section>
+  );
+}
+
+const daysTo = (day) => Math.round((parse(day) - parse(todayIso())) / 864e5);
+const whenText = (day, end) => {
+  const n = daysTo(day);
+  if (n < 0) return `On now, until ${parse(end).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
+  const date = parse(day).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  return n === 0 ? `Today, ${date}` : n === 1 ? `Tomorrow, ${date}` : `${date} · in ${n} days`;
+};
+
+// The next holiday and the next exam, however far off (they leave the list
+// above so nothing shows twice). Exams come from the calendar or the
+// classes' datesheets, whichever is sooner. session: null skips it all.
+function useNextUp(schoolId, session, items) {
+  const key = session ? `datesheet:${session.id}` : null;
+  const [dates, setDates] = useState(() => (key ? peek(key) ?? null : null));
+  useEffect(() => {
+    if (key) swr(key, () => listDatesheet(schoolId, session.id), setDates).catch(() => setDates([]));
+  }, [schoolId, session, key]);
+  if (!session) return [];
+
+  const today = todayIso();
+  const later = items.filter((it) => (it.end ?? it.start) >= today);
+  const holiday = later.find((it) => it.kind === "holiday");
+  const calExam = later.find((it) => it.kind === "exam");
+  const sheet = (dates ?? []).filter((d) => d.exam_date >= today);
+  const first = sheet[0];
+  let sheetExam = null;
+  if (first) {
+    const same = sheet.filter((d) => d.exam_date === first.exam_date && d.exam_name === first.exam_name).length;
+    const where = `${first.subject} · ${gradeLabel(first.class)}${first.section ? ` ${first.section}` : ""}`;
+    sheetExam = { title: first.exam_name || first.subject, sub: same > 1 ? `${where} and ${same - 1} more` : where, start: first.exam_date };
+  }
+  const exam = calExam && (!sheetExam || calExam.start <= sheetExam.start) ? { id: calExam.id, title: calExam.title, sub: calExam.note, start: calExam.start, end: calExam.end } : sheetExam;
+  return [
+    holiday && { id: holiday.id, kind: "holiday", label: "Next holiday", title: holiday.title, sub: holiday.note, start: holiday.start, end: holiday.end },
+    exam && { kind: "exam", label: "Next exam", ...exam },
+  ].filter(Boolean);
+}
+
+function NextUp({ cards, onOpen }) {
+  if (!cards.length) return null;
+  return (
+    <div className="home-next">
+      {cards.map((c) => (
+        <button key={c.kind} type="button" className={`home-next-card k-${c.kind}`} onClick={onOpen}>
+          <span className="home-next-icon">
+            <Icon name={KIND_ICON[c.kind]} size={18} />
+          </span>
+          <span className="home-next-body">
+            <span className="home-next-label">{c.label}</span>
+            <strong>{c.title}</strong>
+            {c.sub && <span className="row-sub">{c.sub}</span>}
+            <span className="home-next-when">{whenText(c.start, c.end)}</span>
+          </span>
+        </button>
+      ))}
+    </div>
   );
 }
 
