@@ -3,6 +3,7 @@ import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { PriorityCard, Tile } from "./Widgets.jsx";
+import { gradeLabel } from "./PersonCard.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
@@ -12,6 +13,12 @@ const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 };
+// "5m ago", "3h ago", "2d ago", then the date
+const ago = (t) => {
+  const m = Math.max(0, Math.round((Date.now() - new Date(t)) / 6e4));
+  return m < 60 ? `${m || 1}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : m < 7 * 1440 ? `${Math.round(m / 1440)}d ago` : dateText(t);
+};
+const dayShort = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 // Home, like phone widgets: a greeting, today's attendance next to the
@@ -73,10 +80,16 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // homework for other teachers.
   const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
 
+  // The latest update in each part, for a line under its tile
+  const nameOf = (id) => students.find((p) => p.id === id)?.name?.split(" ")[0];
+  const lastThread = (threads ?? []).find((t) => t.last_from_parent);
+  const lastHomework = (homework ?? [])[0];
+  const lastNotice = (notices ?? [])[0];
+
   // One tile per part of the app: a number and a word. badge: what's
   // waiting on this person there; hot: something new, the tile glows.
   const go = (to) => () => onGo(to);
-  const tiles = [
+  const rawTiles = [
     {
       key: "inbox",
       icon: "plane",
@@ -88,6 +101,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
       hot: unread > 0,
       // Parents are waiting on a reply
       urgent: unread > 0 || requests > 0,
+      sub: lastThread && `${nameOf(lastThread.student_id) ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
+      fresh: lastThread?.last_at,
       onClick: go("requests"),
     },
     prio !== "homework" && {
@@ -98,6 +113,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
       value: homework === null ? undefined : thisWeek,
       badge: leads ? 0 : dueTomorrow,
       badgeLabel: `${dueTomorrow} due tomorrow`,
+      sub: lastHomework && `${lastHomework.subject || "Homework"} · ${gradeLabel(lastHomework.class)}${lastHomework.section ? ` ${lastHomework.section}` : ""}${lastHomework.due_date ? ` · due ${dayShort(lastHomework.due_date)}` : ""}`,
+      fresh: lastHomework?.created_at,
       onClick: go("homework"),
     },
     leads && {
@@ -106,10 +123,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
       tone: "pink",
       label: "Staff Members",
       value: staff === null ? undefined : staff.length,
-      badge: isOwner ? pendingCount : 0,
-      badgeLabel: `${pendingCount} waiting for access`,
-      urgent: isOwner && pendingCount > 0,
-      onClick: go(isOwner && pendingCount ? "access" : "employees"),
+      // The owner's top card already asks about anyone waiting for access
+      onClick: go("employees"),
     },
     { key: "students", icon: "scholar", tone: "indigo", label: leads ? "Students" : "My students", value: loading ? undefined : students.length, onClick: go("students") },
     // The office's top card is fees, so attendance becomes a tile for them
@@ -121,11 +136,45 @@ export default function HomePage({ school, me, name, role, students, loading, se
       value: today === null ? undefined : today?.marked ? today.present : "–",
       badge: left,
       badgeLabel: `${left} class${left === 1 ? "" : "es"} left to mark`,
+      sub: today === null ? null : left ? `${left} class${left === 1 ? "" : "es"} not marked yet` : today?.marked ? `${attPct}% of the school in` : null,
       onClick: go("attendance"),
     },
-    isAdmin && { key: "notices", icon: "notice", tone: "orange", label: "Notices", value: notices === null ? undefined : notices.length, onClick: go("notices") },
+    isAdmin && {
+      key: "notices",
+      icon: "notice",
+      tone: "orange",
+      label: "Notices",
+      value: notices === null ? undefined : notices.length,
+      sub: lastNotice && `${lastNotice.title} · ${ago(lastNotice.created_at)}`,
+      fresh: lastNotice?.created_at,
+      onClick: go("notices"),
+    },
   ].filter(Boolean);
 
+  // Tiles by what matters now: anything urgent first, then anything waiting
+  // or new today, then the rest as they were. Those are big, with their
+  // latest update underneath; the rest stay small and quiet.
+  const dayAgo = Date.now() - 864e5;
+  const weight = (t) => (t.urgent ? 3 : t.badge > 0 || t.hot ? 2 : t.fresh && new Date(t.fresh) > dayAgo ? 1 : 0);
+  const tiles = rawTiles
+    .map((t, i) => ({ ...t, i, w: weight(t) }))
+    .sort((a, b) => b.w - a.w || a.i - b.i)
+    .map(({ fresh, i, w, ...t }) => ({ ...t, big: w >= 1, sub: w >= 1 ? t.sub : null }));
+  const spans = tiles.reduce((n, t) => n + (t.big ? 2 : 1), 0);
+
+  // Owners: anyone waiting for app access comes first, beside the fees
+  const access =
+    isOwner && pendingCount > 0
+      ? {
+          tone: "violet",
+          urgent: true,
+          icon: "idcard",
+          title: `${pendingCount} waiting for app access`,
+          sub: "Approve them and pick their classes",
+          cta: "Review",
+          onClick: go("access"),
+        }
+      : null;
   const priority =
     prio === "fees"
       ? {
@@ -173,13 +222,14 @@ export default function HomePage({ school, me, name, role, students, loading, se
         </h1>
       </header>
 
-      <div className={`home-row1${banner ? "" : " is-solo"}`}>
+      <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}`}>
+        {access && <PriorityCard {...access} />}
         <PriorityCard {...priority} />
         {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
 
-      {/* Tiles fill whole rows: all in one row on wide screens, two even rows on smaller ones */}
-      <div className="hw-grid" style={{ "--n": tiles.length, "--half": Math.ceil(tiles.length / 2) }}>
+      {/* Tiles fill whole rows: all in one row on wide screens, two rows on smaller ones */}
+      <div className="hw-grid" style={{ "--n": spans, "--half": Math.ceil(spans / 2) }}>
         {tiles.map((t, i) => (
           <Tile key={t.key} {...t} index={i} />
         ))}

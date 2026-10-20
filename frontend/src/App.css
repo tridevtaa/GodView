@@ -13988,7 +13988,7 @@ button.achv-tag {
 .t-orange { --c: #e8732e; --c2: #ffb27a; --tint: #fff1dc; }
 .t-amber { --c: #d9940b; --c2: #f5b83d; --tint: #fff4d9; }
 .t-green { --c: #1f9a52; --c2: #4ade80; --tint: #e3f8ea; }
-.t-red { --c: #e5533d; --c2: #ff8a7a; --tint: #ffe7e2; }
+.t-red { --c: #d9466a; --c2: #f58aa0; --tint: #fde8ee; }
 
 .hw-grid {
   display: grid;
@@ -14070,17 +14070,17 @@ button.achv-tag {
   height: 24px;
   padding: 0 7px;
   border-radius: 999px;
-  background: var(--fee-overdue);
+  background: #d9466a; /* the urgent rose (.t-red) */
   color: #fff;
   font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 0 0 0 rgba(229, 83, 61, 0.5);
+  box-shadow: 0 0 0 0 rgba(217, 70, 106, 0.5);
   animation: hw-pulse 2.2s ease-in-out infinite;
 }
 
 @keyframes hw-pulse {
   50% {
-    box-shadow: 0 0 0 7px rgba(229, 83, 61, 0);
+    box-shadow: 0 0 0 7px rgba(217, 70, 106, 0);
   }
 }
 
@@ -14089,18 +14089,18 @@ button.achv-tag {
 @keyframes urgent-glow {
   0%,
   100% {
-    box-shadow: 0 8px 22px rgba(214, 51, 30, 0.18);
+    box-shadow: 0 8px 22px rgba(217, 70, 106, 0.18);
   }
 
   50% {
-    box-shadow: 0 0 0 4px rgba(229, 83, 61, 0.14), 0 10px 26px rgba(214, 51, 30, 0.26);
+    box-shadow: 0 0 0 4px rgba(217, 70, 106, 0.14), 0 10px 26px rgba(217, 70, 106, 0.26);
   }
 }
 
 .home-att.is-urgent {
   background:
     radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(135deg, #f2674f, #d6331e);
+    linear-gradient(135deg, #ef7b93, #d9466a 55%, #b8407c);
   animation:
     home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
     urgent-glow 3.2s ease-in-out 0.5s infinite;
@@ -14113,6 +14113,47 @@ button.achv-tag {
 
 .hw-tile.is-urgent .hw-label {
   font-weight: 700;
+}
+
+/* A tile that needs attention is twice as wide, with its latest update */
+.hw-tile.is-big {
+  grid-column: span 2;
+}
+
+.hw-sub {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.home-staff .hw-grid {
+  grid-auto-flow: row dense;
+}
+
+/* Numbers line up across the row: they sit under the icon, and a label
+   that wraps or an update line only adds height below. */
+.home-staff .hw-icon {
+  margin-bottom: 0;
+}
+
+.home-staff .hw-value {
+  margin-top: 22px;
+}
+
+/* Two top cards side by side (the owner's access and fees) */
+.home-row1.is-pair {
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 760px) {
+  .home-row1.is-pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
