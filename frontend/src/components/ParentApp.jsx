@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import {
   createParentRequest,
@@ -61,6 +61,12 @@ export default function ParentApp({ phone }) {
   const [childId, setChildId] = useState(null);
   // Parents land on Home: everything about the child at a glance.
   const [tab, setTab] = useState("home");
+  // A new tab (or child) opens at the top, with the bars back to full size:
+  // keeping Home's scroll left a short tab scrolled under the top bar.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.classList.remove("bars-compact");
+  }, [tab, childId]);
   const [pwOpen, setPwOpen] = useState(false);
   // First sign-in (still on the child's name + birth year): choose a
   // password before anything else. null while checking.
