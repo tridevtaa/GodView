@@ -433,7 +433,7 @@ function QuickActionsPanel({ actions, onAction }) {
         {actions.map(([key, label, icon]) => (
           <button type="button" key={key} className="home-quick-btn" onClick={() => onAction(key)}>
             <span className={`home-quick-badge t-${ACTION_TONE[key] ?? "indigo"}`}>
-              <Icon name={icon} size={18} weight="fill" />
+              <Icon name={icon} size={22} weight="fill" />
             </span>
             <span>{label}</span>
           </button>
