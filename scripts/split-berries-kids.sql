@@ -245,10 +245,18 @@ begin
   delete from public.school_grades where school_id = mav and public.grade_sort(code) <= 2;
   get diagnostics n = row_count; report := report || format(E'Mav Nursery-Grade 2 classes removed: %s\n', n);
 
-  -- Receipts carry on after the moved ones.
+  -- Receipts: Berries' own numbering (R-000001 on) carries on after any of
+  -- the app's R-numbers the moved students already have, so none can
+  -- clash. Receipts imported from the old system have other formats and
+  -- don't count.
   insert into public.school_counters (school_id, name, value)
-  select bk, 'receipt', coalesce(max(nullif(regexp_replace(p.receipt_no, '\D', '', 'g'), '')::bigint), 0)
+  select bk, 'receipt', coalesce(max(substring(p.receipt_no from '^R-(\d+)$')::bigint), 0)
   from public.fee_payments p where p.school_id = bk;
+  report := report || format(E'Moved receipts, examples: %s\n',
+    (select string_agg(x.receipt_no, ', ') from (
+      select distinct on (regexp_replace(p.receipt_no, '\d', '9', 'g')) p.receipt_no
+      from public.fee_payments p where p.school_id = bk
+      order by regexp_replace(p.receipt_no, '\d', '9', 'g'), p.receipt_no limit 4) x));
   report := report || format(E'Berries receipts continue after: R-%s\n',
     lpad((select value from public.school_counters where school_id = bk and name = 'receipt')::text, 6, '0'));
 
