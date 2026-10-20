@@ -33,6 +33,7 @@ import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
+import { useSchoolBranding } from "../pwa/branding.js";
 
 const TABS = [
   ["home", "Home", "home"],
@@ -123,6 +124,8 @@ export default function ParentApp({ phone }) {
   }, []);
 
   const child = children?.find((c) => c.id === childId);
+  // The browser tab shows the chosen child's school (logo and name).
+  useSchoolBranding(child?.school);
   const school = child?.school ?? children?.[0]?.school;
   // New-item counts, shown like the Owner page's red number badges.
   const count = (id, section) => unread.get(`${id}:${section}`)?.unread ?? 0;
