@@ -11768,70 +11768,70 @@ button.achv-tag {
   gap: 8px;
 }
 
-/* Staff Home on computers: room between sections, bigger numbers, and
-   Upcoming Events and Quick Actions as two matching cards. */
+/* Home on computers (staff and parents): room between sections, bigger
+   numbers, and Upcoming Events and Quick Actions as two matching cards. */
 @media (min-width: 761px) {
-  .home-staff {
+  .home-roomy {
     gap: 28px;
   }
 
-  .home-staff .home-hero h1 {
+  .home-roomy .home-hero h1 {
     font-size: 32px;
   }
 
-  .home-staff .home-att {
+  .home-roomy .home-att {
     padding: 22px 26px;
   }
 
-  .home-staff .home-row1.is-solo .home-att {
+  .home-roomy .home-row1.is-solo .home-att {
     gap: 18px;
     padding: 22px 26px;
   }
 
-  .home-staff .home-att-icon {
+  .home-roomy .home-att-icon {
     width: 48px;
     height: 48px;
   }
 
-  .home-staff .home-att-title {
+  .home-roomy .home-att-title {
     font-size: 22px;
   }
 
-  .home-staff .home-att-sub {
+  .home-roomy .home-att-sub {
     font-size: 14px;
   }
 
-  .home-staff .home-att-cta {
+  .home-roomy .home-att-cta {
     padding: 12px 22px;
     font-size: 14px;
   }
 
-  .home-staff .hw-grid {
+  .home-roomy .hw-grid {
     grid-template-columns: repeat(var(--half), 1fr);
     gap: 18px;
   }
 
-  .home-staff .hw-tile {
+  .home-roomy .hw-tile {
     min-height: 168px;
     padding: 20px 20px 18px;
   }
 
-  .home-staff .hw-value {
+  .home-roomy .hw-value {
     font-size: 34px;
   }
 
-  .home-staff .hw-label {
+  .home-roomy .hw-label {
     font-size: 14px;
   }
 
-  .home-staff .home-bottom-row {
+  .home-roomy .home-bottom-row {
     grid-template-columns: 3fr 2fr;
     gap: 20px;
     align-items: stretch;
   }
 
-  .home-staff .home-events,
-  .home-staff .home-quick {
+  .home-roomy .home-events,
+  .home-roomy .home-quick {
     gap: 18px;
     padding: 22px;
     border: 1px solid var(--border);
@@ -11840,67 +11840,67 @@ button.achv-tag {
     box-shadow: var(--shadow-sm);
   }
 
-  .home-staff .home-notice-text strong {
+  .home-roomy .home-notice-text strong {
     font-size: 17px;
   }
 
-  .home-staff .home-events-cal {
+  .home-roomy .home-events-cal {
     grid-template-columns: 300px 1fr;
     gap: 18px;
   }
 
-  .home-staff .home-cal {
+  .home-roomy .home-cal {
     gap: 8px;
     padding: 14px 14px 12px;
   }
 
-  .home-staff .home-cal-head strong {
+  .home-roomy .home-cal-head strong {
     font-size: 15px;
   }
 
-  .home-staff .home-cal-week span {
+  .home-roomy .home-cal-week span {
     font-size: 12px;
   }
 
-  .home-staff .home-cal-day {
+  .home-roomy .home-cal-day {
     height: 36px;
     font-size: 13.5px;
   }
 
-  .home-staff .home-cal-day > span {
+  .home-roomy .home-cal-day > span {
     width: 30px;
     height: 30px;
   }
 
-  .home-staff .home-event-card {
+  .home-roomy .home-event-card {
     padding: 14px;
   }
 
-  .home-staff .home-event-date {
+  .home-roomy .home-event-date {
     width: 50px;
     height: 50px;
   }
 
-  .home-staff .home-event-body strong {
+  .home-roomy .home-event-body strong {
     font-size: 15px;
   }
 
   /* Quick actions: a 2 by 2 grid filling the card */
-  .home-staff .home-quick-row {
+  .home-roomy .home-quick-row {
     flex: 1;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: 1fr;
     gap: 14px;
   }
 
-  .home-staff .home-quick-btn {
+  .home-roomy .home-quick-btn {
     justify-content: center;
     gap: 10px;
     padding: 18px 10px;
     font-size: 14px;
   }
 
-  .home-staff .home-quick-badge {
+  .home-roomy .home-quick-badge {
     width: 46px;
     height: 46px;
   }
@@ -11908,11 +11908,11 @@ button.achv-tag {
 
 /* Mid-size screens: events and actions stack, actions four across */
 @media (min-width: 761px) and (max-width: 1199px) {
-  .home-staff .home-bottom-row {
+  .home-roomy .home-bottom-row {
     grid-template-columns: 1fr;
   }
 
-  .home-staff .home-quick-row {
+  .home-roomy .home-quick-row {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 }
@@ -14124,17 +14124,17 @@ button.achv-tag {
   line-height: 1.4;
 }
 
-.home-staff .hw-grid {
+.home-roomy .hw-grid {
   grid-auto-flow: row dense;
 }
 
 /* Numbers line up across the row: they sit under the icon, and a label
    that wraps or an update line only adds height below. */
-.home-staff .hw-icon {
+.home-roomy .hw-icon {
   margin-bottom: 0;
 }
 
-.home-staff .hw-value {
+.home-roomy .hw-value {
   margin-top: 22px;
 }
 
@@ -14158,106 +14158,6 @@ button.achv-tag {
 .hw-tile.is-hot {
   border-color: color-mix(in srgb, var(--c) 35%, transparent);
   box-shadow: 0 10px 26px color-mix(in srgb, var(--c) 24%, transparent);
-}
-
-/* The wide tile (Today, Fees): in full colour, white text and ring */
-.hw-wide {
-  display: flex;
-  grid-column: span 2;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
-  min-height: 128px;
-  padding: 18px 20px;
-  border: 0;
-  border-radius: 24px;
-  background:
-    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
-    linear-gradient(135deg, var(--c2), var(--c));
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--c) 35%, transparent);
-  color: #fff;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  transition: transform 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hw-wide:active {
-  transform: scale(0.98);
-}
-
-.hw-wide-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.hw-kicker {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
-
-.hw-wide strong {
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.hw-wide-sub {
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.hw-wide .stat-ring {
-  flex: none;
-  width: 76px;
-  height: 76px;
-}
-
-.hw-wide .stat-ring-bg {
-  stroke: rgba(255, 255, 255, 0.28);
-}
-
-.hw-wide .stat-ring-fg {
-  stroke: #fff;
-}
-
-.hw-wide .stat-ring text {
-  fill: #fff;
-}
-
-.hw-wide-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.hw-wide.is-hot .hw-wide-icon {
-  animation: hw-pulse-white 2.2s ease-in-out infinite;
-}
-
-@keyframes hw-pulse-white {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
-  }
-
-  50% {
-    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
-  }
 }
 
 /* Coming up: small cards in a row, swiped */

@@ -30,7 +30,7 @@ import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import NoticeBoard from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
-import { PriorityCard, Tile, WideTile } from "./Widgets.jsx";
+import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -367,8 +367,20 @@ function ParentHome({ child, news, onGo }) {
         }
       : null;
 
-  // One tile each, with a red badge for anything new or waiting.
-  const tiles = [
+  // One tile each, with a red badge for anything new or waiting, and the
+  // latest update under the ones that need a look (arranged like staff Home).
+  const lastResult = (results || []).reduce((t, r) => (!t || r.updated_at > t ? r.updated_at : t), null);
+  const lastHomework = hw.reduce((t, h) => (!t || h.created_at > t.created_at ? h : t), null);
+  const rawTiles = [
+    fees !== false && prio !== "fees" && {
+      key: "fees",
+      icon: "rupee",
+      tone: fees === null ? "indigo" : feeTone,
+      label: dueTotal ? "Fees Due" : "Fees",
+      value: fees === null ? undefined : dueTotal ? rupees(dueTotal) : "All paid",
+      sub: next ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}` : null,
+      onClick: go("fees"),
+    },
     results !== false && {
       key: "results",
       icon: "chart",
@@ -378,6 +390,8 @@ function ParentHome({ child, news, onGo }) {
       format: (v) => `${v}%`,
       badge: news("results"),
       badgeLabel: `${plural(news("results"), "new result")}`,
+      sub: exam?.best && `Best in ${exam.best.subject}${exam.low ? `, most to work on in ${exam.low.subject}` : ""}`,
+      fresh: lastResult,
       onClick: go("results"),
     },
     homework !== false && prio !== "homework" && {
@@ -388,6 +402,8 @@ function ParentHome({ child, news, onGo }) {
       value: homework === null ? undefined : hwUpcoming,
       badge: hwToday + hwTomorrow,
       badgeLabel: `${hwToday} due today, ${hwTomorrow} due tomorrow`,
+      sub: lastHomework && `${lastHomework.subject || "Homework"}${lastHomework.due_date ? ` · due ${dateText(lastHomework.due_date, { weekday: "short", day: "numeric", month: "short" })}` : ""}`,
+      fresh: lastHomework?.created_at,
       onClick: go("homework"),
     },
     {
@@ -397,12 +413,14 @@ function ParentHome({ child, news, onGo }) {
       label: unread ? "New messages" : "Messages",
       value: unread,
       hot: unread > 0,
+      sub: unread ? "From the school, waiting for you" : null,
       onClick: go("inbox"),
     },
   ].filter(Boolean);
+  const { tiles, spans } = arrangeTiles(rawTiles);
 
   return (
-    <div className="home hw pa-home">
+    <div className="home hw pa-home home-roomy">
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>{greeting()}</h1>
@@ -414,35 +432,15 @@ function ParentHome({ child, news, onGo }) {
         </div>
       )}
 
-      <div className="hw-grid">
-        {fees !== false && prio !== "fees" && (
-          <WideTile
-            tone={fees === null ? "indigo" : feeTone}
-            hot={overdue.length > 0}
-            kicker="Fees"
-            title={fees === null ? "…" : dueTotal ? `${rupees(dueTotal)} due` : "All paid"}
-            sub={
-              fees === null
-                ? ""
-                : overdue.length
-                ? `${rupees(overdueTotal)} overdue`
-                : next
-                ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}`
-                : dueTotal
-                ? plural(dueNow.length, "fee")
-                : "Nothing due right now"
-            }
-            pct={paidPct}
-            icon="rupee"
-            onClick={go("fees")}
-          />
-        )}
+      <div className="hw-grid" style={{ "--half": spans / 2 }}>
         {tiles.map((t, i) => (
           <Tile key={t.key} {...t} index={i} />
         ))}
       </div>
 
-      <ComingUp schoolId={child.school_id} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
+      <div className="home-bottom-row is-solo">
+        <ComingUp schoolId={child.school_id} calendar onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
+      </div>
     </div>
   );
 }

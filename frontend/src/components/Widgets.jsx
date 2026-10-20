@@ -1,4 +1,4 @@
-import { CountUp, Ring } from "./StatCards.jsx";
+import { CountUp } from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
 
 // Home widgets, for the staff and parent Homes (styles: .hw in App.css).
@@ -26,6 +26,27 @@ export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, 
       {sub && <span className="hw-sub">{sub}</span>}
     </button>
   );
+}
+
+// Home's tiles by what matters now: anything urgent first, then anything
+// waiting or new in the last day (fresh: when its latest update was), then
+// the rest as they were. Those are big, with their latest update (sub)
+// underneath; the rest stay small and quiet. Laid out in two even rows
+// (--half columns): with an odd count the last tile widens to fill.
+export function arrangeTiles(raw) {
+  const dayAgo = Date.now() - 864e5;
+  const weight = (t) => (t.urgent ? 3 : t.badge > 0 || t.hot ? 2 : t.fresh && new Date(t.fresh) > dayAgo ? 1 : 0);
+  const tiles = raw
+    .map((t, i) => ({ ...t, i, w: weight(t) }))
+    .sort((a, b) => b.w - a.w || a.i - b.i)
+    .map(({ fresh, i, w, ...t }) => ({ ...t, big: w >= 1, sub: w >= 1 ? t.sub : null }));
+  let spans = tiles.reduce((n, t) => n + (t.big ? 2 : 1), 0);
+  if (spans % 2) {
+    // Big tiles sort first, so the last one is small
+    tiles[tiles.length - 1].big = true;
+    spans += 1;
+  }
+  return { tiles, spans };
 }
 
 // The card at the top of Home: the one thing this person should do next
@@ -57,23 +78,3 @@ export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = nul
   );
 }
 
-// The wide tile at the top, in full colour: a small heading, a big line,
-// a short note, and a white ring (pct) or an icon.
-export function WideTile({ tone, hot = false, kicker, title, sub, pct = null, icon, onClick }) {
-  return (
-    <button className={`hw-wide t-${tone}${hot ? " is-hot" : ""}`} onClick={onClick}>
-      <span className="hw-wide-text">
-        <span className="hw-kicker">{kicker}</span>
-        <strong>{title}</strong>
-        {sub && <span className="hw-wide-sub">{sub}</span>}
-      </span>
-      {pct !== null ? (
-        <Ring pct={pct} />
-      ) : (
-        <span className="hw-wide-icon">
-          <Icon name={icon} size={26} />
-        </span>
-      )}
-    </button>
-  );
-}
