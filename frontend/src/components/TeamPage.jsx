@@ -26,6 +26,7 @@ import SchoolProfile from "./SchoolProfile.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
+import { isOutdatedApp, reloadForNewRelease } from "../pwa/release.js";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
 // What each role can do, shown when picking one.
@@ -82,13 +83,20 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
     load();
   }, [load]);
 
-  // Every action reloads; errors surface in one place.
+  // Every action reloads; errors surface in one place. If this page's code is
+  // older than the database (left open across an update), reload into the
+  // new release rather than blaming the connection.
   const act = (fn) => async (...args) => {
     try {
       await fn(...args);
       await load();
-    } catch {
-      setError("That didn’t go through. Check your connection and try again.");
+    } catch (err) {
+      if (isOutdatedApp(err) && reloadForNewRelease()) return;
+      setError(
+        isOutdatedApp(err)
+          ? "Godview has been updated. Reload the page and try again."
+          : "That didn’t go through. Check your connection and try again."
+      );
     }
   };
 

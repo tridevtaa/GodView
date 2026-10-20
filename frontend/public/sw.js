@@ -2,6 +2,8 @@
 // shell offline. School data always comes fresh from the network; only the
 // app's own files are cached, plus small student photos (see PHOTOS).
 // v6: drops pages stored by mistake under a missing file's name.
+// Join-request photos (photos/requests/) are never kept: they reuse one
+// name per person, so a new one would show as the old.
 const CACHE = "godview-shell-v6";
 // Student photos (small thumbnails), kept on the device so they appear
 // instantly. Survives app updates; cleared on logout.
@@ -20,6 +22,8 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== PHOTOS).map((k) => caches.delete(k))))
+      .then(() => caches.open(PHOTOS))
+      .then((c) => c.keys().then((reqs) => Promise.all(reqs.filter((r) => r.url.includes("/sign/photos/requests/")).map((r) => c.delete(r)))))
       .then(() => self.clients.claim())
   );
 });
@@ -31,7 +35,11 @@ self.addEventListener("fetch", (event) => {
 
   // Photos: the signed link changes every visit, so key them by file path.
   // Show the stored copy at once; re-check copies older than a day.
-  if (url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/storage/v1/object/sign/photos/")) {
+  if (
+    url.hostname.endsWith(".supabase.co") &&
+    url.pathname.startsWith("/storage/v1/object/sign/photos/") &&
+    !url.pathname.startsWith("/storage/v1/object/sign/photos/requests/")
+  ) {
     event.respondWith(photo(event, req, url.origin + url.pathname));
     return;
   }
