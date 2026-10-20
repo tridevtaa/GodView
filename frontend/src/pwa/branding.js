@@ -18,22 +18,50 @@ const GODVIEW_TITLE = "Godview | School management for Indian schools";
 const LOGOS = "school-logos";
 const LIVE = "godview.in"; // install files name the live site, so only it makes them
 
-const appFolder = (school) => `${school.id}/app/${school.logo_path.split("/").pop().replace(/\.\w+$/, "")}`;
+// v2: the logo is trimmed to its drawn part first (v1 icons kept a logo's
+// own empty border, so the mark came out small).
+const appFolder = (school) => `${school.id}/app/v2-${school.logo_path.split("/").pop().replace(/\.\w+$/, "")}`;
 const publicUrl = (path) => supabase.storage.from(LOGOS).getPublicUrl(path).data.publicUrl;
 
 // The logo centred on a white square with a margin (phones round the
 // corners, so nothing should touch the edge).
-function squareIcon(img, size) {
+// The part of the logo that's actually drawn: its box without the empty
+// (transparent or white) border many logo files have.
+function drawnBox(img) {
+  const c = document.createElement("canvas");
+  c.width = img.naturalWidth;
+  c.height = img.naturalHeight;
+  const g = c.getContext("2d");
+  g.drawImage(img, 0, 0);
+  const { data, width, height } = g.getImageData(0, 0, c.width, c.height);
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      const empty = data[i + 3] < 16 || (data[i] > 245 && data[i + 1] > 245 && data[i + 2] > 245);
+      if (empty) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  return x1 < 0 ? { x: 0, y: 0, w: width, h: height } : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+}
+
+function squareIcon(img, size, box = drawnBox(img)) {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
   g.fillStyle = "#ffffff";
   g.fillRect(0, 0, size, size);
-  const room = size * 0.72;
-  const k = Math.min(room / img.naturalWidth, room / img.naturalHeight);
-  const w = img.naturalWidth * k;
-  const h = img.naturalHeight * k;
-  g.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  // The mark fills ~68% of the square: clear of the rounded corners and of
+  // Android's round mask, but big enough to read.
+  const room = size * 0.68;
+  const k = Math.min(room / box.w, room / box.h);
+  const w = box.w * k;
+  const h = box.h * k;
+  g.drawImage(img, box.x, box.y, box.w, box.h, (size - w) / 2, (size - h) / 2, w, h);
   return new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("icon"))), "image/png"));
 }
 
@@ -55,9 +83,10 @@ async function makeAppFiles(school) {
   const folder = appFolder(school);
   if (await exists(publicUrl(`${folder}/manifest.webmanifest`))) return true;
   const img = await loadImage(logoUrl(school.logo_path));
+  const box = drawnBox(img);
   const store = supabase.storage.from(LOGOS);
   for (const size of [180, 192, 512]) {
-    const { error } = await store.upload(`${folder}/icon-${size}.png`, await squareIcon(img, size), { contentType: "image/png", upsert: true });
+    const { error } = await store.upload(`${folder}/icon-${size}.png`, await squareIcon(img, size, box), { contentType: "image/png", upsert: true });
     if (error) throw error;
   }
   const base = await fetch("/manifest.webmanifest").then((r) => r.json());
