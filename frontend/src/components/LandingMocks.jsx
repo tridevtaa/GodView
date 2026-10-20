@@ -135,97 +135,107 @@ export function MapMock() {
   );
 }
 
-const STOPS = [
-  ["Rampur Chowk", 14],
-  ["Saha bus stand", 19],
-  ["Kalpi gate", 9],
-  ["Alipur", 6],
+// Register: [initials, name, mark, tint]. P, A or L as in the app.
+const REGISTER = [
+  ["AS", "Aarav Sharma", "P", "#dbeafe"],
+  ["IK", "Ishita Kaur", "P", "#fce7f3"],
+  ["KS", "Kabir Singh", "A", "#ede9fe"],
+  ["MJ", "Meera Joshi", "P", "#fef3c7"],
+  ["RV", "Rohan Verma", "L", "#dcfce7"],
 ];
 
-export function BusMock() {
+export function AttendanceMock() {
   return (
-    <div className="lpm lpm-bus">
+    <div className="lpm lpm-att">
       <div className="lpm-card">
-        <div className="lpm-bus-head">
-          <span className="lpm-bus-icon">
-            <Icon name="bus" size={18} />
-          </span>
+        <div className="lpm-att-head">
           <div>
-            <strong>Route 2 · Saha</strong>
-            <span>4 stops · 48 students</span>
+            <strong>Grade 3 · A</strong>
+            <span>Monday, 19 Oct</span>
           </div>
+          <span className="lpm-pill">38 of 40 present</span>
         </div>
-        <ol className="lpm-stops">
-          {STOPS.map(([stop, n], i) => (
-            <li key={stop} style={{ "--i": i }}>
-              <span className="lpm-stop-no">{i + 1}</span>
-              <span className="lpm-stop-name">{stop}</span>
-              <span className="lpm-stop-n">{n} students</span>
+        <ol className="lpm-register">
+          {REGISTER.map(([ini, name, mark, tint], i) => (
+            <li key={name} style={{ "--i": i }}>
+              <span className="lpm-ini" style={{ background: tint }}>
+                {ini}
+              </span>
+              <span className="lpm-reg-name">{name}</span>
+              <span className="lpm-marks">
+                {["P", "A", "L"].map((m) => (
+                  <i key={m} className={m === mark ? `is-on is-${m}` : ""}>
+                    {m}
+                  </i>
+                ))}
+              </span>
             </li>
           ))}
-          <li className="is-school">
-            <span className="lpm-stop-no">
-              <Icon name="pin" size={12} />
-            </span>
-            <span className="lpm-stop-name">School</span>
-          </li>
         </ol>
+        <div className="lpm-att-foot">
+          <span className="lpm-btn">Save attendance</span>
+        </div>
       </div>
-      <div className="lpm-float lpm-pick">
+      <div className="lpm-float lpm-absent">
         <span className="lpm-float-icon">
-          <Icon name="bus" size={14} />
+          <Icon name="bell" size={14} />
         </span>
         <div>
-          <strong>School bus</strong>
-          <span>Route 2 · Saha bus stand</span>
+          <strong>Kabir is absent today</strong>
+          <span>Sent to the parents at 11:00</span>
         </div>
       </div>
     </div>
   );
 }
 
-export function ProfileMock() {
+const PARENT_TILES = [
+  ["rupee", "Fees", "All paid", "t-green"],
+  ["chart", "Results", "Term 1 · 86%", "t-violet"],
+  ["book", "Homework", "2 for tomorrow", "t-amber"],
+  ["exam", "Datesheet", "Maths, 3 Nov", "t-pink"],
+];
+
+export function ParentMock() {
   return (
-    <div className="lpm lpm-profile">
-      <div className="lpm-card">
-        <div className="lpm-band" />
-        <div className="lpm-avatar">IK</div>
-        <div className="lpm-profile-body">
-          <strong className="lpm-name">Ishita Kaur</strong>
-          <div className="lpm-chips">
-            <span className="is-id">#2417</span>
-            <span className="is-tag">Grade 5</span>
-            <span>Section B</span>
+    <div className="lpm lpm-parent">
+      <div className="lpm-phone">
+        <div className="lpm-phone-head">
+          <span className="lpm-ini" style={{ background: "#fce7f3" }}>
+            IK
+          </span>
+          <div>
+            <strong>Ishita</strong>
+            <span>Grade 5 · B</span>
           </div>
-          <div className="lpm-feestrip">
-            <div>
-              <span>Due now</span>
-              <strong className="is-due">{rupees(2400)}</strong>
+          <span className="lpm-today">Present today</span>
+        </div>
+        <div className="lpm-ptiles">
+          {PARENT_TILES.map(([icon, label, value, tone], i) => (
+            <div key={label} className={`lpm-ptile ${tone}`} style={{ "--i": i }}>
+              <Icon name={icon} size={16} />
+              <span>{label}</span>
+              <strong>{value}</strong>
             </div>
-            <div>
-              <span>Paid this session</span>
-              <strong>{rupees(14400)}</strong>
-            </div>
-          </div>
-          <div className="lpm-actions">
-            <span className="lpm-btn">
-              <Icon name="phone" size={14} /> Call
-            </span>
-            <span className="lpm-btn lpm-wa">
-              <Icon name="message" size={14} /> WhatsApp
-            </span>
-          </div>
-          <div className="lpm-tabs">
-            <span className="is-on">Family</span>
-            <span>Personal</span>
-            <span>School</span>
-          </div>
-          <div className="lpm-rows">
-            <span>Father</span>
-            <strong>Harpreet Singh</strong>
-            <span>Bus</span>
-            <strong>Route 2 · Saha bus stand</strong>
-          </div>
+          ))}
+        </div>
+        <div className="lpm-chat">
+          <span className="lpm-bubble-in">Ishita did well in the science quiz today!</span>
+          <span className="lpm-bubble-out">Thank you, ma’am 🙏</span>
+        </div>
+        <div className="lpm-ptabs" aria-hidden="true">
+          {["home", "rupee", "chart", "book", "plane"].map((n, i) => (
+            <Icon key={n} name={n} size={18} className={i === 0 ? "is-on" : ""} />
+          ))}
+        </div>
+      </div>
+      <div className="lpm-float lpm-notice">
+        <span className="lpm-float-icon">
+          <Icon name="notice" size={14} />
+        </span>
+        <div>
+          <strong>Annual day on 14 Nov</strong>
+          <span>New notice from school</span>
         </div>
       </div>
     </div>
