@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
-import { BusMock, FeeMock, MapMock, ProfileMock } from "./LandingMocks.jsx";
+import { AttendanceMock, FeeMock, MapMock, ParentMock } from "./LandingMocks.jsx";
 import { parentLoginLive } from "../pwa/install.js";
 import "./landing.css";
 
@@ -16,71 +16,71 @@ const PHOTOS = {
   success: { src: "/landing/success.jpg", alt: "Students cheering together", art: "trophy" },
 };
 
-const ROTATING = ["student", "fee", "village", "bus stop", "result"];
+const ROTATING = ["student", "absence", "fee", "homework", "village", "result"];
 
 const MARQUEE = [
-  "Photo tiles", "Instant search", "Fee structure", "Printed receipts", "Fee analytics", "Student map",
-  "Bus routes", "Call and WhatsApp", "Academic sessions", "Exam results", "Excel import",
-  "Owner · Admin · Teacher", "Data in India",
+  "Attendance", "Parent app", "Homework", "Datesheet and syllabus", "Calendar", "Noticeboard",
+  "Notifications", "Fee structure", "Printed receipts", "Student map", "Bus routes", "Exam results",
+  "Marks from a sheet", "Excel import", "Call and WhatsApp", "Owner · Admin · Principal · Teacher", "Data in India",
 ];
 
 const BENEFITS = [
-  ["search", "Every student, one tap away", "Photo tiles for the whole school. Search by name, parent, admission number or phone, and filter by grade in a second."],
+  ["search", "Every student, one tap away", "Photo tiles for the whole school. Search by name, parent or phone, then call or WhatsApp a family straight from the profile."],
   ["upload", "Bring your data in minutes", "Import the student export and the pending dues list from your current system. Classes, parents, photos and balances come across in one go."],
-  ["file", "Fees that add up", "Pending dues by month, collection by grade and the families who owe the most, on one page for the owner."],
-  ["check", "Session after session", "Each academic year keeps its own classes, sections and fees. Promote with a new import and look back any time."],
-  ["edit", "Results", "Teachers record exam marks for their own students. Totals and percentages are worked out for you."],
-  ["camera", "Works on any device", "Phones, tablets and laptops, with nothing to install. Staff sign in with their Google account."],
+  ["book", "Homework and syllabus", "Teachers set homework for a class or a few students, and keep the syllabus covered for each subject. Parents see both."],
+  ["exam", "Exams and results", "Set the datesheet for each class, then enter marks or upload a sheet. Totals and percentages are worked out for you."],
+  ["calendar", "Calendar and notices", "Holidays, exams, events and meetings on one calendar, and a noticeboard with pictures for news and achievements."],
+  ["bell", "On every phone", "Add Godview to the home screen like an app. Notifications bring messages, absences, homework and fee reminders."],
 ];
 
 const SPOTLIGHTS = [
+  {
+    mock: AttendanceMock,
+    kicker: "Attendance",
+    title: "The register, done in a minute.",
+    body: "The class teacher marks Present, Absent or Leave from their phone each morning. The office sees which classes are still unmarked, and parents of absent children hear about it the same morning.",
+    points: ["All present in one tap, then change the few", "Reminders for classes still unmarked", "Parents see the month at a glance"],
+  },
+  {
+    mock: ParentMock,
+    kicker: "Parent app",
+    title: "Parents in the loop, without the calls.",
+    body: "Parents log in with the mobile number the school has on record. Each child has their own home with attendance, fees, results, homework, the datesheet and a chat with the class teacher.",
+    points: ["One conversation per child with the school", "Notices and the school calendar", "Nothing new for parents to download"],
+  },
   {
     mock: FeeMock,
     kicker: "Fees",
     title: "Set your fees once. Dues follow.",
     body: "Add a fee, choose how often it falls due (monthly, bi-annually, one time or your own months) and fill in an amount for each grade, split by stream for 11th and 12th. One click creates every student’s dues.",
-    points: ["Grades from Nursery to 12 ready to fill", "Record payments and print one-page receipts", "Bring last year’s pending dues across"],
+    points: ["Collect a fee from the + on any page", "Print one-page receipts", "Parents get a weekly nudge for overdue fees"],
   },
   {
     mock: MapMock,
-    kicker: "Student map",
+    kicker: "Student map and transport",
     title: "See where your students come from.",
-    body: "Every student is placed by their village. Numbers show how many come from each place, coloured from a few to many, with rings at 5, 10 and 15 km around the school. Click a village to see exactly who lives there.",
-    points: ["Villages merge into clusters as you zoom out", "Filter by bus or no bus", "Only owners and admins can see it"],
-  },
-  {
-    mock: BusMock,
-    kicker: "Transport",
-    title: "Bus routes, stop by stop.",
-    body: "Set up each route with its stops in order. When you add a student, choose their route and stop, and see how many children board at every stop.",
-    points: ["Routes with ordered stops", "Students per stop and per route", "Picked right in the Add student steps"],
-  },
-  {
-    mock: ProfileMock,
-    kicker: "For the office",
-    title: "Every family, one tap away.",
-    body: "Open a student to see family, school and fee details on one card. Call or WhatsApp a parent straight from it, and record a payment without leaving.",
-    points: ["Call and WhatsApp buttons", "Due now and paid this session", "Teachers see their classes, not phone numbers"],
+    body: "Every student is placed by their village, with rings at 5, 10 and 15 km around the school. Set up bus routes with their stops in order and see how many children board at each one.",
+    points: ["Click a village to see exactly who lives there", "Students per stop and per route", "Only owners and admins can see it"],
   },
 ];
 
 const ROLES = [
   ["Owner", "Sets the fee structure, approves staff, assigns classes, edits the school profile and approves exports."],
-  ["Admin", "Manages students, fees and receipts, bus routes and the student map. Exports need the owner’s approval."],
-  ["Teacher", "Sees only their classes, without parents’ phone numbers or addresses. Adds photos and results, and messages parents."],
+  ["Admin", "Runs the office: students, fees and receipts, bus routes, the calendar and the student map."],
+  ["Principal", "Sees the whole school, from attendance to results, and answers parents\u2019 messages. Looks, never edits."],
+  ["Teacher", "Sees only their classes, without parents’ phone numbers. Takes attendance, sets homework and marks, and messages parents."],
 ];
 
 const JOURNEY = [
   ["upload", "Import your students", "Upload the Excel export from your current system."],
   ["file", "Set your fees", "Add each fee once; dues are created for every student."],
   ["plus", "Invite your staff", "Share your join code; approve each request and pick their classes."],
-  ["check", "Run your school", "Fees, maps and results, with everyone seeing what their role allows."],
+  ["check", "Bring parents in", "Parents log in with their mobile number. Your school is in their pocket."],
 ];
 
 const NEXT = [
-  ["plane", "Parent app", "Parents see results and dues, chat with teachers and the office, and ask for leave or certificates in the same chat."],
   ["bus", "Live bus tracking", "Parents and the school see where the bus is and when it will reach each stop."],
-  ["phone", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
+  ["whatsapp", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
 ];
 
 const TRUST = [
@@ -282,8 +282,8 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
                 at a glance.
               </h1>
               <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
-                Students, fees, bus routes and results in one beautiful place, with a map of where your students come
-                from, the right access for every role and your data kept in India.
+                Attendance, fees, homework and results in one beautiful place, with an app for parents, the right
+                access for every role and your data kept in India.
               </p>
               <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
                 <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
@@ -346,11 +346,11 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
               </div>
               <div className="lp-toast lp-toast-2" aria-hidden="true">
                 <span className="lp-toast-icon">
-                  <Icon name="pin" size={14} />
+                  <Icon name="check" size={14} />
                 </span>
                 <div>
-                  <strong>Saha · 27 students</strong>
-                  <span>19 travel by school bus</span>
+                  <strong>Grade 3 · Attendance</strong>
+                  <span>38 of 40 present today</span>
                 </div>
               </div>
               <span className="lp-float-cap" aria-hidden="true">🎓</span>
@@ -478,8 +478,8 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
           <div className="lp-wrap">
             <div className="lp-head" data-reveal>
               <span className="lp-kicker">On the way</span>
-              <h2 className="lp-h2">Bringing parents in next.</h2>
-              <p className="lp-sub">What we’re building now, on top of the routes, fees and messages your school already keeps.</p>
+              <h2 className="lp-h2">Coming next.</h2>
+              <p className="lp-sub">What we’re building now, on top of the routes and parent app your school already has.</p>
             </div>
             <div className="lp-next">
               {NEXT.map(([icon, title, text], i) => (
@@ -532,7 +532,7 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
               </div>
               <div className="lp-final-copy">
                 <h2 className="lp-h2">Every school deserves to shine.</h2>
-                <p className="lp-sub">Bring your students, fees, buses and results together and see your school clearly.</p>
+                <p className="lp-sub">Bring your staff, parents, fees and results together and see your school clearly.</p>
                 <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
                   Log in with Google
                 </button>
