@@ -297,7 +297,11 @@ export default function App() {
     window.addEventListener("popstate", onPop);
     // A link straight to /students/<id> (e.g. after a reload).
     const m = /^\/students\/([0-9a-f-]{36})$/.exec(window.location.pathname);
-    if (m) setOpenId(m[1]);
+    if (m) {
+      // On Students, so that tab is lit and Back goes to the list.
+      setMode("students");
+      setOpenId(m[1]);
+    }
     return () => window.removeEventListener("popstate", onPop);
   }, []);
   const studentPage = openIndex !== -1 && dataMode === "students";

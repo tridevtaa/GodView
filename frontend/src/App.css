@@ -14823,3 +14823,285 @@ button.achv-tag {
     animation: none;
   }
 }
+
+/* =========================================================
+   Student page, in the app's look (ProfileModal asPage): the header
+   on a soft coloured card, the numbers as small coloured tiles, the
+   sections as a pill switch, and the details as one card per group
+   (Family, Personal, School…), each fact with its icon in the group's
+   colour, its value, and what it is underneath.
+   ========================================================= */
+.profile-page .profile.profile-full {
+  gap: 16px;
+  overflow: visible;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.profile-page .ig-hero {
+  padding: 24px 26px 20px;
+  border: 1px solid color-mix(in srgb, var(--brand) 10%, transparent);
+  border-radius: 28px;
+  background:
+    radial-gradient(90% 120% at 100% 0%, color-mix(in srgb, var(--tint, var(--brand-soft)) 70%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--brand-soft), var(--surface) 70%);
+  box-shadow: 0 1px 2px rgba(29, 35, 102, 0.04), 0 4px 14px rgba(29, 35, 102, 0.06);
+}
+
+.profile-page .ig-name {
+  font-size: 26px;
+}
+
+.profile-page .ig-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+  max-width: 460px;
+}
+
+.profile-page .ig-stats li {
+  display: block;
+}
+
+.profile-page .ig-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--c) 18%, transparent);
+  border-radius: 16px;
+  background: linear-gradient(160deg, var(--tint), var(--surface) 85%);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.profile-page .ig-stat:active {
+  transform: scale(0.97);
+}
+
+.ig-stat-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 4px;
+  border-radius: 9px;
+  background: linear-gradient(145deg, var(--c2), var(--c));
+  color: #fff;
+}
+
+.profile-page .ig-stats strong {
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.profile-page .ig-stats span:not(.ig-stat-icon) {
+  color: var(--c);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Call in the brand colour, WhatsApp in its green, Edit plain */
+.profile-page .ig-act {
+  width: 42px;
+  height: 42px;
+  border: none;
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(29, 35, 102, 0.1);
+}
+
+.profile-page .ig-act[href^="tel:"] {
+  background: var(--brand);
+  color: #fff;
+}
+
+.profile-page .ig-act[href*="wa.me"] {
+  background: #25d366;
+  color: #fff;
+}
+
+/* Sections: the app's pill switch */
+.profile-page .ig-tabs {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 4px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.profile-page .ig-tabs button {
+  flex: none;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+
+.profile-page .ig-tabs button.is-on {
+  background: var(--brand);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-page .ig-tabs button.is-on::after {
+  display: none;
+}
+
+.profile-page .profile-full .profile-body {
+  padding: 0 0 30px;
+}
+
+.profile-page .profile-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+/* Each group a card in its own colour */
+.profile-page .profile-group {
+  --c: var(--brand);
+  --tint: var(--brand-soft);
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(29, 35, 102, 0.04), 0 3px 10px rgba(29, 35, 102, 0.04);
+}
+
+.profile-page .g-family { --c: #b052c4; --tint: #f6eafb; }
+.profile-page .g-personal { --c: #7b55e8; --tint: #f1ecff; }
+.profile-page .g-school { --c: #2f8ad0; --tint: #e2f2fd; }
+.profile-page .g-contact { --c: #1f9a52; --tint: #e3f8ea; }
+.profile-page .g-parents,
+.profile-page .month-att {
+  grid-column: 1 / -1;
+}
+
+.facts-title {
+  margin: 0 0 12px;
+  color: var(--c, var(--text-3));
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.profile-page .profile-facts .facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-page .facts li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.profile-page .fact-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--tint);
+  color: var(--c);
+}
+
+.fact-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-page .fact-value {
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.profile-page .fact-label {
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .profile-page .ig-hero {
+    padding: 18px 16px 16px;
+    border-radius: 24px;
+  }
+
+  /* The tiles get their own row under the photo and name */
+  .profile-page .ig-top {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .profile-page .ig-head {
+    display: contents;
+  }
+
+  .profile-page .ig-head > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .profile-page .ig-stats {
+    flex-basis: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    max-width: none;
+  }
+
+  .profile-page .ig-stat {
+    padding: 8px 10px;
+  }
+
+  .profile-page .ig-stats strong {
+    font-size: 16px;
+  }
+
+  .profile-page .ig-tabs {
+    align-self: stretch;
+    display: flex;
+  }
+
+  .profile-page .ig-tabs button {
+    flex: 1;
+    padding: 8px 6px;
+  }
+
+  .profile-page .profile-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The parent-app logins card: no divider of its own, a heading like the
+   other cards */
+.profile-page .g-parents > * {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.profile-page .g-parents .parents-head h4 {
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

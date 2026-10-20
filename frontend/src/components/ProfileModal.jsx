@@ -187,11 +187,12 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
   const due = Number(person.fee_due) || 0;
   const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
   const bus = person.uses_bus ? stopLabel(routes, person.bus_stop_id) || [person.transport_route, person.pickup_point].filter(Boolean).join(" · ") : "";
+  // Each a small tile in the app's colours: [label, value, note, tone, icon, tap]
   const stats = [
-    ["Attendance", att === null ? "–" : `${att}%`, "this month", "", () => onTab("details")],
-    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "", () => onTab("results")],
+    ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", "register", () => onTab("details")],
+    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", "chart", () => onTab("results")],
     isAdmin
-      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "is-due" : "", () => onTab("fees")]
+      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "red" : "amber", "rupee", () => onTab("fees")]
       : null,
   ].filter(Boolean);
 
@@ -208,25 +209,17 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
             {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
           </div>
           <ul className="ig-stats">
-            {stats.map(([label, value, note, tone, onClick]) => {
-              const inner = (
-                <>
-                  <strong className={tone || ""}>{value}</strong>
+            {stats.map(([label, value, note, tone, icon, onClick]) => (
+              <li key={label} title={`${label}: ${value} ${note}`}>
+                <button type="button" className={`ig-stat t-${tone}`} onClick={onClick}>
+                  <span className="ig-stat-icon">
+                    <Icon name={icon} size={16} weight="fill" />
+                  </span>
+                  <strong>{value}</strong>
                   <span>{label}</span>
-                </>
-              );
-              return (
-                <li key={label} title={`${label}: ${value} ${note}`}>
-                  {onClick ? (
-                    <button type="button" onClick={onClick}>
-                      {inner}
-                    </button>
-                  ) : (
-                    inner
-                  )}
-                </li>
-              );
-            })}
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
@@ -494,23 +487,29 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             <div className="profile-groups">
               {isStudent && <MonthAttendance studentId={person.id} />}
               {groups.length === 0 && <p className="row-sub">No details recorded yet.</p>}
-              {(groups.length > 0 || (isStudent && isAdmin)) && (
-                <section className="profile-group profile-facts">
+              {/* One card per group (Family, Personal, School…): each fact
+                  with its icon, its value, and what it is underneath */}
+              {groups.map(([title, rows]) => (
+                <section key={title} className={`profile-group profile-facts g-${title.toLowerCase()}`}>
+                  <h3 className="facts-title">{title}</h3>
                   <ul className="facts">
-                    {groups.flatMap(([, rows]) => rows).map(([label, value, wide]) => (
-                      <li key={label} className={wide ? "is-wide" : ""} title={label}>
-                        {FACT_ICON[label] ? (
-                          <span className="fact-icon" role="img" aria-label={label}>
-                            <Icon name={FACT_ICON[label]} size={18} />
-                          </span>
-                        ) : (
+                    {rows.map(([label, value, wide]) => (
+                      <li key={label} className={wide ? "is-wide" : ""}>
+                        <span className="fact-icon" aria-hidden="true">
+                          <Icon name={FACT_ICON[label] ?? "note"} size={18} />
+                        </span>
+                        <span className="fact-text">
+                          <span className="fact-value">{value}</span>
                           <span className="fact-label">{label}</span>
-                        )}
-                        <span className="fact-value">{value}</span>
+                        </span>
                       </li>
                     ))}
                   </ul>
-                  {isStudent && isAdmin && <StudentParents person={person} canEdit={canEdit} />}
+                </section>
+              ))}
+              {isStudent && isAdmin && (
+                <section className="profile-group profile-facts g-parents">
+                  <StudentParents person={person} canEdit={canEdit} />
                 </section>
               )}
             </div>
