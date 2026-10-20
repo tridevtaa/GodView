@@ -31,6 +31,7 @@ import GlassPill from "./GlassPill.jsx";
 import NoticeBoard from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
+import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 
 const TABS = [
@@ -316,7 +317,13 @@ function ParentHome({ child, news, onGo }) {
     const got = scored.reduce((t, x) => t + Number(x.marks), 0);
     const max = scored.reduce((t, x) => t + Number(x.max_marks), 0);
     const sorted = [...scored].sort((a, b) => b.pct - a.pct);
-    return { name, pct: max ? Math.round((got / max) * 100) : null, best: sorted[0], low: sorted.length > 1 ? sorted[sorted.length - 1] : null };
+    return {
+      name,
+      pct: max ? Math.round((got / max) * 100) : null,
+      best: sorted[0],
+      low: sorted.length > 1 ? sorted[sorted.length - 1] : null,
+      rows: scored.map((x) => ({ label: x.subject, pct: x.pct })),
+    };
   }, [results]);
 
   // Homework
@@ -379,6 +386,12 @@ function ParentHome({ child, news, onGo }) {
       label: dueTotal ? "Fees Due" : "Fees",
       value: fees === null ? undefined : dueTotal ? rupees(dueTotal) : "All paid",
       sub: next ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}` : null,
+      visual: paidPct !== null && (
+        <>
+          <MiniRing pct={paidPct} />
+          <Caption>of the year paid</Caption>
+        </>
+      ),
       onClick: go("fees"),
     },
     results !== false && {
@@ -392,6 +405,7 @@ function ParentHome({ child, news, onGo }) {
       badgeLabel: `${plural(news("results"), "new result")}`,
       sub: exam?.best && `Best in ${exam.best.subject}${exam.low ? `, most to work on in ${exam.low.subject}` : ""}`,
       fresh: lastResult,
+      visual: exam?.rows?.length > 0 && <SubjectBars rows={exam.rows} />,
       onClick: go("results"),
     },
     homework !== false && prio !== "homework" && {
@@ -404,6 +418,7 @@ function ParentHome({ child, news, onGo }) {
       badgeLabel: `${hwToday} due today, ${hwTomorrow} due tomorrow`,
       sub: lastHomework && `${lastHomework.subject || "Homework"}${lastHomework.due_date ? ` · due ${dateText(lastHomework.due_date, { weekday: "short", day: "numeric", month: "short" })}` : ""}`,
       fresh: lastHomework?.created_at,
+      visual: homework !== null && hw.length > 0 && <WeekStrip dates={hw.map((h) => h.due_date).filter(Boolean)} />,
       onClick: go("homework"),
     },
     {

@@ -9,8 +9,9 @@ import Icon from "./Icon.jsx";
 // there (a red count); hot: something new, the tile glows a little;
 // urgent: it needs this person now, so it turns red. sub: the latest
 // update there, in a line under the word. big: twice as wide (Home makes
-// the tiles that need attention big).
-export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, urgent = false, sub, big = false, onClick, index = 0 }) {
+// the tiles that need attention big). visual: a small picture of the data
+// on the right (TileVisuals.jsx), hidden when the tile is too narrow.
+export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, urgent = false, sub, big = false, visual, onClick, index = 0 }) {
   return (
     <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}${big ? " is-big" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
       <span className="hw-icon">
@@ -24,6 +25,7 @@ export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, 
       <strong className="hw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
       <span className="hw-label">{label}</span>
       {sub && <span className="hw-sub">{sub}</span>}
+      {visual && <span className="hw-visual">{visual}</span>}
     </button>
   );
 }

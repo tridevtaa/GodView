@@ -4,6 +4,7 @@ import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
+import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./TileVisuals.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
@@ -85,6 +86,11 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const lastThread = (threads ?? []).find((t) => t.last_from_parent);
   const lastHomework = (homework ?? [])[0];
   const lastNotice = (notices ?? [])[0];
+  const byId = new Map(students.map((p) => [p.id, p]));
+  const chatPeople = (threads ?? []).map((t) => byId.get(t.student_id)).filter(Boolean);
+  const nextDue = (homework ?? []).map((h) => h.due_date).filter((d) => d && d >= new Date().toISOString().slice(0, 10)).sort()[0];
+  const birthdays = birthdaysSoon(students);
+  const firstNames = (list) => list.slice(0, 2).map((p) => p.name.split(" ")[0]).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "");
 
   // One tile per part of the app: a number and a word. badge: what's
   // waiting on this person there; hot: something new, the tile glows.
@@ -103,6 +109,12 @@ export default function HomePage({ school, me, name, role, students, loading, se
       urgent: unread > 0 || requests > 0,
       sub: lastThread && `${nameOf(lastThread.student_id) ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
       fresh: lastThread?.last_at,
+      visual: threads !== null && (
+        <>
+          <FacePile people={chatPeople} total={chatPeople.length} max={4} />
+          <Caption>{unread ? `${unread} waiting on you` : chatPeople.length ? "All caught up" : "No chats yet"}</Caption>
+        </>
+      ),
       onClick: go("requests"),
     },
     prio !== "homework" && {
@@ -115,6 +127,12 @@ export default function HomePage({ school, me, name, role, students, loading, se
       badgeLabel: `${dueTomorrow} due tomorrow`,
       sub: lastHomework && `${lastHomework.subject || "Homework"} · ${gradeLabel(lastHomework.class)}${lastHomework.section ? ` ${lastHomework.section}` : ""}${lastHomework.due_date ? ` · due ${dayShort(lastHomework.due_date)}` : ""}`,
       fresh: lastHomework?.created_at,
+      visual: homework !== null && (
+        <>
+          <WeekStrip dates={(homework ?? []).map((h) => h.due_date).filter(Boolean)} />
+          <Caption>{nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"}</Caption>
+        </>
+      ),
       onClick: go("homework"),
     },
     leads && {
@@ -124,9 +142,23 @@ export default function HomePage({ school, me, name, role, students, loading, se
       label: "Staff Members",
       value: staff === null ? undefined : staff.length,
       // The owner's top card already asks about anyone waiting for access
+      visual: staff?.length > 0 && <FacePile people={staff} />,
       onClick: go("employees"),
     },
-    { key: "students", icon: "scholar", tone: "indigo", label: leads ? "Students" : "My students", value: loading ? undefined : students.length, onClick: go("students") },
+    {
+      key: "students",
+      icon: "scholar",
+      tone: "indigo",
+      label: leads ? "Students" : "My students",
+      value: loading ? undefined : students.length,
+      visual: !loading && students.length > 0 && (
+        <>
+          <FacePile people={students} />
+          {birthdays.length > 0 && <Caption>🎂 {firstNames(birthdays)}, birthday this week</Caption>}
+        </>
+      ),
+      onClick: go("students"),
+    },
     // The office's top card is fees, so attendance becomes a tile for them
     isAdmin && {
       key: "attendance",
@@ -137,6 +169,12 @@ export default function HomePage({ school, me, name, role, students, loading, se
       badge: left,
       badgeLabel: `${left} class${left === 1 ? "" : "es"} left to mark`,
       sub: today === null ? null : left ? `${left} class${left === 1 ? "" : "es"} not marked yet` : today?.marked ? `${attPct}% of the school in` : null,
+      visual: today?.classes > 0 && (
+        <>
+          <MiniRing pct={((today.classes - left) / today.classes) * 100} />
+          <Caption>classes marked</Caption>
+        </>
+      ),
       onClick: go("attendance"),
     },
     isAdmin && {
@@ -147,6 +185,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       value: notices === null ? undefined : notices.length,
       sub: lastNotice && `${lastNotice.title} · ${ago(lastNotice.created_at)}`,
       fresh: lastNotice?.created_at,
+      visual: lastNotice && showsImage(lastNotice) && <Thumb src={urls.get(lastNotice.image_path)} />,
       onClick: go("notices"),
     },
   ].filter(Boolean);
