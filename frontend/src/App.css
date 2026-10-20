@@ -328,7 +328,12 @@ a:hover {
   background: var(--surface-2);
 }
 
+/* Icon and label centred on one line */
 .segmented button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   height: 30px;
   padding: 0 16px;
   border: none;
@@ -12055,6 +12060,8 @@ button.achv-tag {
 }
 
 .nb-page-title .icon {
+  width: 22px;
+  height: 22px;
   color: var(--brand);
 }
 
@@ -12739,6 +12746,12 @@ button.achv-tag {
 .cal > .ds-tabs,
 .cal-datesheet {
   grid-column: 1 / -1;
+}
+
+/* The tabs hug their buttons rather than stretching across the page */
+.cal > .ds-tabs {
+  justify-self: start;
+  margin-bottom: 0;
 }
 
 .cal-card,
