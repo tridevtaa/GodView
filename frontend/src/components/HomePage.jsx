@@ -160,7 +160,13 @@ export default function HomePage({ school, me, name, role, students, loading, se
     .map((t, i) => ({ ...t, i, w: weight(t) }))
     .sort((a, b) => b.w - a.w || a.i - b.i)
     .map(({ fresh, i, w, ...t }) => ({ ...t, big: w >= 1, sub: w >= 1 ? t.sub : null }));
-  const spans = tiles.reduce((n, t) => n + (t.big ? 2 : 1), 0);
+  // Two even rows: an odd count leaves one gap, so the last tile widens
+  let spans = tiles.reduce((n, t) => n + (t.big ? 2 : 1), 0);
+  if (spans % 2) {
+    // Big tiles sort first, so the last one is small
+    tiles[tiles.length - 1].big = true;
+    spans += 1;
+  }
 
   // Owners: anyone waiting for app access comes first, beside the fees
   const access =
@@ -228,8 +234,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
         {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
 
-      {/* Tiles fill whole rows: all in one row on wide screens, two rows on smaller ones */}
-      <div className="hw-grid" style={{ "--n": spans, "--half": Math.ceil(spans / 2) }}>
+      {/* Tiles in two even rows on computers */}
+      <div className="hw-grid" style={{ "--half": spans / 2 }}>
         {tiles.map((t, i) => (
           <Tile key={t.key} {...t} index={i} />
         ))}
