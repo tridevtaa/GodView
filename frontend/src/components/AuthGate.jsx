@@ -33,6 +33,28 @@ async function clearLegacyCaches() {
   }
 }
 
+// For staff in more than one school: which one to open (this device only).
+// Not a "godview." name: those are cleared on every start (above).
+const SCHOOL_KEY = "gv-school";
+const chosenSchool = () => {
+  try {
+    return localStorage.getItem(SCHOOL_KEY);
+  } catch {
+    return null;
+  }
+};
+
+// Opens another of this person's schools: remembered, then a fresh start,
+// so nothing from the first school stays on screen.
+export function switchSchool(id) {
+  try {
+    localStorage.setItem(SCHOOL_KEY, id);
+  } catch {
+    // can't remember it: the reload still opens the first school
+  }
+  window.location.reload();
+}
+
 export async function logOut() {
   // This device stops getting the person's notifications (while still
   // signed in, so the database lets us remove it).
@@ -455,7 +477,8 @@ export default function AuthGate({ children }) {
           const requests = await myAccessRequests().catch(() => []);
           return setState({ status: "denied", user: toUser(u), requests });
         }
-        const { school, role } = memberships[0];
+        // Someone in more than one school opens the one they last chose.
+        const { school, role } = memberships.find((m) => m.school.id === chosenSchool()) ?? memberships[0];
         setState({ status: "member", user: toUser(u), school, role, schools: memberships });
       } catch {
         current = null;
@@ -484,7 +507,7 @@ export default function AuthGate({ children }) {
   if (state.status === "member") {
     const setSchool = (school) => setState((s) => ({ ...s, school }));
     return (
-      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role, setSchool }}>
+      <AuthContext.Provider value={{ user: state.user, school: state.school, role: state.role, schools: state.schools, setSchool }}>
         {children}
       </AuthContext.Provider>
     );

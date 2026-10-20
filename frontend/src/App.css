@@ -435,6 +435,19 @@ a:hover {
   font-size: 14px;
 }
 
+/* A school to switch to: its name, the role there underneath */
+.menu-item-text {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  line-height: 1.25;
+}
+
+.menu-item-sub {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
 .menu-item:hover {
   background: var(--surface-2);
 }
