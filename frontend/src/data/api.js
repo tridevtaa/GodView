@@ -35,7 +35,9 @@ export async function listMemberships(email) {
       .select("role, full_name, school:schools(*)")
       .eq("email", email.toLowerCase())
   );
-  return rows.filter((r) => r.school);
+  // Oldest school first: someone in two schools opens their original one
+  // until they switch (Mav before Berries Kids, split out of it).
+  return rows.filter((r) => r.school).sort((a, b) => String(a.school.created_at).localeCompare(String(b.school.created_at)));
 }
 
 // Newest first.
