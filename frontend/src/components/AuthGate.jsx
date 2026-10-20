@@ -20,13 +20,17 @@ export const useAuth = () => useContext(AuthContext);
 export const useUser = () => useContext(AuthContext)?.user;
 
 // The Firebase version of the app cached student records in IndexedDB
-// ("firestore/…" databases). Remove them so no copy lingers on shared computers.
-async function clearLegacyCaches() {
+// ("firestore/…" databases) and kept sync markers ("godview.sync.…",
+// "firebase:…"). Remove those on every start so no copy lingers on shared
+// computers. Only those: today's settings also start with "godview." (a
+// dismissed prompt, saved photo links…) and must survive a restart.
+// all: on sign-out, clear every "godview." setting too.
+async function clearLegacyCaches(all = false) {
   try {
     const dbs = (await indexedDB.databases?.()) ?? [];
     dbs.filter((d) => d.name?.startsWith("firestore/")).forEach((d) => indexedDB.deleteDatabase(d.name));
     Object.keys(localStorage)
-      .filter((k) => k.startsWith("godview.") || k.startsWith("firebase:"))
+      .filter((k) => k.startsWith("godview.sync.") || k.startsWith("firebase:") || (all && k.startsWith("godview.")))
       .forEach((k) => localStorage.removeItem(k));
   } catch {
     // Storage blocked; nothing to clear.
@@ -34,7 +38,6 @@ async function clearLegacyCaches() {
 }
 
 // For staff in more than one school: which one to open (this device only).
-// Not a "godview." name: those are cleared on every start (above).
 const SCHOOL_KEY = "gv-school";
 const chosenSchool = () => {
   try {
@@ -69,7 +72,7 @@ export async function logOut() {
   } catch {
     // nothing stored
   }
-  await clearLegacyCaches();
+  await clearLegacyCaches(true);
   window.location.assign("/");
 }
 
