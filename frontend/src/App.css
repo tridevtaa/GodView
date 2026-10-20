@@ -11906,13 +11906,6 @@ button.achv-tag {
   }
 }
 
-/* Wide screens: every tile in one row, events and actions side by side */
-@media (min-width: 1200px) {
-  .home-staff .hw-grid {
-    grid-template-columns: repeat(var(--n), 1fr);
-  }
-}
-
 /* Mid-size screens: events and actions stack, actions four across */
 @media (min-width: 761px) and (max-width: 1199px) {
   .home-staff .home-bottom-row {
