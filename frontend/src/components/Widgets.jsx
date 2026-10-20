@@ -1,5 +1,6 @@
 import { CountUp } from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
+import { TrendPanel } from "./HomeTrend.jsx";
 
 // Home widgets, for the staff and parent Homes (styles: .hw in App.css).
 // Each has its own colour (tone: indigo, violet, teal, pink, orange,
@@ -57,9 +58,9 @@ export function arrangeTiles(raw) {
 // (attendance for class teachers, pending fees for the office, homework or
 // fees for parents), in full colour; red and softly pulsing when urgent.
 // pct: a thin bar under the text. cta: the button's words.
-export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = null, cta, onClick }) {
-  return (
-    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}`}>
+export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = null, cta, onClick, trend = null }) {
+  const head = (
+    <>
       <span className="home-att-icon">
         <Icon name={icon} size={26} weight="fill" />
       </span>
@@ -78,6 +79,14 @@ export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = nul
           <Icon name="arrowRight" size={14} />
         </button>
       )}
+    </>
+  );
+  // With a trend (computers only): the same heading as a strip, the
+  // numbers and chart under it.
+  return (
+    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}${trend ? " has-trend" : ""}`}>
+      {trend ? <div className="home-att-head">{head}</div> : head}
+      {trend && <TrendPanel trend={trend} />}
     </div>
   );
 }

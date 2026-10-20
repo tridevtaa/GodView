@@ -9,6 +9,7 @@ import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
+import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -83,6 +84,13 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // admins, today's attendance for the principal and class teachers,
   // homework for other teachers.
   const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
+
+  // On computers the top card is bigger: a few numbers and this period
+  // against the last one.
+  const wide = useWide();
+  const feeTrend = useFeeTrend(school.id, wide && prio === "fees");
+  const attTrend = useAttendanceTrend(session?.id, leads, students, today, wide && prio === "attendance" && !loading);
+  const trend = !wide ? null : prio === "fees" ? feeTrend : prio === "attendance" ? attTrend : homeworkTrend(homework);
 
   // The latest update in each part, for a line under its tile
   const nameOf = (id) => students.find((p) => p.id === id)?.name?.split(" ")[0];
@@ -258,9 +266,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
       <NotifyPrompt text="Get notified when parents write." />
 
-      <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}`}>
+      <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}${trend ? " has-trend" : ""}`}>
         {access && <PriorityCard {...access} />}
-        <PriorityCard {...priority} />
+        <PriorityCard {...priority} trend={trend} />
         {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
 

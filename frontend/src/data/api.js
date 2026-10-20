@@ -791,6 +791,11 @@ export async function recordPayment(studentId, { amount, method, reference, paid
   return rows?.[0];
 }
 
+// Owners/admins: payments received since a day (for Home's chart).
+export async function paymentsSince(schoolId, day) {
+  return all(() => supabase.from("fee_payments").select("amount, paid_on").eq("school_id", schoolId).eq("status", "success").gte("paid_on", day));
+}
+
 export async function cancelPayment(id) {
   must(await supabase.rpc("cancel_payment", { payment: id }));
 }
