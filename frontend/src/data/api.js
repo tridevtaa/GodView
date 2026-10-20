@@ -446,7 +446,34 @@ export async function uploadJoinPhoto(blob) {
   return path;
 }
 
-export async function requestAccess(code, { fullName, designation, phone, subjects, note, classes, photoPath }) {
+// The three KYC documents (ID proof, address proof, education/employment
+// certificates), saved the same "not a member yet" way as the join photo,
+// but in their own bucket since they're often PDFs, not photos.
+const DOCS_BUCKET = "staff-documents";
+const EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };
+export async function uploadStaffDocument(kind, file) {
+  const { data } = await supabase.auth.getUser();
+  if (!data?.user) throw new Error("not-signed-in");
+  const ext = EXT[file.type];
+  if (!ext) throw new Error("unsupported-file-type");
+  const path = `requests/${data.user.id}/${kind}.${ext}`;
+  const { error } = await supabase.storage.from(DOCS_BUCKET).upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+  return path;
+}
+
+// A short-lived link to view one of the documents above (the applicant, or
+// the school's owner/admins once they can see the request).
+export async function staffDocumentUrl(path) {
+  const { data, error } = await supabase.storage.from(DOCS_BUCKET).createSignedUrl(path, 60 * 10);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+export async function requestAccess(
+  code,
+  { fullName, designation, phone, subjects, note, photoPath, policyAgreed, idProofPath, addressProofType, addressProofPath, educationCertPath }
+) {
   must(
     await supabase.rpc("request_access", {
       p_code: code,
@@ -455,8 +482,12 @@ export async function requestAccess(code, { fullName, designation, phone, subjec
       p_phone: phone,
       p_subjects: subjects,
       p_note: note,
-      p_classes: classes,
       p_photo_path: photoPath,
+      p_policy_agreed: policyAgreed,
+      p_id_proof_path: idProofPath,
+      p_address_proof_type: addressProofType || null,
+      p_address_proof_path: addressProofPath,
+      p_education_cert_path: educationCertPath,
     })
   );
 }
@@ -472,15 +503,69 @@ export async function listAccessRequests(schoolId) {
   );
 }
 
-// Approve: member + class assignments in one transaction (owner only).
-export async function approveAccessRequest(id, role, classes) {
-  must(await supabase.rpc("approve_access_request", { request: id, as_role: role, classes }));
+// Approve: adds the member (owner only). Classes are a separate request.
+export async function approveAccessRequest(id, role) {
+  must(await supabase.rpc("approve_access_request", { request: id, as_role: role }));
 }
 
 export async function rejectAccessRequest(id, decidedBy) {
   must(
     await supabase
       .from("access_requests")
+      .update({ status: "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
+      .eq("id", id)
+  );
+}
+
+// -------------------------------------------------- class allocation requests ---
+
+// A teacher with no classes this session picks them from their dashboard;
+// resubmitting while pending just replaces the earlier pick.
+export async function requestClassAllocation(schoolId, classes, subjects, note) {
+  must(
+    await supabase.rpc("request_class_allocation", {
+      p_school_id: schoolId,
+      p_classes: classes,
+      p_subjects: subjects,
+      p_note: note,
+    })
+  );
+}
+
+// That teacher's own latest request, whatever its status (RLS already
+// limits this to their own rows unless they're the owner).
+export async function myClassAllocationRequest(schoolId) {
+  const rows = must(
+    await supabase
+      .from("class_allocation_requests")
+      .select("*")
+      .eq("school_id", schoolId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+  );
+  return rows[0] ?? null;
+}
+
+export async function listClassAllocationRequests(schoolId) {
+  return must(
+    await supabase
+      .from("class_allocation_requests")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("status", "pending")
+      .order("created_at")
+  );
+}
+
+// Approve: adds the teacher_classes rows (owner only).
+export async function approveClassAllocation(id, classes) {
+  must(await supabase.rpc("approve_class_allocation", { request: id, classes }));
+}
+
+export async function rejectClassAllocation(id, decidedBy) {
+  must(
+    await supabase
+      .from("class_allocation_requests")
       .update({ status: "rejected", decided_by: decidedBy, decided_at: new Date().toISOString() })
       .eq("id", id)
   );
@@ -535,13 +620,14 @@ export async function listClassSections(schoolId, sessionId) {
   return [...seen.values()];
 }
 
-// Pending access + export requests, for the owner's Team badge.
+// Pending access + class allocation + export requests, for the owner's Team badge.
 export async function countPendingRequests(schoolId) {
-  const [a, x] = await Promise.all([
+  const [a, c, x] = await Promise.all([
     supabase.from("access_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
+    supabase.from("class_allocation_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
     supabase.from("export_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending"),
   ]);
-  return (a.count ?? 0) + (x.count ?? 0);
+  return (a.count ?? 0) + (c.count ?? 0) + (x.count ?? 0);
 }
 
 // ------------------------------------------------------- school profile ---
@@ -552,7 +638,7 @@ export const logoUrl = (path) => (path ? supabase.storage.from(LOGOS).getPublicU
 
 export const SCHOOL_FIELDS = [
   "name", "short_name", "board", "affiliation_no", "udise_code", "principal_name",
-  "address", "city", "state", "pincode", "phone", "email", "website",
+  "address", "city", "state", "pincode", "phone", "email", "website", "staff_policy",
 ];
 
 // Owner only (enforced by RLS and column grants). Returns the saved school.

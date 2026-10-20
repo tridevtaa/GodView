@@ -1,9 +1,8 @@
 import { Suspense, createContext, lazy, useContext, useEffect, useState } from "react";
 import { supabase } from "../supabase.js";
-import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess } from "../data/api.js";
+import { listMemberships, logoUrl, lookupJoinCode, myAccessRequests, requestAccess, uploadStaffDocument } from "../data/api.js";
 import { saveJoinPhoto } from "../data/photos.js";
 import { gradeLabel } from "./PersonCard.jsx";
-import ClassPicker from "./ClassPicker.jsx";
 import { LogoMark } from "./Logo.jsx";
 import ParentSignIn from "./ParentSignIn.jsx";
 import { StepBar } from "./Steps.jsx";
@@ -63,6 +62,15 @@ const DESIGNATIONS = [
   "Office staff", "Accountant", "Librarian", "Counsellor",
 ];
 
+const ADDRESS_PROOF_TYPES = [
+  ["aadhaar", "Aadhaar card"],
+  ["pan", "PAN card"],
+  ["dl", "Driving licence"],
+  ["passport", "Passport"],
+  ["voter_id", "Voter ID"],
+  ["other", "Other"],
+];
+
 // Shown to someone signed in who isn't a member of any school yet:
 // 1) enter the school's join code, 2) details and classes, 3) sent.
 export function RequestAccess({ user, onSchool }) {
@@ -75,11 +83,20 @@ export function RequestAccess({ user, onSchool }) {
     phone: "",
     subjects: "",
     note: "",
-    classes: [],
     photoPath: "",
+    policyAgreed: false,
+    idProofPath: "",
+    addressProofType: "",
+    addressProofPath: "",
+    educationCertPath: "",
   });
   const [photo, setPhoto] = useState({ preview: "", busy: false, error: "" });
-  // The details come in three short screens: photo, about you, classes.
+  // Documents, keyed by kind (id_proof, address_proof, education_cert):
+  // { name, busy, error }. The saved path lives on `form` once uploaded.
+  const [docs, setDocs] = useState({});
+  // The details come in four short screens: photo, about you, the school's
+  // policy (if it has one), then the KYC documents. Classes come later,
+  // from the dashboard, once the owner has approved access.
   const [part, setPart] = useState(0);
 
   async function pickPhoto(e) {
@@ -101,6 +118,22 @@ export function RequestAccess({ user, onSchool }) {
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  const PATH_FIELD = { id_proof: "idProofPath", address_proof: "addressProofPath", education_cert: "educationCertPath" };
+  async function pickDocument(kind, e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setDocs((d) => ({ ...d, [kind]: { name: file.name, busy: true, error: "" } }));
+    try {
+      const path = await uploadStaffDocument(kind, file);
+      setForm((f) => ({ ...f, [PATH_FIELD[kind]]: path }));
+      setDocs((d) => ({ ...d, [kind]: { name: file.name, busy: false, error: "" } }));
+    } catch {
+      setForm((f) => ({ ...f, [PATH_FIELD[kind]]: "" }));
+      setDocs((d) => ({ ...d, [kind]: { name: "", busy: false, error: "Couldn’t save that file. Use a photo or PDF under 8 MB." } }));
+    }
+  }
+
   async function findSchool(e) {
     e.preventDefault();
     setBusy(true);
@@ -120,11 +153,20 @@ export function RequestAccess({ user, onSchool }) {
     }
   }
 
-  const partOk = [Boolean(form.photoPath) && !photo.busy, Boolean(form.fullName.trim() && form.designation.trim()), true];
+  const hasPolicy = Boolean(school?.staff_policy?.trim());
+  const docsOk = Boolean(form.idProofPath) && Boolean(form.addressProofType) && Boolean(form.addressProofPath) && Boolean(form.educationCertPath)
+    && !Object.values(docs).some((d) => d.busy);
+  const partOk = [
+    Boolean(form.photoPath) && !photo.busy,
+    Boolean(form.fullName.trim() && form.designation.trim()),
+    !hasPolicy || form.policyAgreed,
+    docsOk,
+  ];
+  const last = partOk.length - 1;
 
   async function submit(e) {
     e.preventDefault();
-    if (part < 2) {
+    if (part < last) {
       if (partOk[part]) (setPart(part + 1), setError(""));
       return;
     }
@@ -138,7 +180,16 @@ export function RequestAccess({ user, onSchool }) {
       await requestAccess(code, form);
       setStep("sent");
     } catch (err) {
-      setError(/photo/i.test(err?.message ?? "") ? "Add a photo of yourself so the school can recognise you." : "Couldn’t send the request. Please try again.");
+      const msg = err?.message ?? "";
+      setError(
+        /photo/i.test(msg)
+          ? "Add a photo of yourself so the school can recognise you."
+          : /policy/i.test(msg)
+          ? "Agree to the school policy first."
+          : /proof|certificate/i.test(msg)
+          ? "Add the documents below before sending."
+          : "Couldn’t send the request. Please try again."
+      );
     } finally {
       setBusy(false);
     }
@@ -191,7 +242,7 @@ export function RequestAccess({ user, onSchool }) {
   return (
     <form className="request-form request-form-wide" onSubmit={submit}>
       <h1>{school.school_name}</h1>
-      <StepBar steps={["Photo", "About you", "Classes"]} step={part} onPick={setPart} canPick={(i) => partOk.slice(0, i).every(Boolean)} />
+      <StepBar steps={["Photo", "About you", "Policy", "Documents"]} step={part} onPick={setPart} canPick={(i) => partOk.slice(0, i).every(Boolean)} />
 
       {part === 0 && (
         <div className="join-photo join-photo-big">
@@ -225,17 +276,6 @@ export function RequestAccess({ user, onSchool }) {
             <span>Phone</span>
             <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
           </label>
-        </>
-      )}
-
-      {part === 2 && (
-        <>
-          <div className="field-block">
-            <span className="field-label">
-              Your classes{school.session_name ? ` for ${school.session_name}` : ""}
-            </span>
-            <ClassPicker options={school.classes ?? []} value={form.classes} onChange={(classes) => setForm({ ...form, classes })} />
-          </div>
           <label>
             <span>Subjects you teach</span>
             <input value={form.subjects} onChange={set("subjects")} maxLength={200} placeholder="e.g. Maths, EVS" />
@@ -247,14 +287,69 @@ export function RequestAccess({ user, onSchool }) {
         </>
       )}
 
+      {part === 2 && (
+        <div className="field-block">
+          {hasPolicy ? (
+            <>
+              <span className="field-label">{school.school_name}’s staff policy</span>
+              <p className="policy-text">{school.staff_policy}</p>
+              <label className="checkbox checkbox-inline">
+                <input type="checkbox" checked={form.policyAgreed} onChange={(e) => setForm({ ...form, policyAgreed: e.target.checked })} />
+                <span>I’ve read and agree to this policy.</span>
+              </label>
+            </>
+          ) : (
+            <p className="row-sub">{school.school_name} hasn’t set a staff policy yet. Nothing to agree to here — tap Next.</p>
+          )}
+        </div>
+      )}
+
+      {part === 3 && (
+        <div className="field-block">
+          <span className="field-label">Your documents</span>
+          <p className="row-sub">A photo or scan of each. These are only seen by {school.school_name}’s owner and admins.</p>
+          <DocPicker label="ID proof (Aadhaar / PAN) *" kind="id_proof" doc={docs.id_proof} onPick={pickDocument} />
+          <label className="field-block">
+            <span>Address proof type *</span>
+            <select value={form.addressProofType} onChange={set("addressProofType")} required>
+              <option value="">Choose one</option>
+              {ADDRESS_PROOF_TYPES.map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <DocPicker label="Address proof *" kind="address_proof" doc={docs.address_proof} onPick={pickDocument} />
+          <DocPicker label="Education / employment certificate *" kind="education_cert" doc={docs.education_cert} onPick={pickDocument} />
+        </div>
+      )}
+
       {error && <p className="field-error">{error}</p>}
       <button className="btn btn-primary btn-block" disabled={busy || !partOk[part]}>
-        {part < 2 ? "Next" : busy ? "Sending…" : "Send request"}
+        {part < last ? "Next" : busy ? "Sending…" : "Send request"}
       </button>
       <button type="button" className="btn btn-secondary btn-block" onClick={() => (part > 0 ? setPart(part - 1) : setStep("code"))}>
         Back
       </button>
     </form>
+  );
+}
+
+// One document upload slot (ID proof, address proof, education/employment
+// certificate): a photo or PDF, picked once and replaced by tapping again.
+function DocPicker({ label, kind, doc, onPick }) {
+  const saved = Boolean(doc?.name) && !doc?.busy && !doc?.error;
+  return (
+    <label className="field-block doc-pick">
+      <span>{label}</span>
+      <span className={`doc-pick-box${saved ? " is-set" : ""}`}>
+        <Icon name={saved ? "check" : "upload"} size={16} />
+        {doc?.busy ? "Saving…" : saved ? doc.name : "Choose a photo or PDF"}
+      </span>
+      <input type="file" accept="image/*,application/pdf" onChange={(e) => onPick(kind, e)} hidden />
+      {doc?.error && <span className="field-error">{doc.error}</span>}
+    </label>
   );
 }
 

@@ -1937,6 +1937,21 @@ a:hover {
   margin-top: 8px;
 }
 
+.doc-view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.doc-view-list .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .row-add .input {
   min-width: 140px;
 }
@@ -6910,6 +6925,43 @@ input[type="date"]::-webkit-date-and-time-value {
 .request-form label.join-photo-pick {
   align-items: center;
   justify-content: center;
+}
+
+/* The school's policy, on the join request's Policy step: a scrollable
+   block of their own text, above the "I agree" checkbox. */
+.policy-text {
+  max-height: 220px;
+  margin: 0;
+  padding: 12px 14px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* A document upload slot (ID proof, address proof, certificates): a dashed
+   box that fills in once a file's picked, like the join photo but a row. */
+.doc-pick-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1.5px dashed color-mix(in srgb, var(--brand) 45%, transparent);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--brand);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.doc-pick-box.is-set {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--k-holiday, #2e9d6a) 45%, transparent);
+  color: var(--k-holiday, #2e9d6a);
 }
 
 /* Pop-ups: scrolling inside never spills over to the page behind. */

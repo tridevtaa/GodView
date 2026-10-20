@@ -19,14 +19,20 @@ const FIELDS = [
   ["city", "City", { maxLength: 80 }],
   ["state", "State", { maxLength: 80 }],
   ["pincode", "PIN code", { inputMode: "numeric", pattern: "\\d{6}", title: "6 digits", maxLength: 6 }],
+  [
+    "staff_policy",
+    "Staff policy (code of conduct, handbook, …)",
+    { maxLength: 8000, wide: true, textarea: true, placeholder: "Shown to new staff when they join, with an \"I agree\" checkbox. Leave blank to skip this." },
+  ],
 ];
 
-// Edited in four short steps.
+// Edited in five short steps.
 const STEPS = [
   ["Name & logo", ["name", "short_name"]],
   ["Board", ["board", "affiliation_no", "udise_code", "principal_name"]],
   ["Contact", ["phone", "email", "website"]],
   ["Address", ["address", "city", "state", "pincode"]],
+  ["Staff policy", ["staff_policy"]],
 ];
 
 // Owner-only: the school's name, logo and details. A one-line summary (with
@@ -112,7 +118,7 @@ export default function SchoolProfile({ school, onSaved, aside }) {
 
   const place = [school.city, school.state].filter(Boolean).join(", ");
   const meta = [school.board, place, school.principal_name && `Principal ${school.principal_name}`].filter(Boolean);
-  const missing = FIELDS.filter(([k]) => k !== "short_name" && !school[k]).length;
+  const missing = FIELDS.filter(([k]) => k !== "short_name" && k !== "staff_policy" && !school[k]).length;
 
   return (
     <section className={`panel school-panel${editing ? " is-editing" : ""}`}>
@@ -184,12 +190,19 @@ export default function SchoolProfile({ school, onSaved, aside }) {
           )}
 
           <div className="form-grid">
-            {FIELDS.filter(([k]) => STEPS[step][1].includes(k)).map(([k, label, { wide, ...attrs }]) => (
-              <label key={k} className={wide ? "span-2" : ""}>
-                <span>{label}</span>
-                <input value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} {...attrs} />
-              </label>
-            ))}
+            {FIELDS.filter(([k]) => STEPS[step][1].includes(k)).map(([k, label, { wide, textarea, ...attrs }]) =>
+              textarea ? (
+                <label key={k} className={wide ? "span-2" : ""}>
+                  <span>{label}</span>
+                  <textarea className="textarea" rows={8} value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} {...attrs} />
+                </label>
+              ) : (
+                <label key={k} className={wide ? "span-2" : ""}>
+                  <span>{label}</span>
+                  <input value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} {...attrs} />
+                </label>
+              )
+            )}
             <datalist id="boards">
               {BOARDS.map((b) => (
                 <option key={b} value={b} />

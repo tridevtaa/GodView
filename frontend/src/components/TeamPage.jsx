@@ -3,18 +3,22 @@ import {
   addAssignment,
   addMember,
   approveAccessRequest,
+  approveClassAllocation,
   decideExport,
   listAccessRequests,
   listAssignments,
+  listClassAllocationRequests,
   listClassSections,
   listExportRequests,
   listMembers,
   regenerateJoinCode,
   rejectAccessRequest,
+  rejectClassAllocation,
   removeAssignment,
   removeMember,
   setMemberRole,
   setClassTeacher,
+  staffDocumentUrl,
   withPhotoUrls,
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
@@ -41,6 +45,7 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
   const [requests, setRequests] = useState([]);
+  const [classRequests, setClassRequests] = useState([]);
   const [exports, setExports] = useState([]);
   const [memberTab, setMemberTab] = useState("teachers");
   const [loading, setLoading] = useState(true);
@@ -49,16 +54,18 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
   const load = useCallback(async () => {
     if (view !== "access") return setLoading(false);
     try {
-      const [m, a, r, x, c] = await Promise.all([
+      const [m, a, r, cr, x, c] = await Promise.all([
         listMembers(school.id),
         listAssignments(school.id),
         listAccessRequests(school.id).then(withPhotoUrls),
+        listClassAllocationRequests(school.id),
         listExportRequests(school.id),
         session ? listClassSections(school.id, session.id) : [],
       ]);
       setMembers(m);
       setAssignments(a);
       setRequests(r);
+      setClassRequests(cr);
       setExports(x);
       setClasses(
         c.sort((p, q) => gradeRank(p.class) - gradeRank(q.class) || p.section.localeCompare(q.section))
@@ -87,7 +94,8 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
 
   const pendingExports = exports.filter((x) => x.status === "pending");
   const sessionAssignments = assignments.filter((a) => a.session_id === session?.id);
-  const waiting = requests.length + pendingExports.length;
+  const waiting = requests.length + classRequests.length + pendingExports.length;
+  const memberName = (email) => members.find((m) => m.email === email)?.full_name || email;
   useEffect(() => {
     if (!loading) onCount?.(waiting);
   }, [waiting, loading, onCount]);
@@ -119,9 +127,26 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
             <AccessRequestRow
               key={r.id}
               request={r}
-              classOptions={classes}
-              onApprove={act((role, picked) => approveAccessRequest(r.id, role, picked))}
+              onApprove={act((role) => approveAccessRequest(r.id, role))}
               onReject={act(() => rejectAccessRequest(r.id, me))}
+            />
+          ))}
+        </section>
+      )}
+
+      {classRequests.length > 0 && (
+        <section className="panel">
+          <h2 className="panel-title">
+            Class requests <span className="badge badge-warning">{classRequests.length}</span>
+          </h2>
+          {classRequests.map((r) => (
+            <ClassAllocationRequestRow
+              key={r.id}
+              request={r}
+              name={memberName(r.email)}
+              classOptions={classes}
+              onApprove={act((picked) => approveClassAllocation(r.id, picked))}
+              onReject={act(() => rejectClassAllocation(r.id, me))}
             />
           ))}
         </section>
@@ -291,14 +316,28 @@ function JoinCode({ school }) {
   );
 }
 
-function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
+const ADDRESS_PROOF_LABEL = { aadhaar: "Aadhaar card", pan: "PAN card", dl: "Driving licence", passport: "Passport", voter_id: "Voter ID", other: "Other" };
+
+function AccessRequestRow({ request, onApprove, onReject }) {
   const [role, setRole] = useState("teacher");
-  const [picked, setPicked] = useState(request.requested_classes ?? []);
-  const [showClasses, setShowClasses] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+  const [opening, setOpening] = useState(""); // which document is being opened
   const facts = [request.designation, request.phone, request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
-  const summary = picked.length
-    ? picked.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ")
-    : "No classes chosen";
+  const docs = [
+    ["id_proof_path", "ID proof"],
+    ["address_proof_path", request.address_proof_type ? `Address proof (${ADDRESS_PROOF_LABEL[request.address_proof_type] ?? request.address_proof_type})` : "Address proof"],
+    ["education_cert_path", "Education / employment certificate"],
+  ].filter(([k]) => request[k]);
+  async function openDoc(path, key) {
+    setOpening(key);
+    try {
+      window.open(await staffDocumentUrl(path), "_blank", "noopener");
+    } catch {
+      // best effort; the link just won't open
+    } finally {
+      setOpening("");
+    }
+  }
 
   return (
     <div className="row row-request">
@@ -310,13 +349,28 @@ function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
         </div>
         {facts.length > 0 && <div className="row-sub">{facts.join(" · ")}</div>}
         {request.message && <div className="row-sub">“{request.message}”</div>}
-        {role === "teacher" && (
+        {docs.length > 0 && (
           <div className="request-classes">
-            <button type="button" className="link-btn" onClick={() => setShowClasses((v) => !v)}>
-              {showClasses ? "Done" : "Classes:"}
+            <button type="button" className="link-btn" onClick={() => setShowDocs((v) => !v)}>
+              {showDocs ? "Hide documents" : "KYC documents:"}
             </button>{" "}
-            {!showClasses && <span className="row-sub">{summary}</span>}
-            {showClasses && <ClassPicker options={classOptions} value={picked} onChange={setPicked} />}
+            {!showDocs && (
+              <span className="row-sub">
+                {docs.length} submitted{request.policy_agreed_at ? " · agreed to the staff policy" : ""}
+              </span>
+            )}
+            {showDocs && (
+              <ul className="doc-view-list">
+                {docs.map(([key, label]) => (
+                  <li key={key}>
+                    <button type="button" className="link-btn" onClick={() => openDoc(request[key], key)} disabled={opening === key}>
+                      <Icon name="file" size={14} /> {label} {opening === key ? "…" : ""}
+                    </button>
+                  </li>
+                ))}
+                {request.policy_agreed_at && <li className="row-sub">Agreed to the staff policy on {fmtDate(request.policy_agreed_at)}.</li>}
+              </ul>
+            )}
           </div>
         )}
       </div>
@@ -325,7 +379,36 @@ function AccessRequestRow({ request, classOptions, onApprove, onReject }) {
         <button className="btn btn-secondary btn-sm" onClick={onReject}>
           Reject
         </button>
-        <button className="btn btn-primary btn-sm" onClick={() => onApprove(role, role === "teacher" ? picked : [])}>
+        <button className="btn btn-primary btn-sm" onClick={() => onApprove(role)}>
+          Approve
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onReject }) {
+  const [picked, setPicked] = useState(request.classes ?? []);
+  const facts = [request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+
+  return (
+    <div className="row row-request">
+      <div className="row-main">
+        <div className="row-title">{name}</div>
+        <div className="row-sub">
+          {request.email} · {fmtDate(request.created_at)}
+        </div>
+        {facts.length > 0 && <div className="row-sub">{facts.join(" · ")}</div>}
+        {request.note && <div className="row-sub">“{request.note}”</div>}
+        <div className="request-classes">
+          <ClassPicker options={classOptions} value={picked} onChange={setPicked} />
+        </div>
+      </div>
+      <div className="row-actions">
+        <button className="btn btn-secondary btn-sm" onClick={onReject}>
+          Reject
+        </button>
+        <button className="btn btn-primary btn-sm" disabled={!picked.length} onClick={() => onApprove(picked)}>
           Approve
         </button>
       </div>

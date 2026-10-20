@@ -12,6 +12,7 @@ import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
 import QuickActions from "./components/QuickActions.jsx";
 import HomePage from "./components/HomePage.jsx";
+import ClassAllocationGate from "./components/ClassAllocationGate.jsx";
 import NoticeBoard from "./components/NoticeBoard.jsx";
 import CalendarPage from "./components/CalendarPage.jsx";
 import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
@@ -131,15 +132,20 @@ export default function App() {
 
   // Teachers see Attendance only when they're a class's class teacher
   // (in-charge) this session; owners, admins and the principal always do.
-  const [isClassTeacher, setIsClassTeacher] = useState(false);
+  // `myAssignments` is null until loaded, so a teacher never flashes the
+  // class-picker before we actually know whether they have any.
+  const [myAssignments, setMyAssignments] = useState(null);
   useEffect(() => {
     if (role !== "teacher" || !currentSession) return;
     listAssignments(school.id).then(
-      (rows) => setIsClassTeacher(rows.some((a) => a.email === user.email && a.session_id === currentSession.id && a.is_class_teacher)),
-      () => setIsClassTeacher(false)
+      (rows) => setMyAssignments(rows.filter((a) => a.email === user.email && a.session_id === currentSession.id)),
+      () => setMyAssignments([])
     );
   }, [role, school.id, currentSession, user.email]);
+  const isClassTeacher = (myAssignments ?? []).some((a) => a.is_class_teacher);
   const seesAttendance = role !== "teacher" || isClassTeacher;
+  // A teacher with no classes this session picks them first, before anything else.
+  const needsClasses = role === "teacher" && Boolean(currentSession) && myAssignments !== null && myAssignments.length === 0;
 
   // The school's grade list (names and sections); grade names everywhere use it.
   const [schoolGrades, setSchoolGrades] = useState([]);
@@ -548,6 +554,10 @@ export default function App() {
       ))}
     </nav>
   );
+
+  if (needsClasses) {
+    return <ClassAllocationGate school={school} session={currentSession} />;
+  }
 
   return (
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
