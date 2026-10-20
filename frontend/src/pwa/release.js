@@ -10,6 +10,10 @@ export const isStaleRelease = (error) =>
     String(error?.message || error)
   );
 
+// The database was updated past this page's code (a tab left open across a
+// release): the call it makes no longer exists.
+export const isOutdatedApp = (error) => error?.code === "PGRST202";
+
 // Returns true if the page is reloading.
 export function reloadForNewRelease() {
   try {

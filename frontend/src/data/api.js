@@ -238,7 +238,10 @@ export async function withPhotoUrls(people) {
   const missing = [];
   for (const path of paths) {
     const hit = store[path];
-    if (hit && hit[1] - now > REUSE_MIN) urls.set(path, hit[0]);
+    // Join photos keep one name per person (requests/<user id>.jpg), so a
+    // saved link for one could show the photo from an earlier request: they
+    // always get a fresh link, which the device hasn't kept a picture for.
+    if (hit && hit[1] - now > REUSE_MIN && !path.startsWith("requests/")) urls.set(path, hit[0]);
     else missing.push(path);
   }
   for (let i = 0; i < missing.length; i += 500) {
@@ -246,7 +249,7 @@ export async function withPhotoUrls(people) {
     signed.forEach((s) => {
       if (!s.signedUrl) return;
       urls.set(s.path, s.signedUrl);
-      store[s.path] = [s.signedUrl, now + SIGNED_FOR * 1000];
+      if (!s.path.startsWith("requests/")) store[s.path] = [s.signedUrl, now + SIGNED_FOR * 1000];
     });
   }
   if (missing.length) {
