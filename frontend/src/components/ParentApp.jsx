@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useDismiss } from "./useDismiss.js";
 import {
   createParentRequest,
@@ -28,7 +28,7 @@ import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
-import NoticeBoard from "./NoticeBoard.jsx";
+import NoticeBoard, { useNotices } from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
@@ -61,6 +61,12 @@ export default function ParentApp({ phone }) {
   const [childId, setChildId] = useState(null);
   // Parents land on Home: everything about the child at a glance.
   const [tab, setTab] = useState("home");
+  // A new tab (or child) opens at the top, with the bars back to full size:
+  // keeping Home's scroll left a short tab scrolled under the top bar.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.classList.remove("bars-compact");
+  }, [tab, childId]);
   const [pwOpen, setPwOpen] = useState(false);
   // First sign-in (still on the child's name + birth year): choose a
   // password before anything else. null while checking.
@@ -281,10 +287,6 @@ export default function ParentApp({ phone }) {
 
 // ----------------------------------------------------------------- home ---
 
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-};
 const plural = (k, word) => `${k} ${word}${k === 1 ? "" : "s"}`;
 
 // Home for a parent, like the staff Home: what needs them now (tap to go
@@ -324,7 +326,8 @@ function ParentHome({ child, news, onGo }) {
     const sorted = [...scored].sort((a, b) => b.pct - a.pct);
     return {
       name,
-      pct: max ? Math.round((got / max) * 100) : null,
+      // One decimal, as on the Results tab (59.5%, not 60%)
+      pct: max ? Math.round((got / max) * 1000) / 10 : null,
       best: sorted[0],
       low: sorted.length > 1 ? sorted[sorted.length - 1] : null,
       rows: scored.map((x) => ({ label: x.subject, pct: x.pct })),
@@ -344,6 +347,9 @@ function ParentHome({ child, news, onGo }) {
 
   const unread = news("inbox");
   const go = (to) => () => onGo(to);
+  // The school's notices: a tile is the way into the Noticeboard.
+  const [notices] = useNotices(child.school_id);
+  const latestNotice = (notices ?? [])[0];
 
   // Fees, the wide tile: what's due now (red when overdue, amber when due,
   // green when all paid) and a ring of how much of the year is paid.
@@ -404,8 +410,8 @@ function ParentHome({ child, news, onGo }) {
       icon: "chart",
       tone: "violet",
       label: exam ? exam.name : "Results",
-      value: results === null ? undefined : exam?.pct ?? "–",
-      format: (v) => `${v}%`,
+      // Text, not a counting number: counting rounds to whole numbers.
+      value: results === null ? undefined : exam?.pct != null ? `${exam.pct}%` : "–",
       badge: news("results"),
       badgeLabel: `${plural(news("results"), "new result")}`,
       sub: exam?.best && `Best in ${exam.best.subject}${exam.low ? `, most to work on in ${exam.low.subject}` : ""}`,
@@ -436,16 +442,23 @@ function ParentHome({ child, news, onGo }) {
       sub: unread ? "From the school, waiting for you" : null,
       onClick: go("inbox"),
     },
+    {
+      key: "notices",
+      icon: "notice",
+      tone: "orange",
+      label: "Notices",
+      value: notices === null ? undefined : notices.length,
+      badge: news("notices"),
+      badgeLabel: `${plural(news("notices"), "new notice")}`,
+      sub: latestNotice?.title,
+      fresh: latestNotice?.created_at,
+      onClick: go("notices"),
+    },
   ].filter(Boolean);
   const { tiles, spans } = arrangeTiles(rawTiles);
 
   return (
     <div className="home hw pa-home home-roomy">
-      <header className="home-hero">
-        <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
-        <h1>{greeting()}</h1>
-      </header>
-
       {priority && (
         <div className="home-row1 is-solo">
           <PriorityCard {...priority} />
@@ -459,7 +472,7 @@ function ParentHome({ child, news, onGo }) {
       </div>
 
       <div className="home-bottom-row is-solo">
-        <ComingUp schoolId={child.school_id} calendar onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
+        <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
       </div>
     </div>
   );
@@ -485,7 +498,7 @@ function TodayAttendance({ child }) {
       <span className={`pa-att-today is-${t?.status ?? "none"}`}>Today: {t ? MARK_TEXT[t.status] : "Not marked yet"}</span>
       {days.length > 0 && (
         <span className="row-sub">
-          {present}/{days.length} days this month
+          Present {present} of {days.length} {days.length === 1 ? "day" : "days"} this month
         </span>
       )}
     </div>
@@ -775,18 +788,19 @@ function ResultsTab({ child, since }) {
     const got = scored.reduce((t, r) => t + Number(r.marks), 0);
     const max = scored.reduce((t, r) => t + Number(r.max_marks), 0);
     const pct = max ? Math.round((got / max) * 1000) / 10 : null;
+    const grades = rows.some((r) => r.grade);
     return (
       <section key={exam} className="pa-card">
         <div className="pa-exam-head">
           <h2 className="pa-h2">{exam}</h2>
           {pct != null && <span className="pa-pct">{pct}%</span>}
         </div>
-        <table className="pa-table">
+        <table className={`pa-table${grades ? " has-grades" : ""}`}>
           <thead>
             <tr>
               <th>Subject</th>
               <th>Marks</th>
-              <th>Grade</th>
+              {grades && <th>Grade</th>}
             </tr>
           </thead>
           <tbody>
@@ -800,7 +814,7 @@ function ResultsTab({ child, since }) {
                   {r.marks ?? "–"}
                   {r.max_marks ? <span className="row-sub"> / {Number(r.max_marks)}</span> : null}
                 </td>
-                <td>{r.grade || ""}</td>
+                {grades && <td>{r.grade || ""}</td>}
               </tr>
             ))}
           </tbody>
@@ -811,7 +825,7 @@ function ResultsTab({ child, since }) {
                 <th className="pa-num">
                   {got} <span className="row-sub">/ {max}</span>
                 </th>
-                <th />
+                {grades && <th />}
               </tr>
             </tfoot>
           )}
@@ -835,7 +849,7 @@ function HomeworkTab({ child, since }) {
 
   return (
     <>
-      <nav className="segmented segmented-sm ds-tabs" aria-label="Homework or syllabus">
+      <nav className="segmented segmented-sm ds-tabs pa-switch" aria-label="Homework or syllabus">
         <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
           <Icon name="book" size={15} /> Homework
         </button>
