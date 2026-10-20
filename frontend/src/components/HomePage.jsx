@@ -8,6 +8,7 @@ import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
+import { NotifyPrompt } from "./Notify.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -254,6 +255,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
           {first ? `, ${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""}
         </h1>
       </header>
+
+      <NotifyPrompt text="Get notified when parents write." />
 
       <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}`}>
         {access && <PriorityCard {...access} />}

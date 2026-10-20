@@ -5,7 +5,6 @@ import Chat, { useBackToClose } from "./Chat.jsx";
 import StatCards from "./StatCards.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
-import { NotifyPrompt } from "./Notify.jsx";
 import { onFresh } from "../pwa/fresh.js";
 
 const FILTERS = [
@@ -113,7 +112,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
         })()}
       />
     )}
-    <NotifyPrompt text="Get notified when parents write." />
     <div className={`inbox${open ? " has-open" : ""}`}>
       <section className="inbox-list">
         <div className="inbox-head">
