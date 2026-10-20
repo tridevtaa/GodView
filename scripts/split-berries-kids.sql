@@ -9,8 +9,7 @@
 --
 -- What moves to Berries: every Mav student whose latest class is Nursery to
 -- Grade 2 (including Pre-nursery, LKG/UKG, KG 1/2), with everything that's
--- theirs: enrolments in every session, private details, notes and diary
--- signatures, parent links (each parent gets a Berries record; a parent
+-- theirs: enrolments in every session, private details, parent links (each parent gets a Berries record; a parent
 -- with children in both schools keeps both), fee dues, invoices, payments
 -- and their receipts, attendance, results, messages and requests; and the
 -- Nursery to Grade 2 homework, datesheets and syllabus.
@@ -37,7 +36,7 @@ declare
   r record;
   t text;
   moved_tables text[] := array[
-    'students', 'student_enrolments', 'student_private', 'student_notes', 'diary_signatures',
+    'students', 'student_enrolments', 'student_private',
     'guardians', 'guardian_students', 'fee_dues', 'fee_invoices', 'fee_payments', 'fee_allocations',
     'attendance', 'exam_results', 'homework', 'homework_students', 'datesheets', 'syllabus',
     'messages', 'parent_requests', 'fee_schedule', 'school_grades', 'teacher_classes'
@@ -181,11 +180,6 @@ begin
     area_id = (select m.new_id from split_areas m where m.old_id = p.area_id)
   where p.student_id in (select id from split_students);
   get diagnostics n = row_count; report := report || format(E'  private details: %s\n', n);
-
-  update public.student_notes set school_id = bk where student_id in (select id from split_students);
-  get diagnostics n = row_count; report := report || format(E'  notes and diary: %s\n', n);
-  update public.diary_signatures d set school_id = bk
-  where d.note_id in (select x.id from public.student_notes x where x.school_id = bk);
 
   -- Parents: a Berries record per parent of a moving child.
   create temp table split_guardians on commit drop as
