@@ -13623,14 +13623,16 @@ button.achv-tag {
    swipe through. Each tile has its own colour (--c, --c2, --tint; the
    t-* colour classes are shared with the pages' tiles, StatCards.jsx).
    ========================================================= */
+/* Tones follow the landing page's palette: brand indigo, violet, sky,
+   lilac, peach, gold, green and coral. */
 .t-indigo { --c: #5b68c4; --c2: #8b97e6; --tint: #e9ecfb; }
-.t-violet { --c: #7c4ddb; --c2: #b195f5; --tint: #f0eafd; }
-.t-teal { --c: #0e9384; --c2: #4fcab9; --tint: #def5f1; }
-.t-pink { --c: #d1427a; --c2: #f290b6; --tint: #fde7ef; }
-.t-orange { --c: #e2662a; --c2: #f7a36d; --tint: #feece2; }
-.t-amber { --c: #d48806; --c2: #f6c445; --tint: #fff2d6; }
-.t-green { --c: #4f9a12; --c2: #a8d64a; --tint: #eaf6d9; }
-.t-red { --c: #d9432e; --c2: #f4876f; --tint: #ffe5df; }
+.t-violet { --c: #7b55e8; --c2: #b9a3fb; --tint: #f1ecff; }
+.t-teal { --c: #2f8ad0; --c2: #74bff2; --tint: #e2f2fd; }
+.t-pink { --c: #b052c4; --c2: #dea3ec; --tint: #f6eafb; }
+.t-orange { --c: #e8732e; --c2: #ffb27a; --tint: #fff1dc; }
+.t-amber { --c: #d9940b; --c2: #f5b83d; --tint: #fff4d9; }
+.t-green { --c: #1f9a52; --c2: #4ade80; --tint: #e3f8ea; }
+.t-red { --c: #e5533d; --c2: #ff8a7a; --tint: #ffe7e2; }
 
 .hw-grid {
   display: grid;
