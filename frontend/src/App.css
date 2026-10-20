@@ -6264,6 +6264,14 @@ button.profile-stat:hover {
   }
 }
 
+/* The update banner's icon: the brand colour, no picture */
+.update-icon {
+  display: grid;
+  place-items: center;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
 .install-icon {
   display: grid;
   flex: none;

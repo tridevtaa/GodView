@@ -25,6 +25,7 @@ import { forget, swr } from "./data/cache.js";
 import { onNotificationOpen, syncPush } from "./pwa/push.js";
 import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
+import UpdatePrompt from "./components/UpdatePrompt.jsx";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -586,6 +587,7 @@ export default function App() {
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
       <InstallPrompt />
+      <UpdatePrompt />
 
       <main className="page">
         <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>

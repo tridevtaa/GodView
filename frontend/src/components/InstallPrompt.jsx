@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { canPrompt, isIOS, isPhone, isStandalone, onInstallChange, promptInstall } from "../pwa/install.js";
 import Icon from "./Icon.jsx";
+import { onUpdateReady, updateReady } from "../pwa/update.js";
 
 const KEY = "godview.installDismissed";
 const dismissed = () => {
@@ -19,8 +20,12 @@ export default function InstallPrompt() {
   const [steps, setSteps] = useState(false);
   useEffect(() => onInstallChange(() => setTick((t) => t + 1)), []);
 
+  // A waiting update has the banner spot (UpdatePrompt.jsx).
+  const [update, setUpdate] = useState(updateReady);
+  useEffect(() => onUpdateReady(() => setUpdate(true)), []);
+
   const ios = isIOS();
-  const shown = !hidden && (ios || canPrompt());
+  const shown = !hidden && !update && (ios || canPrompt());
   // While the banner shows, tell the page how tall it is (--banner-h), so
   // message boxes, save bars and the last rows stay clear of it.
   const box = useRef(null);

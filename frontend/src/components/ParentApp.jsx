@@ -34,6 +34,7 @@ import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
+import UpdatePrompt from "./UpdatePrompt.jsx";
 
 const TABS = [
   ["home", "Home", "home"],
@@ -172,6 +173,7 @@ export default function ParentApp({ phone }) {
       </header>
 
       <InstallPrompt />
+      <UpdatePrompt />
       <main className="pa-main">
         {mustSetPw ? (
           <ChangePassword required onDone={() => setMustSetPw(false)} />
