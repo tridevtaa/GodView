@@ -428,8 +428,9 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
 // notices, as a row of cards. Hidden when there's nothing. Taps open the
 // calendar or the noticeboard.
 // withNotices: also list notices from the last week (off where Home already
-// shows them in its banner). limit: at most this many.
-export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 9, onOpenCalendar, onOpenNotices }) {
+// shows them in its banner). limit: at most this many. calendar: a small
+// month beside the list (staff Home), its dates dotted where something's on.
+export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 9, calendar = false, onOpenCalendar, onOpenNotices }) {
   const { items, loading } = useItems(schoolId, staff);
   const [notices] = useNotices(schoolId, staff);
   const today = todayIso();
@@ -442,7 +443,30 @@ export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 
       .slice(0, 3)
       .map((n) => ({ id: `new-${n.id}`, source: "notice", title: n.title, kind: "notice", start: n.created_at.slice(0, 10), fresh: true })),
   ].slice(0, limit);
-  if (loading || !cards.length) return null;
+  if (loading || (!cards.length && !calendar)) return null;
+  const list = (
+    <div className="home-events-row">
+      {!cards.length && <p className="row-sub home-events-none">Nothing planned yet.</p>}
+      {cards.map((it, i) => {
+        const d = parse(it.fresh || it.start >= today ? it.start : today);
+        return (
+          <button key={it.id} className="home-event-card" style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
+            <span className="home-event-date">
+              <span className="home-event-month">{d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase()}</span>
+              <span className="home-event-day">{d.getDate()}</span>
+            </span>
+            <span className="home-event-body">
+              <strong>{it.title}</strong>
+              {it.note && <span className="row-sub">{it.note}</span>}
+            </span>
+            <span className={`home-event-kind k-${it.kind}`} title={KIND_LABEL[it.kind]}>
+              <Icon name={KIND_ICON[it.kind]} size={15} />
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
   return (
     <section className="home-events">
       <header className="home-notice-head">
@@ -456,49 +480,46 @@ export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 
           View calendar <Icon name="arrowRight" size={13} />
         </button>
       </header>
-      <div className="home-events-row">
-        {cards.map((it, i) => {
-          const d = parse(it.fresh || it.start >= today ? it.start : today);
-          return (
-            <button key={it.id} className="home-event-card" style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
-              <span className="home-event-date">
-                <span className="home-event-month">{d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase()}</span>
-                <span className="home-event-day">{d.getDate()}</span>
-              </span>
-              <span className="home-event-body">
-                <strong>{it.title}</strong>
-                {it.note && <span className="row-sub">{it.note}</span>}
-              </span>
-              <span className={`home-event-kind k-${it.kind}`} title={KIND_LABEL[it.kind]}>
-                <Icon name={KIND_ICON[it.kind]} size={15} />
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      {calendar ? (
+        <div className="home-events-cal">
+          <MiniCalendar items={items} onOpen={onOpenCalendar} />
+          {list}
+        </div>
+      ) : (
+        list
+      )}
     </section>
   );
 }
 
-// Home: a small month-at-a-glance, next to the attendance card. Plain dates
-// (no event dots — that detail lives on the full Calendar); tapping it, or
-// the arrows either side of the month name, opens the full page.
-export function MiniCalendar({ onOpen }) {
+// Staff Home: a small month beside Upcoming Events, Monday first like the
+// full Calendar, a dot under each date with something on. Tapping it opens
+// the full page; the arrows change the month.
+function MiniCalendar({ items, onOpen }) {
   const [month, setMonth] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
   const today = todayIso();
-  // Sunday-first weeks, to match the rest of this widget's references.
   const cells = useMemo(() => {
+    const lead = (month.getDay() + 6) % 7;
+    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
     const start = new Date(month);
-    start.setDate(1 - month.getDay());
-    return Array.from({ length: 42 }, (_, i) => {
+    start.setDate(1 - lead);
+    return Array.from({ length: Math.ceil((lead + days) / 7) * 7 }, (_, i) => {
       const d = new Date(start);
       d.setDate(start.getDate() + i);
       return d;
-    }).slice(0, 35);
+    });
   }, [month]);
+  const busy = useMemo(() => {
+    const on = new Set();
+    for (const it of items) {
+      const end = it.end && it.end > it.start ? it.end : it.start;
+      for (let d = parse(it.start); iso(d) <= end; d.setDate(d.getDate() + 1)) on.add(iso(d));
+    }
+    return on;
+  }, [items]);
   const go = (step, e) => {
     e.stopPropagation();
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + step, 1));
@@ -518,16 +539,16 @@ export function MiniCalendar({ onOpen }) {
         </span>
       </header>
       <div className="home-cal-week" aria-hidden="true">
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-          <span key={d}>{d}</span>
+        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+          <span key={i}>{d}</span>
         ))}
       </div>
       <div className="home-cal-grid">
         {cells.map((d) => {
           const day = iso(d);
           return (
-            <span key={day} className={["home-cal-day", d.getMonth() !== month.getMonth() && "is-out", day === today && "is-today"].filter(Boolean).join(" ")}>
-              {d.getDate()}
+            <span key={day} className={["home-cal-day", d.getMonth() !== month.getMonth() && "is-out", day === today && "is-today", busy.has(day) && "is-busy"].filter(Boolean).join(" ")}>
+              <span>{d.getDate()}</span>
             </span>
           );
         })}

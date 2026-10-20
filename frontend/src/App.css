@@ -11078,27 +11078,17 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 500;
 }
 
-/* Row 1: today's attendance next to a small calendar on the left, the
-   noticeboard as a banner on the right. */
+/* Row 1: today's attendance on the left, the noticeboard as a banner on
+   the right. */
 .home-row1 {
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: 2fr 3fr;
   gap: 16px;
   align-items: stretch;
 }
 
-/* No plain notices: the attendance and calendar card takes the row */
 .home-row1.is-solo {
   grid-template-columns: 1fr;
-}
-
-.home-row1-left {
-  display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  min-width: 0;
-  border-radius: 22px;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
 }
 
 .home-att {
@@ -11107,9 +11097,11 @@ input[type="date"]::-webkit-date-and-time-value {
   gap: 8px;
   min-width: 0;
   padding: 18px 20px;
+  border-radius: 22px;
   background:
     radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
     linear-gradient(135deg, var(--c2), var(--c));
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--c) 18%, transparent);
   color: #fff;
   animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -11122,6 +11114,36 @@ input[type="date"]::-webkit-date-and-time-value {
   margin-bottom: 4px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.22);
+}
+
+.home-att-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Alone in the row: a slim strip, the button at its end */
+.home-row1.is-solo .home-att {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+}
+
+.home-row1.is-solo .home-att-icon {
+  flex: none;
+  margin: 0;
+}
+
+.home-row1.is-solo .home-att-text {
+  flex: 1;
+  gap: 6px;
+}
+
+.home-row1.is-solo .home-att-cta {
+  flex: none;
+  margin: 0;
 }
 
 .home-att.is-hot .home-att-icon {
@@ -11184,31 +11206,46 @@ input[type="date"]::-webkit-date-and-time-value {
   transform: scale(0.97);
 }
 
-/* The mini calendar: plain dates, today picked out. Tapping it (or the
-   month arrows) opens the full Calendar. */
+/* Upcoming Events on staff Home: a small month beside the list. Tapping
+   the month (or its arrows) opens the full Calendar. */
+.home-events-cal {
+  display: grid;
+  grid-template-columns: 236px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.home-events-none {
+  margin: 0;
+  padding: 12px 4px;
+}
+
 .home-cal {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 16px 18px;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
   background: var(--surface);
+  box-shadow: var(--shadow-sm);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
   animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: 60ms;
 }
 
 .home-cal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-left: 4px;
 }
 
 .home-cal-head strong {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -11225,22 +11262,27 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .home-cal-week span {
   color: var(--text-3);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   text-align: center;
 }
 
-.home-cal-grid {
-  row-gap: 4px;
-}
-
+/* Each date is a fixed circle, so today stays round at any width */
 .home-cal-day {
+  position: relative;
   display: grid;
   place-items: center;
-  height: 26px;
-  border-radius: 50%;
+  height: 30px;
   color: var(--text-2);
   font-size: 12px;
+}
+
+.home-cal-day > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
 }
 
 .home-cal-day.is-out {
@@ -11248,10 +11290,22 @@ input[type="date"]::-webkit-date-and-time-value {
   opacity: 0.4;
 }
 
-.home-cal-day.is-today {
+.home-cal-day.is-today > span {
   background: var(--brand);
   color: #fff;
   font-weight: 700;
+}
+
+.home-cal-day.is-busy::after {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--brand);
+  transform: translateX(-50%);
+  content: "";
 }
 
 /* The noticeboard, as a banner, and News & Achievements, as a row of
@@ -11797,8 +11851,16 @@ button.achv-tag {
 
 @media (max-width: 760px) {
   .home-row1,
-  .home-row1-left {
+  .home-events-cal {
     grid-template-columns: 1fr;
+  }
+
+  .home-row1.is-solo .home-att {
+    flex-wrap: wrap;
+  }
+
+  .home-row1.is-solo .home-att-cta {
+    flex-basis: 100%;
   }
 
   .home-notice-slide {
