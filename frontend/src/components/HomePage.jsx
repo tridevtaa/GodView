@@ -78,6 +78,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
       badge: requests,
       badgeLabel: `${requests} request${requests === 1 ? "" : "s"} waiting`,
       hot: unread > 0,
+      // Parents are waiting on a reply
+      urgent: unread > 0 || requests > 0,
       onClick: go("requests"),
     },
     {
@@ -98,6 +100,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       value: staff === null ? undefined : staff.length,
       badge: isOwner ? pendingCount : 0,
       badgeLabel: `${pendingCount} waiting for access`,
+      urgent: isOwner && pendingCount > 0,
       onClick: go(isOwner && pendingCount ? "access" : "employees"),
     },
     { key: "students", icon: "scholar", tone: "indigo", label: leads ? "Students" : "My students", value: loading ? undefined : students.length, onClick: go("students") },
@@ -115,12 +118,13 @@ export default function HomePage({ school, me, name, role, students, loading, se
     isAdmin && { key: "notices", icon: "notice", tone: "orange", label: "Notices", value: notices === null ? undefined : notices.length, onClick: go("notices") },
   ].filter(Boolean);
 
-  // Today's attendance: green, amber or red by how many are in; indigo
-  // (and glowing) while it still needs marking.
+  // Today's attendance: green, amber or red by how many are in; red and
+  // pulsing while it still needs marking.
   const showToday = leads || today;
   const unmarked = today && today.marked === 0;
-  const attTone = attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
   const left = today?.notMarked ?? 0;
+  const needsMarking = Boolean(unmarked || left > 0);
+  const attTone = needsMarking ? "red" : attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
 
   // The + menu's actions, less what a card above already offers.
   const quickActions = actions.filter(([key]) => !(key === "attendance" && showToday));
@@ -143,7 +147,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
           {showToday && (
             <AttendanceCard
               tone={attTone}
-              hot={unmarked || left > 0}
+              urgent={needsMarking}
               marked={today === null ? null : today?.marked}
               present={today?.present}
               pct={attPct}
@@ -174,9 +178,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
 // Today's attendance: a card beside the notice banner, or a slim strip when
 // it's alone in the row. marked: null while loading, 0 while nothing's in yet.
-function AttendanceCard({ tone, hot, marked, present, pct, left, onClick }) {
+function AttendanceCard({ tone, urgent, marked, present, pct, left, onClick }) {
   return (
-    <div className={`home-att t-${tone}${hot ? " is-hot" : ""}`}>
+    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}`}>
       <span className="home-att-icon">
         <Icon name="register" size={20} weight="fill" />
       </span>
