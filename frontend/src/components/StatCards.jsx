@@ -29,7 +29,7 @@ export default function StatCards({ items, className = "" }) {
   );
 }
 
-function Card({ label, icon = "chart", value, format, tone, color, ring, bar, badge = 0, badgeLabel, onClick, index }) {
+function Card({ label, icon = "chart", value, format, tone, color, ring, bar, note, badge = 0, badgeLabel, onClick, index }) {
   const Tag = onClick ? "button" : "div";
   const c = color ?? TONE_COLOR[tone] ?? PALETTE[index % PALETTE.length];
   const pct = bar && bar.max > 0 ? Math.min(100, (bar.value / bar.max) * 100) : null;
@@ -56,6 +56,7 @@ function Card({ label, icon = "chart", value, format, tone, color, ring, bar, ba
       </span>
       <strong className="sw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
       <span className="sw-label">{label}</span>
+      {note && <span className="sw-note">{note}</span>}
       {pct !== null && (
         <span className="sw-bar" title={bar.label}>
           <span style={{ "--to": `${pct}%` }} />

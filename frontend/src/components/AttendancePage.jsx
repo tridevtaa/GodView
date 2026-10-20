@@ -43,7 +43,8 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
   const canMark = (g) => !readOnly && (isAdmin || (mine ?? []).some((a) => a.class === g.klass && (!a.section || a.section === g.section)));
   const allGroups = useMemo(() => {
     const m = new Map();
-    for (const s of students) {
+    // Inactive students aren't in the register (or its counts).
+    for (const s of students.filter((x) => x.status !== "inactive")) {
       if (!s.class || s.status === "left") continue;
       const key = `${s.class}|${s.section ?? ""}`;
       m.set(key, [...(m.get(key) ?? []), s]);

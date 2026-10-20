@@ -326,7 +326,8 @@ export default function App() {
   // Teachers only ever load their own classes; say so, so the number isn't
   // mistaken for the whole school.
   const countLabel = (() => {
-    const n = `${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}`;
+    const inactive = isStudents ? current.filter((p) => p.status === "inactive").length : 0;
+    const n = `${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}${inactive ? ` · ${inactive.toLocaleString("en-IN")} inactive` : ""}`;
     if (!isStudents || isAdmin || isPrincipal) return n;
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
@@ -379,7 +380,16 @@ export default function App() {
       const overdue = current.filter((p) => p.fee_status === "overdue").length;
       const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
       return [
-        { icon: "scholar", color: "indigo", label: leads ? "Students" : "My students", value: current.length },
+        {
+          icon: "scholar",
+          color: "indigo",
+          label: leads ? "Students" : "My students",
+          value: current.length,
+          note: (() => {
+            const inactive = current.filter((p) => p.status === "inactive").length;
+            return inactive ? `${inactive.toLocaleString("en-IN")} inactive` : null;
+          })(),
+        },
         isAdmin && {
           icon: "rupee",
           label: "Due now",

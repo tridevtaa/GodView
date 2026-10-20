@@ -68,6 +68,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const dueTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow).length;
   const thisWeek = (homework ?? []).filter((h) => h.created_at >= weekAgo).length;
   const owing = students.filter((p) => Number(p.fee_due) > 0);
+  // Inactive students are in the count; the tile says how many.
+  const inactive = students.filter((p) => p.status === "inactive").length;
   const overdue = students.filter((p) => p.fee_status === "overdue").length;
   const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
   const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
@@ -151,6 +153,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       tone: "indigo",
       label: leads ? "Students" : "My students",
       value: loading ? undefined : students.length,
+      note: inactive ? `${n(inactive)} inactive` : null,
       visual: !loading && students.length > 0 && (
         <>
           <FacePile people={students} />
