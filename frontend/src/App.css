@@ -14388,6 +14388,15 @@ button.achv-tag {
   grid-column: span 2;
 }
 
+/* A short fact that always shows under the label ("18 inactive") */
+.hw-note,
+.sw-note {
+  margin-top: 2px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .hw-sub {
   display: -webkit-box;
   overflow: hidden;
