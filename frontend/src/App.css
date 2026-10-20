@@ -13693,7 +13693,7 @@ button.achv-tag {
   }
 }
 
-/* "Turn on notifications", above the parent's Home and the staff inbox. */
+/* "Turn on notifications", at the top of Home (staff and parents). */
 .notify {
   display: flex;
   align-items: center;
