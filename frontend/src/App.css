@@ -14108,6 +14108,214 @@ button.achv-tag {
   font-weight: 700;
 }
 
+/* A tile's small picture of its data (TileVisuals.jsx), on the right.
+   Only when the tile is wide enough to hold it beside the number. */
+.hw-tile {
+  container-type: inline-size;
+}
+
+.hw-visual {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  max-width: 52%;
+  pointer-events: none;
+}
+
+/* Text keeps clear of the picture */
+@container (min-width: 301px) {
+  .hw-sub {
+    max-width: 50%;
+  }
+}
+
+.tv-caption {
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.tv-faces {
+  display: flex;
+  padding-left: 10px;
+}
+
+.tv-face {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-left: -10px;
+  overflow: hidden;
+  border: 2.5px solid var(--surface);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 2px 6px rgba(29, 35, 102, 0.12);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tv-more {
+  background: var(--tint, var(--surface-2));
+  color: var(--c, var(--text-2));
+  font-size: 11.5px;
+}
+
+.tv-week {
+  display: flex;
+  gap: 6px;
+}
+
+.tv-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 26px;
+  padding: 6px 0;
+  border-radius: 10px;
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.tv-day.is-past {
+  opacity: 0.45;
+}
+
+.tv-day.is-today {
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  color: var(--c);
+}
+
+.tv-day i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+}
+
+.tv-day i.is-on {
+  background: var(--c);
+}
+
+.tv-day i.is-many {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent);
+}
+
+.tv-ring {
+  width: 64px;
+  height: 64px;
+}
+
+.tv-ring-bg,
+.tv-ring-fg {
+  fill: none;
+  stroke-width: 6;
+}
+
+.tv-ring-bg {
+  stroke: color-mix(in srgb, var(--c) 16%, transparent);
+}
+
+.tv-ring-fg {
+  stroke: var(--c);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.tv-ring text {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tv-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 70px;
+}
+
+.tv-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  height: 100%;
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tv-bar i {
+  width: 14px;
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(180deg, var(--c2), var(--c));
+}
+
+.tv-thumb {
+  width: 120px;
+  height: 84px;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgba(29, 35, 102, 0.16);
+}
+
+/* Narrow tiles: a compact version up beside the icon, no caption */
+@container (max-width: 300px) {
+  .hw-visual {
+    top: 16px;
+    right: 16px;
+    bottom: auto;
+    gap: 0;
+  }
+
+  .tv-caption,
+  .tv-bars {
+    display: none;
+  }
+
+  .tv-face {
+    width: 32px;
+    height: 32px;
+    margin-left: -9px;
+    font-size: 10.5px;
+  }
+
+  .tv-ring {
+    width: 46px;
+    height: 46px;
+  }
+
+  .tv-thumb {
+    width: 64px;
+    height: 46px;
+    border-radius: 10px;
+  }
+}
+
+@container (max-width: 205px) {
+  .tv-week {
+    display: none;
+  }
+}
+
+@container (max-width: 150px) {
+  .hw-visual {
+    display: none;
+  }
+}
+
 /* A tile that needs attention is twice as wide, with its latest update */
 .hw-tile.is-big {
   grid-column: span 2;
