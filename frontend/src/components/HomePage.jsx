@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { PriorityCard, Tile } from "./Widgets.jsx";
+import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
@@ -151,22 +151,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
     },
   ].filter(Boolean);
 
-  // Tiles by what matters now: anything urgent first, then anything waiting
-  // or new today, then the rest as they were. Those are big, with their
-  // latest update underneath; the rest stay small and quiet.
-  const dayAgo = Date.now() - 864e5;
-  const weight = (t) => (t.urgent ? 3 : t.badge > 0 || t.hot ? 2 : t.fresh && new Date(t.fresh) > dayAgo ? 1 : 0);
-  const tiles = rawTiles
-    .map((t, i) => ({ ...t, i, w: weight(t) }))
-    .sort((a, b) => b.w - a.w || a.i - b.i)
-    .map(({ fresh, i, w, ...t }) => ({ ...t, big: w >= 1, sub: w >= 1 ? t.sub : null }));
-  // Two even rows: an odd count leaves one gap, so the last tile widens
-  let spans = tiles.reduce((n, t) => n + (t.big ? 2 : 1), 0);
-  if (spans % 2) {
-    // Big tiles sort first, so the last one is small
-    tiles[tiles.length - 1].big = true;
-    spans += 1;
-  }
+  const { tiles, spans } = arrangeTiles(rawTiles);
 
   // Owners: anyone waiting for app access comes first, beside the fees
   const access =
@@ -219,7 +204,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
-    <div className="home hw home-staff">
+    <div className="home hw home-roomy">
       <header className="home-hero">
         <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
         <h1>
