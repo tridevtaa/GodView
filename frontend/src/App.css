@@ -14789,3 +14789,37 @@ button.achv-tag {
     animation: none !important;
   }
 }
+
+/* Swiping between bottom tabs (pwa/swipeTabs.js): the new page slides in
+   from the side the finger moved to. Only the page's contents move, so
+   the bars stay put. */
+@keyframes swipe-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+
+@keyframes swipe-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+}
+
+[data-swipe="left"] .page > *,
+[data-swipe="left"] .pa-main > * {
+  animation: swipe-in-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+[data-swipe="right"] .page > *,
+[data-swipe="right"] .pa-main > * {
+  animation: swipe-in-right 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-swipe] .page > *,
+  [data-swipe] .pa-main > * {
+    animation: none;
+  }
+}

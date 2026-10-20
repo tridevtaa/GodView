@@ -35,6 +35,7 @@ import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
 import UpdatePrompt from "./UpdatePrompt.jsx";
+import { useSwipeTabs } from "../pwa/swipeTabs.js";
 
 const TABS = [
   ["home", "Home", "home"],
@@ -146,6 +147,13 @@ export default function ParentApp({ phone }) {
 
   // The noticeboard opens from Home, so Home stays lit there.
   const lit = tab === "notices" || tab === "calendar" ? "home" : tab;
+  // Phones: swipe sideways to the next or previous tab (not in a chat).
+  useSwipeTabs(
+    TABS.map(([key]) => key),
+    lit,
+    setTab,
+    tab !== "inbox"
+  );
 
   // Opening a section marks it seen; keep the previous time to show "New".
   useEffect(() => {
