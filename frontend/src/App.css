@@ -12003,7 +12003,9 @@ button.achv-tag {
   grid-template-columns: 1fr;
 }
 
-/* Beside Quick Actions, events stack so their titles have room */
+/* Beside the month (and beside Quick Actions), events stack so their
+   titles have room */
+.home-events-cal .home-events-row,
 .home-bottom-row:not(.is-solo) .home-events-row {
   flex-direction: column;
   overflow: visible;
@@ -12358,20 +12360,25 @@ button.achv-tag {
   height: calc(30px * var(--logo-scale, 1));
 }
 
-/* The parent app's header shows it exactly as the staff header does */
+/* The parent app's header: the school's logo is all it shows, so it gets
+   room (square logos with a margin came out tiny at the staff size) */
 .pa-school-logo {
   width: auto;
-  max-width: none;
-  height: calc(30px * var(--logo-scale, 1)) !important;
-  max-height: 52px;
+  max-width: 60vw;
+  height: calc(40px * var(--logo-scale, 1)) !important;
+  max-height: 56px;
   object-fit: contain;
 }
 
 @media (max-width: 760px) {
-  .logo .logo-partner,
-  .pa-school-logo {
+  .logo .logo-partner {
     height: calc(28px * var(--logo-scale, 1)) !important;
     max-height: 44px;
+  }
+
+  .pa-school-logo {
+    height: calc(40px * var(--logo-scale, 1)) !important;
+    max-height: 52px;
   }
 }
 
@@ -13078,6 +13085,28 @@ button.achv-tag {
 }
 
 /* The tabs hug their buttons rather than stretching across the page */
+/* The parent app's Homework | Syllabus switch hugs its buttons too */
+.pa-switch {
+  display: flex;
+  width: fit-content;
+}
+
+/* Results: the same columns in every exam's table */
+.pa-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.pa-table th:nth-child(2),
+.pa-table td:nth-child(2) {
+  width: 34%;
+}
+
+.pa-table.has-grades th:nth-child(3),
+.pa-table.has-grades td:nth-child(3) {
+  width: 22%;
+}
+
 .cal > .ds-tabs {
   justify-self: start;
   margin-bottom: 0;
