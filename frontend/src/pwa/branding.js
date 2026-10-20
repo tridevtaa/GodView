@@ -11,6 +11,8 @@ import { supabase } from "../supabase.js";
 // next to the logo in the public bucket (<school>/app/<logo name>/), so
 // phones can fetch them like any file. Phones read them only when the app
 // is added, so an app installed before keeps the icon it was installed with.
+// Until those files exist, each browser makes the same ones itself (data:
+// links), so the school's icon never waits on the owner.
 // Godview's own icon, title and manifest come back if the school has no
 // logo, or when the screen goes away.
 
@@ -77,6 +79,34 @@ function loadImage(src) {
 
 const exists = (url) => fetch(url, { method: "HEAD", cache: "no-store" }).then((r) => r.ok, () => false);
 
+const dataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+
+// The install file naming the school, with addresses in full (it may live
+// on another site, or in a data: link). icon(size) gives each icon's link.
+async function appManifest(school, origin, icon) {
+  const base = await fetch("/manifest.webmanifest").then((r) => r.json());
+  const name = school.short_name || school.name;
+  return {
+    ...base,
+    name: `${name} · Godview`,
+    short_name: name,
+    id: new URL(base.id || "/", origin).href,
+    start_url: new URL(base.start_url || "/", origin).href,
+    scope: new URL(base.scope || "/", origin).href,
+    icons: [
+      { src: icon(192), sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: icon(512), sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: icon(512), sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}
+
 // Owner, on the live site: make the school's home screen files if this
 // logo doesn't have them yet.
 async function makeAppFiles(school) {
@@ -89,29 +119,28 @@ async function makeAppFiles(school) {
     const { error } = await store.upload(`${folder}/icon-${size}.png`, await squareIcon(img, size, box), { contentType: "image/png", upsert: true });
     if (error) throw error;
   }
-  const base = await fetch("/manifest.webmanifest").then((r) => r.json());
-  const origin = `https://${LIVE}`;
-  const name = school.short_name || school.name;
-  const manifest = {
-    ...base,
-    name: `${name} · Godview`,
-    short_name: name,
-    // Addresses in full: this file lives on another site.
-    id: new URL(base.id || "/", origin).href,
-    start_url: new URL(base.start_url || "/", origin).href,
-    scope: new URL(base.scope || "/", origin).href,
-    icons: [
-      { src: publicUrl(`${folder}/icon-192.png`), sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: publicUrl(`${folder}/icon-512.png`), sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: publicUrl(`${folder}/icon-512.png`), sizes: "512x512", type: "image/png", purpose: "maskable" },
-    ],
-  };
+  const manifest = await appManifest(school, `https://${LIVE}`, (size) => publicUrl(`${folder}/icon-${size}.png`));
   const { error } = await store.upload(`${folder}/manifest.webmanifest`, new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" }), {
     contentType: "application/manifest+json",
     upsert: true,
   });
   if (error) throw error;
   return true;
+}
+
+// Anyone, when the stored files aren't there (the owner hasn't opened the
+// live app since the logo was set, or saving them failed): the same icons
+// and install file made in this browser, as data: links.
+async function localAppFiles(school) {
+  const img = await loadImage(logoUrl(school.logo_path));
+  const box = drawnBox(img);
+  const icons = {};
+  for (const size of [180, 192, 512]) icons[size] = await dataUrl(await squareIcon(img, size, box));
+  const manifest = await appManifest(school, window.location.origin, (size) => icons[size]);
+  return {
+    touchIcon: icons[180],
+    manifest: `data:application/manifest+json,${encodeURIComponent(JSON.stringify(manifest))}`,
+  };
 }
 
 // Remembers an element's attribute and puts it back later.
@@ -155,14 +184,20 @@ export function useSchoolBranding(school, { owner = false } = {}) {
     const folder = appFolder(sch);
     const manifest = publicUrl(`${folder}/manifest.webmanifest`);
     (owner && window.location.hostname === LIVE ? makeAppFiles(sch) : exists(manifest))
-      .then((ok) => {
-        if (!alive || !ok) return;
-        swap(document.querySelector('link[rel="apple-touch-icon"]'), "href", publicUrl(`${folder}/icon-180.png`), undo);
-        swap(document.querySelector('meta[name="apple-mobile-web-app-title"]'), "content", name || "Godview", undo);
-        swap(document.querySelector('link[rel="manifest"]'), "href", manifest, undo);
+      .catch((e) => {
+        console.warn("School home screen icon not saved:", e);
+        return false;
       })
-      .catch(() => {
-        // Not made (yet): Godview's icon stays.
+      .then(async (ok) => {
+        const files = ok ? { touchIcon: publicUrl(`${folder}/icon-180.png`), manifest } : await localAppFiles(sch);
+        if (!alive) return;
+        swap(document.querySelector('link[rel="apple-touch-icon"]'), "href", files.touchIcon, undo);
+        swap(document.querySelector('meta[name="apple-mobile-web-app-title"]'), "content", name || "Godview", undo);
+        swap(document.querySelector('link[rel="manifest"]'), "href", files.manifest, undo);
+      })
+      .catch((e) => {
+        // The logo couldn't be read: Godview's icon stays.
+        console.warn("School home screen icon not made:", e);
       });
     return () => {
       alive = false;
