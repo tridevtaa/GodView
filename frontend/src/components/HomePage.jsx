@@ -22,7 +22,9 @@ const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric"
 // person shows as a red badge on its tile (overdue fees, open requests,
 // staff waiting for access…). Uses the same remembered data as the pages,
 // so it's quick and the pages open already filled.
-export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, onGo }) {
+// Nothing shows twice: a notice is either in the banner or among the wins,
+// and the quick actions are the + menu's (computers only; phones have the +).
+export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, actions = [], onAction, onGo }) {
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
@@ -30,6 +32,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
   const staffKey = `people:employees:${school.id}:`;
   const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
+  const [notices] = useNotices(school.id);
+  const urls = useImageUrls(notices);
+  const wins = (notices ?? []).filter(isWin);
+  const plain = (notices ?? []).filter((x) => !isWin(x));
 
   useEffect(() => {
     swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
@@ -72,7 +78,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       key: "homework",
       icon: "book",
       tone: "teal",
-      label: "Homework Due",
+      label: "Homework This Week",
       value: homework === null ? undefined : thisWeek,
       badge: leads ? 0 : dueTomorrow,
       badgeLabel: `${dueTomorrow} due tomorrow`,
@@ -110,13 +116,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const attTone = attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
   const left = today?.notMarked ?? 0;
 
-  // The everyday shortcuts: whatever this person can actually do.
-  const quickActions = [
-    showToday && { key: "attendance", icon: "register", tone: "indigo", label: "Take Attendance", onClick: go("attendance") },
-    { key: "message", icon: "send", tone: "violet", label: "Send Message", onClick: go("requests") },
-    { key: "notice", icon: "notice", tone: "amber", label: "Add Notice", onClick: go("notice") },
-    leads && { key: "reports", icon: "chart", tone: "teal", label: "View Reports", onClick: go("marks") },
-  ].filter(Boolean);
+  // The + menu's actions, less what a card above already offers.
+  const quickActions = actions.filter(([key]) => !(key === "attendance" && showToday));
+  // The banner shows while there are plain notices (or they're loading).
+  const banner = notices === null || plain.length > 0;
 
   const first = (name || me || "").split(/[\s@]/)[0];
   return (
@@ -127,10 +130,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
           {greeting()}
           {first ? `, ${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""}
         </h1>
-        <p className="home-sub">Here’s what’s happening at your school today.</p>
       </header>
 
-      <div className="home-row1">
+      <div className={`home-row1${banner ? "" : " is-solo"}`}>
         <div className="home-row1-left">
           {showToday && (
             <AttendanceCard
@@ -145,7 +147,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
           )}
           <MiniCalendar onOpen={go("calendar")} />
         </div>
-        <NoticeBanner schoolId={school.id} onOpenNotices={go("notices")} />
+        {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
 
       <div className="hw-grid">
@@ -154,11 +156,11 @@ export default function HomePage({ school, me, name, role, students, loading, se
         ))}
       </div>
 
-      <AchievementsStrip schoolId={school.id} onOpenNotices={go("notices")} />
+      <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />
 
-      <div className="home-bottom-row">
-        <ComingUp schoolId={school.id} staff onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
-        <QuickActionsPanel actions={quickActions} />
+      <div className={`home-bottom-row${quickActions.length ? "" : " is-solo"}`}>
+        <ComingUp schoolId={school.id} staff withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
+        <QuickActionsPanel actions={quickActions} onAction={onAction} />
       </div>
     </div>
   );
@@ -182,10 +184,11 @@ function AttendanceCard({ tone, hot, marked, present, pct, left, onClick }) {
         )}
       </strong>
       <span className="home-att-sub">{marked === null ? "" : !marked ? "Not marked yet" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : "All classes marked"}</span>
-      <span className="home-att-bar">
-        <span className="home-att-bar-fill" style={{ width: `${pct ?? 0}%` }} />
-      </span>
-      <span className="home-att-hint">{marked ? "See the full picture" : "Mark attendance to view stats"}</span>
+      {marked > 0 && (
+        <span className="home-att-bar">
+          <span className="home-att-bar-fill" style={{ width: `${pct ?? 0}%` }} />
+        </span>
+      )}
       <button type="button" className="home-att-cta" onClick={onClick}>
         {marked ? "View attendance" : "Take attendance"}
         <Icon name="arrowRight" size={14} />
@@ -196,10 +199,8 @@ function AttendanceCard({ tone, hot, marked, present, pct, left, onClick }) {
 
 // The noticeboard, as a banner to swipe through (one notice at a time, with
 // its picture if it has one). Autoplays gently; tapping it, the arrows, or
-// a dot all work the same way phone banners do.
-function NoticeBanner({ schoolId, onOpenNotices }) {
-  const [notices] = useNotices(schoolId);
-  const urls = useImageUrls(notices);
+// a dot all work the same way phone banners do. notices: null while loading.
+function NoticeBanner({ notices, urls, onOpenNotices }) {
   const slides = (notices ?? []).slice(0, 6);
   const [idx, setIdx] = useState(0);
   useEffect(() => {
@@ -226,7 +227,6 @@ function NoticeBanner({ schoolId, onOpenNotices }) {
         </span>
         <span className="home-notice-text">
           <strong>Notice Board</strong>
-          <span className="row-sub">Latest updates and important notices</span>
         </span>
         <button type="button" className="home-section-all home-notice-cta" onClick={onOpenNotices}>
           View all <Icon name="arrowRight" size={13} />
@@ -236,10 +236,6 @@ function NoticeBanner({ schoolId, onOpenNotices }) {
       {notices === null ? (
         <div className="home-notice-slide is-empty">
           <div className="nb-skeleton" aria-busy="true" />
-        </div>
-      ) : !slides.length ? (
-        <div className="home-notice-slide is-empty">
-          <p className="row-sub">No notices yet.</p>
         </div>
       ) : (
         <div className="home-notice-wrap">
@@ -282,13 +278,12 @@ function NoticeBanner({ schoolId, onOpenNotices }) {
 
 // Students' wins, posted the same way as any notice (just tagged with a
 // category and a picture). Nothing to show yet: the section just stays
-// off the page, rather than taking up room with an empty box.
-function AchievementsStrip({ schoolId, onOpenNotices }) {
-  const [notices] = useNotices(schoolId);
-  const urls = useImageUrls(notices);
+// off the page, rather than taking up room with an empty box. viewAll:
+// only when the banner (which has its own) is off the page.
+const isWin = (x) => Boolean(x.category) && showsImage(x);
+
+function AchievementsStrip({ items, urls, viewAll, onOpenNotices }) {
   const rowRef = useRef(null);
-  if (notices === null) return null;
-  const items = notices.filter((x) => x.category && showsImage(x));
   if (!items.length) return null;
   const scroll = (dir) => rowRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
 
@@ -300,11 +295,12 @@ function AchievementsStrip({ schoolId, onOpenNotices }) {
         </span>
         <span className="home-notice-text">
           <strong>News &amp; Achievements</strong>
-          <span className="row-sub">Celebrating the success and milestones of our students</span>
         </span>
-        <button type="button" className="home-section-all" onClick={onOpenNotices}>
-          View all <Icon name="arrowRight" size={13} />
-        </button>
+        {viewAll && (
+          <button type="button" className="home-section-all" onClick={onOpenNotices}>
+            View all <Icon name="arrowRight" size={13} />
+          </button>
+        )}
       </header>
       <div className="home-news-wrap">
         {items.length > 2 && (
@@ -338,9 +334,12 @@ function AchievementsStrip({ schoolId, onOpenNotices }) {
   );
 }
 
-// Everyday shortcuts, next to Upcoming Events. actions: [{ key, icon, tone,
-// label, onClick }]. Hidden entirely when there's nothing this person can do.
-function QuickActionsPanel({ actions }) {
+// Everyday shortcuts, next to Upcoming Events: the + menu's actions, as
+// [key, label, icon]. Hidden when there's nothing this person can do, and
+// on phones, where the + beside the search does the same job.
+const ACTION_TONE = { student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
+
+function QuickActionsPanel({ actions, onAction }) {
   if (!actions.length) return null;
   return (
     <section className="home-quick">
@@ -350,16 +349,15 @@ function QuickActionsPanel({ actions }) {
         </span>
         <span className="home-notice-text">
           <strong>Quick Actions</strong>
-          <span className="row-sub">Common tasks, faster</span>
         </span>
       </header>
       <div className="home-quick-row">
-        {actions.map((a) => (
-          <button type="button" key={a.key} className="home-quick-btn" onClick={a.onClick}>
-            <span className={`home-quick-badge t-${a.tone}`}>
-              <Icon name={a.icon} size={18} weight="fill" />
+        {actions.map(([key, label, icon]) => (
+          <button type="button" key={key} className="home-quick-btn" onClick={() => onAction(key)}>
+            <span className={`home-quick-badge t-${ACTION_TONE[key] ?? "indigo"}`}>
+              <Icon name={icon} size={18} weight="fill" />
             </span>
-            <span>{a.label}</span>
+            <span>{label}</span>
           </button>
         ))}
       </div>

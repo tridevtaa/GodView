@@ -11078,12 +11078,6 @@ input[type="date"]::-webkit-date-and-time-value {
   font-weight: 500;
 }
 
-.home-sub {
-  margin: 2px 0 0;
-  color: var(--text-3);
-  font-size: 14px;
-}
-
 /* Row 1: today's attendance next to a small calendar on the left, the
    noticeboard as a banner on the right. */
 .home-row1 {
@@ -11091,6 +11085,11 @@ input[type="date"]::-webkit-date-and-time-value {
   grid-template-columns: 3fr 2fr;
   gap: 16px;
   align-items: stretch;
+}
+
+/* No plain notices: the attendance and calendar card takes the row */
+.home-row1.is-solo {
+  grid-template-columns: 1fr;
 }
 
 .home-row1-left {
@@ -11156,11 +11155,6 @@ input[type="date"]::-webkit-date-and-time-value {
   border-radius: inherit;
   background: #fff;
   transition: width 0.4s ease;
-}
-
-.home-att-hint {
-  font-size: 12px;
-  opacity: 0.85;
 }
 
 .home-att-cta {
@@ -11354,7 +11348,7 @@ input[type="date"]::-webkit-date-and-time-value {
   flex: 1;
   min-width: 0;
   min-height: 150px;
-  padding: 18px 130px 18px 22px;
+  padding: 18px 22px;
   border-radius: 20px;
   background:
     radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.4) 0 2px, transparent 3px),
@@ -11385,7 +11379,7 @@ input[type="date"]::-webkit-date-and-time-value {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  max-width: 62%;
+  max-width: 58%;
 }
 
 .home-notice-date {
@@ -11416,22 +11410,30 @@ input[type="date"]::-webkit-date-and-time-value {
   line-height: 1.5;
 }
 
+/* The picture fills the banner's right side and fades into it */
 .home-notice-pic {
   position: absolute;
-  right: 14px;
+  top: 0;
+  right: 0;
   bottom: 0;
-  width: 120px;
-  height: 128px;
-  object-fit: contain;
-  object-position: bottom;
+  width: 42%;
+  height: 100%;
+  object-fit: cover;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 35%);
+  mask-image: linear-gradient(90deg, transparent, #000 35%);
 }
 
 .home-notice-pic-icon {
+  top: auto;
+  right: 14px;
+  bottom: 14px;
   display: grid;
   place-items: center;
   width: 104px;
   height: 104px;
   border-radius: 16px;
+  -webkit-mask-image: none;
+  mask-image: none;
   background: color-mix(in srgb, var(--k-exam) 16%, transparent);
   color: var(--k-exam);
 }
@@ -11606,9 +11608,19 @@ button.achv-tag {
 /* Bottom row: Upcoming Events next to Quick Actions. */
 .home-bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1.1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.home-bottom-row.is-solo {
+  grid-template-columns: 1fr;
+}
+
+/* Beside Quick Actions, events stack so their titles have room */
+.home-bottom-row:not(.is-solo) .home-events-row {
+  flex-direction: column;
+  overflow: visible;
 }
 
 .home-events {
@@ -11728,7 +11740,8 @@ button.achv-tag {
 }
 
 .home-quick-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 12px;
 }
 
@@ -11771,17 +11784,14 @@ button.achv-tag {
   color: var(--c);
 }
 
+/* Phones have the + beside the search for these */
 @media (max-width: 760px) {
   .home-bottom-row {
     grid-template-columns: 1fr;
   }
 
-  .home-quick-row {
-    flex-wrap: wrap;
-  }
-
-  .home-quick-btn {
-    min-width: calc(50% - 6px);
+  .home-quick {
+    display: none;
   }
 }
 
@@ -11803,9 +11813,17 @@ button.achv-tag {
   .home-notice-pic {
     position: static;
     order: -1;
-    width: 100%;
-    height: 120px;
-    margin-bottom: 8px;
+    width: calc(100% + 32px);
+    height: 140px;
+    margin: -16px -16px 10px;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .home-notice-pic-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 0 8px;
   }
 
   .home-news-card {

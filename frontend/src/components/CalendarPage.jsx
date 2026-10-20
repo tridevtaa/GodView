@@ -427,7 +427,9 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
 // coming up (calendar entries in the next two months) and the latest
 // notices, as a row of cards. Hidden when there's nothing. Taps open the
 // calendar or the noticeboard.
-export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotices }) {
+// withNotices: also list notices from the last week (off where Home already
+// shows them in its banner). limit: at most this many.
+export function ComingUp({ schoolId, staff = false, withNotices = true, limit = 9, onOpenCalendar, onOpenNotices }) {
   const { items, loading } = useItems(schoolId, staff);
   const [notices] = useNotices(schoolId, staff);
   const today = todayIso();
@@ -435,11 +437,11 @@ export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotice
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   const cards = [
     ...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon).slice(0, 6),
-    ...(notices ?? [])
+    ...(withNotices ? notices ?? [] : [])
       .filter((n) => !n.event_on && (n.pinned || n.created_at >= weekAgo))
       .slice(0, 3)
       .map((n) => ({ id: `new-${n.id}`, source: "notice", title: n.title, kind: "notice", start: n.created_at.slice(0, 10), fresh: true })),
-  ];
+  ].slice(0, limit);
   if (loading || !cards.length) return null;
   return (
     <section className="home-events">
@@ -449,7 +451,6 @@ export function ComingUp({ schoolId, staff = false, onOpenCalendar, onOpenNotice
         </span>
         <span className="home-notice-text">
           <strong>Upcoming Events</strong>
-          <span className="row-sub">Don’t miss what’s coming up</span>
         </span>
         <button type="button" className="home-section-all" onClick={onOpenCalendar}>
           View calendar <Icon name="arrowRight" size={13} />
