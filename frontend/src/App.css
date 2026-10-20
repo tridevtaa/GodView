@@ -11189,10 +11189,6 @@ input[type="date"]::-webkit-date-and-time-value {
   margin: 0;
 }
 
-.home-att.is-hot .home-att-icon {
-  animation: hw-pulse-white 2.2s ease-in-out infinite;
-}
-
 .home-att-title {
   font-size: 19px;
   font-weight: 700;
@@ -14085,6 +14081,84 @@ button.achv-tag {
 @keyframes hw-pulse {
   50% {
     box-shadow: 0 0 0 7px rgba(229, 83, 61, 0);
+  }
+}
+
+/* Urgent: it needs this person now. Red, with a ring that pulses out and
+   a light sweeping across, slow enough to never strobe. */
+@keyframes urgent-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 83, 61, 0.55), 0 10px 26px rgba(229, 83, 61, 0.22);
+  }
+
+  50% {
+    box-shadow: 0 0 0 9px rgba(229, 83, 61, 0), 0 12px 30px rgba(229, 83, 61, 0.34);
+  }
+}
+
+@keyframes urgent-sweep {
+  0%,
+  55% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+
+  100% {
+    transform: translateX(320%) skewX(-18deg);
+  }
+}
+
+.hw-tile.is-urgent,
+.home-att.is-urgent {
+  position: relative;
+  overflow: hidden;
+  animation:
+    home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    urgent-ring 1.8s ease-in-out 0.5s infinite;
+}
+
+.hw-tile.is-urgent {
+  border-color: color-mix(in srgb, var(--c) 50%, transparent);
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--c2) 45%, transparent), transparent 60%),
+    linear-gradient(160deg, var(--tint), #fff 85%);
+}
+
+.hw-tile.is-urgent .hw-label {
+  font-weight: 700;
+}
+
+.hw-tile.is-urgent::after,
+.home-att.is-urgent::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: urgent-sweep 3.2s ease-in-out infinite;
+  content: "";
+  pointer-events: none;
+}
+
+.home-att.is-urgent {
+  background:
+    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
+    linear-gradient(135deg, #f2674f, #d6331e);
+}
+
+.home-att.is-urgent .home-att-icon {
+  animation: hw-pulse-white 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-tile.is-urgent,
+  .home-att.is-urgent,
+  .home-att.is-urgent .home-att-icon {
+    animation: none;
+  }
+
+  .hw-tile.is-urgent::after,
+  .home-att.is-urgent::after {
+    display: none;
   }
 }
 
