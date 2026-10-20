@@ -7,10 +7,12 @@ import Icon from "./Icon.jsx";
 
 // A tile: coloured icon, one big number, one word. badge: what's waiting
 // there (a red count); hot: something new, the tile glows a little;
-// urgent: it needs this person now, so it turns red and pulses.
-export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, urgent = false, onClick, index = 0 }) {
+// urgent: it needs this person now, so it turns red. sub: the latest
+// update there, in a line under the word. big: twice as wide (Home makes
+// the tiles that need attention big).
+export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, urgent = false, sub, big = false, onClick, index = 0 }) {
   return (
-    <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
+    <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}${big ? " is-big" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
       <span className="hw-icon">
         <Icon name={icon} size={20} weight="fill" />
       </span>
@@ -21,6 +23,7 @@ export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, 
       )}
       <strong className="hw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
       <span className="hw-label">{label}</span>
+      {sub && <span className="hw-sub">{sub}</span>}
     </button>
   );
 }
