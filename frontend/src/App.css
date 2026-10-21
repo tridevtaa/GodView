@@ -17183,3 +17183,82 @@ button.class-face:hover {
   margin-top: 14px;
   color: var(--danger);
 }
+
+/* The class teacher, top right of the student card: a small round photo
+   like the student's, and their name under it */
+.ig-hero {
+  position: relative;
+}
+
+.ig-incharge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  max-width: 96px;
+  text-align: center;
+}
+
+.ig-incharge-photo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  padding: 2px;
+  border-radius: 50%;
+  background: conic-gradient(from 210deg, var(--brand-soft), var(--brand) 55%, var(--brand-soft));
+}
+
+.ig-incharge-photo .ig-photo-img {
+  font-size: 16px;
+  border-width: 2px;
+}
+
+.ig-incharge-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.ig-incharge-text span {
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.ig-incharge-text strong {
+  overflow: hidden;
+  max-width: 96px;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Leave room for it beside the name */
+.ig-hero:has(.ig-incharge) .ig-head > div:first-child {
+  padding-right: 92px;
+}
+
+/* The star on the class teacher's face in the Teachers row */
+.class-face-photo {
+  position: relative;
+  display: block;
+}
+
+.class-face-star {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: #f0b429;
+  color: #fff;
+}

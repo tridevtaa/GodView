@@ -32,21 +32,25 @@ export function setHapticsOn(on) {
   }
 }
 
+// iPhone: a fresh hidden switch, clicked and removed. It must run right
+// inside the tap (not after a timer), or iOS gives no feedback.
 let iosSwitch = null;
 function iosTick() {
-  if (!iosSwitch) {
-    const label = document.createElement("label");
-    label.setAttribute("aria-hidden", "true");
-    label.style.cssText = "position:fixed;left:-100px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.setAttribute("switch", "");
-    input.tabIndex = -1;
-    label.appendChild(input);
-    document.body.appendChild(label);
-    iosSwitch = label;
+  const label = document.createElement("label");
+  label.setAttribute("aria-hidden", "true");
+  label.style.display = "none";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.setAttribute("switch", "");
+  label.appendChild(input);
+  document.head.appendChild(label);
+  iosSwitch = label;
+  try {
+    label.click();
+  } finally {
+    label.remove();
+    iosSwitch = null;
   }
-  iosSwitch.click();
 }
 
 let last = 0;
@@ -60,8 +64,10 @@ export function haptic(kind = "tap") {
     if (typeof navigator.vibrate === "function" && !isIOS()) {
       navigator.vibrate(VIBRATE[kind] ?? VIBRATE.tap);
     } else if (isIOS()) {
+      // The first tick now, inside the tap; any more just after
+      iosTick();
       const n = IOS_TICKS[kind] ?? 1;
-      for (let i = 0; i < n; i++) setTimeout(iosTick, i * 90);
+      for (let i = 1; i < n; i++) setTimeout(iosTick, i * 110);
     }
   } catch {
     // Never let a buzz break a tap
