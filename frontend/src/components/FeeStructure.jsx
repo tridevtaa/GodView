@@ -260,7 +260,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
       })}
 
       {fees.length > 0 && (
-        <section className="fc-dues">
+        <section className="fc-dues navy-card">
           <div>
             <span className="fc-dues-label">Whole school, per year</span>
             <strong>

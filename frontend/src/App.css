@@ -4379,16 +4379,41 @@ a:hover {
   justify-content: center;
 }
 
+/* The navy card, the landing page's colour: a total and one action.
+   Used for the school's fee total, a student's dues and Collect fee. */
+.navy-card {
+  border-radius: var(--r-lg);
+  background: var(--brand-edge);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+
+.navy-card strong,
+.navy-card .is-due,
+.navy-card .is-paid {
+  color: #fff;
+}
+
+.navy-card .row-sub {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.navy-card .btn-primary {
+  background: #fff;
+  color: var(--brand-edge);
+}
+
+.navy-card .btn-primary:hover:not(:disabled) {
+  background: var(--brand-soft);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
 .fc-dues {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 24px;
   padding: 22px 28px;
-  border-radius: var(--r-lg);
-  background: var(--brand-edge);
-  color: #fff;
-  box-shadow: var(--shadow-md);
 }
 
 .fc-dues > div {
@@ -4408,12 +4433,6 @@ a:hover {
 
 .fc-dues .row-sub {
   margin: 0;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.fc-dues .btn-primary {
-  background: #fff;
-  color: var(--brand-edge);
 }
 
 @media (max-width: 720px) {
@@ -9016,6 +9035,7 @@ input[type="date"]::-webkit-date-and-time-value {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  padding: 18px 22px;
 }
 
 .ledger-summary > div {
@@ -12706,9 +12726,8 @@ button.achv-tag {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  padding: 14px 16px;
 }
 
 .collect-who .inbox-photo {
@@ -12739,14 +12758,6 @@ button.achv-tag {
 
 .collect-due strong {
   font-size: 18px;
-}
-
-.collect-due .is-due {
-  color: var(--warning);
-}
-
-.collect-due .is-paid {
-  color: var(--success);
 }
 
 .collect-hint {

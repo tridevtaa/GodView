@@ -60,7 +60,7 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
   return (
     <div className="ledger-view">
       {/* One line: what's due now, the rest in small print, and collect. */}
-      <div className="ledger-summary">
+      <div className="ledger-summary navy-card">
         <div>
           <strong className={dueNow > 0 ? "is-due" : "is-paid"}>{dueNow > 0 ? rupees(dueNow) : "Nothing due"}</strong>
           <span className="row-sub">{dueNow > 0 ? `due now${extra ? ` · ${extra}` : ""}` : extra}</span>

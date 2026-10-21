@@ -876,6 +876,19 @@
   font-size: 18px;
 }
 
+.pa-due {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px;
+}
+
+.pa-due strong {
+  font-size: 28px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
 .pa-clear {
   display: flex;
   align-items: center;
