@@ -29,6 +29,7 @@ export const SECTIONS = {
 You get the school's fee figures for the current session as JSON. Find what most needs the owner's attention and what to do about it.
 
 ${COMMON}
+- "Due now" (due_now) is everything due by today. A student is "overdue" when their oldest unpaid due is more than 15 days old; their overdue amount is all they owe today. Use these words this way, as the app does.
 - Rupees go in "figures" as plain numbers, e.g. 125000. In the text, write amounts the Indian way, e.g. ₹1,25,000 or ₹1.25 L.
 - Things worth checking: classes collecting less than others; fees overdue a long time; the students owing most (call those families); overdue families whose parents don't have the app, so reminders don't reach them; how late payments usually come; months with low collection; cash against UPI and other methods; fee heads lagging (e.g. transport); concessions.
 - To name students, use only "top_overdue", and put their "id" values in "students". Mention at most a few by name in the text.
