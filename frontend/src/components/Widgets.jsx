@@ -56,20 +56,28 @@ export function arrangeTiles(raw) {
 
 // The card at the top of Home: the one thing this person should do next
 // (attendance for class teachers, pending fees for the office, homework or
-// fees for parents), in full colour; red and softly pulsing when urgent.
-// pct: a thin bar under the text. cta: the button's words.
-export function PriorityCard({ tone, urgent = false, icon, title, sub, hint = "", pct = null, cta, onClick, trend = null }) {
+// fees for parents). Navy for everyone, like the landing page; tone only
+// colours the status chip, and the card softly pulses when urgent.
+// label: small words above the big title. status: a short chip in the
+// tone's colour. pct: a thin bar under the text. cta: the button's words.
+export function PriorityCard({ tone, urgent = false, icon, label = "", title, status = "", sub, hint = "", pct = null, cta, onClick, trend = null }) {
   const head = (
     <>
       <span className="home-att-icon">
         <Icon name={icon} size={26} weight="fill" />
       </span>
       <span className="home-att-text">
+        {label && <span className="home-att-label">{label}</span>}
         <strong className="home-att-title">{title}</strong>
-        {sub && <span className="home-att-sub">{sub}</span>}
+        {(status || sub) && (
+          <span className="home-att-line">
+            {status && <span className={`home-att-status t-${tone}`}>{status}</span>}
+            {sub && <span className="home-att-sub">{sub}</span>}
+          </span>
+        )}
         {hint && (
           <span className="home-att-hint">
-            <Icon name="sparkle" size={12} weight="fill" />
+            <Icon name="sparkle" size={13} weight="fill" />
             {hint}
           </span>
         )}
@@ -90,7 +98,7 @@ export function PriorityCard({ tone, urgent = false, icon, title, sub, hint = ""
   // With a trend (computers only): the same heading as a strip, the
   // numbers and chart under it.
   return (
-    <div className={`home-att t-${tone}${urgent ? " is-urgent" : ""}${trend ? " has-trend" : ""}`}>
+    <div className={`home-att${label ? " has-label" : ""}${urgent ? " is-urgent" : ""}${trend ? " has-trend" : ""}`}>
       {trend ? <div className="home-att-head">{head}</div> : head}
       {trend && <TrendPanel trend={trend} />}
     </div>

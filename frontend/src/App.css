@@ -11240,9 +11240,9 @@ input[type="date"]::-webkit-date-and-time-value {
   padding: 18px 20px;
   border-radius: 22px;
   background:
-    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.28), transparent 55%),
-    linear-gradient(135deg, var(--c2), var(--c));
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--c) 14%, transparent);
+    radial-gradient(70% 140% at 100% 0%, rgba(91, 104, 196, 0.45), transparent 60%),
+    var(--brand-edge);
+  box-shadow: 0 6px 20px rgba(29, 35, 102, 0.22);
   color: #fff;
   animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -11254,7 +11254,7 @@ input[type="date"]::-webkit-date-and-time-value {
   height: 38px;
   margin-bottom: 4px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .home-att-text {
@@ -11293,10 +11293,51 @@ input[type="date"]::-webkit-date-and-time-value {
   letter-spacing: -0.01em;
 }
 
-.home-att-sub {
-  margin-top: -4px;
+/* Small words above a big number: "Fees pending", then "₹26 L" */
+.home-att-label {
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
-  opacity: 0.9;
+  font-weight: 600;
+}
+
+.home-att.has-label .home-att-title {
+  margin-top: -4px;
+  font-size: 26px;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-att-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.home-att-sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* The status in the tone's colour, a dot before the words */
+.home-att-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px 4px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--c2) 20%, transparent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-att-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c2);
 }
 
 .home-att-bar {
@@ -11326,7 +11367,7 @@ input[type="date"]::-webkit-date-and-time-value {
   border: 0;
   border-radius: 999px;
   background: #fff;
-  color: var(--c);
+  color: var(--brand-edge);
   font: inherit;
   font-weight: 700;
   font-size: 13px;
@@ -11893,6 +11934,10 @@ button.achv-tag {
 
   .home-roomy .home-att-title {
     font-size: 22px;
+  }
+
+  .home-roomy .home-att.has-label .home-att-title {
+    font-size: 32px;
   }
 
   .home-roomy .home-att-sub {
@@ -14210,9 +14255,6 @@ button.achv-tag {
 }
 
 .home-att.is-urgent {
-  background:
-    radial-gradient(90% 120% at 100% 0%, rgba(255, 255, 255, 0.22), transparent 55%),
-    linear-gradient(135deg, #ef7b93, #d9466a 55%, #b8407c);
   animation:
     home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both,
     urgent-glow 3.2s ease-in-out 0.5s infinite;
@@ -15179,7 +15221,7 @@ button.achv-tag {
   gap: 32px;
   align-items: center;
   padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .home-trend.is-loading {
@@ -15197,9 +15239,9 @@ button.achv-tag {
 }
 
 .trend-label {
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   font-weight: 600;
-  opacity: 0.88;
 }
 
 .trend-value-big {
@@ -15210,17 +15252,26 @@ button.achv-tag {
   font-variant-numeric: tabular-nums;
 }
 
+/* Against last time: green up, coral down, an arrow before the words */
 .trend-note {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
-  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
   font-weight: 600;
 }
 
+.trend-note.is-up {
+  color: #8fe3a8;
+}
+
+.trend-note.is-down {
+  color: #ffab9c;
+}
+
 .trend-extra {
+  color: rgba(255, 255, 255, 0.65);
   font-size: 13px;
-  opacity: 0.85;
 }
 
 .trend-chart {
@@ -15234,16 +15285,16 @@ button.achv-tag {
 }
 
 .trend-grid {
-  stroke: rgba(255, 255, 255, 0.18);
+  stroke: rgba(255, 255, 255, 0.12);
   stroke-dasharray: 3 4;
 }
 
 .trend-base {
-  stroke: rgba(255, 255, 255, 0.45);
+  stroke: rgba(255, 255, 255, 0.3);
 }
 
 .trend-axis {
-  fill: rgba(255, 255, 255, 0.82);
+  fill: rgba(255, 255, 255, 0.65);
   font-size: 11.5px;
   font-weight: 500;
 }
@@ -15262,12 +15313,12 @@ button.achv-tag {
 }
 
 .trend-area {
-  fill: rgba(255, 255, 255, 0.16);
+  fill: rgba(139, 151, 230, 0.22);
 }
 
 .trend-line-prev {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.6);
+  stroke: #8b97e6;
   stroke-width: 2;
   stroke-dasharray: 5 5;
   stroke-linejoin: round;
@@ -15275,7 +15326,7 @@ button.achv-tag {
 
 .trend-dot {
   fill: #fff;
-  stroke: var(--c);
+  stroke: var(--brand-edge);
   stroke-width: 2;
 }
 
@@ -15286,7 +15337,7 @@ button.achv-tag {
 }
 
 .trend-end.is-prev {
-  fill: rgba(255, 255, 255, 0.8);
+  fill: #a9b2ee;
   font-weight: 600;
 }
 
@@ -15295,7 +15346,7 @@ button.achv-tag {
 }
 
 .trend-bar {
-  fill: rgba(255, 255, 255, 0.7);
+  fill: #8b97e6;
 }
 
 .trend-bar.is-today {
@@ -16246,12 +16297,10 @@ button.ai-chip:hover {
   align-items: flex-start;
   gap: 6px;
   margin-top: 2px;
-  padding: 5px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.35;
+  color: #c9cff7;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .home-att-hint .icon {

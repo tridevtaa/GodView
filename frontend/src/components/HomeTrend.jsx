@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Icon from "./Icon.jsx";
 import { attendanceOverview, loadAttendance, paymentsSince } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupees, rupeesShort } from "../data/money.js";
@@ -342,7 +343,12 @@ export function TrendPanel({ trend }) {
       <div className="trend-stat">
         <span className="trend-label">{label}</span>
         <strong className="trend-value-big">{value}</strong>
-        {note && <span className={`trend-note is-${note.dir}`}>{note.text}</span>}
+        {note && (
+          <span className={`trend-note is-${note.dir}`}>
+            {note.dir !== "flat" && <Icon name={note.dir === "up" ? "arrowUp" : "arrowDown"} size={13} />}
+            {note.text}
+          </span>
+        )}
         {extra && <span className="trend-extra">{extra}</span>}
       </div>
       {chart.kind === "line" ? <LineChart {...chart} /> : <BarChart {...chart} />}
