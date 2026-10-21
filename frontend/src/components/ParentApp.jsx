@@ -651,7 +651,6 @@ function ChildHero({ child, onTab }) {
   return (
     <div className="profile-page pa-profile">
       <header className="ig-hero" style={{ "--tint": tintFor(child) }}>
-        <ClassTeacherBadge teachers={teachers} />
         <div className="ig-top">
           <div className="ig-photo">
             <Photo person={child} className="ig-photo-img" />
@@ -661,6 +660,7 @@ function ChildHero({ child, onTab }) {
               <h1 className="ig-name">{child.name}</h1>
               {child.admission_no && <p className="ig-id">#{child.admission_no}</p>}
             </div>
+            <ClassTeacherBadge teachers={teachers} />
             <ul className="ig-stats">
               {stats.map(([label, value, tone, to]) => (
                 <li key={label}>
