@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 import { Tile } from "./Widgets.jsx";
+import { loadHomeLayout, saveHomeLayout } from "../data/homeLayout.js";
 
 // Home's widgets, arranged by each person like an iPhone home screen:
 // long-press any widget (or tap Edit Home) and they wiggle; drag to
 // reorder, the minus removes one, the pill makes a tile wider or smaller,
-// + Add widget brings one back. Saved in this browser (per device).
+// + Add widget brings one back. Saved to the person's account, so it
+// follows them across devices, with a copy in the browser for a quick start.
 //
 // Sizes: tiles are small (one column) or wide (two); sections are wide
 // (half the row on computers) or full. Phones have two columns, so wide
@@ -31,7 +33,38 @@ const write = (key, value) => {
 // Returns which show (in order), which are off, and how to change them.
 export function useHomeLayout(storeKey, meta) {
   const [saved, setSaved] = useState(() => read(storeKey));
-  useEffect(() => setSaved(read(storeKey)), [storeKey]);
+  const upload = useRef(null);
+
+  // The account's copy wins when it's newer (changed on another device);
+  // a layout only this browser has is sent up. Checked again on return
+  // to the app.
+  useEffect(() => {
+    setSaved(read(storeKey));
+    let live = true;
+    const sync = () =>
+      loadHomeLayout(storeKey).then(
+        (row) => {
+          if (!live) return;
+          const local = read(storeKey);
+          if (row?.layout && (!local || (row.layout.at ?? 0) > (local.at ?? 0))) {
+            write(storeKey, row.layout);
+            setSaved(row.layout);
+          } else if (!row && local) {
+            saveHomeLayout(storeKey, local).catch(() => {});
+          }
+        },
+        () => {} // offline, or not set up yet: the browser copy does
+      );
+    sync();
+    const onShow = () => document.visibilityState === "visible" && sync();
+    document.addEventListener("visibilitychange", onShow);
+    return () => {
+      live = false;
+      document.removeEventListener("visibilitychange", onShow);
+    };
+  }, [storeKey]);
+  // Send the last change when leaving
+  useEffect(() => () => upload.current?.flush(), [storeKey]);
 
   const keys = meta.map((m) => m.key);
   const present = new Set(keys);
@@ -43,9 +76,18 @@ export function useHomeLayout(storeKey, meta) {
   const off = keys.filter((k) => !visible.includes(k));
   const sizes = saved?.sizes ?? {};
 
-  const save = (next) => {
+  const save = (change) => {
+    const next = change && { ...change, at: Date.now() };
     setSaved(next);
     write(storeKey, next);
+    // A drag makes many small moves: send the last one, shortly after
+    clearTimeout(upload.current?.timer);
+    const send = () => {
+      clearTimeout(upload.current?.timer);
+      upload.current = null;
+      saveHomeLayout(storeKey, next).catch(() => {});
+    };
+    upload.current = { timer: setTimeout(send, 800), flush: send };
   };
   // shownSizes: the sizes as they look now, kept with the first change so
   // nothing resizes on its own once someone has arranged Home
