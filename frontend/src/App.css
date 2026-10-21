@@ -14989,9 +14989,9 @@ button.achv-tag {
   color: #fff;
 }
 
-/* WhatsApp: its own logo on white */
+/* WhatsApp: like its iPhone app icon, the white bubble on its green */
 .profile-page .ig-act[href*="wa.me"] {
-  background: var(--surface);
+  background: linear-gradient(180deg, #5fd568, #25b33b);
 }
 
 /* Fees overdue: the amount in red too */
