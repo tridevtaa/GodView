@@ -15435,3 +15435,377 @@ button.achv-tag {
     padding-left: 0;
   }
 }
+
+/* Transport: what needs fixing, at the top */
+.tr-attention {
+  padding: 18px 28px;
+  border-left: 4px solid var(--warning);
+}
+
+.tr-attention-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.tr-attention-h .icon {
+  color: var(--warning);
+}
+
+.tr-attention-n {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+}
+
+.tr-attention ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.tr-attention li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tr-attention li::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.tr-attention li.is-red::before {
+  background: var(--danger);
+}
+
+.tr-attention .link-btn {
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+}
+
+/* Buses */
+.bus-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 20px;
+}
+
+.bus-h .icon {
+  color: var(--brand);
+}
+
+.bus-empty {
+  margin: 0;
+  padding: 0 28px 24px;
+}
+
+.bus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+  padding: 0 28px 24px;
+}
+
+.bus-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.bus-card:hover {
+  border-color: color-mix(in srgb, var(--brand) 40%, transparent);
+  box-shadow: var(--shadow-sm);
+}
+
+.bus-card.is-retired {
+  opacity: 0.6;
+}
+
+.bus-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Like a number plate */
+.bus-plate {
+  padding: 3px 10px;
+  border: 1.5px solid var(--text);
+  border-radius: 6px;
+  background: #fff8d6;
+  color: #111;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.bus-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.bus-status.is-repair {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.bus-status.is-retired {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.bus-name {
+  margin-top: 4px;
+  font-size: 16px;
+}
+
+.bus-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.bus-line .icon {
+  flex: none;
+  color: var(--text-3);
+}
+
+.bus-papers {
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bus-papers.is-red {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.bus-papers.is-amber {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.bus-papers.is-ok {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.bus-papers.is-none {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.bus-modal {
+  width: min(640px, 100%);
+}
+
+.bus-wide {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.bus-hint {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bus-hint.is-red {
+  color: var(--danger);
+}
+
+.bus-hint.is-amber {
+  color: var(--warning);
+}
+
+.bus-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.bus-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bus-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand);
+}
+
+.bus-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bus-notes textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+/* A route's bus, start times and crew */
+.tr-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  padding: 0 28px 12px;
+}
+
+.tr-meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.tr-meta-field select,
+.tr-meta-field input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tr-meta-field select {
+  min-width: 200px;
+}
+
+.tr-meta-crew {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.tr-crew {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.tr-warn {
+  margin: 0 28px 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fc-mini-freq.is-full {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.tr-stop-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+}
+
+.tr-move {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .tr-attention,
+  .tr-meta,
+  .bus-grid {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tr-warn {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+
+  .tr-meta-crew {
+    margin-left: 0;
+  }
+
+  .tr-meta-field select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .tr-meta-field:first-child {
+    flex-basis: 100%;
+  }
+}
