@@ -24,7 +24,7 @@ import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
-import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
+import { HapticsMenuItem, NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
 import { onNotificationOpen, syncPush } from "../pwa/push.js";
 import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
@@ -643,6 +643,7 @@ function ParentMenu({ phone, onPassword }) {
             Change password
           </button>
           <NotifyMenuItem />
+          <HapticsMenuItem />
           <button role="menuitem" className="menu-item" onClick={logOut}>
             <Icon name="logout" />
             Log out

@@ -5,6 +5,7 @@ import { PaymentForm } from "./FeeLedger.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -48,6 +49,7 @@ export default function CollectFee({ school, students, student: given = null, on
 
   async function save(form) {
     const saved = await recordPayment(student.id, form);
+    haptic("success");
     onPaid?.();
     // Fresh dues so the receipt names exactly what this paid.
     const { dues, payments } = await studentLedger(student.id);

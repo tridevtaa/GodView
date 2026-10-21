@@ -5,6 +5,7 @@ import { gradeRank } from "./GradeFilter.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
 const EXAMS = ["Unit Test 1", "Unit Test 2", "Periodic Test 1", "Periodic Test 2", "Half Yearly", "Term 1", "Term 2", "Final Exam"];
@@ -176,6 +177,7 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
     setError("");
     try {
       onSaved(await addDatesheetEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form }));
+      haptic("success");
     } catch {
       setError("Couldn’t save that exam. Check you teach this class and try again.");
       setBusy(false);

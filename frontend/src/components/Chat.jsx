@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { answerRequest, cancelParentRequest, loadThread, markThreadRead, sendMessage } from "../data/api.js";
 import Icon from "./Icon.jsx";
 import { onFresh } from "../pwa/fresh.js";
+import { haptic } from "../pwa/haptics.js";
 
 const KIND = { leave: "Leave", certificate: "Certificate", message: "Message" };
 const STATUS = {
@@ -125,6 +126,7 @@ export default function Chat({ studentId, viewer, me, canSend = true, canAnswer 
     setError("");
     try {
       const saved = await sendMessage(studentId, body);
+      haptic("success");
       setItems((x) => {
         const list = x ?? [];
         if (list.some((m) => m.id === saved.id)) return list.filter((m) => m.id !== temp.id);

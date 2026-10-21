@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import Icon from "./Icon.jsx";
 import { Tile } from "./Widgets.jsx";
 import { loadHomeLayout, saveHomeLayout } from "../data/homeLayout.js";
+import { haptic } from "../pwa/haptics.js";
 
 // Home's widgets, arranged by each person like an iPhone home screen:
 // long-press any widget (or tap Edit Home) and they wiggle; drag to
@@ -258,7 +259,7 @@ export default function EditableHome({ layout, items }) {
       if (!d.armed) {
         d.timer = setTimeout(() => {
           d.armed = true;
-          navigator.vibrate?.(8);
+          haptic("lift");
         }, 160);
       }
       drag.current = d;
@@ -284,7 +285,7 @@ export default function EditableHome({ layout, items }) {
       timer: setTimeout(() => {
         press.current = null;
         swallow.current = true; // until the finger lifts (onPointerUpCapture)
-        navigator.vibrate?.(12);
+        haptic("lift");
         window.getSelection?.()?.removeAllRanges();
         setEditing(true);
       }, 520),
@@ -328,6 +329,7 @@ export default function EditableHome({ layout, items }) {
     if (!d.started) return;
     swallow.current = true;
     releaseSoon();
+    haptic("select");
     // Settle into its place from where it was let go
     const el = blockAt(d.key);
     if (el) {
