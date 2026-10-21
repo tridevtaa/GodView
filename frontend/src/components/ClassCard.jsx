@@ -27,19 +27,47 @@ export function useClassTeachers(studentId, sessionId) {
   return rows;
 }
 
-// The class teacher, for the top-right corner of the student card: a
-// small round photo like the student's, and their name under it.
+// The class teacher, for the top-right corner of the student card: their
+// round photo inside a thick navy ring, with "Class teacher" curved along
+// the top of the ring and their name along the bottom, like a seal.
+let badgeIds = 0;
 export function ClassTeacherBadge({ teachers }) {
+  const [id] = useState(() => `ct${++badgeIds}`);
   const lead = (teachers ?? []).find((t) => t.is_class_teacher);
   if (!lead) return null;
+  const name = shortName(lead.name).toUpperCase();
+  // Text sits in the middle of the ring (radius 40 of a 100 box): the top
+  // line's baseline just inside, the bottom line's just outside.
+  const fs = name.length > 12 ? 8 : 9;
+  const top = 40 - fs * 0.36;
+  const bottom = 40 + fs * 0.36;
   return (
-    <div className="ig-incharge" title={`Class teacher: ${lead.name}`}>
+    <div className="ig-incharge" title={`Class teacher: ${lead.name}`} aria-label={`Class teacher: ${lead.name}`}>
+      <svg className="ig-incharge-ring" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#3a45a8" />
+            <stop offset="1" stopColor="#1d2366" />
+          </linearGradient>
+          <path id={`${id}t`} d={`M ${50 - top} 50 A ${top} ${top} 0 0 1 ${50 + top} 50`} />
+          <path id={`${id}b`} d={`M ${50 - bottom} 50 A ${bottom} ${bottom} 0 0 0 ${50 + bottom} 50`} />
+        </defs>
+        <circle cx="50" cy="50" r="40.5" fill="none" stroke={`url(#${id}g)`} strokeWidth="19" />
+        <text className="ig-incharge-arc" fontSize="8.4">
+          <textPath href={`#${id}t`} startOffset="50%" textAnchor="middle">
+            CLASS TEACHER
+          </textPath>
+        </text>
+        <text className="ig-incharge-arc is-name" fontSize={fs}>
+          <textPath href={`#${id}b`} startOffset="50%" textAnchor="middle">
+            {name}
+          </textPath>
+        </text>
+        <circle cx="10" cy="50" r="1.6" className="ig-incharge-dot" />
+        <circle cx="90" cy="50" r="1.6" className="ig-incharge-dot" />
+      </svg>
       <span className="ig-incharge-photo">
         <Photo person={lead} className="ig-photo-img" />
-      </span>
-      <span className="ig-incharge-text">
-        <span>Class teacher</span>
-        <strong>{shortName(lead.name)}</strong>
       </span>
     </div>
   );
