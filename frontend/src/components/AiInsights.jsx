@@ -27,16 +27,6 @@ const COPY = {
     person: "Open",
   },
 };
-const OPEN_LABEL = {
-  overdue: "See who owes",
-  class: "See who owes",
-  structure: "Open fee structure",
-  routes: "Go to routes",
-  buses: "Go to buses",
-  map: "Open the map",
-  students: "Go to students",
-  marks: "Enter marks",
-};
 const ERRORS = {
   limit: "This month’s analyses are used up. The last one is shown.",
   busy: "The AI is busy right now. Try again in a minute.",
@@ -147,62 +137,6 @@ function statText(it) {
   return Math.round(v).toLocaleString("en-IN");
 }
 
-function InsightCard({ it, index, copy, opens, onOpen, onPerson }) {
-  const [why, setWhy] = useState(false);
-  const stat = statText(it);
-  const lineOf = (p) => p.line ?? [p.class, p.overdue != null ? rupees(p.overdue) : null].filter(Boolean).join(" · ");
-  const canOpen = opens.includes(it.open);
-  const whyText = it.why ?? it.detail;
-  return (
-    <article className={`ai-big is-${it.priority}`} style={{ "--d": `${index * 60}ms` }}>
-      {stat ? (
-        <p className="ai-stat">
-          <strong>{stat}</strong>
-          <span>{it.stat_label}</span>
-        </p>
-      ) : (
-        <span className="ai-priority">{it.priority === "high" ? "Needs attention" : it.priority === "medium" ? "Worth a look" : "Good to know"}</span>
-      )}
-      <p className="ai-big-title">{it.title}</p>
-      <p className="ai-action">
-        <Icon name="arrowRight" size={14} />
-        {it.action}
-      </p>
-      {it.people?.length > 0 && (
-        <div className="ai-chips">
-          {it.people.slice(0, 3).map((p) =>
-            copy.person && onPerson ? (
-              <button key={p.id} type="button" className="ai-chip" onClick={() => onPerson(p.id)} title={`${copy.person}: ${p.name} · ${lineOf(p)}`}>
-                {p.name.split(" ")[0]}
-              </button>
-            ) : (
-              <span key={p.id} className="ai-chip" title={lineOf(p)}>
-                {p.name.split(" ")[0]}
-              </span>
-            )
-          )}
-        </div>
-      )}
-      {(whyText || canOpen) && (
-        <div className="ai-big-foot">
-          {whyText && (
-            <button type="button" className="link-btn ai-why-btn" onClick={() => setWhy((v) => !v)} aria-expanded={why}>
-              Why {why ? "−" : "+"}
-            </button>
-          )}
-          {canOpen && (
-            <button type="button" className="link-btn ai-open" onClick={() => onOpen(it.open, it)}>
-              {OPEN_LABEL[it.open]}
-              <Icon name="arrowRight" size={13} />
-            </button>
-          )}
-        </div>
-      )}
-      {why && whyText && <p className="ai-why">{whyText}</p>}
-    </article>
-  );
-}
-
 const UNIT_ICON = { rupees: "rupee", count: "users", percent: "chart", days: "calendar", km: "pin" };
 
 // The AI card, "What AI thinks can help": closed, a short line per insight
@@ -251,6 +185,7 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
       <Icon name="chevronDown" size={18} className="ai-card-chev" />
     </>
   );
+  const lineOf = (p) => p.line ?? [p.class, p.overdue != null ? rupees(p.overdue) : null].filter(Boolean).join(" · ");
 
   return (
     <section className={`ai-card${open ? " is-open" : ""}`}>
@@ -278,32 +213,68 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
         </button>
       ) : (
         <>
-          <button type="button" className="ai-card-tap ai-card-head" onClick={toggle} aria-expanded="true">
-            {head}
-          </button>
-          <div className="ai-card-body">
-            {ins.error && <p className="notice notice-error ai-key-error">{ins.error}</p>}
-            {loading ? (
-              <div className="ai-key-grid" aria-busy="true">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="ai-big is-skeleton" />
-                ))}
-              </div>
-            ) : items.length ? (
-              <div className="ai-key-grid">
-                {items.map((it, i) => (
-                  <InsightCard key={i} it={it} index={i} copy={copy} opens={opens} onOpen={onOpen} onPerson={onPerson} />
-                ))}
-              </div>
-            ) : (
-              <p className="ai-empty">{insight ? "Nothing stands out right now." : "No analysis yet."}</p>
-            )}
+          <div className="ai-card-top">
+            <button type="button" className="ai-card-tap ai-card-head" onClick={toggle} aria-expanded="true">
+              {head}
+            </button>
             {!ins.running && insight !== undefined && (
-              <button type="button" className="link-btn ai-refresh" onClick={ins.refresh}>
-                <Icon name="refresh" size={14} /> {insight ? "Analyse again" : "Analyse now"}
+              <button type="button" className="icon-btn-sm ai-card-refresh" onClick={ins.refresh} aria-label="Analyse again" title="Analyse again">
+                <Icon name="refresh" size={16} />
               </button>
             )}
           </div>
+          {ins.error && <p className="notice notice-error ai-key-error">{ins.error}</p>}
+          {loading ? (
+            <div className="ai-rows" aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="ai-row-item is-skeleton" />
+              ))}
+            </div>
+          ) : items.length ? (
+            <ol className="ai-rows">
+              {items.map((it, i) => (
+                <li key={i} className={`ai-row-item is-${it.priority}`}>
+                  <span className="ai-mini-icon">
+                    <Icon name={UNIT_ICON[it.stat_unit] ?? "sparkle"} size={15} weight="bold" />
+                  </span>
+                  <div className="ai-row-body">
+                    {statText(it) && (
+                      <p className="ai-row-stat">
+                        <strong>{statText(it)}</strong> {it.stat_label}
+                      </p>
+                    )}
+                    <p className="ai-row-title">{it.title}</p>
+                    {opens.includes(it.open) ? (
+                      <button type="button" className="ai-row-action" onClick={() => onOpen(it.open, it)}>
+                        {it.action}
+                        <Icon name="arrowRight" size={13} />
+                      </button>
+                    ) : (
+                      <p className="ai-row-action is-text">{it.action}</p>
+                    )}
+                    {it.people?.length > 0 && (
+                      <p className="ai-row-people">
+                        {it.people.slice(0, 3).map((p, j) => (
+                          <span key={p.id}>
+                            {j > 0 && " · "}
+                            {copy.person && onPerson ? (
+                              <button type="button" className="link-btn" onClick={() => onPerson(p.id)} title={`${copy.person}: ${lineOf(p)}`}>
+                                {p.name.split(" ")[0]}
+                              </button>
+                            ) : (
+                              p.name.split(" ")[0]
+                            )}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="ai-empty ai-card-empty">{insight ? "Nothing stands out right now." : "No analysis yet. Tap ↻ to run one."}</p>
+          )}
         </>
       )}
     </section>
