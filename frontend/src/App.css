@@ -5123,6 +5123,10 @@ button.profile-stat:hover {
   background: var(--surface);
   box-shadow: var(--shadow-lg);
   list-style: none;
+  /* A long list scrolls on its own, not the page behind it */
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .place-menu button {
