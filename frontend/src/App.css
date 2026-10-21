@@ -17011,6 +17011,14 @@ button.class-face:hover {
   }
 }
 
+/* Half or full width only means something where two sections fit side
+   by side, so the pill only shows there */
+@media (max-width: 1099px) {
+  .hw-resize.is-section-size {
+    display: none;
+  }
+}
+
 @media (max-width: 760px) {
   .hw-block.hide-phone {
     display: none;
