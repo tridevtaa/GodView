@@ -16453,3 +16453,151 @@ button.ai-chip:hover {
     margin-left: 16px;
   }
 }
+
+/* The open AI card: a plain list, thin lines between, three lines each */
+.ai-card-top {
+  display: flex;
+  align-items: center;
+}
+
+.ai-card-top .ai-card-tap {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-card-refresh {
+  flex: none;
+  margin-right: 12px;
+}
+
+.ai-card.is-open .ai-card-top {
+  border-bottom: 1px solid color-mix(in srgb, #8b5cf6 14%, transparent);
+}
+
+.ai-card > .ai-key-error {
+  margin: 12px 20px 0;
+}
+
+.ai-rows {
+  margin: 0;
+  padding: 0 20px;
+  list-style: none;
+}
+
+.ai-row-item {
+  display: flex;
+  gap: 12px;
+  padding: 14px 0;
+  --accent: var(--brand);
+}
+
+.ai-row-item + .ai-row-item {
+  border-top: 1px solid var(--border);
+}
+
+.ai-row-item.is-high {
+  --accent: var(--danger);
+}
+
+.ai-row-item.is-medium {
+  --accent: var(--warning);
+}
+
+.ai-row-item.is-skeleton {
+  height: 72px;
+  margin: 8px 0;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.ai-row-item .ai-mini-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.ai-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ai-row-stat {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ai-row-stat strong {
+  margin-right: 2px;
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-row-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ai-row-action {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-row-action.is-text {
+  color: var(--text-2);
+  cursor: default;
+}
+
+.ai-row-people {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.ai-row-people .link-btn {
+  padding: 0;
+  font-size: inherit;
+}
+
+.ai-card-empty {
+  padding: 14px 20px;
+}
+
+@media (max-width: 760px) {
+  .ai-rows {
+    padding: 0 16px;
+  }
+
+  .ai-card-refresh {
+    margin-right: 8px;
+  }
+}
+
+/* The arrow stays right after the action's last word when it wraps */
+.ai-row-action {
+  display: inline;
+}
+
+.ai-row-action .icon {
+  margin-left: 4px;
+  vertical-align: -2px;
+}
