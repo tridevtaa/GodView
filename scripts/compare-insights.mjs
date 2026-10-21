@@ -151,7 +151,7 @@ function html(pack, results) {
     if (r.error) return `<section class="col"><h2>${esc(r.label)}</h2><p class="err">${esc(r.error)}</p></section>`;
     const cards = r.checked.insights
       .map(
-        (it) => `<li class="${esc(it.priority)}"><b>${esc(it.title)}</b><p>${esc(it.detail)}</p><p class="act">→ ${esc(it.action)}</p>${
+        (it) => `<li class="${esc(it.priority)}"><p class="stat"><b>${esc(it.stat_value)}</b> ${esc(it.stat_unit)} · ${esc(it.stat_label)}</p><b>${esc(it.title)}</b><p class="act">→ ${esc(it.action)}</p><p class="who">${esc(it.why)}</p>${
           it.people.length ? `<p class="who">${it.people.map((p) => esc(`${p.name} (${p.line})`)).join(", ")}</p>` : ""
         }</li>`
       )
@@ -159,7 +159,7 @@ function html(pack, results) {
     return `<section class="col"><h2>${esc(r.label)}</h2>
       <p class="meta">${esc(r.id)}<br>${r.seconds}s · ${r.inT.toLocaleString()} in / ${r.outT.toLocaleString()} out · $${r.cost.toFixed(4)} (₹${(r.cost * 84).toFixed(2)})<br>
       ${r.checked.insights.length} kept · <span class="${r.checked.dropped ? "bad" : ""}">${r.checked.dropped} dropped for wrong numbers</span></p>
-      <p class="sum">${esc(r.checked.summary)}</p><ol>${cards}</ol>
+      <ol>${cards}</ol>
       ${r.checked.hints?.length ? `<p class="meta" style="margin-top:12px">Hints</p><ul class="hints">${r.checked.hints.map((h) => `<li>${esc(h.slot)}${h.target ? ` (${esc(h.target)})` : ""}: ${esc(h.text)}</li>`).join("")}</ul>` : ""}
       <p class="score">Your score: correct numbers __/5 · specific advice __/5 · would act on it __/5</p></section>`;
   };
@@ -170,7 +170,7 @@ h1{margin:0 0 4px;font-size:22px}.top{color:#555;margin:0 0 20px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;align-items:start}
 .col{background:#fff;border-radius:16px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 h2{margin:0 0 6px;font-size:17px}.meta{color:#666;font-size:12px;margin:0 0 10px}.bad{color:#c2412d;font-weight:700}
-.sum{font-weight:600}ol{padding:0;margin:0;list-style:none;display:grid;gap:10px}
+.stat{margin:0 0 2px;color:#6d3fd8}ol{padding:0;margin:0;list-style:none;display:grid;gap:10px}
 li{border:1px solid #e4e4e8;border-left:4px solid #999;border-radius:12px;padding:10px 12px}
 li.high{border-left-color:#c2412d}li.medium{border-left-color:#a8670a}li.low{border-left-color:#5b68c4}
 li p{margin:4px 0}.act{font-weight:600}.who{color:#555;font-size:12.5px}.err{color:#c2412d}

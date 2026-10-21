@@ -1,4 +1,5 @@
 import {
+  ArrowClockwise,
   ArrowDown,
   ArrowLeft,
   ArrowRight,
@@ -118,6 +119,7 @@ const PHOSPHOR = {
   arrowUp: ArrowUp,
   arrowDown: ArrowDown,
   sparkle: Sparkle,
+  refresh: ArrowClockwise,
   lock: LockSimple,
   users: UsersThree,
   rupee: CurrencyInr,

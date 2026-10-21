@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       school_id,
       section,
       model: message.model ?? MODEL,
-      result: { summary: result.summary, insights: result.insights, hints: result.hints },
+      result: { insights: result.insights, hints: result.hints },
       dropped: result.dropped,
       input_tokens: message.usage?.input_tokens ?? null,
       output_tokens: message.usage?.output_tokens ?? null,
