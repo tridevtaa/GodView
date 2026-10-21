@@ -30,7 +30,8 @@ const rename = (row) => {
 
 // Fee status for tiles and totals from a fee_student_totals row: "due" when
 // something is due by today, "overdue" when it's been due for over 15 days,
-// "paid" when everything due so far is paid.
+// "paid" when everything due so far is paid. ai_fees_pack() in the database
+// uses the same rule; change both together.
 export function feeFields(t, today = new Date()) {
   const dueNow = Number(t.due_now) || 0;
   const billed = Number(t.billed) || 0;
