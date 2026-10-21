@@ -415,6 +415,12 @@ export async function classTeachersFor(studentId, sessionId) {
   return withPhotoUrls(rows ?? []);
 }
 
+// Parents: the first names of their child's classmates this session.
+export async function classmatesForParent(studentId, sessionId) {
+  const rows = must(await supabase.rpc("classmates_for_parent", { student: studentId, session: sessionId }));
+  return (rows ?? []).map((r, i) => ({ name: r.first_name, key: i }));
+}
+
 export async function listAssignments(schoolId) {
   return must(await supabase.from("teacher_classes").select("*").eq("school_id", schoolId).order("class"));
 }

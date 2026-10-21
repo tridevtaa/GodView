@@ -13,6 +13,7 @@ import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
 import { Hint, useInsights } from "./AiInsights.jsx";
 import Icon, { WhatsAppLogo } from "./Icon.jsx";
+import ClassCard from "./ClassCard.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 const longDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -565,14 +566,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   );
 }
 
-// The student's class: its teachers (class teacher first) and classmates,
-// each classmate a tap away. Classmates come from the session's students
-// already loaded; teachers from the class's assignments.
-const CLASSMATES_SHOWN = 11;
-
+// The student's class (see ClassCard). Classmates come from the
+// session's students already loaded; teachers from the class's assignments.
 function StudentClass({ person, sessionId, students, onOpenStudent }) {
   const [teachers, setTeachers] = useState(null);
-  const [all, setAll] = useState(false);
   useEffect(() => {
     if (!sessionId) return;
     let live = true;
@@ -584,54 +581,17 @@ function StudentClass({ person, sessionId, students, onOpenStudent }) {
     };
   }, [person.id, sessionId]);
 
+  if (!person.class) return null;
   const mates = students
     .filter((p) => p.id !== person.id && p.class === person.class && (p.section ?? "") === (person.section ?? "") && p.status !== "left")
     .sort((a, b) => a.name.localeCompare(b.name));
-  if (!person.class || (teachers !== null && !teachers.length && !mates.length)) return null;
-  const shown = all ? mates : mates.slice(0, CLASSMATES_SHOWN);
-  const className = `${gradeLabel(person.class)}${person.section ? ` ${person.section}` : ""}`;
-
   return (
-    <section className="profile-group profile-facts g-class">
-      <h3 className="facts-title">{className}</h3>
-      {teachers === null ? (
-        <div className="class-skeleton" aria-busy="true" />
-      ) : (
-        teachers.length > 0 && (
-          <ul className="class-teachers">
-            {teachers.map((t) => (
-              <li key={t.id ?? t.name}>
-                <Photo person={t} className="class-photo" />
-                <span className="class-teacher-text">
-                  <strong>{t.name}</strong>
-                  <span className="row-sub">{t.is_class_teacher ? "Class teacher" : t.designation || "Teacher"}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
-      )}
-      {mates.length > 0 && (
-        <>
-          <p className="class-mates-head">Classmates · {mates.length}</p>
-          <ul className="class-mates">
-            {shown.map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => onOpenStudent?.(p.id)} disabled={!onOpenStudent}>
-                  <Photo person={p} className="class-photo is-small" />
-                  <span>{p.name.split(" ")[0]}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {mates.length > CLASSMATES_SHOWN && (
-            <button type="button" className="link-btn class-mates-more" onClick={() => setAll((v) => !v)}>
-              {all ? "Show fewer" : `Show all ${mates.length}`}
-            </button>
-          )}
-        </>
-      )}
-    </section>
+    <ClassCard
+      title={`${gradeLabel(person.class)}${person.section ? ` ${person.section}` : ""}`}
+      teachers={sessionId ? teachers : []}
+      mates={mates}
+      onOpenMate={onOpenStudent}
+    />
   );
 }
 

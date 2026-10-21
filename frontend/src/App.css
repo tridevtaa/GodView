@@ -16754,86 +16754,123 @@ button.ai-chip:hover {
   color: var(--ai-soft);
 }
 
-/* Student page: the class card, its teachers then its classmates */
-.profile-page .g-class { --c: #1d2366; --tint: #eceefa; }
-
-.class-teachers {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px 24px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.class-teachers li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.class-teacher-text {
+/* A student's class (staff student page, parents' Home): the class
+   teacher on a soft row, then rows of faces that swipe sideways. */
+.class-card {
+  --c: #1d2366;
   display: flex;
   flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+}
+
+.class-card .facts-title {
+  margin: 0;
+}
+
+.class-lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--brand-soft);
+}
+
+.class-lead-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
-.class-teacher-text strong {
+.class-lead-text strong {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 15px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.class-teacher-text .row-sub {
-  margin: 0;
+.class-lead-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.class-photo {
+.class-lead-tag .icon {
+  color: #f0b429;
+}
+
+.class-card .ig-act-msg {
   flex: none;
   width: 40px;
   height: 40px;
+  border: none;
   border-radius: 50%;
-  object-fit: cover;
-  font-size: 15px;
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: 0 1px 3px rgba(29, 35, 102, 0.1);
 }
 
-/* No photo: the initials, centred in the circle */
-.class-photo.placeholder {
-  display: grid;
-  place-items: center;
-  color: var(--text-2);
-  font-weight: 700;
+/* Rows never grow past the card; the faces swipe inside */
+.class-card,
+.cc-row {
+  min-width: 0;
+  max-width: 100%;
 }
 
-.class-photo.is-small {
-  width: 44px;
-  height: 44px;
-}
-
-.class-mates-head {
-  margin: 18px 0 10px;
+.cc-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
   color: var(--text-3);
   font-size: 12px;
   font-weight: 600;
 }
 
-.class-teachers + .class-mates-head {
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+.cc-row-head .link-btn {
+  font-size: 12px;
 }
 
-.class-mates {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 12px 8px;
-  margin: 0;
+/* One row that swipes; See all wraps it into a grid */
+.class-faces {
+  display: flex;
+  gap: 4px;
+  margin: 0 -4px;
   padding: 0;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
   list-style: none;
 }
 
-.class-mates button {
+.class-faces::-webkit-scrollbar {
+  display: none;
+}
+
+.class-faces.is-all {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 10px 4px;
+  overflow: visible;
+}
+
+.class-faces li {
+  flex: none;
+  width: 72px;
+  scroll-snap-align: start;
+}
+
+.class-faces.is-all li {
+  width: auto;
+}
+
+.class-face {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -16847,30 +16884,47 @@ button.ai-chip:hover {
   font: inherit;
   font-size: 12px;
   font-weight: 500;
+}
+
+button.class-face {
   cursor: pointer;
 }
 
-.class-mates button:hover:not(:disabled) {
+button.class-face:hover {
   background: var(--surface-2);
 }
 
-.class-mates button:disabled {
-  cursor: default;
-}
-
-.class-mates button span {
+.class-face-name {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.class-mates-more {
-  margin-top: 10px;
+.class-photo {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 15px;
+}
+
+.class-photo.is-lead {
+  width: 52px;
+  height: 52px;
+}
+
+/* No photo: the initials, centred in the circle */
+.class-photo.placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  font-weight: 700;
 }
 
 .class-skeleton {
-  height: 40px;
-  border-radius: 12px;
+  height: 52px;
+  border-radius: 16px;
   background: var(--surface-2);
 }
