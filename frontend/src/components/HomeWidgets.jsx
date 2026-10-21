@@ -393,7 +393,7 @@ export default function EditableHome({ layout, items }) {
                 </button>
               )}
               {editing && !dragKey && next && (
-                <button type="button" className="hw-ctl hw-resize" onClick={() => layout.resize(key, next, shownSizes)}>
+                <button type="button" className={`hw-ctl hw-resize${it.kind === "section" ? " is-section-size" : ""}`} onClick={() => layout.resize(key, next, shownSizes)}>
                   {it.kind === "tile" ? SIZE_WORD[size] : SECTION_WORD[size]}
                 </button>
               )}
