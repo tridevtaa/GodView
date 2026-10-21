@@ -215,20 +215,7 @@ export default function ParentApp({ phone }) {
 
         {child && (
           <>
-            {/* The child, like the staff student page: round photo, name,
-                class (section quieter), today's attendance. No card. */}
-            <section className="pa-hero" style={{ "--tint": tintFor(child) }}>
-              <Photo person={child} className="pa-hero-photo" />
-              <div className="pa-hero-text">
-                <h1>{child.name}</h1>
-                <p className="pa-class">
-                  {child.class && gradeLabel(child.class)}
-                  {child.section && <span className="pa-section"> · {child.section}</span>}
-                </p>
-                {child.admission_no && <p className="pa-adm">#{child.admission_no}</p>}
-                <TodayAttendance key={child.id} child={child} />
-              </div>
-            </section>
+            <ChildHero key={child.id} child={child} onTab={setTab} />
 
             <nav className="ig-tabs pa-tabs" aria-label="Sections">
               {TABS.map(([v, l, icon]) => (
@@ -525,22 +512,95 @@ const NewTag = () => <span className="pa-new-tag">New</span>;
 
 // "Today: Present" and this month's tally, on the child's card.
 const MARK_TEXT = { present: "Present", absent: "Absent", late: "Late", leave: "On leave" };
-function TodayAttendance({ child }) {
+// The child at the top, like the staff student page: the soft card with a
+// round photo, name, three small figures (each opens its section), then
+// the class with today's attendance, and ways to reach the school.
+function ChildHero({ child, onTab }) {
   const [days, setDays] = useState(null);
+  const [result, setResult] = useState(null);
+  const [fees, setFees] = useState(null);
   useEffect(() => {
-    attendanceMonth(child.id, today()).then(setDays, () => setDays([]));
-  }, [child.id]);
-  if (!days) return null;
-  const t = days.find((d) => d.day === today());
-  const present = days.filter((d) => d.status === "present" || d.status === "late").length;
+    let off = false;
+    attendanceMonth(child.id, today()).then((d) => !off && setDays(d), () => !off && setDays([]));
+    if (child.session) {
+      listResults(child.id, child.session.id).then(
+        (rows) => {
+          if (off) return;
+          // The most recently entered exam's overall percentage.
+          const latest = [...rows].sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)))[0]?.exam;
+          const scored = rows.filter((r) => r.exam === latest && r.marks !== null && r.max_marks);
+          const max = scored.reduce((t, r) => t + Number(r.max_marks), 0);
+          if (max) setResult({ pct: Math.round((scored.reduce((t, r) => t + Number(r.marks), 0) / max) * 100), exam: latest });
+        },
+        () => {}
+      );
+    }
+    parentFees(child.id, child.school_id).then((f) => !off && setFees(f), () => !off && setFees(false));
+    return () => {
+      off = true;
+    };
+  }, [child.id, child.school_id, child.session]);
+
+  const now = today();
+  const present = (days ?? []).filter((d) => d.status === "present" || d.status === "late").length;
+  const att = days?.length ? Math.round((present / days.length) * 100) : null;
+  const mark = (days ?? []).find((d) => d.day === now);
+  const dueNow = fees ? fees.dues.filter((d) => Number(d.balance) > 0.009 && (!d.due_date || d.due_date <= now)) : [];
+  const dueTotal = dueNow.reduce((t, d) => t + Number(d.balance), 0);
+  const overdue = dueNow.some((d) => d.due_date && d.due_date < now);
+  const stats = [
+    ["Attendance", att === null ? "–" : `${att}%`, "green", "home"],
+    ["Result", result ? `${result.pct}%` : "–", "violet", "results"],
+    fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
+  ].filter(Boolean);
+  const schoolPhone = child.school?.phone;
+
   return (
-    <div className="pa-att">
-      <span className={`pa-att-today is-${t?.status ?? "none"}`}>Today: {t ? MARK_TEXT[t.status] : "Not marked yet"}</span>
-      {days.length > 0 && (
-        <span className="row-sub">
-          Present {present} of {days.length} {days.length === 1 ? "day" : "days"} this month
-        </span>
-      )}
+    <div className="profile-page pa-profile">
+      <header className="ig-hero" style={{ "--tint": tintFor(child) }}>
+        <div className="ig-top">
+          <div className="ig-photo">
+            <Photo person={child} className="ig-photo-img" />
+          </div>
+          <div className="ig-head">
+            <div>
+              <h1 className="ig-name">{child.name}</h1>
+              {child.admission_no && <p className="ig-id">#{child.admission_no}</p>}
+            </div>
+            <ul className="ig-stats">
+              {stats.map(([label, value, tone, to]) => (
+                <li key={label}>
+                  <button type="button" className={`ig-stat t-${tone}`} onClick={() => onTab(to)}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="ig-bio-row">
+          <div className="ig-bio">
+            <p className="ig-bio-main">
+              <span>
+                {child.class && gradeLabel(child.class)}
+                {child.section && <span className="ig-section"> · {child.section}</span>}
+              </span>
+              {days && <span className={`pa-att-today is-${mark?.status ?? "none"}`}>Today: {mark ? MARK_TEXT[mark.status] : "Not marked yet"}</span>}
+            </p>
+          </div>
+          <div className="ig-actions">
+            <button className="ig-act ig-act-msg" onClick={() => onTab("inbox")} aria-label="Message the school" title="Message the school">
+              <Icon name="message" size={18} />
+            </button>
+            {schoolPhone && (
+              <a className="ig-act" href={`tel:${schoolPhone}`} aria-label="Call the school" title="Call the school">
+                <Icon name="phone" size={18} />
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
     </div>
   );
 }
