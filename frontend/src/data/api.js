@@ -1028,6 +1028,18 @@ export async function updateStop(id, fields) {
   must(await supabase.from("bus_stops").update(fields).eq("id", id));
 }
 
+// Puts several students on one bus stop at once. Returns the fields to
+// show on each student.
+export async function putOnStop(schoolId, studentIds, route, stop) {
+  const fields = { uses_bus: true, bus_stop_id: stop.id, transport_route: route.name, pickup_point: stop.name };
+  const { private: priv } = splitFields(fields);
+  await savePrivate(
+    schoolId,
+    studentIds.map((id) => ({ student_id: id, school_id: schoolId, ...priv }))
+  );
+  return fields;
+}
+
 export async function deleteStop(id) {
   must(await supabase.from("bus_stops").delete().eq("id", id));
 }
