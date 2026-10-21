@@ -17,3 +17,8 @@ supabase/*.local.sql
 supabase/*.local.json
 supabase/.temp/
 scripts/*.local.json
+
+# Scripts: their packages, keys and outputs (real student names)
+scripts/node_modules/
+scripts/.env.local
+scripts/out/
