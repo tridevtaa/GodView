@@ -548,7 +548,8 @@ export default function App() {
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
     ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
-    ...(role === "teacher" ? [["datesheet", "Add exam", "exam"]] : []),
+    // Exams: teachers for their classes, the office for any class
+    ...(role === "teacher" || (isAdmin && !viewOnly) ? [["datesheet", "Add exam", "exam"]] : []),
     ["notice", "Post notice", "notice"],
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
@@ -697,7 +698,7 @@ export default function App() {
               students={current}
               me={user.email}
               dsIsAdmin={isAdmin}
-              dsReadOnly={leads}
+              dsReadOnly={isPrincipal || viewOnly}
               dsCreateAt={quick.kind === "datesheet" ? quick.at : 0}
               seesAttendance={seesAttendance}
               attIsAdmin={leads}
