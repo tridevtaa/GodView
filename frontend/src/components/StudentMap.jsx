@@ -185,7 +185,17 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
         </button>
       )}
       <div className={`smap-map${placing ? " is-placing" : ""}`}>
-        <LeafletMap groups={groups} home={home} school={school} selected={selected} placing={placing} onSelect={setSelected} onPlace={onPlace} compact={compact} />
+        <LeafletMap
+          groups={groups}
+          home={home}
+          school={school}
+          selected={selected}
+          placing={placing}
+          onSelect={setSelected}
+          onPlace={onPlace}
+          compact={compact}
+          onSchoolClick={canEdit && !compact ? () => setPlacing({ kind: "school" }) : null}
+        />
 
         <div className="smap-top">
           <nav className="segmented smap-seg" aria-label="Transport">
@@ -571,7 +581,9 @@ function previewView(m, pts, home) {
 // compact: the small preview card, centred on the school a little closer in
 // (fitting every village would zoom a short card far out).
 const PREVIEW_ZOOM = 11;
-function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace, compact = false }) {
+// onSchoolClick: clicking the school's pin starts moving it (staff who
+// can edit, on the full map).
+function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace, compact = false, onSchoolClick = null }) {
   const compactRef = useRef(compact);
   compactRef.current = compact;
   const el = useRef(null);
@@ -582,7 +594,8 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
   const points = useRef([]);
   const homeRef = useRef(home);
   const cb = useRef({});
-  cb.current = { onSelect, onPlace, placing };
+  cb.current = { onSelect, onPlace, placing, onSchoolClick };
+  const movable = Boolean(onSchoolClick);
 
   useEffect(() => {
     const m = L.map(el.current, { zoomControl: false, minZoom: 5, maxZoom: 18, center: [30.27, 77.05], zoom: 11 });
@@ -693,13 +706,15 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
       ? `<img src="${logo}" alt="" />`
       : `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`;
     schoolMarker.current = L.marker([home.lat, home.lng], {
-      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school-pin" title="${name}"><span class="smap-school${logo ? " has-logo" : ""}">${badge}</span></span>`, iconSize: [44, 54], iconAnchor: [22, 62] }),
+      icon: L.divIcon({ className: "smap-icon", html: `<span class="smap-school-pin${movable ? " is-movable" : ""}" title="${movable ? `${name}: click to move the pin` : name}"><span class="smap-school${logo ? " has-logo" : ""}">${badge}</span></span>`, iconSize: [44, 54], iconAnchor: [22, 62] }),
       // A pin pointing at the school's spot, so it stays put at any zoom.
       // The tip stops just short of the spot so the number of a village there
       // stays readable, and it sits above every village pin.
       zIndexOffset: 100000,
-      interactive: false,
+      interactive: movable,
+      keyboard: movable,
     }).addTo(map.current);
+    if (movable) schoolMarker.current.on("click", () => cb.current.onSchoolClick?.());
     const centre = L.circleMarker([home.lat, home.lng], { radius: 4, weight: 2, color: "#fff", fillColor: "#1d2366", fillOpacity: 1, interactive: false }).addTo(map.current);
     rings.current.push(centre);
     for (const km of [...RINGS].reverse()) {
@@ -726,7 +741,7 @@ function LeafletMap({ groups, home, school, selected, placing, onSelect, onPlace
       }).addTo(map.current);
       rings.current.push(circle, label);
     }
-  }, [home, school.name, school.logo_path, groups]);
+  }, [home, school.name, school.logo_path, groups, movable]);
 
   return <div ref={el} className="smap-leaflet" style={{ cursor: placing ? "crosshair" : undefined }} />;
 }

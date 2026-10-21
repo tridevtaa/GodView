@@ -15809,3 +15809,13 @@ button.achv-tag {
     flex-basis: 100%;
   }
 }
+
+/* The school's pin on the full map: click to move it */
+.smap-school-pin.is-movable {
+  cursor: pointer;
+  transition: translate 0.15s;
+}
+
+.smap-school-pin.is-movable:hover {
+  translate: 0 -3px;
+}
