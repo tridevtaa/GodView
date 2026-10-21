@@ -14979,6 +14979,16 @@ button.achv-tag {
   box-shadow: 0 1px 3px rgba(29, 35, 102, 0.1);
 }
 
+.profile-page .ig-act-del {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.profile-page .ig-act-del:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
 .profile-page .ig-act-msg {
   background: var(--brand-soft);
   color: var(--brand);
