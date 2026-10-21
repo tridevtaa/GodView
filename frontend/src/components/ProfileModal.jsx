@@ -255,7 +255,7 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
           )}
           {callNo && (
             <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp parent" title="WhatsApp parent">
-              <WhatsAppLogo size={30} />
+              <WhatsAppLogo size={26} />
             </a>
           )}
           {canEdit && (
@@ -405,7 +405,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                   )}
                   {callNo && (
                     <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
-                      <WhatsAppLogo size={30} />
+                      <WhatsAppLogo size={26} />
                     </a>
                   )}
                   {canEdit && (
