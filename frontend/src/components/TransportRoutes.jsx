@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { addRoute, addStop, deleteRoute, deleteStop, listAreas, listBuses, putOnStop, reorderStops, updateRoute, updateStop } from "../data/api.js";
 import { BusForm, BusList, busAlerts, label as busLabel, plate } from "./Buses.jsx";
+import { Hint } from "./AiInsights.jsx";
 import { aliasIndex, matchArea } from "../data/areas.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { peek, swr } from "../data/cache.js";
@@ -12,7 +13,7 @@ import Icon from "./Icon.jsx";
 // above), each with a pickup and drop time. Anything that needs fixing
 // (papers running out, too many students for the seats, a route with no
 // bus, students with no stop) is listed at the top.
-export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged }) {
+export default function TransportRoutes({ school, routes, students, ins = null, onChanged, onStudentsChanged }) {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const areasKey = `areas:${school.id}`;
@@ -151,7 +152,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       {busesMissing ? (
         <p className="notice">Buses aren’t set up in the database yet (npx supabase db push).</p>
       ) : (
-        buses !== null && <BusList buses={buses} routes={routes} onEdit={setEditing} onAdd={() => setEditing("new")} />
+        buses !== null && <BusList buses={buses} routes={routes} ins={ins} onEdit={setEditing} onAdd={() => setEditing("new")} />
       )}
       {editing && (
         <BusForm
@@ -185,7 +186,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       </form>
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={setEditing} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={setEditing} ins={ins} />
       ))}
     </>
   );
@@ -199,7 +200,7 @@ const clock = (t) => {
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 };
 
-function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus }) {
+function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus, ins }) {
   const [adding, setAdding] = useState(false);
   const [filling, setFilling] = useState(null); // stop id getting students
   const [editingStop, setEditingStop] = useState(null); // stop id being edited
@@ -262,6 +263,7 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
         </div>
       </header>
 
+      <Hint ins={ins} slot="route" target={route.name} className="ai-hint-card" />
       {buses && (
         <div className="tr-meta">
           <label className="tr-meta-field">

@@ -10,6 +10,7 @@ import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.js
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
+import { hintFor, useInsights } from "./AiInsights.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -84,6 +85,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // admins, today's attendance for the principal and class teachers,
   // homework for other teachers.
   const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
+  // Premium: the AI's one line for today, on the fees card
+  const insF = useInsights(school, "fees", isAdmin);
 
   // On computers the top card is bigger: a few numbers and this period
   // against the last one.
@@ -226,6 +229,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
           title: loading ? "…" : due > 0 ? `${rupeesShort(due)} fees pending` : "All fees collected",
           sub: loading ? "" : overdue ? `${n(overdue)} students overdue` : due > 0 ? `${n(owing.length)} students owe fees` : "Nothing pending",
           cta: "View fees",
+          hint: hintFor(insF, "home"),
           onClick: go("fees"),
         }
       : prio === "attendance"

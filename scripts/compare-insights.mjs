@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Compares AI models on the real Fee insights task, side by side. Same
+// Compares AI models on the real insights task, side by side. Same
 // instructions, answer format and number check as the live feature
-// (supabase/functions/_shared/fees-insights.js). Writes nothing to the
+// (supabase/functions/_shared/insights.js). Writes nothing to the
 // database.
 //
 //   cd scripts && npm install          (once)
-//   node scripts/compare-insights.mjs --school <school id>
-//   node scripts/compare-insights.mjs --pack scripts/out/fees-pack.local.json
+//   node scripts/compare-insights.mjs --school <school id> [--section fees|transport|results]
+//   node scripts/compare-insights.mjs --pack scripts/out/fees-pack.local.json [--section fees]
 //
 // Keys go in scripts/.env.local (git-ignored), one per line:
 //   SUPABASE_SECRET_KEY=...   (only for --school: reads the fee figures)
@@ -22,7 +22,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FEES_SYSTEM, INSIGHT_SCHEMA, checkInsights, userMessage } from "../supabase/functions/_shared/fees-insights.js";
+import { SECTIONS, checkInsights, schemaFor, userMessage } from "../supabase/functions/_shared/insights.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(here, "out");
@@ -53,6 +53,8 @@ const arg = (name) => {
   const i = process.argv.indexOf(name);
   return i > -1 ? process.argv[i + 1] : null;
 };
+const SECTION = arg("--section") ?? "fees";
+if (!SECTIONS[SECTION]) throw new Error(`--section must be one of: ${Object.keys(SECTIONS).join(", ")}`);
 
 // ----------------------------------------------------------------- figures ---
 
@@ -63,16 +65,16 @@ async function loadPack() {
   if (!school) throw new Error("Usage: node scripts/compare-insights.mjs --school <school id>  (or --pack <file>)");
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!key) throw new Error("Add SUPABASE_SECRET_KEY to scripts/.env.local (Project Settings → API Keys → secret).");
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ai_fees_pack`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${SECTIONS[SECTION].pack}`, {
     method: "POST",
     headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({ p_school: school }),
   });
-  if (!res.ok) throw new Error(`Couldn't read the fee figures (${res.status}): ${await res.text()}`);
+  if (!res.ok) throw new Error(`Couldn't read the figures (${res.status}): ${await res.text()}`);
   const pack = await res.json();
   if (pack?.error) throw new Error(`No figures: ${pack.error}`);
   fs.mkdirSync(OUT, { recursive: true });
-  fs.writeFileSync(path.join(OUT, "fees-pack.local.json"), JSON.stringify(pack, null, 2));
+  fs.writeFileSync(path.join(OUT, `${SECTION}-pack.local.json`), JSON.stringify(pack, null, 2));
   return pack;
 }
 
@@ -103,9 +105,9 @@ async function runAnthropic(c, pack) {
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
-    system: FEES_SYSTEM,
-    output_config: { format: { type: "json_schema", schema: INSIGHT_SCHEMA } },
-    messages: [{ role: "user", content: userMessage(pack) }],
+    system: SECTIONS[SECTION].system,
+    output_config: { format: { type: "json_schema", schema: schemaFor(SECTION) } },
+    messages: [{ role: "user", content: userMessage(SECTION, pack) }],
   });
   if (message.stop_reason === "refusal" || message.stop_reason === "max_tokens") throw new Error(`Stopped: ${message.stop_reason}`);
   const text = message.content.find((b) => b.type === "text")?.text ?? "";
@@ -122,10 +124,10 @@ async function runOpenRouter(c, pack, model) {
       model: model.id,
       max_tokens: 16000,
       messages: [
-        { role: "system", content: FEES_SYSTEM },
-        { role: "user", content: userMessage(pack) },
+        { role: "system", content: SECTIONS[SECTION].system },
+        { role: "user", content: userMessage(SECTION, pack) },
       ],
-      response_format: { type: "json_schema", json_schema: { name: "fee_insights", strict: true, schema: INSIGHT_SCHEMA } },
+      response_format: { type: "json_schema", json_schema: { name: `${SECTION}_insights`, strict: true, schema: schemaFor(SECTION) } },
       // Student names are in the figures: only hosts that keep nothing
       provider: { data_collection: "deny", zdr: true, require_parameters: true },
       usage: { include: true },
@@ -150,7 +152,7 @@ function html(pack, results) {
     const cards = r.checked.insights
       .map(
         (it) => `<li class="${esc(it.priority)}"><b>${esc(it.title)}</b><p>${esc(it.detail)}</p><p class="act">→ ${esc(it.action)}</p>${
-          it.people.length ? `<p class="who">${it.people.map((p) => esc(`${p.name} (${p.class})`)).join(", ")}</p>` : ""
+          it.people.length ? `<p class="who">${it.people.map((p) => esc(`${p.name} (${p.line})`)).join(", ")}</p>` : ""
         }</li>`
       )
       .join("");
@@ -158,9 +160,10 @@ function html(pack, results) {
       <p class="meta">${esc(r.id)}<br>${r.seconds}s · ${r.inT.toLocaleString()} in / ${r.outT.toLocaleString()} out · $${r.cost.toFixed(4)} (₹${(r.cost * 84).toFixed(2)})<br>
       ${r.checked.insights.length} kept · <span class="${r.checked.dropped ? "bad" : ""}">${r.checked.dropped} dropped for wrong numbers</span></p>
       <p class="sum">${esc(r.checked.summary)}</p><ol>${cards}</ol>
+      ${r.checked.hints?.length ? `<p class="meta" style="margin-top:12px">Hints</p><ul class="hints">${r.checked.hints.map((h) => `<li>${esc(h.slot)}${h.target ? ` (${esc(h.target)})` : ""}: ${esc(h.text)}</li>`).join("")}</ul>` : ""}
       <p class="score">Your score: correct numbers __/5 · specific advice __/5 · would act on it __/5</p></section>`;
   };
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Fee insights comparison</title>
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(SECTIONS[SECTION].title)} comparison</title>
 <style>
 body{font:14px/1.45 system-ui,sans-serif;margin:0;padding:24px;background:#f6f6f9;color:#1a1a2e}
 h1{margin:0 0 4px;font-size:22px}.top{color:#555;margin:0 0 20px}
@@ -171,17 +174,18 @@ h2{margin:0 0 6px;font-size:17px}.meta{color:#666;font-size:12px;margin:0 0 10px
 li{border:1px solid #e4e4e8;border-left:4px solid #999;border-radius:12px;padding:10px 12px}
 li.high{border-left-color:#c2412d}li.medium{border-left-color:#a8670a}li.low{border-left-color:#5b68c4}
 li p{margin:4px 0}.act{font-weight:600}.who{color:#555;font-size:12.5px}.err{color:#c2412d}
+.hints{padding-left:18px;margin:4px 0;font-size:12.5px;color:#5b3bb8}.hints li{border:0;padding:2px 0}
 .score{margin-top:12px;padding:8px 10px;background:#f3f4fa;border-radius:10px;font-size:12.5px}
 </style></head><body>
-<h1>Fee insights: model comparison</h1>
-<p class="top">${esc(pack.session)} · ${pack.students} students · figures as of ${esc(pack.today)} · same instructions for every model. Dropped = an insight quoted a number that isn’t in the data.</p>
+<h1>${esc(SECTIONS[SECTION].title)}: model comparison</h1>
+<p class="top">${esc(pack.session ?? "")} · figures as of ${esc(pack.today ?? new Date().toISOString().slice(0, 10))} · same instructions for every model. Dropped = an insight quoted a number that isn’t in the data.</p>
 <div class="grid">${results.map(col).join("")}</div></body></html>`;
 }
 
 // -------------------------------------------------------------------- run ---
 
 const pack = await loadPack();
-console.log(`Figures: ${pack.session}, ${pack.students} students, ${(pack.top_overdue ?? []).length} top overdue.`);
+console.log(`${SECTIONS[SECTION].title}: figures loaded (${JSON.stringify(pack).length.toLocaleString()} characters).`);
 
 let pick = null;
 if (CANDIDATES.some((c) => c.via === "openrouter")) {
@@ -203,7 +207,7 @@ const results = await Promise.all(
         out = await runOpenRouter(c, pack, model);
       }
       const seconds = ((Date.now() - t0) / 1000).toFixed(0);
-      const checked = checkInsights(out.json, pack);
+      const checked = checkInsights(SECTION, out.json, pack);
       console.log(`✓ ${c.label}: ${checked.insights.length} kept, ${checked.dropped} dropped, ${seconds}s, $${out.cost.toFixed(4)}`);
       return { label: c.label, ...out, seconds, checked };
     } catch (e) {
@@ -214,6 +218,6 @@ const results = await Promise.all(
 );
 
 fs.mkdirSync(OUT, { recursive: true });
-const file = path.join(OUT, "insights-compare.local.html");
+const file = path.join(OUT, `${SECTION}-insights-compare.local.html`);
 fs.writeFileSync(file, html(pack, results));
 console.log(`\nOpen: ${file}`);

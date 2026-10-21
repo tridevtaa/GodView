@@ -11,6 +11,7 @@ import { Photo, gradeLabel, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
+import { Hint, useInsights } from "./AiInsights.jsx";
 import Icon from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
@@ -150,7 +151,7 @@ const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: 
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
-function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onTab }) {
+function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
 
@@ -241,6 +242,7 @@ function StudentHero({ person, mode, schoolId, sessionId, routes, isAdmin, canEd
             <Icon name="bus" size={14} /> {bus}
           </p>
         )}
+        {mode === "students" && <StudentHint school={school} isAdmin={isAdmin} id={person.id} />}
       </div>
 
       {!editing && (callNo || canEdit) && (
@@ -367,6 +369,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
       >
         {asPage && isStudent ? (
           <StudentHero
+          school={school}
             person={person}
             mode={mode}
             schoolId={schoolId}
@@ -557,4 +560,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
       {card}
     </div>
   );
+}
+
+// Premium: the AI's line on this student's results, if it wrote one.
+function StudentHint({ school, isAdmin, id }) {
+  const ins = useInsights(school, "results", isAdmin && Boolean(school));
+  return <Hint ins={ins} slot="student" target={id} className="ai-hint-block" />;
 }

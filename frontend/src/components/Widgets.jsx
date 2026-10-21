@@ -58,7 +58,7 @@ export function arrangeTiles(raw) {
 // (attendance for class teachers, pending fees for the office, homework or
 // fees for parents), in full colour; red and softly pulsing when urgent.
 // pct: a thin bar under the text. cta: the button's words.
-export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = null, cta, onClick, trend = null }) {
+export function PriorityCard({ tone, urgent = false, icon, title, sub, hint = "", pct = null, cta, onClick, trend = null }) {
   const head = (
     <>
       <span className="home-att-icon">
@@ -67,6 +67,12 @@ export function PriorityCard({ tone, urgent = false, icon, title, sub, pct = nul
       <span className="home-att-text">
         <strong className="home-att-title">{title}</strong>
         {sub && <span className="home-att-sub">{sub}</span>}
+        {hint && (
+          <span className="home-att-hint">
+            <Icon name="sparkle" size={12} weight="fill" />
+            {hint}
+          </span>
+        )}
         {pct !== null && (
           <span className="home-att-bar">
             <span className="home-att-bar-fill" style={{ width: `${pct}%` }} />

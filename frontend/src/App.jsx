@@ -27,6 +27,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
+import { Hint, InsightsButton, KeyInsights, hintFor, useInsights } from "./components/AiInsights.jsx";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -193,6 +194,10 @@ export default function App() {
   // Records: owners/admins. Photos, notes, results: anyone who can see the student.
   const canEdit = source === "supabase" && !viewOnly && isAdmin;
   const canWrite = source === "supabase" && !viewOnly && !isPrincipal;
+  // AI insights (Premium): Transport on its page, Results on Students
+  const insT = useInsights(school, "transport", isAdmin && mode === "transport");
+  const insR = useInsights(school, "results", (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && mode === "students");
+  const aiNote = (ins, slot) => (hintFor(ins, slot) ? <Hint ins={ins} slot={slot} /> : undefined);
 
   // Students who left stay in the database (history) but aren't shown.
   // Ordered by grade (Nursery → 12), then section, then name.
@@ -746,14 +751,26 @@ export default function App() {
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
+            {school.plan !== "premium" && (
+              <div className="ai-row">
+                <InsightsButton section="transport" label="Transport insights" />
+              </div>
+            )}
             {(() => {
               const onBus = current.filter((s) => s.uses_bus).length;
               const pinned = current.filter((s) => s.home_lat != null).length;
               return (
                 <StatCards
                   items={[
-                    { icon: "bus", color: "orange", label: "Routes", value: routes.length },
-                    { icon: "scholar", color: "indigo", label: "On the bus", value: onBus, bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined },
+                    { icon: "bus", color: "orange", label: "Routes", value: routes.length, note: aiNote(insT, "routes") },
+                    {
+                      icon: "scholar",
+                      color: "indigo",
+                      label: "On the bus",
+                      value: onBus,
+                      bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined,
+                      note: aiNote(insT, "on_bus"),
+                    },
                     {
                       icon: "pin",
                       color: "teal",
@@ -761,17 +778,28 @@ export default function App() {
                       value: pinned,
                       bar: current.length ? { value: pinned, max: current.length, label: "Homes pinned" } : undefined,
                       onClick: () => setView("map"),
+                      note: aiNote(insT, "homes"),
                     },
                   ]}
                 />
               );
             })()}
+            {insT.on && (
+              <KeyInsights
+                ins={insT}
+                opens={["routes", "buses", "map"]}
+                onOpen={(kind) => {
+                  if (kind === "map") setView("map");
+                  else document.querySelector(kind === "buses" ? ".bus-section" : ".tr-add")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
+            )}
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
               <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
+            <TransportRoutes school={school} routes={routes} students={current} ins={insT} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
@@ -840,6 +868,9 @@ export default function App() {
           )}
           {isStudents && (
             <div className="page-actions toolbar-actions">
+              {mode === "students" && (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && school.plan !== "premium" && (
+                <InsightsButton section="results" label="Results insights" />
+              )}
               {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
               {canEdit && (
                 <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
@@ -864,6 +895,19 @@ export default function App() {
         </div>
 
         {overview && !viewOnly && <StatCards items={overview} />}
+
+        {insR.on && !query && pickedGrades.length === 0 && (
+          <>
+            <KeyInsights
+              ins={insR}
+              max={2}
+              opens={canWrite ? ["marks"] : []}
+              onOpen={(kind) => kind === "marks" && switchMode("marks")}
+              onPerson={(id) => openStudent(id)}
+            />
+            <Hint ins={insR} slot="students" className="ai-hint-block" />
+          </>
+        )}
 
         {loading ? (
           <div className="grid" aria-busy="true">
