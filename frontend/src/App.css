@@ -15975,20 +15975,20 @@ button.achv-tag {
   margin-bottom: 12px;
 }
 
-/* Key insights: the main AI insights as big cards, where the charts were */
+/* Key insights: the main AI insights as compact cards, where the charts
+   were. A number, a few words, one action; "Why" opens the rest. */
 .ai-key {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 24px;
 }
 
 .ai-key-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
+  gap: 12px;
 }
 
 .ai-key-head h2 {
@@ -15996,33 +15996,25 @@ button.achv-tag {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
 }
 
-.ai-key-head h2 .icon {
+.ai-key-head h2 > .icon {
   color: #8b5cf6;
 }
 
-.ai-key-meta {
+.ai-key-when {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.ai-key-tools {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-  font-size: 13px;
-}
-
-.ai-key-meta .link-btn {
-  display: inline-flex;
-  align-items: center;
   gap: 4px;
-}
-
-.ai-key-running {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #6d3fd8;
-  font-weight: 600;
 }
 
 .ai-key-error {
@@ -16031,8 +16023,8 @@ button.achv-tag {
 
 .ai-key-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .ai-big {
@@ -16040,12 +16032,12 @@ button.achv-tag {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 22px 24px;
-  border-radius: var(--r-lg, 22px);
+  padding: 18px 18px 16px 22px;
+  border-radius: 20px;
   background:
-    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
     var(--surface);
   box-shadow: var(--shadow-md);
   overflow: hidden;
@@ -16056,7 +16048,7 @@ button.achv-tag {
 .ai-big::before {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 5px;
+  width: 4px;
   background: var(--accent);
   content: "";
 }
@@ -16070,7 +16062,7 @@ button.achv-tag {
 }
 
 .ai-big.is-skeleton {
-  min-height: 190px;
+  min-height: 150px;
   background: var(--surface-2);
   box-shadow: none;
 }
@@ -16083,10 +16075,92 @@ button.achv-tag {
   color: var(--accent);
 }
 
+.ai-stat {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.ai-stat strong {
+  color: var(--accent);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-stat span {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .ai-big-title {
-  font-size: 19px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
   line-height: 1.3;
-  letter-spacing: -0.01em;
+}
+
+.ai-big .ai-action {
+  font-size: 13.5px;
+}
+
+.ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.ai-chip {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+button.ai-chip {
+  cursor: pointer;
+}
+
+button.ai-chip:hover {
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.ai-big-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.ai-why-btn {
+  padding: 0;
+  color: var(--text-3);
+  font-size: 12.5px;
+}
+
+.ai-big-foot .ai-open {
+  margin-left: auto;
+}
+
+.ai-why {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .ai-back {
@@ -16095,6 +16169,28 @@ button.achv-tag {
   gap: 6px;
   margin-bottom: 10px;
   font-size: 13px;
+}
+
+/* Phones: the cards are a row to swipe through */
+@media (max-width: 760px) {
+  .ai-key-grid {
+    display: flex;
+    gap: 12px;
+    margin: 0 -16px;
+    padding: 2px 16px 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .ai-key-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ai-big {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+  }
 }
 
 /* A short AI line next to a figure */
@@ -16118,15 +16214,6 @@ button.achv-tag {
   flex-basis: 100%;
 }
 
-@media (max-width: 760px) {
-  .ai-key-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ai-big {
-    padding: 18px 18px 18px 22px;
-  }
-}
 
 .ai-hint-block {
   display: flex;
@@ -16170,4 +16257,29 @@ button.achv-tag {
 
 .home-att-hint {
   align-self: flex-start;
+}
+
+/* Lines inside the small figure cards: at most two lines */
+.sw-note .ai-hint {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sw-note .ai-hint .icon {
+  display: none;
+}
+
+/* Phones: the figure cards are too narrow for a line; it would be cut off */
+@media (max-width: 760px) {
+  .sw-note:has(.ai-hint) {
+    display: none;
+  }
+}
+
+/* An AI line in a panel title gets a row of its own */
+.panel-title-row:has(.ai-hint-row) {
+  flex-wrap: wrap;
+  row-gap: 4px;
 }

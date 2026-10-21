@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { latestInsight, runInsight } from "../data/api.js";
-import { rupees } from "../data/money.js";
+import { rupees, rupeesShort } from "../data/money.js";
 import Icon from "./Icon.jsx";
 import { useDismiss } from "./useDismiss.js";
 
@@ -48,7 +48,7 @@ const STALE = 20 * 36e5; // the daily refresh, in ms (the edge function has the 
 
 const ago = (t) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(t)) / 6e4));
-  return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 };
 
 // --------------------------------------------------------------- store ---
@@ -137,39 +137,107 @@ export function Hint({ ins, slot, target = "", className = "" }) {
 
 // ------------------------------------------------------------ the cards ---
 
-// The main insights as big cards, with when they were made, Refresh and
-// (where there are charts) a way back to them. opens: screens this page
-// can go to; onPerson(id): a named student.
+// The number on a card, formatted by the app (the AI only picks it)
+function statText(it) {
+  const v = Number(it.stat_value);
+  if (!Number.isFinite(v)) return "";
+  if (it.stat_unit === "rupees") return rupeesShort(v);
+  if (it.stat_unit === "percent") return `${Math.round(v)}%`;
+  if (it.stat_unit === "days") return `${Math.round(v)} days`;
+  if (it.stat_unit === "km") return `${v} km`;
+  return Math.round(v).toLocaleString("en-IN");
+}
+
+function InsightCard({ it, index, copy, opens, onOpen, onPerson }) {
+  const [why, setWhy] = useState(false);
+  const stat = statText(it);
+  const lineOf = (p) => p.line ?? [p.class, p.overdue != null ? rupees(p.overdue) : null].filter(Boolean).join(" · ");
+  const canOpen = opens.includes(it.open);
+  const whyText = it.why ?? it.detail;
+  return (
+    <article className={`ai-big is-${it.priority}`} style={{ "--d": `${index * 60}ms` }}>
+      {stat ? (
+        <p className="ai-stat">
+          <strong>{stat}</strong>
+          <span>{it.stat_label}</span>
+        </p>
+      ) : (
+        <span className="ai-priority">{it.priority === "high" ? "Needs attention" : it.priority === "medium" ? "Worth a look" : "Good to know"}</span>
+      )}
+      <p className="ai-big-title">{it.title}</p>
+      <p className="ai-action">
+        <Icon name="arrowRight" size={14} />
+        {it.action}
+      </p>
+      {it.people?.length > 0 && (
+        <div className="ai-chips">
+          {it.people.slice(0, 3).map((p) =>
+            copy.person && onPerson ? (
+              <button key={p.id} type="button" className="ai-chip" onClick={() => onPerson(p.id)} title={`${copy.person}: ${p.name} · ${lineOf(p)}`}>
+                {p.name.split(" ")[0]}
+              </button>
+            ) : (
+              <span key={p.id} className="ai-chip" title={lineOf(p)}>
+                {p.name.split(" ")[0]}
+              </span>
+            )
+          )}
+        </div>
+      )}
+      {(whyText || canOpen) && (
+        <div className="ai-big-foot">
+          {whyText && (
+            <button type="button" className="link-btn ai-why-btn" onClick={() => setWhy((v) => !v)} aria-expanded={why}>
+              Why {why ? "−" : "+"}
+            </button>
+          )}
+          {canOpen && (
+            <button type="button" className="link-btn ai-open" onClick={() => onOpen(it.open, it)}>
+              {OPEN_LABEL[it.open]}
+              <Icon name="arrowRight" size={13} />
+            </button>
+          )}
+        </div>
+      )}
+      {why && whyText && <p className="ai-why">{whyText}</p>}
+    </article>
+  );
+}
+
+// The main insights as compact cards (a swipeable row on phones), with
+// when they were made, Refresh and (where there are charts) a way back to
+// them. opens: screens this page can go to; onPerson(id): a named student.
 export function KeyInsights({ ins, opens = [], onOpen, onPerson, onCharts, max = 4 }) {
   const copy = COPY[ins.section];
   const insight = ins.insight;
   const items = (insight?.result?.insights ?? []).slice(0, max);
-  const lineOf = (p) => p.line ?? [p.class, p.overdue != null ? rupees(p.overdue) : null].filter(Boolean).join(" · ");
   const first = insight === undefined || (ins.running && !insight);
 
   return (
     <section className="ai-key">
       <header className="ai-key-head">
         <h2>
-          <Icon name="sparkle" size={18} weight="fill" />
+          <Icon name="sparkle" size={16} weight="fill" />
           Key insights
+          <span className="ai-key-when">
+            {ins.running ? (
+              <>
+                <span className="ai-pulse" /> {insight ? "Updating" : "Analysing"}
+              </>
+            ) : (
+              insight && ago(insight.created_at)
+            )}
+          </span>
         </h2>
-        <span className="ai-key-meta">
-          {ins.running ? (
-            <span className="ai-key-running">
-              <span className="ai-pulse" /> {insight ? "Updating…" : `${copy.running}…`}
-            </span>
-          ) : (
-            insight && <span className="row-sub">Updated {ago(insight.created_at)}</span>
-          )}
+        <span className="ai-key-tools">
           {!ins.running && insight !== undefined && (
-            <button className="link-btn" onClick={ins.refresh}>
-              Refresh
+            <button className="icon-btn-sm" onClick={ins.refresh} aria-label="Refresh insights" title="Refresh">
+              <Icon name="refresh" size={16} />
             </button>
           )}
           {onCharts && (
-            <button className="link-btn" onClick={onCharts}>
-              <Icon name="chart" size={14} /> Charts
+            <button className="icon-btn-sm" onClick={onCharts} aria-label="Show charts" title="Charts">
+              <Icon name="chart" size={16} />
             </button>
           )}
         </span>
@@ -179,53 +247,20 @@ export function KeyInsights({ ins, opens = [], onOpen, onPerson, onCharts, max =
 
       {first ? (
         <div className="ai-key-grid" aria-busy="true">
-          {[0, 1].map((i) => (
+          {[0, 1, 2].map((i) => (
             <div key={i} className="ai-big is-skeleton" />
           ))}
         </div>
       ) : !insight ? (
-        <p className="ai-empty">No analysis yet. Tap Refresh to run one.</p>
+        <p className="ai-empty">No insights yet. Tap refresh to run one.</p>
+      ) : items.length === 0 ? (
+        <p className="ai-empty">Nothing stands out right now.</p>
       ) : (
-        <>
-          {insight.result?.summary && <p className="ai-summary">{insight.result.summary}</p>}
-          <div className="ai-key-grid">
-            {items.map((it, i) => (
-              <article key={i} className={`ai-big is-${it.priority}`} style={{ "--d": `${i * 60}ms` }}>
-                <span className="ai-priority">{it.priority === "high" ? "Needs attention" : it.priority === "medium" ? "Worth a look" : "Good to know"}</span>
-                <strong className="ai-big-title">{it.title}</strong>
-                <p className="ai-detail">{it.detail}</p>
-                <p className="ai-action">
-                  <Icon name="arrowRight" size={14} />
-                  {it.action}
-                </p>
-                {it.people?.length > 0 && (
-                  <ul className="ai-people">
-                    {it.people.slice(0, 3).map((p) => (
-                      <li key={p.id}>
-                        <span>
-                          <strong>{p.name}</strong>
-                          <span className="row-sub"> · {lineOf(p)}</span>
-                        </span>
-                        {copy.person && onPerson && (
-                          <button className="btn btn-secondary btn-sm" onClick={() => onPerson(p.id)}>
-                            {copy.person}
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {opens.includes(it.open) && (
-                  <button className="link-btn ai-open" onClick={() => onOpen(it.open, it)}>
-                    {OPEN_LABEL[it.open]}
-                    <Icon name="arrowRight" size={13} />
-                  </button>
-                )}
-              </article>
-            ))}
-          </div>
-          {items.length === 0 && <p className="ai-empty">Nothing stood out this time.</p>}
-        </>
+        <div className="ai-key-grid">
+          {items.map((it, i) => (
+            <InsightCard key={i} it={it} index={i} copy={copy} opens={opens} onOpen={onOpen} onPerson={onPerson} />
+          ))}
+        </div>
       )}
     </section>
   );

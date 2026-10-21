@@ -5,13 +5,17 @@
 // Plain JavaScript, no imports, so it runs in either.
 
 const COMMON = `Rules:
-- Use only the figures given. Every number you mention must appear in the data exactly. Don't work out new totals, differences or percentages.
-- List each number you mention in "figures", with its exact value from the data.
-- Give 3 to 6 insights, the most important first. Each says what is happening (with numbers), why it matters, and one concrete step the school can take this week.
-- Be specific to this school. Skip generic advice the data doesn't call for.
-- "summary" is one sentence on how things stand overall.
-- Write plain, short English for a busy school owner in India.
-- Also write "hints": short lines (under 90 characters) shown in the app next to the figure they explain. One hint per spot at most, only where you have something useful to say. Each hint's numbers go in its "figures" too, under the same rule. A hint adds what the spot's own figure doesn't say (which class, how old, what to do); never restate that figure, or give a different total for the same thing.`;
+- Use only the figures given. Every number must appear in the data exactly. Don't work out new totals, differences or percentages.
+- Give 3 to 4 insights, most important first. Be specific to this school; skip generic advice.
+- Each insight is a card read in two seconds:
+  - "stat_value": the one number that matters, exactly as in the data; "stat_unit": rupees, count, percent, days or km.
+  - "stat_label": 2 to 4 words saying what the number is, e.g. "overdue 90+ days", "students, no stop".
+  - "title": the point in at most 7 words, e.g. "Most overdue money is very old".
+  - "action": what to do this week in at most 7 words, starting with a verb, e.g. "Call the top 25 families".
+  - "why": at most 20 words of context, with any other numbers.
+  - List every number you use in "figures", with its exact value from the data.
+- "hints": short lines shown next to a figure in the app, at most 45 characters each, e.g. "Most from Class 11 A: ₹5.2 L". At most one per spot, only where useful. A hint adds what the spot's own figure doesn't say; never restate it or give a different total for the same thing. Its numbers go in its "figures" too.
+- Plain words for a busy school owner in India. No full sentences where a phrase will do.`;
 
 const inr = (n) => "₹" + Math.round(Number(n) || 0).toLocaleString("en-IN");
 
@@ -76,33 +80,37 @@ ${COMMON}
   },
 };
 
+const FIGURES = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["label", "value"],
+    properties: { label: { type: "string" }, value: { type: "number" } },
+  },
+};
+
 export function schemaFor(section) {
   return {
     type: "object",
     additionalProperties: false,
-    required: ["summary", "insights", "hints"],
+    required: ["insights", "hints"],
     properties: {
-      summary: { type: "string" },
       insights: {
         type: "array",
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "detail", "action", "priority", "figures", "students", "open", "class_name"],
+          required: ["priority", "stat_value", "stat_unit", "stat_label", "title", "action", "why", "figures", "students", "open", "class_name"],
           properties: {
-            title: { type: "string" },
-            detail: { type: "string" },
-            action: { type: "string" },
             priority: { type: "string", enum: ["high", "medium", "low"] },
-            figures: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["label", "value"],
-                properties: { label: { type: "string" }, value: { type: "number" } },
-              },
-            },
+            stat_value: { type: "number" },
+            stat_unit: { type: "string", enum: ["rupees", "count", "percent", "days", "km"] },
+            stat_label: { type: "string" },
+            title: { type: "string" },
+            action: { type: "string" },
+            why: { type: "string" },
+            figures: FIGURES,
             students: { type: "array", items: { type: "string" } },
             open: { type: "string", enum: SECTIONS[section].open },
             class_name: { type: "string" },
@@ -119,15 +127,7 @@ export function schemaFor(section) {
             slot: { type: "string", enum: SECTIONS[section].slots },
             target: { type: "string" },
             text: { type: "string" },
-            figures: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["label", "value"],
-                properties: { label: { type: "string" }, value: { type: "number" } },
-              },
-            },
+            figures: FIGURES,
           },
         },
       },
@@ -149,7 +149,7 @@ function numbersIn(value, out = []) {
 // Keeps the insights whose figures are all in the data (within rounding)
 // and whose students are ones the AI was allowed to name. Adds each named
 // student's name and a short line, so the app can show them.
-// Returns { summary, insights, dropped }.
+// Returns { insights, hints, dropped }.
 export function checkInsights(section, result, pack) {
   const s = SECTIONS[section];
   const known = numbersIn(pack);
@@ -158,12 +158,14 @@ export function checkInsights(section, result, pack) {
   const insights = [];
   let dropped = 0;
   for (const it of result?.insights ?? []) {
-    const figuresOk = (it.figures ?? []).every((f) => typeof f.value === "number" && inData(f.value));
+    const figuresOk =
+      typeof it.stat_value === "number" && inData(it.stat_value) && (it.figures ?? []).every((f) => typeof f.value === "number" && inData(f.value));
     const studentsOk = (it.students ?? []).every((id) => people.has(id));
     if (!figuresOk || !studentsOk || !s.open.includes(it.open)) {
       dropped++;
       continue;
     }
+    if (insights.length >= 4) continue;
     insights.push({
       ...it,
       people: [...new Set(it.students ?? [])].map((id) => {
@@ -189,7 +191,7 @@ export function checkInsights(section, result, pack) {
       continue;
     }
     seen.add(`${h.slot}|${target}`);
-    hints.push({ slot: h.slot, target, text: String(h.text).trim().slice(0, 140) });
+    hints.push({ slot: h.slot, target, text: String(h.text).trim().slice(0, 70) });
   }
-  return { summary: String(result?.summary ?? ""), insights, hints, dropped };
+  return { insights, hints, dropped };
 }
