@@ -307,6 +307,14 @@ export default function App() {
       // On Students, so that tab is lit and Back goes to the list.
       setMode("students");
       setOpenId(m[1]);
+      // History as if opened from the list: the list underneath, the
+      // student on top. Otherwise Back (or closing the chat) lands on an
+      // entry that isn't the student and closes the page.
+      if (!window.history.state?.student) {
+        const url = window.location.pathname + window.location.search;
+        window.history.replaceState(null, "", "/");
+        window.history.pushState({ student: m[1] }, "", url);
+      }
     }
     return () => window.removeEventListener("popstate", onPop);
   }, []);
