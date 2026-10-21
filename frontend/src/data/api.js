@@ -409,6 +409,12 @@ export async function removeMember(schoolId, email) {
   must(await supabase.from("school_members").delete().eq("school_id", schoolId).eq("email", email));
 }
 
+// A student's teachers this session (class teacher first), with photos.
+export async function classTeachersFor(studentId, sessionId) {
+  const rows = must(await supabase.rpc("class_teachers_for_student", { student: studentId, session: sessionId }));
+  return withPhotoUrls(rows ?? []);
+}
+
 export async function listAssignments(schoolId) {
   return must(await supabase.from("teacher_classes").select("*").eq("school_id", schoolId).order("class"));
 }

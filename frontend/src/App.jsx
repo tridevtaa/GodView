@@ -271,7 +271,8 @@ export default function App() {
 
   // On the Students page the profile follows the filtered grid; elsewhere
   // (Fees, Requests) any student in the session can be opened.
-  const profileList = mode === "students" || mode === "employees" ? visible : current;
+  // A classmate opened from a profile may be outside the filtered grid.
+  const profileList = (mode === "students" || mode === "employees") && (!openId || visible.some((p) => p.id === openId)) ? visible : current;
   const openIndex = profileList.findIndex((p) => p.id === openId);
   // Students open as a full page at /students/<id>: the browser's (or
   // phone's) Back button returns to the list, at the same scroll position.
@@ -635,6 +636,8 @@ export default function App() {
             onFeesChanged={reload}
             onClose={closeProfile}
             grades={schoolGrades}
+            students={dataMode === "students" ? current : []}
+            onOpenStudent={dataMode === "students" ? (id) => openStudent(id) : undefined}
             routes={routes}
           />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
@@ -975,6 +978,8 @@ export default function App() {
           onFeesChanged={reload}
           onClose={closeProfile}
           grades={schoolGrades}
+          students={dataMode === "students" ? current : []}
+          onOpenStudent={dataMode === "students" ? (id) => openStudent(id) : undefined}
           routes={routes}
         />
       )}
