@@ -16944,14 +16944,19 @@ button.class-face:hover {
    tiles and sections. Long-press or Edit Home: everything wiggles,
    drag to move, minus to remove, a pill to resize.
    ========================================================= */
+/* No text selection or phone callout: a long-press arranges Home */
 .hw-board {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .hw-board-grid {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
@@ -17013,12 +17018,7 @@ button.class-face:hover {
 }
 
 /* Edit mode */
-.hw-board.is-editing {
-  user-select: none;
-}
-
 .hw-board.is-editing .hw-block {
-  touch-action: none;
   cursor: grab;
   animation: hw-wiggle 0.32s ease-in-out var(--j, 0s) infinite alternate;
 }
@@ -17031,22 +17031,33 @@ button.class-face:hover {
   pointer-events: none;
 }
 
+/* Lifted: follows the finger, a little bigger, others hold still */
 .hw-board.is-editing .hw-block.is-dragging {
-  z-index: 3;
+  z-index: 5;
   cursor: grabbing;
   animation: none;
-  transform: scale(1.04);
-  filter: drop-shadow(0 12px 24px rgba(29, 35, 102, 0.22));
+  scale: 1.04;
+  filter: drop-shadow(0 14px 28px rgba(29, 35, 102, 0.25));
+  transition: scale 0.15s, filter 0.15s;
+  will-change: translate;
+}
+
+.hw-board.is-dragging-one .hw-block:not(.is-dragging) {
+  animation: none;
+}
+
+.hw-board.is-dragging-one {
+  cursor: grabbing;
 }
 
 @keyframes hw-wiggle {
-  from { transform: rotate(-0.9deg); }
-  to { transform: rotate(0.9deg); }
+  from { rotate: -0.9deg; }
+  to { rotate: 0.9deg; }
 }
 
 @keyframes hw-wiggle-soft {
-  from { transform: rotate(-0.25deg); }
-  to { transform: rotate(0.25deg); }
+  from { rotate: -0.25deg; }
+  to { rotate: 0.25deg; }
 }
 
 @media (prefers-reduced-motion: reduce) {
