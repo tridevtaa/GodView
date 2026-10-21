@@ -15160,62 +15160,52 @@ button.achv-tag {
 
 .home-trend {
   display: grid;
-  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
+  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: center;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .home-trend.is-loading {
-  min-height: 210px;
+  min-height: 200px;
+  border-top: 0;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
-  border-top: 0;
 }
 
-.trend-stats {
+.trend-stat {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin: 0;
+  align-items: flex-start;
+  gap: 6px;
 }
 
-.trend-stats dt {
-  font-size: 12.5px;
+.trend-label {
+  font-size: 13px;
   font-weight: 600;
-  opacity: 0.85;
+  opacity: 0.88;
 }
 
-.trend-stats dd {
-  margin: 2px 0 0;
-  font-size: 24px;
+.trend-value-big {
+  font-size: 34px;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
-.trend-stats div:not(:first-child) dd {
-  font-size: 19px;
-}
-
-.trend-delta {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-top: 4px;
-  padding: 2px 8px;
+.trend-note {
+  padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 11.5px;
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 12.5px;
+  font-weight: 600;
 }
 
-.trend-delta em {
-  font-style: normal;
-  font-weight: 500;
-  opacity: 0.9;
+.trend-extra {
+  font-size: 13px;
+  opacity: 0.85;
 }
 
 .trend-chart {
@@ -15228,95 +15218,94 @@ button.achv-tag {
   overflow: visible;
 }
 
-.trend-legend {
-  display: flex;
-  justify-content: flex-end;
-  gap: 16px;
-  margin-bottom: 2px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.trend-legend span,
-.trend-tip span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.trend-key {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: #fff;
-}
-
-.trend-key.is-prev {
-  background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.9) 0 2px, rgba(255, 255, 255, 0.25) 2px 4px);
-}
-
-.trend-tip .trend-key {
-  background: var(--c);
-}
-
-.trend-tip .trend-key.is-prev {
-  background: repeating-linear-gradient(45deg, var(--c) 0 2px, color-mix(in srgb, var(--c) 25%, transparent) 2px 4px);
-}
-
 .trend-grid {
-  stroke: rgba(255, 255, 255, 0.2);
+  stroke: rgba(255, 255, 255, 0.18);
   stroke-dasharray: 3 4;
 }
 
 .trend-base {
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: rgba(255, 255, 255, 0.45);
 }
 
 .trend-axis {
-  fill: rgba(255, 255, 255, 0.85);
-  font-size: 11px;
+  fill: rgba(255, 255, 255, 0.82);
+  font-size: 11.5px;
   font-weight: 500;
 }
 
-.trend-now {
-  stroke: rgba(255, 255, 255, 0.55);
-}
-
-.trend-now-label {
+.trend-axis.is-today {
   fill: #fff;
-  font-size: 11px;
   font-weight: 700;
 }
 
-.trend-cur {
+.trend-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.trend-area {
+  fill: rgba(255, 255, 255, 0.16);
+}
+
+.trend-line-prev {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 2;
+  stroke-dasharray: 5 5;
+  stroke-linejoin: round;
+}
+
+.trend-dot {
   fill: #fff;
-}
-
-.trend-prev-bg {
-  fill: rgba(255, 255, 255, 0.22);
-}
-
-.trend-prev-line {
-  stroke: rgba(255, 255, 255, 0.9);
+  stroke: var(--c);
   stroke-width: 2;
 }
 
-.trend-hover {
-  fill: rgba(255, 255, 255, 0.12);
+.trend-end {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.trend-chart rect[tabindex]:focus {
-  outline: none;
+.trend-end.is-prev {
+  fill: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.trend-cross {
+  stroke: rgba(255, 255, 255, 0.5);
+}
+
+.trend-bar {
+  fill: rgba(255, 255, 255, 0.7);
+}
+
+.trend-bar.is-today {
+  fill: #fff;
+}
+
+.trend-bar-future {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-dasharray: 4 4;
+}
+
+.trend-value {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .trend-tip {
   position: absolute;
-  top: 20px;
+  top: 0;
   z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   padding: 8px 12px;
   border-radius: 10px;
   background: var(--surface);
@@ -15326,6 +15315,10 @@ button.achv-tag {
   white-space: nowrap;
   transform: translateX(-50%);
   pointer-events: none;
+}
+
+.trend-tip .is-muted {
+  color: var(--text-3);
 }
 
 .trend-tip b {
