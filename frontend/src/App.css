@@ -15359,3 +15359,79 @@ button.achv-tag {
   flex: 1;
   margin: 0;
 }
+
+/* A stop's "Add students": its village's students as a tick list */
+.tr-fill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.tr-stops > li.tr-fill-row {
+  padding: 0 0 12px 40px;
+}
+
+.tr-fill {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+.tr-fill-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tr-fill-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tr-fill-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.tr-fill-item input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--brand);
+}
+
+.tr-fill-item > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.tr-fill-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .tr-stops > li.tr-fill-row {
+    padding-left: 0;
+  }
+}

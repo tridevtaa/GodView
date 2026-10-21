@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addRoute, addStop, deleteRoute, deleteStop, listAreas, updateRoute } from "../data/api.js";
+import { addRoute, addStop, deleteRoute, deleteStop, listAreas, putOnStop, updateRoute } from "../data/api.js";
+import { aliasIndex, matchArea } from "../data/areas.js";
+import { gradeLabel } from "./PersonCard.jsx";
 import { peek, swr } from "../data/cache.js";
 import { MAP_ID, hasMaps, loadMaps, mapsLink } from "../data/maps.js";
 import Icon from "./Icon.jsx";
 
 // Owner: the school's bus routes, each with its stops pinned on the map.
 // Stops are picked from the villages and towns on the map above.
-export default function TransportRoutes({ school, routes, students, onChanged }) {
+export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged }) {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const areasKey = `areas:${school.id}`;
@@ -17,6 +19,35 @@ export default function TransportRoutes({ school, routes, students, onChanged })
   useEffect(() => {
     loadAreas();
   }, [areasKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Each student's village (picked on their profile, or matched from
+  // their address), for filling a stop with the students who live there.
+  const villageOf = useMemo(() => {
+    const list = areas ?? [];
+    const byAlias = aliasIndex(list);
+    const m = new Map();
+    students.forEach((s) => {
+      const a = list.find((x) => x.id === s.area_id) ?? matchArea(s, byAlias);
+      if (a) m.set(s.id, a.name.trim().toLowerCase());
+    });
+    return m;
+  }, [areas, students]);
+  const stopById = useMemo(() => {
+    const m = new Map();
+    routes.forEach((r) => r.stops.forEach((st) => m.set(st.id, { route: r, stop: st })));
+    return m;
+  }, [routes]);
+  const riderList = useMemo(() => students.filter((s) => s.status !== "left" && s.status !== "inactive"), [students]);
+  const putOn = async (ids, route, stop) => {
+    setError("");
+    try {
+      const fields = await putOnStop(school.id, ids, route, stop);
+      onStudentsChanged?.(ids, fields);
+      return true;
+    } catch {
+      setError("Couldn’t save the students. Try again.");
+      return false;
+    }
+  };
   // Which route each stop name is already on
   const usedOn = useMemo(() => {
     const m = new Map();
@@ -65,14 +96,15 @@ export default function TransportRoutes({ school, routes, students, onChanged })
       </form>
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} />
       ))}
     </>
   );
 }
 
-function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker }) {
+function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn }) {
   const [adding, setAdding] = useState(false);
+  const [filling, setFilling] = useState(null); // stop id getting students
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(route.name);
   const [asking, setAsking] = useState(false);
@@ -124,7 +156,7 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker }) 
 
       <div className={`tr-body${pinned.length && hasMaps ? " has-map" : ""}`}>
         <ol className="tr-stops">
-          {route.stops.map((s, i) => (
+          {route.stops.map((s, i) => [
             <li key={s.id}>
               <span className="tr-num">{i + 1}</span>
               <span className="tr-stop-text">
@@ -139,11 +171,31 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker }) 
                   <Icon name="pin" size={14} />
                 </a>
               )}
+              {filling !== s.id && (
+                <button className="link-btn tr-fill-btn" onClick={() => setFilling(s.id)}>
+                  <Icon name="plus" size={13} />
+                  Add students
+                </button>
+              )}
               <button className="ft-x" aria-label={`Remove ${s.name}`} title="Remove stop" onClick={act(() => deleteStop(s.id))}>
                 <Icon name="x" size={12} />
               </button>
-            </li>
-          ))}
+            </li>,
+            filling === s.id && (
+              <li key={`${s.id}:fill`} className="tr-fill-row">
+                <StopStudents
+                  stop={s}
+                  students={students}
+                  villageOf={villageOf}
+                  stopById={stopById}
+                  onCancel={() => setFilling(null)}
+                  onSave={async (ids) => {
+                    if (await putOn(ids, route, s)) setFilling(null);
+                  }}
+                />
+              </li>
+            ),
+          ])}
           {route.stops.length === 0 && !adding && <li className="row-sub tr-empty">No stops yet. Add them in the order the bus reaches them.</li>}
           <li className="tr-add-stop">
             {adding ? (
@@ -178,6 +230,100 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker }) 
         {pinned.length > 0 && hasMaps && <RouteMap stops={pinned} />}
       </div>
     </section>
+  );
+}
+
+// Students for one stop: everyone from that village who isn't on it yet,
+// ticked (unless they're already on another stop), and a search for
+// anyone else.
+function StopStudents({ stop, students, villageOf, stopById, onCancel, onSave }) {
+  const village = stop.name.trim().toLowerCase();
+  const fromVillage = useMemo(
+    () => students.filter((p) => p.bus_stop_id !== stop.id && villageOf.get(p.id) === village).sort((a, b) => a.name.localeCompare(b.name)),
+    [students, villageOf, village, stop.id]
+  );
+  const [picked, setPicked] = useState(() => new Set(fromVillage.filter((p) => !p.bus_stop_id).map((p) => p.id)));
+  const [extra, setExtra] = useState([]); // picked through the search
+  const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const q = query.trim().toLowerCase();
+  const shown = new Set([...fromVillage, ...extra].map((p) => p.id));
+  const matches = q ? students.filter((p) => p.bus_stop_id !== stop.id && !shown.has(p.id) && p.name.toLowerCase().includes(q)).slice(0, 6) : [];
+  const toggle = (id) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  const list = [...fromVillage, ...extra];
+
+  const row = (p) => {
+    const other = p.bus_stop_id ? stopById.get(p.bus_stop_id) : null;
+    return (
+      <label key={p.id} className="tr-fill-item">
+        <input type="checkbox" checked={picked.has(p.id)} onChange={() => toggle(p.id)} />
+        <span>
+          <strong>{p.name}</strong>
+          <span className="row-sub">
+            {[p.class && `${gradeLabel(p.class)}${p.section ? ` ${p.section}` : ""}`, other && `now on ${other.stop.name} (${other.route.name})`].filter(Boolean).join(" · ")}
+          </span>
+        </span>
+      </label>
+    );
+  };
+
+  return (
+    <div className="tr-fill">
+      <p className="tr-fill-title">{fromVillage.length ? `Students from ${stop.name} (${fromVillage.length})` : `No other students from ${stop.name}. Search to add anyone.`}</p>
+      {list.length > 0 && <div className="tr-fill-list">{list.map(row)}</div>}
+      <div className="place">
+        <div className="place-search">
+          <Icon name="search" />
+          <input className="place-input" placeholder="Add another student by name" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search students" autoComplete="off" />
+          {matches.length > 0 && (
+            <ul className="place-menu" role="listbox">
+              {matches.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setExtra((prev) => [...prev, p]);
+                      setPicked((prev) => new Set(prev).add(p.id));
+                      setQuery("");
+                    }}
+                  >
+                    <Icon name="scholar" size={15} />
+                    <span>
+                      <strong>{p.name}</strong>
+                      {p.class && <span className="row-sub">{`${gradeLabel(p.class)}${p.section ? ` ${p.section}` : ""}`}</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      <div className="tr-fill-actions">
+        <button
+          className="btn btn-primary btn-sm"
+          disabled={!picked.size || saving}
+          onClick={async () => {
+            setSaving(true);
+            await onSave([...picked]);
+            setSaving(false);
+          }}
+        >
+          {saving ? "Saving…" : picked.size ? `Add ${picked.size} student${picked.size === 1 ? "" : "s"} to this stop` : "Tick students to add"}
+        </button>
+        <button className="link-btn" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

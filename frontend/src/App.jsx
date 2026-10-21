@@ -771,7 +771,7 @@ export default function App() {
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
               <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} />
+            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
