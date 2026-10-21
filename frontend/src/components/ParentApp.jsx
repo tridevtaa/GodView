@@ -683,19 +683,21 @@ function FeesTab({ child, since }) {
     <>
       {/* Each card carries its own total, so there's no separate summary. */}
       {view.dueNow.length > 0 ? (
-        <section className="pa-card">
-          <h2 className="pa-h2 pa-h2-total">
-            Due now <strong className="is-due">{rupees(view.dueTotal)}</strong>
-          </h2>
-          <ul className="pa-list">
-            {view.dueNow.map((d) => (
-              <DueRow key={d.id} due={d} overdue={d.due_date && d.due_date < today()} fresh={isNew(d.created_at, since)} />
-            ))}
-          </ul>
-          <p className="pa-hint">
-            <Icon name="check" size={14} /> Pay at the school office for now.
-          </p>
-        </section>
+        <>
+          {/* The total in the school's navy, then what it's made of */}
+          <section className="pa-due navy-card">
+            <span className="row-sub">Due now</span>
+            <strong>{rupees(view.dueTotal)}</strong>
+            <span className="row-sub">Pay at the school office for now.</span>
+          </section>
+          <section className="pa-card">
+            <ul className="pa-list">
+              {view.dueNow.map((d) => (
+                <DueRow key={d.id} due={d} overdue={d.due_date && d.due_date < today()} fresh={isNew(d.created_at, since)} />
+              ))}
+            </ul>
+          </section>
+        </>
       ) : (
         <section className="pa-card pa-clear">
           <Icon name="check" size={16} /> Nothing due right now

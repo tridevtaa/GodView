@@ -80,7 +80,7 @@ export default function CollectFee({ school, students, student: given = null, on
             <StudentPicker students={students} onPick={setStudent} />
           ) : (
             <>
-              <div className="collect-who">
+              <div className="collect-who navy-card">
                 <Photo person={student} className="inbox-photo" />
                 <span className="collect-name">
                   <strong>{student.name}</strong>
