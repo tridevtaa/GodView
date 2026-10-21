@@ -27,7 +27,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
-import { Hint, InsightsButton, KeyInsights, hintFor, useInsights } from "./components/AiInsights.jsx";
+import { AiCard, Hint, InsightsButton, hintFor, useInsights } from "./components/AiInsights.jsx";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -785,7 +785,7 @@ export default function App() {
               );
             })()}
             {insT.on && (
-              <KeyInsights
+              <AiCard
                 ins={insT}
                 opens={["routes", "buses", "map"]}
                 onOpen={(kind) => {
@@ -898,7 +898,7 @@ export default function App() {
 
         {insR.on && !query && pickedGrades.length === 0 && (
           <>
-            <KeyInsights
+            <AiCard
               ins={insR}
               max={2}
               opens={canWrite ? ["marks"] : []}

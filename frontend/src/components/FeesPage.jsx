@@ -9,7 +9,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
-import { Hint, InsightsButton, KeyInsights, hintFor, useInsights } from "./AiInsights.jsx";
+import { AiCard, Hint, InsightsButton, hintFor, useInsights } from "./AiInsights.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -37,9 +37,8 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
-  // Premium: AI insights in place of the charts (Charts brings them back)
+  // Premium: the AI card above the charts, and short lines by the figures
   const ins = useInsights(school, "fees", (role === "owner" || role === "admin") && !pastSession);
-  const [charts, setCharts] = useState(false);
   const hint = (slot) => (hintFor(ins, slot) ? <Hint ins={ins} slot={slot} /> : undefined);
 
   const load = useCallback(async () => {
@@ -217,11 +216,10 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         ]}
       />
 
-      {ins.on && !charts ? (
-        <KeyInsights
+      {ins.on && (
+        <AiCard
           ins={ins}
           opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
-          onCharts={() => setCharts(true)}
           onPerson={(id) => {
             const s = students.find((x) => x.id === id);
             if (s) onCollect(s);
@@ -234,23 +232,16 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             }
           }}
         />
-      ) : (
-        <>
-          {ins.on && (
-            <button className="link-btn ai-back" onClick={() => setCharts(false)}>
-              <Icon name="sparkle" size={14} weight="fill" /> Back to key insights
-            </button>
-          )}
-          <div className="fees-charts">
-            <section className="panel chart-panel">
-              <ColumnChart title="Collected by month" data={months} />
-            </section>
-            <section className="panel chart-panel">
-              <BarChart title="Due by class" data={classes} valueLabel="Due now" />
-            </section>
-          </div>
-        </>
       )}
+
+      <div className="fees-charts">
+        <section className="panel chart-panel">
+          <ColumnChart title="Collected by month" data={months} />
+        </section>
+        <section className="panel chart-panel">
+          <BarChart title="Due by class" data={classes} valueLabel="Due now" />
+        </section>
+      </div>
 
       <section className="panel" id="fees-owing">
         <div className="panel-title panel-title-row">
