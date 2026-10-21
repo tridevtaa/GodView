@@ -9,7 +9,7 @@
 -- only fees with a due date and something left to pay.
 
 -- "₹1,25,000"
-create function public.rupees(amount numeric) returns text
+create or replace function public.rupees(amount numeric) returns text
 language sql immutable set search_path = '' as $$
   select '₹' || to_char(round(amount), 'FM99,99,99,999')
 $$;

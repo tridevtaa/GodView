@@ -12,7 +12,7 @@
 
 -- The name to greet someone by: the first word, or the first two after a
 -- title ("Mrs Sharma"). Null when there's no name.
-create function public.first_name(full_name text) returns text
+create or replace function public.first_name(full_name text) returns text
 language sql immutable set search_path = '' as $$
   select case
     when nullif(trim(full_name), '') is null then null
