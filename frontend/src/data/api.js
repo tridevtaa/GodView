@@ -995,6 +995,29 @@ export async function renameFeeHead(id, name) {
 // ------------------------------------------------------------ transport ---
 
 // Routes with their stops in order.
+// ---------------------------------------------------------------- buses ---
+
+export async function listBuses(schoolId) {
+  return must(await supabase.from("buses").select("*").eq("school_id", schoolId).order("created_at"));
+}
+
+export async function addBus(schoolId, fields) {
+  return must(await supabase.from("buses").insert({ ...fields, school_id: schoolId }).select().single());
+}
+
+export async function updateBus(id, fields) {
+  return must(await supabase.from("buses").update(fields).eq("id", id).select().single());
+}
+
+export async function deleteBus(id) {
+  must(await supabase.from("buses").delete().eq("id", id));
+}
+
+// Saves the order of a route's stops (their position in the list).
+export async function reorderStops(stops) {
+  await Promise.all(stops.map((s, i) => (s.sort === i + 1 ? null : updateStop(s.id, { sort: i + 1 }))));
+}
+
 export async function listRoutes(schoolId) {
   const rows = must(
     await supabase.from("bus_routes").select("*, stops:bus_stops(*)").eq("school_id", schoolId).order("sort").order("name")
