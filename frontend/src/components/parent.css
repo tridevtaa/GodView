@@ -1001,3 +1001,12 @@
     margin-bottom: 4px;
   }
 }
+
+/* The child at the top: the staff student page's card */
+.pa-profile {
+  width: 100%;
+}
+
+.pa-profile .ig-bio-main {
+  gap: 8px;
+}
