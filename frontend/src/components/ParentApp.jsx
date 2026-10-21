@@ -15,7 +15,6 @@ import {
   attendanceMonth,
   setParentPassword,
   parentHasOwnPassword,
-  classTeachersFor,
   classmatesForParent,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
@@ -34,7 +33,7 @@ import NoticeBoard, { AchievementsStrip, isWin, useImageUrls, useNotices } from 
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
-import ClassCard from "./ClassCard.jsx";
+import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
@@ -552,7 +551,7 @@ function ParentHome({ child, news, onGo }) {
     size: "full",
     node: <AchievementsStrip items={wins} urls={noticeUrls} viewAll onOpenNotices={() => onGo("notices")} />,
   };
-  items.class = { kind: "section", label: "Class", icon: "academics", tone: "indigo", size: "full", node: <ParentClass child={child} onMessage={() => onGo("inbox")} /> };
+  items.class = { kind: "section", label: "Class", icon: "academics", tone: "indigo", size: "full", node: <ParentClass child={child} /> };
   items.upcoming = {
     kind: "section",
     label: "Coming up",
@@ -576,14 +575,13 @@ function ParentHome({ child, news, onGo }) {
 }
 
 // The child's class: teachers with photos, classmates by first name only.
-function ParentClass({ child, onMessage }) {
-  const [teachers, setTeachers] = useState(null);
-  const [mates, setMates] = useState([]);
+function ParentClass({ child }) {
   const sessionId = child.session?.id;
+  const teachers = useClassTeachers(child.id, sessionId);
+  const [mates, setMates] = useState([]);
   useEffect(() => {
     if (!sessionId) return;
     let live = true;
-    classTeachersFor(child.id, sessionId).then((r) => live && setTeachers(r), () => live && setTeachers([]));
     classmatesForParent(child.id, sessionId).then((r) => live && setMates(r), () => {});
     return () => {
       live = false;
@@ -595,7 +593,6 @@ function ParentClass({ child, onMessage }) {
       title={`${gradeLabel(child.class)}${child.section ? ` ${child.section}` : ""}`}
       teachers={teachers}
       mates={mates}
-      onMessage={onMessage}
     />
   );
 }
@@ -649,10 +646,12 @@ function ChildHero({ child, onTab }) {
     fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
   ].filter(Boolean);
   const schoolPhone = child.school?.phone;
+  const teachers = useClassTeachers(child.id, child.session?.id);
 
   return (
     <div className="profile-page pa-profile">
       <header className="ig-hero" style={{ "--tint": tintFor(child) }}>
+        <ClassTeacherBadge teachers={teachers} />
         <div className="ig-top">
           <div className="ig-photo">
             <Photo person={child} className="ig-photo-img" />

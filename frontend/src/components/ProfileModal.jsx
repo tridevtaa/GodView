@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, classTeachersFor, listResults } from "../data/api.js";
+import { attendanceMonth, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
@@ -13,7 +13,7 @@ import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
 import { Hint, useInsights } from "./AiInsights.jsx";
 import Icon, { WhatsAppLogo } from "./Icon.jsx";
-import ClassCard from "./ClassCard.jsx";
+import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 const longDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -155,6 +155,7 @@ const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: 
 function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onDelete, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
+  const teachers = useClassTeachers(person.id, sessionId);
 
   useEffect(() => {
     let off = false;
@@ -200,6 +201,7 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
 
   return (
     <header className="ig-hero">
+      {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
       <div className="ig-top">
         <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
         <div className="ig-head">
@@ -576,17 +578,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
 // The student's class (see ClassCard). Classmates come from the
 // session's students already loaded; teachers from the class's assignments.
 function StudentClass({ person, sessionId, students, onOpenStudent }) {
-  const [teachers, setTeachers] = useState(null);
-  useEffect(() => {
-    if (!sessionId) return;
-    let live = true;
-    classTeachersFor(person.id, sessionId)
-      .then((rows) => live && setTeachers(rows))
-      .catch(() => live && setTeachers([]));
-    return () => {
-      live = false;
-    };
-  }, [person.id, sessionId]);
+  const teachers = useClassTeachers(person.id, sessionId);
 
   if (!person.class) return null;
   const mates = students
@@ -595,7 +587,7 @@ function StudentClass({ person, sessionId, students, onOpenStudent }) {
   return (
     <ClassCard
       title={`${gradeLabel(person.class)}${person.section ? ` ${person.section}` : ""}`}
-      teachers={sessionId ? teachers : []}
+      teachers={teachers}
       mates={mates}
       onOpenMate={onOpenStudent}
     />
