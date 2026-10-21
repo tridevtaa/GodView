@@ -16754,3 +16754,116 @@ button.ai-chip:hover {
 .ai-mini-text {
   color: var(--ai-soft);
 }
+
+/* Student page: the class card, its teachers then its classmates */
+.profile-page .g-class { --c: #1d2366; --tint: #eceefa; }
+
+.class-teachers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.class-teachers li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.class-teacher-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.class-teacher-text strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.class-teacher-text .row-sub {
+  margin: 0;
+}
+
+.class-photo {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 15px;
+}
+
+.class-photo.is-small {
+  width: 44px;
+  height: 44px;
+}
+
+.class-mates-head {
+  margin: 18px 0 10px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.class-teachers + .class-mates-head {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.class-mates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 12px 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.class-mates button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.class-mates button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.class-mates button:disabled {
+  cursor: default;
+}
+
+.class-mates button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.class-mates-more {
+  margin-top: 10px;
+}
+
+.class-skeleton {
+  height: 40px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, listResults } from "../data/api.js";
+import { attendanceMonth, classTeachersFor, listResults } from "../data/api.js";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
@@ -324,7 +324,7 @@ function GenderMark({ gender }) {
 // canWrite: photos, notes and results (anyone who can see the student, current session)
 // A student's or employee's profile. Students open as a full page (asPage),
 // with a back bar and previous/next; employees as a pop-up.
-export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, isOwner = false, canEdit, canWrite, onUpdate, onDeleted, onFeesChanged, onClose, routes = [], asPage = false }) {
+export default function ProfileModal({ person, mode, initialTab = "details", school, schoolId, sessionId, me, isAdmin, isOwner = false, canEdit, canWrite, onUpdate, onDeleted, onFeesChanged, onClose, routes = [], asPage = false, students = [], onOpenStudent }) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tab, setTab] = useState(initialTab);
@@ -510,6 +510,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                   </ul>
                 </section>
               ))}
+              {isStudent && <StudentClass person={person} sessionId={sessionId} students={students} onOpenStudent={onOpenStudent} />}
               {isStudent && isAdmin && (
                 <section className="profile-group profile-facts g-parents">
                   <StudentParents person={person} canEdit={canEdit} />
@@ -559,6 +560,76 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
       </nav>
       {card}
     </div>
+  );
+}
+
+// The student's class: its teachers (class teacher first) and classmates,
+// each classmate a tap away. Classmates come from the session's students
+// already loaded; teachers from the class's assignments.
+const CLASSMATES_SHOWN = 11;
+
+function StudentClass({ person, sessionId, students, onOpenStudent }) {
+  const [teachers, setTeachers] = useState(null);
+  const [all, setAll] = useState(false);
+  useEffect(() => {
+    if (!sessionId) return;
+    let live = true;
+    classTeachersFor(person.id, sessionId)
+      .then((rows) => live && setTeachers(rows))
+      .catch(() => live && setTeachers([]));
+    return () => {
+      live = false;
+    };
+  }, [person.id, sessionId]);
+
+  const mates = students
+    .filter((p) => p.id !== person.id && p.class === person.class && (p.section ?? "") === (person.section ?? "") && p.status !== "left")
+    .sort((a, b) => a.name.localeCompare(b.name));
+  if (!person.class || (teachers !== null && !teachers.length && !mates.length)) return null;
+  const shown = all ? mates : mates.slice(0, CLASSMATES_SHOWN);
+  const className = `${gradeLabel(person.class)}${person.section ? ` ${person.section}` : ""}`;
+
+  return (
+    <section className="profile-group profile-facts g-class">
+      <h3 className="facts-title">{className}</h3>
+      {teachers === null ? (
+        <div className="class-skeleton" aria-busy="true" />
+      ) : (
+        teachers.length > 0 && (
+          <ul className="class-teachers">
+            {teachers.map((t) => (
+              <li key={t.id ?? t.name}>
+                <Photo person={t} className="class-photo" />
+                <span className="class-teacher-text">
+                  <strong>{t.name}</strong>
+                  <span className="row-sub">{t.is_class_teacher ? "Class teacher" : t.designation || "Teacher"}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+      {mates.length > 0 && (
+        <>
+          <p className="class-mates-head">Classmates · {mates.length}</p>
+          <ul className="class-mates">
+            {shown.map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onOpenStudent?.(p.id)} disabled={!onOpenStudent}>
+                  <Photo person={p} className="class-photo is-small" />
+                  <span>{p.name.split(" ")[0]}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {mates.length > CLASSMATES_SHOWN && (
+            <button type="button" className="link-btn class-mates-more" onClick={() => setAll((v) => !v)}>
+              {all ? "Show fewer" : `Show all ${mates.length}`}
+            </button>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
