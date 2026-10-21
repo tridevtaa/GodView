@@ -16759,7 +16759,7 @@ button.ai-chip:hover {
 
 .class-teachers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px 24px;
   margin: 0;
   padding: 0;
@@ -16797,6 +16797,14 @@ button.ai-chip:hover {
   border-radius: 50%;
   object-fit: cover;
   font-size: 15px;
+}
+
+/* No photo: the initials, centred in the circle */
+.class-photo.placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  font-weight: 700;
 }
 
 .class-photo.is-small {
