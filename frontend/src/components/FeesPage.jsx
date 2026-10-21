@@ -9,7 +9,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
-import { InsightsButton, InsightsPanel } from "./AiInsights.jsx";
+import { Hint, InsightsButton, KeyInsights, hintFor, useInsights } from "./AiInsights.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -37,7 +37,10 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
-  const [insights, setInsights] = useState(false);
+  // Premium: AI insights in place of the charts (Charts brings them back)
+  const ins = useInsights(school, "fees", (role === "owner" || role === "admin") && !pastSession);
+  const [charts, setCharts] = useState(false);
+  const hint = (slot) => (hintFor(ins, slot) ? <Hint ins={ins} slot={slot} /> : undefined);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -121,7 +124,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       </div>
       {tab === "overview" && (
         <div className="page-actions">
-          {(role === "owner" || role === "admin") && !pastSession && <InsightsButton school={school} section="fees" onOpen={() => setInsights(true)} />}
+          {(role === "owner" || role === "admin") && !pastSession && school.plan !== "premium" && <InsightsButton section="fees" />}
           <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
             <Icon name="upload" />
             Old balances
@@ -190,6 +193,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             value: summary ? Number(summary.collected) : undefined,
             format: rupeesShort,
             tone: "paid",
+            note: hint("collected"),
             bar: billed ? { value: collected, max: billed, label: `${rate}% of ${rupees(billed)}` } : undefined,
           },
           {
@@ -198,37 +202,31 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             value: summary ? Number(summary.due_now) : undefined,
             format: rupeesShort,
             tone: "due",
+            note: hint("due_now"),
             badge: summary ? Number(summary.students_due) : 0,
             badgeLabel: `${summary?.students_due ?? 0} students owe`,
           },
-          { icon: "calendar", color: "indigo", label: "Due later", value: summary ? Number(summary.outstanding) - Number(summary.due_now) : undefined, format: rupeesShort },
+          {
+            icon: "calendar",
+            color: "indigo",
+            label: "Due later",
+            value: summary ? Number(summary.outstanding) - Number(summary.due_now) : undefined,
+            format: rupeesShort,
+            note: hint("due_later"),
+          },
         ]}
       />
 
-      <div className="fees-charts">
-        <section className="panel chart-panel">
-          <ColumnChart title="Collected by month" data={months} />
-        </section>
-        <section className="panel chart-panel">
-          <BarChart title="Due by class" data={classes} valueLabel="Due now" />
-        </section>
-      </div>
-
-      {insights && (
-        <InsightsPanel
-          school={school}
-          section="fees"
+      {ins.on && !charts ? (
+        <KeyInsights
+          ins={ins}
           opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
-          onClose={() => setInsights(false)}
+          onCharts={() => setCharts(true)}
           onPerson={(id) => {
             const s = students.find((x) => x.id === id);
-            if (s) {
-              setInsights(false);
-              onCollect(s);
-            }
+            if (s) onCollect(s);
           }}
           onOpen={(kind) => {
-            setInsights(false);
             if (kind === "structure") setTab("structure");
             else {
               setShowAll(true);
@@ -236,6 +234,22 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             }
           }}
         />
+      ) : (
+        <>
+          {ins.on && (
+            <button className="link-btn ai-back" onClick={() => setCharts(false)}>
+              <Icon name="sparkle" size={14} weight="fill" /> Back to key insights
+            </button>
+          )}
+          <div className="fees-charts">
+            <section className="panel chart-panel">
+              <ColumnChart title="Collected by month" data={months} />
+            </section>
+            <section className="panel chart-panel">
+              <BarChart title="Due by class" data={classes} valueLabel="Due now" />
+            </section>
+          </div>
+        </>
       )}
 
       <section className="panel" id="fees-owing">
@@ -243,6 +257,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
           <h2>
             {showAll ? "Everyone who owes" : "Paid nothing yet"} <span className="badge badge-danger">{list.length}</span>
           </h2>
+          <Hint ins={ins} slot="owing" className="ai-hint-row" />
           <button className="link-btn" onClick={() => setShowAll((v) => !v)}>
             {showAll ? "Paid nothing yet" : `Everyone who owes (${owing.length})`}
           </button>

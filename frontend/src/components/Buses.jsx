@@ -2,6 +2,7 @@ import { useState } from "react";
 import { addBus, deleteBus, updateBus, updateRoute } from "../data/api.js";
 import { StepBar } from "./Steps.jsx";
 import Icon from "./Icon.jsx";
+import { Hint } from "./AiInsights.jsx";
 
 // The school's buses: number, seats, driver and conductor, and the dates
 // its papers run out. A paper that has run out shows red; one running
@@ -54,7 +55,7 @@ export function busAlerts(bus) {
 export const label = (bus) => bus.name || bus.number;
 export const plate = (number) => number.toUpperCase();
 
-export function BusList({ buses, routes, onEdit, onAdd }) {
+export function BusList({ buses, routes, ins = null, onEdit, onAdd }) {
   return (
     <section className="fc bus-section">
       <header className="fc-head">
@@ -70,6 +71,7 @@ export function BusList({ buses, routes, onEdit, onAdd }) {
           Add bus
         </button>
       </header>
+      <Hint ins={ins} slot="buses" className="ai-hint-card" />
       {buses.length === 0 ? (
         <p className="row-sub bus-empty">Add each bus with its driver and the dates its papers run out. Then pick a bus for each route.</p>
       ) : (
@@ -103,6 +105,7 @@ export function BusList({ buses, routes, onEdit, onAdd }) {
                   <Icon name="pin" size={14} />
                   {runs.length ? runs.map((r) => r.name).join(", ") : "Not on a route"}
                 </span>
+                <Hint ins={ins} slot="bus" target={b.number} />
                 {b.status !== "retired" && (
                   <span className={`bus-papers is-${alerts.length ? alerts.some((a) => a.level === "red") ? "red" : "amber" : worst?.level === "none" ? "none" : "ok"}`}>
                     {alerts.length

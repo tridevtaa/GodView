@@ -7,6 +7,9 @@
 // an insight quoting a number that isn't in the data is dropped. Each
 // result is saved in ai_insights, which the app reads to show the latest.
 //
+// { auto: true } is the app's once-a-day refresh: if this section was
+// analysed in the last FRESH_HOURS, that result comes back and nothing
+// runs (so many people opening the page cost one run a day).
 // { pack_only: true } returns the figures instead (Premium owners and
 // admins only), for the model comparison script.
 //
@@ -20,7 +23,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { SECTIONS, checkInsights, schemaFor, userMessage } from "../_shared/insights.js";
 
-const MONTHLY_LIMIT = 30;
+const MONTHLY_LIMIT = 60; // a month for each section: a daily refresh plus some by hand
+const FRESH_HOURS = 20;
 const MODEL = Deno.env.get("AI_MODEL") || "claude-sonnet-5-5";
 
 const cors = {
@@ -37,7 +41,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: "method" }, 405);
 
-  const { school_id, section = "fees", pack_only = false } = await req.json().catch(() => ({}));
+  const { school_id, section = "fees", pack_only = false, auto = false } = await req.json().catch(() => ({}));
   if (typeof school_id !== "string" || !/^[0-9a-f-]{36}$/.test(school_id) || !Object.hasOwn(SECTIONS, section)) {
     return reply({ error: "bad_request" }, 400);
   }
@@ -70,6 +74,18 @@ Deno.serve(async (req) => {
     .eq("section", section)
     .gte("created_at", monthStart.toISOString());
   const used = count ?? 0;
+  if (auto && !pack_only) {
+    const { data: latest } = await admin
+      .from("ai_insights")
+      .select("*")
+      .eq("school_id", school_id)
+      .eq("section", section)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const last = latest?.[0];
+    const fresh = last && Date.now() - new Date(last.created_at).getTime() < FRESH_HOURS * 36e5;
+    if (fresh || (last && used >= MONTHLY_LIMIT)) return reply({ insight: last, used, fresh: true });
+  }
   if (!pack_only && used >= MONTHLY_LIMIT) return reply({ error: "limit", limit: MONTHLY_LIMIT }, 429);
 
   const { data: pack, error: packError } = await user.rpc(SECTIONS[section].pack, { p_school: school_id });
@@ -120,7 +136,7 @@ Deno.serve(async (req) => {
       school_id,
       section,
       model: message.model ?? MODEL,
-      result: { summary: result.summary, insights: result.insights },
+      result: { summary: result.summary, insights: result.insights, hints: result.hints },
       dropped: result.dropped,
       input_tokens: message.usage?.input_tokens ?? null,
       output_tokens: message.usage?.output_tokens ?? null,
@@ -130,5 +146,5 @@ Deno.serve(async (req) => {
     .single();
   if (saveError) console.log(`save ${saveError.message}`);
 
-  return reply({ insight: saved ?? { result, created_at: new Date().toISOString() }, left: Math.max(0, MONTHLY_LIMIT - used - 1) });
+  return reply({ insight: saved ?? { result, created_at: new Date().toISOString() }, used: used + 1 });
 });

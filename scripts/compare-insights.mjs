@@ -160,6 +160,7 @@ function html(pack, results) {
       <p class="meta">${esc(r.id)}<br>${r.seconds}s · ${r.inT.toLocaleString()} in / ${r.outT.toLocaleString()} out · $${r.cost.toFixed(4)} (₹${(r.cost * 84).toFixed(2)})<br>
       ${r.checked.insights.length} kept · <span class="${r.checked.dropped ? "bad" : ""}">${r.checked.dropped} dropped for wrong numbers</span></p>
       <p class="sum">${esc(r.checked.summary)}</p><ol>${cards}</ol>
+      ${r.checked.hints?.length ? `<p class="meta" style="margin-top:12px">Hints</p><ul class="hints">${r.checked.hints.map((h) => `<li>${esc(h.slot)}${h.target ? ` (${esc(h.target)})` : ""}: ${esc(h.text)}</li>`).join("")}</ul>` : ""}
       <p class="score">Your score: correct numbers __/5 · specific advice __/5 · would act on it __/5</p></section>`;
   };
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(SECTIONS[SECTION].title)} comparison</title>
@@ -173,6 +174,7 @@ h2{margin:0 0 6px;font-size:17px}.meta{color:#666;font-size:12px;margin:0 0 10px
 li{border:1px solid #e4e4e8;border-left:4px solid #999;border-radius:12px;padding:10px 12px}
 li.high{border-left-color:#c2412d}li.medium{border-left-color:#a8670a}li.low{border-left-color:#5b68c4}
 li p{margin:4px 0}.act{font-weight:600}.who{color:#555;font-size:12.5px}.err{color:#c2412d}
+.hints{padding-left:18px;margin:4px 0;font-size:12.5px;color:#5b3bb8}.hints li{border:0;padding:2px 0}
 .score{margin-top:12px;padding:8px 10px;background:#f3f4fa;border-radius:10px;font-size:12.5px}
 </style></head><body>
 <h1>${esc(SECTIONS[SECTION].title)}: model comparison</h1>

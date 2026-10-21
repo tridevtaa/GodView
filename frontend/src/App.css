@@ -15868,40 +15868,6 @@ button.achv-tag {
   line-height: 1.45;
 }
 
-.ai-modal {
-  width: min(720px, 100%);
-}
-
-.ai-modal .modal-header h2 .icon {
-  color: #8b5cf6;
-}
-
-.ai-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.ai-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.ai-running {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f5f0ff, #eef2ff);
-  color: #5b3bb8;
-  font-size: 14px;
-  font-weight: 600;
-}
-
 .ai-pulse {
   flex: none;
   width: 12px;
@@ -15918,12 +15884,6 @@ button.achv-tag {
   }
 }
 
-.ai-skeleton {
-  height: 160px;
-  border-radius: 16px;
-  background: var(--surface-2);
-}
-
 .ai-empty {
   margin: 0;
   color: var(--text-2);
@@ -15937,56 +15897,12 @@ button.achv-tag {
   line-height: 1.45;
 }
 
-.ai-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ai-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--text-3);
-  border-radius: 16px;
-}
-
-.ai-card.is-high {
-  border-left-color: var(--danger);
-}
-
-.ai-card.is-medium {
-  border-left-color: var(--warning);
-}
-
-.ai-card.is-low {
-  border-left-color: var(--brand);
-}
-
 .ai-priority {
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--text-3);
-}
-
-.ai-card.is-high .ai-priority {
-  color: var(--danger);
-}
-
-.ai-card.is-medium .ai-priority {
-  color: var(--warning);
-}
-
-.ai-title {
-  font-size: 15.5px;
 }
 
 .ai-detail,
@@ -16057,4 +15973,201 @@ button.achv-tag {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 12px;
+}
+
+/* Key insights: the main AI insights as big cards, where the charts were */
+.ai-key {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.ai-key-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.ai-key-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+}
+
+.ai-key-head h2 .icon {
+  color: #8b5cf6;
+}
+
+.ai-key-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.ai-key-meta .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-key-running {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6d3fd8;
+  font-weight: 600;
+}
+
+.ai-key-error {
+  margin: 0;
+}
+
+.ai-key-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ai-big {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 22px 24px;
+  border-radius: var(--r-lg, 22px);
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
+    var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms) both;
+  --accent: var(--brand);
+}
+
+.ai-big::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+  content: "";
+}
+
+.ai-big.is-high {
+  --accent: var(--danger);
+}
+
+.ai-big.is-medium {
+  --accent: var(--warning);
+}
+
+.ai-big.is-skeleton {
+  min-height: 190px;
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.ai-big.is-skeleton::before {
+  display: none;
+}
+
+.ai-big .ai-priority {
+  color: var(--accent);
+}
+
+.ai-big-title {
+  font-size: 19px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.ai-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+/* A short AI line next to a figure */
+.ai-hint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 5px;
+  color: #6d3fd8;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ai-hint .icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+.ai-hint-row {
+  order: 3;
+  flex-basis: 100%;
+}
+
+@media (max-width: 760px) {
+  .ai-key-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-big {
+    padding: 18px 18px 18px 22px;
+  }
+}
+
+.ai-hint-block {
+  display: flex;
+  margin: 0 0 14px;
+}
+
+.ai-hint-card {
+  display: flex;
+  margin: -6px 28px 12px;
+}
+
+.bus-card .ai-hint {
+  margin-top: 4px;
+}
+
+/* On Home's coloured fee card */
+.home-att-hint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.home-att-hint .icon {
+  flex: none;
+  margin-top: 2px;
+}
+
+@media (max-width: 760px) {
+  .ai-hint-card {
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+}
+
+.home-att-hint {
+  align-self: flex-start;
 }
