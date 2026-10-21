@@ -15,6 +15,8 @@ import {
   attendanceMonth,
   setParentPassword,
   parentHasOwnPassword,
+  classTeachersFor,
+  classmatesForParent,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
 import { logOut } from "./AuthGate.jsx";
@@ -31,6 +33,7 @@ import GlassPill from "./GlassPill.jsx";
 import NoticeBoard, { useNotices } from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
+import ClassCard from "./ClassCard.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
@@ -481,10 +484,37 @@ function ParentHome({ child, news, onGo }) {
         ))}
       </div>
 
+      <ParentClass child={child} onMessage={() => onGo("inbox")} />
+
       <div className="home-bottom-row is-solo">
         <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
       </div>
     </div>
+  );
+}
+
+// The child's class: teachers with photos, classmates by first name only.
+function ParentClass({ child, onMessage }) {
+  const [teachers, setTeachers] = useState(null);
+  const [mates, setMates] = useState([]);
+  const sessionId = child.session?.id;
+  useEffect(() => {
+    if (!sessionId) return;
+    let live = true;
+    classTeachersFor(child.id, sessionId).then((r) => live && setTeachers(r), () => live && setTeachers([]));
+    classmatesForParent(child.id, sessionId).then((r) => live && setMates(r), () => {});
+    return () => {
+      live = false;
+    };
+  }, [child.id, sessionId]);
+  if (!sessionId || !child.class) return null;
+  return (
+    <ClassCard
+      title={`${gradeLabel(child.class)}${child.section ? ` ${child.section}` : ""}`}
+      teachers={teachers}
+      mates={mates}
+      onMessage={onMessage}
+    />
   );
 }
 
