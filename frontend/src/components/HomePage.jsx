@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
+import { listHomework } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
-import { gradeLabel } from "./PersonCard.jsx";
-import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./TileVisuals.jsx";
+import { Caption, MiniRing, Thumb } from "./TileVisuals.jsx";
 import { ComingUp } from "./CalendarPage.jsx";
 import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
@@ -22,16 +21,15 @@ const ago = (t) => {
   const m = Math.max(0, Math.round((Date.now() - new Date(t)) / 6e4));
   return m < 60 ? `${m || 1}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : m < 7 * 1440 ? `${Math.round(m / 1440)}d ago` : dateText(t);
 };
-const dayShort = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
 // Home, like phone widgets: a greeting, today's attendance next to the
-// noticeboard as a banner to swipe through, a colourful tile
-// for each part of the app (one number and one word), students' wins
+// noticeboard as a banner to swipe through, colourful tiles for what
+// has no tab of its own (one number and one word), students' wins
 // (News & Achievements), then what's coming up beside a small calendar,
 // and quick actions. Anything waiting on this
-// person shows as a red badge on its tile (overdue fees, open requests,
-// staff waiting for access…). Uses the same remembered data as the pages,
+// person shows as a red badge on its tile or tab (overdue fees, open
+// requests, staff waiting for access…). Uses the same remembered data as the pages,
 // so it's quick and the pages open already filled.
 // Nothing shows twice: a notice is either in the banner or among the wins,
 // and the quick actions are the + menu's (computers only; phones have the +).
@@ -45,34 +43,23 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const isOwner = role === "owner";
   const showBanner = !isAdmin;
   const showWins = role === "teacher";
-  const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
-  const staffKey = `people:employees:${school.id}:`;
-  const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
   const [notices] = useNotices(school.id);
   const urls = useImageUrls(notices);
   const wins = (notices ?? []).filter(isWin);
   const plain = (notices ?? []).filter((x) => !isWin(x));
 
   useEffect(() => {
-    swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
-    if (leads) swr(staffKey, () => loadEmployees(school.id).then(withPhotoUrls), setStaff, { persist: true, maxAge: 120000 }).catch(() => {});
-  }, [school.id, leads, staffKey]);
-  useEffect(() => {
     if (!session) return;
     swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setHomework).catch(() => setHomework([]));
   }, [school.id, session]);
 
   // Numbers
-  const unread = (threads ?? []).filter((t) => Number(t.unread) > 0).length;
-  const requests = (threads ?? []).filter((t) => Number(t.open_requests) > 0).length;
   const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
   const dueTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow).length;
   const thisWeek = (homework ?? []).filter((h) => h.created_at >= weekAgo).length;
   const owing = students.filter((p) => Number(p.fee_due) > 0);
-  // Inactive students are in the count; the tile says how many.
-  const inactive = students.filter((p) => p.status === "inactive").length;
   const overdue = students.filter((p) => p.fee_status === "overdue").length;
   const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
   const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
@@ -95,85 +82,14 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const attTrend = useAttendanceTrend(session?.id, leads, students, today, wide && prio === "attendance" && !loading);
   const trend = !wide ? null : prio === "fees" ? feeTrend : prio === "attendance" ? attTrend : homeworkTrend(homework);
 
-  // The latest update in each part, for a line under its tile
-  const nameOf = (id) => students.find((p) => p.id === id)?.name?.split(" ")[0];
-  const lastThread = (threads ?? []).find((t) => t.last_from_parent);
-  const lastHomework = (homework ?? [])[0];
+  // The latest notice, for a line under its tile
   const lastNotice = (notices ?? [])[0];
-  const byId = new Map(students.map((p) => [p.id, p]));
-  const chatPeople = (threads ?? []).map((t) => byId.get(t.student_id)).filter(Boolean);
-  const nextDue = (homework ?? []).map((h) => h.due_date).filter((d) => d && d >= new Date().toISOString().slice(0, 10)).sort()[0];
-  const birthdays = birthdaysSoon(students);
-  const firstNames = (list) => list.slice(0, 2).map((p) => p.name.split(" ")[0]).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "");
 
-  // One tile per part of the app: a number and a word. badge: what's
-  // waiting on this person there; hot: something new, the tile glows.
+  // Tiles only for what has no tab of its own (Students, Homework, Inbox
+  // and Staff are a tap away below): the office gets attendance and
+  // notices. badge: what's waiting on this person; hot: the tile glows.
   const go = (to) => () => onGo(to);
   const rawTiles = [
-    {
-      key: "inbox",
-      icon: "plane",
-      tone: "violet",
-      label: "Unread Messages",
-      value: threads === null ? undefined : unread,
-      badge: requests,
-      badgeLabel: `${requests} request${requests === 1 ? "" : "s"} waiting`,
-      hot: unread > 0,
-      // Parents are waiting on a reply
-      urgent: unread > 0 || requests > 0,
-      sub: lastThread && `${nameOf(lastThread.student_id) ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
-      fresh: lastThread?.last_at,
-      visual: threads !== null && (
-        <>
-          <FacePile people={chatPeople} total={chatPeople.length} max={4} />
-          <Caption>{unread ? `${unread} waiting on you` : chatPeople.length ? "All caught up" : "No chats yet"}</Caption>
-        </>
-      ),
-      onClick: go("requests"),
-    },
-    prio !== "homework" && {
-      key: "homework",
-      icon: "book",
-      tone: "teal",
-      label: "New Homework",
-      value: homework === null ? undefined : thisWeek,
-      badge: leads ? 0 : dueTomorrow,
-      badgeLabel: `${dueTomorrow} due tomorrow`,
-      sub: lastHomework && `${lastHomework.subject || "Homework"} · ${gradeLabel(lastHomework.class)}${lastHomework.section ? ` ${lastHomework.section}` : ""}${lastHomework.due_date ? ` · due ${dayShort(lastHomework.due_date)}` : ""}`,
-      fresh: lastHomework?.created_at,
-      visual: homework !== null && (
-        <>
-          <WeekStrip dates={(homework ?? []).map((h) => h.due_date).filter(Boolean)} />
-          <Caption>{nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"}</Caption>
-        </>
-      ),
-      onClick: go("homework"),
-    },
-    leads && {
-      key: "staff",
-      icon: "idcard",
-      tone: "pink",
-      label: "Staff Members",
-      value: staff === null ? undefined : staff.length,
-      // The owner's top card already asks about anyone waiting for access
-      visual: staff?.length > 0 && <FacePile people={staff} />,
-      onClick: go("employees"),
-    },
-    {
-      key: "students",
-      icon: "scholar",
-      tone: "indigo",
-      label: leads ? "Students" : "My students",
-      value: loading ? undefined : students.length,
-      note: inactive ? `${n(inactive)} inactive` : null,
-      visual: !loading && students.length > 0 && (
-        <>
-          <FacePile people={students} />
-          {birthdays.length > 0 && <Caption>🎂 {firstNames(birthdays)}, birthday this week</Caption>}
-        </>
-      ),
-      onClick: go("students"),
-    },
     // The office's top card is fees, so attendance becomes a tile for them
     isAdmin && {
       key: "attendance",
@@ -277,11 +193,13 @@ export default function HomePage({ school, me, name, role, students, loading, se
       </div>
 
       {/* Tiles in two even rows on computers */}
-      <div className="hw-grid" style={{ "--half": spans / 2 }}>
-        {tiles.map((t, i) => (
-          <Tile key={t.key} {...t} index={i} />
-        ))}
-      </div>
+      {tiles.length > 0 && (
+        <div className="hw-grid" style={{ "--half": spans / 2 }}>
+          {tiles.map((t, i) => (
+            <Tile key={t.key} {...t} index={i} />
+          ))}
+        </div>
+      )}
 
       {showWins && <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />}
 
