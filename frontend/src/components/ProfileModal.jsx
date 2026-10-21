@@ -152,7 +152,7 @@ const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: 
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
-function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onUpdate, onTab }) {
+function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onDelete, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
 
@@ -262,6 +262,12 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
           {canEdit && (
             <button className="ig-act" onClick={onEdit} aria-label="Edit details" title="Edit details">
               <Icon name="edit" size={18} />
+            </button>
+          )}
+          {/* Owners only: opens the delete check (what goes with it, or Mark as Left) */}
+          {onDelete && (
+            <button className="ig-act ig-act-del" onClick={onDelete} aria-label="Delete student" title="Delete student">
+              <Icon name="trash" size={18} />
             </button>
           )}
         </div>
@@ -384,6 +390,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             editing={editing}
             callNo={callNo}
             onEdit={() => setEditing(true)}
+            onDelete={isOwner && onDeleted ? () => setDeleting(true) : null}
             onUpdate={onUpdate}
             onTab={setTab}
           />
