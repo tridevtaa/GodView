@@ -17184,63 +17184,79 @@ button.class-face:hover {
   color: var(--danger);
 }
 
-/* The class teacher, top right of the student card: a small round photo
-   like the student's, and their name under it */
+/* The class teacher, top right of the student card: their photo in a
+   thick navy ring, "Class teacher" curved along the top and their name
+   along the bottom (ClassTeacherBadge) */
 .ig-hero {
   position: relative;
 }
 
 .ig-incharge {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 14px;
+  right: 14px;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  max-width: 96px;
-  text-align: center;
+  width: 96px;
+  height: 96px;
+  filter: drop-shadow(0 3px 8px rgba(29, 35, 102, 0.22));
 }
 
+.ig-incharge-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ig-incharge-arc {
+  fill: #fff;
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: 0.9px;
+}
+
+.ig-incharge-arc.is-name {
+  fill: #ffd56b;
+  letter-spacing: 0.6px;
+}
+
+.ig-incharge-dot {
+  fill: rgba(255, 255, 255, 0.7);
+}
+
+/* The photo fills the ring's middle */
 .ig-incharge-photo {
+  position: absolute;
+  inset: 21%;
   display: block;
-  width: 52px;
-  height: 52px;
-  padding: 2px;
   border-radius: 50%;
-  background: conic-gradient(from 210deg, var(--brand-soft), var(--brand) 55%, var(--brand-soft));
+  overflow: hidden;
 }
 
 .ig-incharge-photo .ig-photo-img {
-  font-size: 16px;
-  border-width: 2px;
-}
-
-.ig-incharge-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.2;
-}
-
-.ig-incharge-text span {
-  color: var(--text-3);
-  font-size: 10.5px;
-  font-weight: 600;
-}
-
-.ig-incharge-text strong {
-  overflow: hidden;
-  max-width: 96px;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  font-size: 15px;
 }
 
 /* Leave room for it beside the name */
 .ig-hero:has(.ig-incharge) .ig-head > div:first-child {
-  padding-right: 92px;
+  padding-right: 104px;
+}
+
+@media (max-width: 760px) {
+  .ig-incharge {
+    top: 10px;
+    right: 10px;
+    width: 84px;
+    height: 84px;
+  }
+
+  .ig-hero:has(.ig-incharge) .ig-head > div:first-child {
+    padding-right: 86px;
+  }
 }
 
 /* The star on the class teacher's face in the Teachers row */
