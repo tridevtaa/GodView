@@ -1,13 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { addRoute, addStop, deleteRoute, deleteStop, updateRoute } from "../data/api.js";
+import { addRoute, addStop, deleteRoute, deleteStop, listAreas, updateRoute } from "../data/api.js";
+import { peek, swr } from "../data/cache.js";
 import { MAP_ID, hasMaps, loadMaps, mapsLink } from "../data/maps.js";
-import PlacePicker from "./PlacePicker.jsx";
 import Icon from "./Icon.jsx";
 
 // Owner: the school's bus routes, each with its stops pinned on the map.
+// Stops are picked from the villages and towns on the map above.
 export default function TransportRoutes({ school, routes, students, onChanged }) {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
+  const areasKey = `areas:${school.id}`;
+  const [areas, setAreas] = useState(() => peek(areasKey) ?? null);
+  // Fetched again whenever a stop is being added, so villages just added
+  // on the map show up.
+  const loadAreas = () => swr(areasKey, () => listAreas(school.id), setAreas).catch(() => setAreas((a) => a ?? []));
+  useEffect(() => {
+    loadAreas();
+  }, [areasKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Which route each stop name is already on
+  const usedOn = useMemo(() => {
+    const m = new Map();
+    routes.forEach((r) => r.stops.forEach((st) => m.set(st.name.trim().toLowerCase(), r)));
+    return m;
+  }, [routes]);
 
   const riders = useMemo(() => {
     const m = new Map();
@@ -50,17 +65,16 @@ export default function TransportRoutes({ school, routes, students, onChanged })
       </form>
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} />
       ))}
     </>
   );
 }
 
-function RouteCard({ school, route, riders, act }) {
+function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker }) {
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(route.name);
-  const [stopName, setStopName] = useState("");
   const [asking, setAsking] = useState(false);
   const total = route.stops.reduce((n, s) => n + (riders.get(s.id) ?? 0), 0);
   const pinned = route.stops.filter((s) => s.lat != null);
@@ -133,40 +147,28 @@ function RouteCard({ school, route, riders, act }) {
           {route.stops.length === 0 && !adding && <li className="row-sub tr-empty">No stops yet. Add them in the order the bus reaches them.</li>}
           <li className="tr-add-stop">
             {adding ? (
-              hasMaps ? (
-                <div className="tr-stop-search">
-                  <PlacePicker
-                    value={null}
-                    placeholder="Search the stop, e.g. Hema Majra chowk"
-                    label="Stop location"
-                    onChange={async (p) => {
-                      if (p?.lat != null && (await act(() => addStop(school.id, route.id, { ...p, name: p.name || p.address }, route.stops.length + 1))())) setAdding(false);
-                    }}
-                  />
-                  <button className="link-btn" onClick={() => setAdding(false)}>
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <form
-                  className="tr-stop-search"
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (stopName.trim() && (await act(() => addStop(school.id, route.id, { name: stopName }, route.stops.length + 1))())) {
-                      setStopName("");
-                      setAdding(false);
-                    }
+              <div className="tr-stop-search">
+                <AreaPicker
+                  areas={areas}
+                  route={route}
+                  usedOn={usedOn}
+                  onPick={async (area) => {
+                    const stop = { name: area.name, lat: area.lat, lng: area.lng };
+                    if (await act(() => addStop(school.id, route.id, stop, route.stops.length + 1))()) setAdding(false);
                   }}
-                >
-                  <input className="input" placeholder="Stop name" value={stopName} onChange={(e) => setStopName(e.target.value)} autoFocus maxLength={80} />
-                  <button className="btn btn-primary btn-sm">Add</button>
-                  <button type="button" className="link-btn" onClick={() => setAdding(false)}>
-                    Cancel
-                  </button>
-                </form>
-              )
+                />
+                <button className="link-btn" onClick={() => setAdding(false)}>
+                  Cancel
+                </button>
+              </div>
             ) : (
-              <button className="btn btn-secondary btn-sm" onClick={() => setAdding(true)}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  onOpenPicker();
+                  setAdding(true);
+                }}
+              >
                 <Icon name="plus" />
                 Add stop
               </button>
@@ -176,6 +178,79 @@ function RouteCard({ school, route, riders, act }) {
         {pinned.length > 0 && hasMaps && <RouteMap stops={pinned} />}
       </div>
     </section>
+  );
+}
+
+// Search the villages and towns on the map. Ones already on this route
+// are left out; ones on another route say which.
+function AreaPicker({ areas, route, usedOn, onPick }) {
+  const [query, setQuery] = useState("");
+  const [active, setActive] = useState(0);
+  const [open, setOpen] = useState(true);
+  const onRoute = new Set(route.stops.map((st) => st.name.trim().toLowerCase()));
+  const q = query.trim().toLowerCase();
+  const items = (areas ?? [])
+    .filter((a) => !onRoute.has(a.name.trim().toLowerCase()))
+    .filter((a) => !q || a.name.toLowerCase().includes(q) || (a.aliases ?? []).some((x) => x.toLowerCase().includes(q)));
+
+  if (areas !== null && areas.length === 0) {
+    return <p className="row-sub tr-area-empty">No villages on the map yet. Add them on the map above first.</p>;
+  }
+
+  const onKey = (e) => {
+    if (e.key === "ArrowDown") (e.preventDefault(), setActive((i) => Math.min(i + 1, items.length - 1)));
+    else if (e.key === "ArrowUp") (e.preventDefault(), setActive((i) => Math.max(i - 1, 0)));
+    else if (e.key === "Enter" && items[active]) (e.preventDefault(), onPick(items[active]));
+    else if (e.key === "Escape") setOpen(false);
+  };
+
+  return (
+    <div className="place">
+      <div className="place-search">
+        <Icon name="search" />
+        <input
+          className="place-input"
+          placeholder={areas === null ? "Loading villages…" : "Search a village or town on the map"}
+          value={query}
+          onChange={(e) => (setQuery(e.target.value), setActive(0), setOpen(true))}
+          onKeyDown={onKey}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          aria-label="Stop"
+          aria-autocomplete="list"
+          aria-expanded={open && items.length > 0}
+          autoComplete="off"
+          autoFocus
+        />
+        {open && areas !== null && (
+          <ul className="place-menu" role="listbox">
+            {items.map((a, i) => {
+              const other = usedOn.get(a.name.trim().toLowerCase());
+              return (
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={i === active}
+                    className={i === active ? "is-active" : ""}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => onPick(a)}
+                  >
+                    <Icon name="pin" size={15} />
+                    <span>
+                      <strong>{a.name}</strong>
+                      {other && <span className="row-sub">Also on {other.name}</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+            {items.length === 0 && <li className="place-credit">{q ? `No village called “${query.trim()}” on the map` : "Every village on the map is on this route"}</li>}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -15160,7 +15160,7 @@ button.achv-tag {
 
 .home-trend {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr);
   gap: 32px;
   align-items: center;
   padding-top: 18px;
@@ -15348,4 +15348,10 @@ button.achv-tag {
   .home-trend {
     display: none;
   }
+}
+
+/* Adding a stop: villages on the map, nothing to pick yet */
+.tr-area-empty {
+  flex: 1;
+  margin: 0;
 }
