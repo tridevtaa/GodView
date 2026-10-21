@@ -12,7 +12,7 @@ import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
 import { Hint, useInsights } from "./AiInsights.jsx";
-import Icon from "./Icon.jsx";
+import Icon, { WhatsAppLogo } from "./Icon.jsx";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 const longDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -193,7 +193,7 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
     ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", () => onTab("details")],
     ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", () => onTab("results")],
     isAdmin
-      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "red" : "amber", () => onTab("fees")]
+      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", !feeKnown ? "indigo" : person.fee_status === "overdue" ? "red" : due > 0 ? "amber" : "green", () => onTab("fees")]
       : null,
   ].filter(Boolean);
 
@@ -255,7 +255,7 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
           )}
           {callNo && (
             <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp parent" title="WhatsApp parent">
-              <Icon name="whatsapp" size={19} />
+              <WhatsAppLogo size={30} />
             </a>
           )}
           {canEdit && (
@@ -405,7 +405,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                   )}
                   {callNo && (
                     <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp" title="WhatsApp">
-                      <Icon name="whatsapp" size={19} />
+                      <WhatsAppLogo size={30} />
                     </a>
                   )}
                   {canEdit && (

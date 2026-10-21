@@ -14989,9 +14989,14 @@ button.achv-tag {
   color: #fff;
 }
 
+/* WhatsApp: its own logo on white */
 .profile-page .ig-act[href*="wa.me"] {
-  background: #25d366;
-  color: #fff;
+  background: var(--surface);
+}
+
+/* Fees overdue: the amount in red too */
+.profile-page .ig-stat.t-red strong {
+  color: var(--danger);
 }
 
 /* Sections: the app's pill switch */
