@@ -53,13 +53,13 @@ export function ClassTeacherBadge({ teachers }) {
           <path id={`${id}b`} d={`M ${50 - bottom} 50 A ${bottom} ${bottom} 0 0 0 ${50 + bottom} 50`} />
         </defs>
         <circle cx="50" cy="50" r="40.5" fill="none" stroke={`url(#${id}g)`} strokeWidth="19" />
-        <text className="ig-incharge-arc" fontSize="8.4">
-          <textPath href={`#${id}t`} startOffset="50%" textAnchor="middle">
+        <text className="ig-incharge-arc" fontSize="8.4" textAnchor="middle">
+          <textPath href={`#${id}t`} startOffset="50%">
             CLASS TEACHER
           </textPath>
         </text>
-        <text className="ig-incharge-arc is-name" fontSize={fs}>
-          <textPath href={`#${id}b`} startOffset="50%" textAnchor="middle">
+        <text className="ig-incharge-arc is-name" fontSize={fs} textAnchor="middle">
+          <textPath href={`#${id}b`} startOffset="50%">
             {name}
           </textPath>
         </text>

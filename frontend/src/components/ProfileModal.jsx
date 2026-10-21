@@ -201,7 +201,6 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
 
   return (
     <header className="ig-hero">
-      {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
       <div className="ig-top">
         <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
         <div className="ig-head">
@@ -212,6 +211,7 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
             </h2>
             {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
           </div>
+          {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
           <ul className="ig-stats">
             {stats.map(([label, value, note, tone, onClick]) => (
               <li key={label} title={`${label}: ${value} ${note}`}>
