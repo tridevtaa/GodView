@@ -188,12 +188,12 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
   const due = Number(person.fee_due) || 0;
   const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
   const bus = person.uses_bus ? stopLabel(routes, person.bus_stop_id) || [person.transport_route, person.pickup_point].filter(Boolean).join(" · ") : "";
-  // Each a small tile in the app's colours: [label, value, note, tone, icon, tap]
+  // Each a small tile in the app's colours: [label, value, note, tone, tap]
   const stats = [
-    ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", "register", () => onTab("details")],
-    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", "chart", () => onTab("results")],
+    ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", () => onTab("details")],
+    ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", () => onTab("results")],
     isAdmin
-      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "red" : "amber", "rupee", () => onTab("fees")]
+      ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", due > 0 ? "red" : "amber", () => onTab("fees")]
       : null,
   ].filter(Boolean);
 
@@ -210,14 +210,11 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
             {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
           </div>
           <ul className="ig-stats">
-            {stats.map(([label, value, note, tone, icon, onClick]) => (
+            {stats.map(([label, value, note, tone, onClick]) => (
               <li key={label} title={`${label}: ${value} ${note}`}>
                 <button type="button" className={`ig-stat t-${tone}`} onClick={onClick}>
-                  <span className="ig-stat-icon">
-                    <Icon name={icon} size={16} weight="fill" />
-                  </span>
-                  <strong>{value}</strong>
                   <span>{label}</span>
+                  <strong>{value}</strong>
                 </button>
               </li>
             ))}
@@ -245,8 +242,12 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
         {mode === "students" && <StudentHint school={school} isAdmin={isAdmin} id={person.id} />}
       </div>
 
-      {!editing && (callNo || canEdit) && (
+      {!editing && (
         <div className="ig-actions">
+          {/* Messages with the parents, beside the other ways to reach them */}
+          <button className="ig-act ig-act-msg" onClick={() => onTab("messages")} aria-label="Messages" title="Messages">
+            <Icon name="message" size={18} />
+          </button>
           {callNo && (
             <a className="ig-act" href={`tel:${callNo}`} aria-label="Call parent" title="Call parent">
               <Icon name="phone" size={18} />
@@ -356,7 +357,8 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const tabs = [
     ["details", "Details"],
     ...(isAdmin ? [["fees", "Fees"]] : []),
-    ["messages", "Messages"],
+    // On the full page, Messages is a button beside Call instead
+    ...(asPage ? [] : [["messages", "Messages"]]),
     ["results", "Results"],
   ];
 
