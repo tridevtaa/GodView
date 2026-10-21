@@ -9,6 +9,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
+import { InsightsButton, InsightsPanel } from "./FeeInsights.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -36,6 +37,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
+  const [insights, setInsights] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -119,6 +121,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       </div>
       {tab === "overview" && (
         <div className="page-actions">
+          {(role === "owner" || role === "admin") && !pastSession && <InsightsButton school={school} onOpen={() => setInsights(true)} />}
           <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
             <Icon name="upload" />
             Old balances
@@ -211,7 +214,30 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         </section>
       </div>
 
-      <section className="panel">
+      {insights && (
+        <InsightsPanel
+          school={school}
+          canOpenStructure={isOwner}
+          onClose={() => setInsights(false)}
+          onCollect={(id) => {
+            const s = students.find((x) => x.id === id);
+            if (s) {
+              setInsights(false);
+              onCollect(s);
+            }
+          }}
+          onOpen={(kind) => {
+            setInsights(false);
+            if (kind === "structure") setTab("structure");
+            else {
+              setShowAll(true);
+              setTimeout(() => document.getElementById("fees-owing")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+            }
+          }}
+        />
+      )}
+
+      <section className="panel" id="fees-owing">
         <div className="panel-title panel-title-row">
           <h2>
             {showAll ? "Everyone who owes" : "Paid nothing yet"} <span className="badge badge-danger">{list.length}</span>

@@ -1526,3 +1526,32 @@ export async function markStudentLeft(id, sessionId) {
   if (sessionId) must(await supabase.from("student_enrolments").update({ status: "left" }).eq("student_id", id).eq("session_id", sessionId));
   return { status: "left", left_as_of: today };
 }
+
+// ---------------------------------------------------------- AI insights ---
+
+// The latest saved analysis for a section, and how many were run this
+// month (owners and admins).
+export async function latestInsight(schoolId, section = "fees") {
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+  const [latest, month] = await Promise.all([
+    supabase.from("ai_insights").select("*").eq("school_id", schoolId).eq("section", section).order("created_at", { ascending: false }).limit(1),
+    supabase.from("ai_insights").select("id", { count: "exact", head: true }).eq("school_id", schoolId).gte("created_at", monthStart.toISOString()),
+  ]);
+  if (latest.error) throw latest.error;
+  return { insight: latest.data?.[0] ?? null, used: month.count ?? 0 };
+}
+
+// Runs a new analysis (Premium). Throws { code } on "premium", "limit",
+// "busy" or "ai_failed".
+export async function runInsight(schoolId, section = "fees") {
+  const { data, error } = await supabase.functions.invoke("ai-insights", { body: { school_id: schoolId, section } });
+  if (error) {
+    const body = await error.context?.json?.().catch(() => null);
+    const e = new Error(body?.error || "ai_failed");
+    e.code = body?.error || "ai_failed";
+    throw e;
+  }
+  return data;
+}
