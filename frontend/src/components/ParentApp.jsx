@@ -32,7 +32,8 @@ import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import NoticeBoard, { useNotices } from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
-import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
+import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
+import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
 import ClassCard from "./ClassCard.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
@@ -447,6 +448,8 @@ function ParentHome({ child, news, onGo }) {
       icon: "notice",
       tone: "orange",
       label: "Notices",
+      // Wide by default: the latest notice's title fits beside the count
+      wide: true,
       value: notices === null ? undefined : notices.length,
       badge: news("notices"),
       badgeLabel: `${plural(news("notices"), "new notice")}`,
@@ -455,7 +458,26 @@ function ParentHome({ child, news, onGo }) {
       onClick: go("notices"),
     },
   ].filter(Boolean);
-  const { tiles, spans } = arrangeTiles(rawTiles);
+
+  // Home is laid out by each parent (HomeWidgets.jsx). Messages starts off
+  // (it's in the bar below); + Add widget brings it back.
+  const meta = [...rawTiles.map((t) => ({ key: t.key, defaultOn: t.key !== "inbox" })), { key: "class" }, { key: "upcoming" }];
+  const layout = useHomeLayout("home:parent", meta);
+  const on = new Set(layout.visible);
+  const auto = arrangeTiles(rawTiles.filter((t) => on.has(t.key) && !t.wide));
+  const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
+  const items = Object.fromEntries(
+    rawTiles.map(({ fresh, wide, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: wide || autoWide.has(t.key) ? "wide" : "small", tile: t }])
+  );
+  items.class = { kind: "section", label: "Class", icon: "academics", tone: "indigo", size: "full", node: <ParentClass child={child} onMessage={() => onGo("inbox")} /> };
+  items.upcoming = {
+    kind: "section",
+    label: "Coming up",
+    icon: "calendar",
+    tone: "violet",
+    size: "full",
+    node: <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />,
+  };
 
   return (
     <div className="home hw pa-home home-roomy">
@@ -465,17 +487,7 @@ function ParentHome({ child, news, onGo }) {
         </div>
       )}
 
-      <div className="hw-grid" style={{ "--half": spans / 2 }}>
-        {tiles.map((t, i) => (
-          <Tile key={t.key} {...t} index={i} />
-        ))}
-      </div>
-
-      <ParentClass child={child} onMessage={() => onGo("inbox")} />
-
-      <div className="home-bottom-row is-solo">
-        <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
-      </div>
+      <EditableHome layout={layout} items={items} />
     </div>
   );
 }
