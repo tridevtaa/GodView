@@ -27,6 +27,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
+import { InsightsButton, InsightsPanel } from "./components/AiInsights.jsx";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -65,6 +66,7 @@ export default function App() {
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
+  const [aiPanel, setAiPanel] = useState(null); // AI insights open: "transport" or "results"
   // Full-screen map: Escape closes it, and the page behind doesn't scroll.
   useEffect(() => {
     if (view !== "map") return;
@@ -746,6 +748,9 @@ export default function App() {
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
+            <div className="ai-row">
+              <InsightsButton school={school} section="transport" label="Transport insights" onOpen={() => setAiPanel("transport")} />
+            </div>
             {(() => {
               const onBus = current.filter((s) => s.uses_bus).length;
               const pinned = current.filter((s) => s.home_lat != null).length;
@@ -840,6 +845,9 @@ export default function App() {
           )}
           {isStudents && (
             <div className="page-actions toolbar-actions">
+              {(isAdmin || isPrincipal) && !viewOnly && source === "supabase" && (
+                <InsightsButton school={school} section="results" label="Results insights" onOpen={() => setAiPanel("results")} />
+              )}
               {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
               {canEdit && (
                 <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
@@ -895,6 +903,30 @@ export default function App() {
       <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
+        {aiPanel && (
+          <InsightsPanel
+            school={school}
+            section={aiPanel}
+            opens={aiPanel === "transport" ? ["routes", "buses", "map"] : canWrite ? ["students", "marks"] : ["students"]}
+            onClose={() => setAiPanel(null)}
+            onOpen={(kind) => {
+              setAiPanel(null);
+              const to = (sel) => setTimeout(() => document.querySelector(sel)?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+              if (kind === "map") setView("map");
+              else if (kind === "routes") to(".tr-add");
+              else if (kind === "buses") to(".bus-section");
+              else if (kind === "marks") switchMode("marks");
+            }}
+            onPerson={
+              aiPanel === "results"
+                ? (id) => {
+                    setAiPanel(null);
+                    openStudent(id);
+                  }
+                : undefined
+            }
+          />
+        )}
         {collect && isAdmin && (
           <CollectFee
             school={school}

@@ -9,7 +9,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
-import { InsightsButton, InsightsPanel } from "./FeeInsights.jsx";
+import { InsightsButton, InsightsPanel } from "./AiInsights.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -121,7 +121,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       </div>
       {tab === "overview" && (
         <div className="page-actions">
-          {(role === "owner" || role === "admin") && !pastSession && <InsightsButton school={school} onOpen={() => setInsights(true)} />}
+          {(role === "owner" || role === "admin") && !pastSession && <InsightsButton school={school} section="fees" onOpen={() => setInsights(true)} />}
           <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
             <Icon name="upload" />
             Old balances
@@ -217,9 +217,10 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       {insights && (
         <InsightsPanel
           school={school}
-          canOpenStructure={isOwner}
+          section="fees"
+          opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
           onClose={() => setInsights(false)}
-          onCollect={(id) => {
+          onPerson={(id) => {
             const s = students.find((x) => x.id === id);
             if (s) {
               setInsights(false);

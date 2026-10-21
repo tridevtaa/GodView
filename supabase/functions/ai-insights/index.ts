@@ -1,7 +1,9 @@
-// AI insights (Premium). The app sends { school_id, section: "fees" }.
-// Only owners and admins of a Premium school, up to MONTHLY_LIMIT times a
-// month. The fee figures come from ai_fees_pack() (as the signed-in user,
-// so the database checks they're allowed). The AI's answer is checked:
+// AI insights (Premium). The app sends { school_id, section } where
+// section is "fees", "transport" or "results". Owners and admins of a
+// Premium school (and the principal, for results), up to MONTHLY_LIMIT
+// times a month for each section. The figures come from that section's
+// database function (as the signed-in user, so the database checks
+// they're allowed); see _shared/insights.js. The AI's answer is checked:
 // an insight quoting a number that isn't in the data is dropped. Each
 // result is saved in ai_insights, which the app reads to show the latest.
 //
@@ -16,7 +18,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
-import { FEES_SYSTEM, INSIGHT_SCHEMA, checkInsights, userMessage } from "../_shared/fees-insights.js";
+import { SECTIONS, checkInsights, schemaFor, userMessage } from "../_shared/insights.js";
 
 const MONTHLY_LIMIT = 30;
 const MODEL = Deno.env.get("AI_MODEL") || "claude-sonnet-5-5";
@@ -36,7 +38,7 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return reply({ error: "method" }, 405);
 
   const { school_id, section = "fees", pack_only = false } = await req.json().catch(() => ({}));
-  if (typeof school_id !== "string" || !/^[0-9a-f-]{36}$/.test(school_id) || section !== "fees") {
+  if (typeof school_id !== "string" || !/^[0-9a-f-]{36}$/.test(school_id) || !Object.hasOwn(SECTIONS, section)) {
     return reply({ error: "bad_request" }, 400);
   }
 
@@ -52,7 +54,8 @@ Deno.serve(async (req) => {
   const { data: auth } = await user.auth.getUser();
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
   const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
-  if (!isAdmin) return reply({ error: "not_allowed" }, 403);
+  const { data: isPrincipal } = section === "results" ? await user.rpc("is_principal", { school: school_id }) : { data: false };
+  if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
   // As the user: the service role has no grant on schools in this project
   const { data: school } = await user.from("schools").select("plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);
@@ -64,11 +67,12 @@ Deno.serve(async (req) => {
     .from("ai_insights")
     .select("id", { count: "exact", head: true })
     .eq("school_id", school_id)
+    .eq("section", section)
     .gte("created_at", monthStart.toISOString());
   const used = count ?? 0;
   if (!pack_only && used >= MONTHLY_LIMIT) return reply({ error: "limit", limit: MONTHLY_LIMIT }, 429);
 
-  const { data: pack, error: packError } = await user.rpc("ai_fees_pack", { p_school: school_id });
+  const { data: pack, error: packError } = await user.rpc(SECTIONS[section].pack, { p_school: school_id });
   if (packError || !pack || pack.error) return reply({ error: "no_data" }, 500);
   if (pack_only) return reply({ pack });
 
@@ -82,9 +86,9 @@ Deno.serve(async (req) => {
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      system: FEES_SYSTEM,
-      output_config: { format: { type: "json_schema", schema: INSIGHT_SCHEMA } },
-      messages: [{ role: "user", content: userMessage(pack) }],
+      system: SECTIONS[section].system,
+      output_config: { format: { type: "json_schema", schema: schemaFor(section) } },
+      messages: [{ role: "user", content: userMessage(section, pack) }],
     } as unknown as Parameters<typeof anthropic.beta.messages.create>[0]);
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) return reply({ error: "busy" }, 503);
@@ -109,7 +113,7 @@ Deno.serve(async (req) => {
     return reply({ error: "ai_failed" }, 502);
   }
 
-  const result = checkInsights(parsed, pack);
+  const result = checkInsights(section, parsed, pack);
   const { data: saved, error: saveError } = await admin
     .from("ai_insights")
     .insert({

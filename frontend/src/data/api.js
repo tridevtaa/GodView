@@ -1537,7 +1537,7 @@ export async function latestInsight(schoolId, section = "fees") {
   monthStart.setUTCHours(0, 0, 0, 0);
   const [latest, month] = await Promise.all([
     supabase.from("ai_insights").select("*").eq("school_id", schoolId).eq("section", section).order("created_at", { ascending: false }).limit(1),
-    supabase.from("ai_insights").select("id", { count: "exact", head: true }).eq("school_id", schoolId).gte("created_at", monthStart.toISOString()),
+    supabase.from("ai_insights").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("section", section).gte("created_at", monthStart.toISOString()),
   ]);
   if (latest.error) throw latest.error;
   return { insight: latest.data?.[0] ?? null, used: month.count ?? 0 };

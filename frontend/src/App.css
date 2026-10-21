@@ -16051,3 +16051,10 @@ button.achv-tag {
     left: 0;
   }
 }
+
+/* Transport: the insights button above the overview cards */
+.ai-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
