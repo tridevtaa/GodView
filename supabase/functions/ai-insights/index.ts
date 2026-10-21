@@ -53,7 +53,8 @@ Deno.serve(async (req) => {
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
   const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
   if (!isAdmin) return reply({ error: "not_allowed" }, 403);
-  const { data: school } = await admin.from("schools").select("plan").eq("id", school_id).single();
+  // As the user: the service role has no grant on schools in this project
+  const { data: school } = await user.from("schools").select("plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);
 
   const monthStart = new Date();
