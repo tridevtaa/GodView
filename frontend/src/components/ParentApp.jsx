@@ -30,7 +30,7 @@ import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
-import NoticeBoard, { useNotices } from "./NoticeBoard.jsx";
+import NoticeBoard, { AchievementsStrip, isWin, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
@@ -150,7 +150,7 @@ export default function ParentApp({ phone }) {
     );
 
   // The noticeboard opens from Home, so Home stays lit there.
-  const lit = tab === "notices" || tab === "calendar" ? "home" : tab;
+  const lit = tab === "notices" || tab === "calendar" || tab === "attendance" ? "home" : tab;
   // Phones: swipe sideways to the next or previous tab (not in a chat).
   useSwipeTabs(
     TABS.map(([key]) => key),
@@ -255,6 +255,19 @@ export default function ParentApp({ phone }) {
                 <CalendarPage schoolId={child.school_id} onOpenNotices={() => setTab("notices")} />
               </>
             )}
+            {tab === "attendance" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="register" /> Attendance
+                  </h2>
+                </div>
+                <ChildAttendance key={child.id} child={child} />
+              </>
+            )}
             {tab === "notices" && (
               <>
                 <div className="pa-page-head">
@@ -295,10 +308,15 @@ function ParentHome({ child, news, onGo }) {
   const [fees, setFees] = useState(null);
   const [results, setResults] = useState(null);
   const [homework, setHomework] = useState(null);
+  const [attDays, setAttDays] = useState(null);
+  const [exams, setExams] = useState(null);
+  const [syllabus, setSyllabus] = useState(null);
   useEffect(() => {
     parentFees(child.id, child.school_id).then(setFees, () => setFees(false));
     (child.session ? listResults(child.id, child.session.id) : Promise.resolve([])).then(setResults, () => setResults(false));
     childHomework(child.id).then(setHomework, () => setHomework(false));
+    attendanceMonth(child.id, today()).then(setAttDays, () => setAttDays(false));
+    childDatesheet(child.id).then(setExams, () => setExams(false));
   }, [child.id, child.school_id, child.session]);
 
   const now = today();
@@ -349,6 +367,17 @@ function ParentHome({ child, news, onGo }) {
   // The school's notices: a tile is the way into the Noticeboard.
   const [notices] = useNotices(child.school_id);
   const latestNotice = (notices ?? [])[0];
+  const noticeUrls = useImageUrls(notices);
+  const wins = (notices ?? []).filter(isWin);
+
+  // Attendance this month, and today's mark
+  const marked = attDays || [];
+  const presentDays = marked.filter((d) => d.status === "present" || d.status === "late").length;
+  const attPct = marked.length ? Math.round((presentDays / marked.length) * 100) : null;
+  const todayMark = marked.find((d) => d.day === now);
+  // The next exam on the datesheet
+  const nextExam = (exams || []).filter((d) => d.exam_date >= now).sort((a, b) => a.exam_date.localeCompare(b.exam_date))[0];
+  const daysTo = nextExam ? Math.round((new Date(`${nextExam.exam_date}T12:00:00`) - new Date(`${now}T12:00:00`)) / 864e5) : null;
 
   // Fees, the wide tile: what's due now (red when overdue, amber when due,
   // green when all paid) and a ring of how much of the year is paid.
@@ -443,6 +472,42 @@ function ParentHome({ child, news, onGo }) {
       sub: unread ? "From the school, waiting for you" : null,
       onClick: go("inbox"),
     },
+    attDays !== false && {
+      key: "attendance",
+      icon: "register",
+      tone: attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red",
+      label: "Attendance",
+      value: attDays === null ? undefined : attPct === null ? "–" : `${attPct}%`,
+      sub: todayMark ? `Today: ${MARK_TEXT[todayMark.status]}` : attDays?.length ? "Today: not marked yet" : null,
+      visual: attPct !== null && (
+        <>
+          <MiniRing pct={attPct} />
+          <Caption>this month</Caption>
+        </>
+      ),
+      onClick: go("attendance"),
+    },
+    nextExam && {
+      key: "exam",
+      icon: "exam",
+      tone: daysTo <= 2 ? "red" : daysTo <= 7 ? "amber" : "pink",
+      label: nextExam.exam_name,
+      value: nextExam.subject,
+      badge: news("datesheet"),
+      badgeLabel: "New on the datesheet",
+      sub: `${dateText(nextExam.exam_date, { weekday: "short", day: "numeric", month: "short" })}${nextExam.start_time ? ` · ${nextExam.start_time}` : ""} · ${daysTo === 0 ? "today" : daysTo === 1 ? "tomorrow" : `in ${daysTo} days`}`,
+      hot: daysTo <= 2,
+      onClick: go("datesheet"),
+    },
+    {
+      key: "syllabus",
+      icon: "academics",
+      tone: "teal",
+      label: "Syllabus",
+      value: syllabus === null ? undefined : syllabus.length ? syllabus[0].subject : "–",
+      sub: syllabus?.[0]?.body,
+      onClick: go("homework"),
+    },
     {
       key: "notices",
       icon: "notice",
@@ -461,14 +526,32 @@ function ParentHome({ child, news, onGo }) {
 
   // Home is laid out by each parent (HomeWidgets.jsx). Messages starts off
   // (it's in the bar below); + Add widget brings it back.
-  const meta = [...rawTiles.map((t) => ({ key: t.key, defaultOn: t.key !== "inbox" })), { key: "class" }, { key: "upcoming" }];
+  // Off at first: Messages (it's in the bar) and Syllabus (in Homework)
+  const meta = [
+    ...rawTiles.map((t) => ({ key: t.key, defaultOn: t.key !== "inbox" && t.key !== "syllabus" })),
+    wins.length > 0 && { key: "news" },
+    { key: "class" },
+    { key: "upcoming" },
+  ].filter(Boolean);
   const layout = useHomeLayout("home:parent", meta);
   const on = new Set(layout.visible);
+  const wantSyllabus = on.has("syllabus");
+  useEffect(() => {
+    if (wantSyllabus) childSyllabus(child.id).then((rows) => setSyllabus([...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))), () => setSyllabus([]));
+  }, [child.id, wantSyllabus]);
   const auto = arrangeTiles(rawTiles.filter((t) => on.has(t.key) && !t.wide));
   const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
   const items = Object.fromEntries(
     rawTiles.map(({ fresh, wide, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: wide || autoWide.has(t.key) ? "wide" : "small", tile: t }])
   );
+  items.news = {
+    kind: "section",
+    label: "News & Achievements",
+    icon: "trophy",
+    tone: "amber",
+    size: "full",
+    node: <AchievementsStrip items={wins} urls={noticeUrls} viewAll onOpenNotices={() => onGo("notices")} />,
+  };
   items.class = { kind: "section", label: "Class", icon: "academics", tone: "indigo", size: "full", node: <ParentClass child={child} onMessage={() => onGo("inbox")} /> };
   items.upcoming = {
     kind: "section",
@@ -561,7 +644,7 @@ function ChildHero({ child, onTab }) {
   const dueTotal = dueNow.reduce((t, d) => t + Number(d.balance), 0);
   const overdue = dueNow.some((d) => d.due_date && d.due_date < now);
   const stats = [
-    ["Attendance", att === null ? "–" : `${att}%`, "green", "home"],
+    ["Attendance", att === null ? "–" : `${att}%`, "green", "attendance"],
     ["Result", result ? `${result.pct}%` : "–", "violet", "results"],
     fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
   ].filter(Boolean);
@@ -614,6 +697,37 @@ function ChildHero({ child, onTab }) {
         </div>
       </header>
     </div>
+  );
+}
+
+// This month's attendance: a dot for each marked day, and the totals.
+function ChildAttendance({ child }) {
+  const [days, setDays] = useState(null);
+  useEffect(() => {
+    attendanceMonth(child.id, today()).then(setDays, () => setDays([]));
+  }, [child.id]);
+  if (!days) return <div className="pa-card pa-skeleton" aria-busy="true" />;
+  if (!days.length) return <Empty icon="register" title="No attendance this month yet" text="Each day shows here once the class teacher marks it." />;
+  const n = (s) => days.filter((d) => d.status === s).length;
+  const present = n("present") + n("late");
+  const month = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  return (
+    <section className="pa-card month-att">
+      <h3 className="pa-h2">{month}</h3>
+      <div className="month-att-dots">
+        {days.map((d) => (
+          <i key={d.day} className={`att-dot att-${d.status}`} title={`${dateText(d.day, { weekday: "short", day: "numeric", month: "short" })}: ${MARK_TEXT[d.status] ?? d.status}`} />
+        ))}
+      </div>
+      <p className="month-att-sum">
+        <strong>
+          Present {present} of {days.length} {days.length === 1 ? "day" : "days"}
+        </strong>
+        {n("absent") > 0 && ` · ${n("absent")} absent`}
+        {n("late") > 0 && ` · ${n("late")} late`}
+        {n("leave") > 0 && ` · ${n("leave")} on leave`}
+      </p>
+    </section>
   );
 }
 

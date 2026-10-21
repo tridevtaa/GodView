@@ -376,3 +376,62 @@ function ImageViewer({ src, onClose }) {
     document.body
   );
 }
+
+// Shared by the staff and parent Homes.
+// Students' wins, posted the same way as any notice (just tagged with a
+// category and a picture). Nothing to show yet: the section just stays
+// off the page, rather than taking up room with an empty box. viewAll:
+// only when the banner (which has its own) is off the page.
+export const isWin = (x) => Boolean(x.category) && showsImage(x);
+
+export function AchievementsStrip({ items, urls, viewAll, onOpenNotices }) {
+  const rowRef = useRef(null);
+  if (!items.length) return null;
+  const scroll = (dir) => rowRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
+
+  return (
+    <section className="home-news">
+      <header className="home-notice-head">
+        <span className="home-news-icon">
+          <Icon name="trophy" size={18} weight="fill" />
+        </span>
+        <span className="home-notice-text">
+          <strong>News &amp; Achievements</strong>
+        </span>
+        {viewAll && (
+          <button type="button" className="home-section-all" onClick={onOpenNotices}>
+            View all <Icon name="arrowRight" size={13} />
+          </button>
+        )}
+      </header>
+      <div className="home-news-wrap">
+        {items.length > 2 && (
+          <button type="button" className="home-news-arrow is-prev" onClick={() => scroll(-1)} aria-label="Scroll left">
+            <Icon name="chevronLeft" size={16} />
+          </button>
+        )}
+        <div className="home-news-row" ref={rowRef}>
+          {items.map((it, i) => {
+            const cat = CATEGORY[it.category];
+            return (
+              <button type="button" key={it.id} className="home-news-card" style={{ "--d": `${i * 50}ms` }} onClick={onOpenNotices}>
+                <img src={urls.get(it.image_path)} alt="" loading="lazy" />
+                <span className="home-news-meta">
+                  {cat && <span className={`achv-tag t-${cat.tone}`}>{cat.label}</span>}
+                  <span className="row-sub">{new Date(it.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                </span>
+                <strong className="home-news-title">{it.title}</strong>
+                {it.body && <p className="home-news-body">{it.body}</p>}
+              </button>
+            );
+          })}
+        </div>
+        {items.length > 2 && (
+          <button type="button" className="home-news-arrow is-next" onClick={() => scroll(1)} aria-label="Scroll right">
+            <Icon name="chevronRight" size={16} />
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
