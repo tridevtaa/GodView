@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { NOTICE_IMAGE_DAYS, clearExpiredNoticeImages, deleteNotice, listNotices, noticeImageUrls, postNotice, removeNoticeImage, updateNotice, uploadNoticeImage } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Icon from "./Icon.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 // A notice can be tagged with one of these, for the homepage's achievements
 // strip (and a small tag on the noticeboard itself). tone matches the t-*
@@ -258,6 +259,7 @@ function Compose({ schoolId, onClose, onPosted }) {
     try {
       if (picture) image_path = await uploadNoticeImage(schoolId, picture.file);
       onPosted(await postNotice(schoolId, { ...form, image_path, category: form.category || null }));
+      haptic("success");
       onClose();
     } catch {
       removeNoticeImage(image_path); // don't leave an unused picture behind

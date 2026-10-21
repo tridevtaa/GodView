@@ -6,6 +6,7 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { StepBar } from "./Steps.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 import Icon from "./Icon.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 
@@ -96,6 +97,7 @@ export default function MarksPage({ school, session, students, onClose }) {
       await saveClassResults(school.id, session.id, { exam: test.exam, subject: test.subject, max_marks: max }, changed.map((k) => ({ student_id: k.id, marks: marks[k.id] })));
       setBefore(marks);
       setSaved(changed.filter((k) => marks[k.id] !== "").length);
+      haptic("success");
     } catch {
       setError("Couldn’t save. Check the marks (not more than the maximum) and try again.");
     } finally {

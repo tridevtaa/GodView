@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useHapticsSetting } from "../pwa/haptics.js";
 import { disablePush, enablePush, pushStatus } from "../pwa/push.js";
 import Icon from "./Icon.jsx";
 
@@ -58,6 +59,21 @@ export function NotifyPrompt({ text }) {
 }
 
 // In the account menu: Notifications On / Off for this device.
+// Account menu: Vibration on or off (phones and tablets only)
+export function HapticsMenuItem() {
+  const [on, toggle] = useHapticsSetting();
+  if (typeof matchMedia === "undefined" || !matchMedia("(pointer: coarse)").matches) return null;
+  return (
+    <button role="menuitem" className="menu-item" onClick={toggle}>
+      <Icon name="phone" />
+      <span className="notify-menu-label">
+        Vibration
+        <span className="menu-subtitle">{on ? "On" : "Off"}</span>
+      </span>
+    </button>
+  );
+}
+
 export function NotifyMenuItem() {
   const [status, setStatus] = useStatus();
   const [busy, setBusy] = useState(false);

@@ -6,6 +6,7 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -299,6 +300,7 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
           some ? picked : []
         )
       );
+      haptic("success");
     } catch {
       setError("Couldn’t send the homework. Check you teach this class and try again.");
       setBusy(false);
@@ -396,6 +398,7 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
     setError("");
     try {
       onSaved(await addSyllabusEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form }));
+      haptic("success");
     } catch {
       setError("Couldn’t save the syllabus. Check you teach this class and try again.");
       setBusy(false);

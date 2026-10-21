@@ -4,6 +4,7 @@ import PlacePicker from "./PlacePicker.jsx";
 import TransportPicker from "./TransportPicker.jsx";
 import Icon from "./Icon.jsx";
 import { StepBar } from "./Steps.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 // [field, label, input type or option list, required]
 const FIELDS = {
@@ -125,6 +126,7 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
     try {
       const saved =
         kind === "students" ? await updateStudent(person, sessionId, changes) : await updateEmployee(person, changes);
+      haptic("success");
       onSaved(saved);
     } catch {
       setError("Couldn’t save. Check your connection and that you have access, then try again.");

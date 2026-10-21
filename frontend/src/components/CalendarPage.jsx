@@ -4,6 +4,7 @@ import { peek, remember, swr } from "../data/cache.js";
 import { DateLeaf, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
 const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
@@ -341,6 +342,7 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
     const entryRow = { ...form, ends_on: days ? form.ends_on : null };
     try {
       onSaved(isNew ? await addCalendarEvent(schoolId, entryRow) : await updateCalendarEvent(entry.id, entryRow));
+      haptic("success");
     } catch {
       setError("Couldn’t save. Check your connection and try again.");
       setBusy(false);
