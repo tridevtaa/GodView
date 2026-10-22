@@ -38,7 +38,8 @@ export async function enablePush() {
   if ((await Notification.requestPermission()) !== "granted") return pushStatus();
   // The worker is registered on load in the built app; not in development.
   const reg = (await navigator.serviceWorker.getRegistration()) ?? (await navigator.serviceWorker.register("/sw.js"));
-  await navigator.serviceWorker.ready;
+  // Never wait forever on the worker
+  await Promise.race([navigator.serviceWorker.ready, new Promise((_, no) => setTimeout(() => no(new Error("worker-timeout")), 15000))]);
   const sub =
     (await reg.pushManager.getSubscription()) ??
     (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlKey(VAPID_PUBLIC_KEY) }));
