@@ -748,6 +748,7 @@ export default function App() {
           <FeesPage
             heading={studentsSwitch}
             onCollect={(student) => setCollect({ student })}
+            onOpenStudent={(id) => openStudent(id)}
             refreshAt={feesAt}
             school={school}
             role={role}

@@ -16738,14 +16738,18 @@ button.ai-chip:hover {
   color: var(--brand);
 }
 
-.ai-row-people,
-.ai-row-people .link-btn {
+.ai-row-people {
   color: var(--ai-soft);
   font-weight: 400;
 }
 
-.ai-row-people .link-btn:hover {
+/* Names open the student's page, so they look like links */
+.ai-row-people .link-btn {
   color: var(--brand);
+  font-weight: 600;
+}
+
+.ai-row-people .link-btn:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
