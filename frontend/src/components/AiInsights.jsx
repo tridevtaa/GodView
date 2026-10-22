@@ -14,7 +14,7 @@ const COPY = {
   fees: {
     locked: "AI reads your fee figures and tells you what needs attention and how to collect faster.",
     running: "Reading this session’s fee figures",
-    person: "Collect",
+    person: "Open",
   },
   transport: {
     locked: "AI reads where students live and your routes and buses, and suggests new stops or routes and what to fix.",

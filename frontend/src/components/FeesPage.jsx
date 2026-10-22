@@ -29,7 +29,7 @@ function sessionMonths(session) {
 // pays). Admins see the overview only.
 // pastSession: a past session is open (picked on Students); say which.
 // heading: the Students section switch, shown first in the header.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, refreshAt = 0 }) {
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, onOpenStudent, refreshAt = 0 }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
@@ -220,10 +220,8 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         <AiCard
           ins={ins}
           opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
-          onPerson={(id) => {
-            const s = students.find((x) => x.id === id);
-            if (s) onCollect(s);
-          }}
+          // A name opens that student's page (their fees are a tab there)
+          onPerson={onOpenStudent}
           onOpen={(kind) => {
             if (kind === "structure") setTab("structure");
             else {
