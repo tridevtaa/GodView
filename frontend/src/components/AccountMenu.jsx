@@ -4,7 +4,7 @@ import { useDismiss } from "./useDismiss.js";
 import Icon from "./Icon.jsx";
 import { HapticsMenuItem, NotifyMenuItem } from "./Notify.jsx";
 
-export default function AccountMenu({ onSettings }) {
+export default function AccountMenu({ onSettings, onProfile }) {
   const { user, school, role, schools = [] } = useAuth();
   const ROLE = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
   const [open, setOpen] = useState(false);
@@ -37,6 +37,19 @@ export default function AccountMenu({ onSettings }) {
                 </span>
               </button>
             ))}
+          {onProfile && (
+            <button
+              role="menuitem"
+              className="menu-item"
+              onClick={() => {
+                setOpen(false);
+                onProfile();
+              }}
+            >
+              <Icon name="idcard" />
+              My profile
+            </button>
+          )}
           {onSettings && (
             <button
               role="menuitem"

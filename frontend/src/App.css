@@ -17287,3 +17287,68 @@ button.class-face:hover {
   background: #f0b429;
   color: #fff;
 }
+
+/* My profile (account menu) */
+.my-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+}
+
+.my-profile-form .facts-title {
+  margin: 0;
+}
+
+.my-profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.my-profile-form input,
+.my-profile-form select {
+  height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-field);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.my-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.my-profile-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.my-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.my-classes-change {
+  align-self: flex-start;
+}

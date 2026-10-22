@@ -60,6 +60,7 @@ const InboxPage = lazy(SCREENS.InboxPage);
 const MarksPage = lazy(SCREENS.MarksPage);
 const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
+const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
@@ -611,6 +612,7 @@ export default function App() {
         onMode={switchMode}
         sections={sections}
         onSettings={isOwner ? () => openOwner("profile") : null}
+        onProfile={() => switchMode("me")}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
         search={globalSearch}
       />
@@ -649,6 +651,8 @@ export default function App() {
             onOpenStudent={dataMode === "students" ? (id) => openStudent(id) : undefined}
             routes={routes}
           />
+        ) : mode === "me" ? (
+          <MyProfile school={school} session={currentSession} email={user.email} googleName={user.displayName} onBack={() => switchMode("home")} />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
           <>
             <div className="page-header">

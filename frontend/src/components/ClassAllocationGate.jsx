@@ -9,11 +9,37 @@ import { LogoMark } from "./Logo.jsx";
 // class list (any member can read it), not from enrolments: a teacher with
 // no classes yet can't see any students, so that list came back empty.
 // The request is still checked against real enrolments when it's sent.
-const gradeOptions = (grades) =>
+export const gradeOptions = (grades) =>
   grades.flatMap((g) => (g.sections?.length ? g.sections.map((s) => ({ class: g.code, section: s })) : [{ class: g.code, section: "" }]));
 
-const classList = (classes = []) =>
-  classes.map((c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`).join(", ");
+const classText = (c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`;
+const classList = (classes = []) => classes.map((c) => `${classText(c)}${c.in_charge ? " (class teacher)" : ""}`).join(", ");
+const keyOf = (c) => `${c.class}|${c.section ?? ""}`;
+
+// Which of the picked classes they're class teacher of (or none). The
+// pick travels with the request as in_charge on that class.
+export function InChargePicker({ classes, value, onChange }) {
+  if (!classes.length) return null;
+  return (
+    <label>
+      <span>Class teacher of</span>
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">None</option>
+        {classes.map((c) => (
+          <option key={keyOf(c)} value={keyOf(c)}>
+            {classText(c)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+export const withInCharge = (classes, key) => classes.map(({ in_charge, ...c }) => ({ ...c, in_charge: keyOf(c) === key }));
+export const inChargeKey = (classes = []) => {
+  const c = classes.find((x) => x.in_charge);
+  return c ? keyOf(c) : "";
+};
 
 // Full-screen, shown instead of the dashboard to a teacher with no classes
 // assigned this session: pick classes, then wait for the owner to approve.
@@ -21,6 +47,7 @@ export default function ClassAllocationGate({ school, session }) {
   const [classOptions, setClassOptions] = useState([]);
   const [request, setRequest] = useState(undefined); // undefined = loading, null = none yet
   const [classes, setClasses] = useState([]);
+  const [inCharge, setInCharge] = useState("");
   const [subjects, setSubjects] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -35,6 +62,7 @@ export default function ClassAllocationGate({ school, session }) {
         setRequest(latest);
         if (latest && latest.status !== "approved") {
           setClasses(latest.classes ?? []);
+          setInCharge(inChargeKey(latest.classes));
           setSubjects(latest.subjects ?? "");
           setNote(latest.note ?? "");
         }
@@ -51,8 +79,9 @@ export default function ClassAllocationGate({ school, session }) {
     setBusy(true);
     setError("");
     try {
-      await requestClassAllocation(school.id, classes, subjects, note);
-      setRequest({ status: "pending", classes, subjects, note, created_at: new Date().toISOString() });
+      const sent = withInCharge(classes, inCharge);
+      await requestClassAllocation(school.id, sent, subjects, note);
+      setRequest({ status: "pending", classes: sent, subjects, note, created_at: new Date().toISOString() });
     } catch (err) {
       setError(/pick at least one/i.test(err?.message ?? "") ? "Pick at least one class." : "Couldn’t send that. Try again.");
     } finally {
@@ -114,6 +143,7 @@ export default function ClassAllocationGate({ school, session }) {
             <span className="field-label">Your classes{session?.name ? ` for ${session.name}` : ""}</span>
             <ClassPicker options={classOptions} value={classes} onChange={setClasses} />
           </div>
+          <InChargePicker classes={classes} value={classes.some((c) => keyOf(c) === inCharge) ? inCharge : ""} onChange={setInCharge} />
           <label>
             <span>Subjects you teach</span>
             <input value={subjects} onChange={(e) => setSubjects(e.target.value)} maxLength={200} placeholder="e.g. Maths, EVS" />

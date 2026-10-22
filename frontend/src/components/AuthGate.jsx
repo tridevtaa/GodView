@@ -8,6 +8,7 @@ import ParentSignIn from "./ParentSignIn.jsx";
 import { StepBar } from "./Steps.jsx";
 import Icon from "./Icon.jsx";
 import { isStandalone, parentLoginLive } from "../pwa/install.js";
+import DesignationField from "./Designation.jsx";
 
 // Parents get their own, separate screens (loaded only for them).
 const ParentApp = lazy(() => import("./ParentApp.jsx"));
@@ -82,10 +83,6 @@ const toUser = (u) => ({
   photoURL: u.user_metadata?.avatar_url || u.user_metadata?.picture || "",
 });
 
-const DESIGNATIONS = [
-  "Teacher", "Class teacher", "Subject teacher", "Coordinator", "Vice principal", "Principal",
-  "Office staff", "Accountant", "Librarian", "Counsellor",
-];
 
 const ADDRESS_PROOF_TYPES = [
   ["aadhaar", "Aadhaar card"],
@@ -104,7 +101,7 @@ export function RequestAccess({ user, onSchool }) {
   const [school, setSchool] = useState(null); // { school_name, session_name, classes }
   const [form, setForm] = useState({
     fullName: user.displayName || "",
-    designation: "Teacher",
+    designation: "",
     phone: "",
     subjects: "",
     note: "",
@@ -288,15 +285,7 @@ export function RequestAccess({ user, onSchool }) {
             <span>Full name *</span>
             <input value={form.fullName} onChange={set("fullName")} required maxLength={120} autoComplete="name" autoFocus />
           </label>
-          <label>
-            <span>Designation *</span>
-            <input list="designations" value={form.designation} onChange={set("designation")} required maxLength={80} />
-            <datalist id="designations">
-              {DESIGNATIONS.map((d) => (
-                <option key={d} value={d} />
-              ))}
-            </datalist>
-          </label>
+          <DesignationField value={form.designation} onChange={(designation) => setForm((f) => ({ ...f, designation }))} />
           <label>
             <span>Phone</span>
             <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
