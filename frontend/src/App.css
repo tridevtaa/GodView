@@ -17458,12 +17458,20 @@ button.class-face:hover {
   color: var(--text-3);
 }
 
-.sort-pick:focus-within {
-  background: var(--surface-2);
+/* No grey box on tap (phones) or while the picker is open; keyboard
+   focus rings the whole pill instead */
+.sort-pick,
+.sort-pick select,
+.sort-dir {
+  -webkit-tap-highlight-color: transparent;
 }
 
-.sort-pick:has(select:focus-visible) {
-  box-shadow: inset 0 0 0 2px var(--brand-ring);
+.sort-pill.is-kbd:focus-within {
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.sort-dir:focus {
+  outline: none;
 }
 
 .sort-dir {
