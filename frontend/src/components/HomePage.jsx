@@ -5,7 +5,8 @@ import { rupeesShort } from "../data/money.js";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./TileVisuals.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
-import { ComingUp } from "./CalendarPage.jsx";
+import { ComingUp, useUpcoming } from "./CalendarPage.jsx";
+import Ticker from "./Ticker.jsx";
 import { AchievementsStrip, isWin, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
@@ -220,6 +221,25 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const auto = arrangeTiles(tileList.filter((t) => on.has(t.key)));
   const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
 
+  // The thin banner up top: reminders first, then notices and what's on
+  const upcoming = useUpcoming(school.id, true, 14);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const shortDay = (d) => (d === todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
+  const tickerItems = [
+    left > 0 && {
+      key: "att",
+      icon: "register",
+      tone: "red",
+      text: today?.marked ? `${left} class${left === 1 ? "" : "es"} haven’t marked attendance yet` : "Attendance isn’t marked yet today",
+      onClick: go("attendance"),
+    },
+    isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${n(overdue)} students have overdue fees`, onClick: go("fees") },
+    !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
+    ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
+    ...(upcoming ?? []).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
+    birthdays.length > 0 && { key: "bd", icon: "cake", tone: "pink", text: `Birthdays this week: ${firstNames(birthdays)}`, onClick: go("students") },
+  ].filter(Boolean);
+
   const items = Object.fromEntries(tileList.map(({ fresh, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: autoWide.has(t.key) ? "wide" : "small", tile: t }]));
   items.news = { kind: "section", label: "News & Achievements", icon: "trophy", tone: "amber", size: "full", node: <AchievementsStrip items={wins} urls={urls} viewAll={!(showBanner && (notices === null || plain.length > 0))} onOpenNotices={go("notices")} /> };
   items.upcoming = {
@@ -296,6 +316,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
       </header>
 
       <NotifyPrompt text="Get notified when parents write." />
+
+      <Ticker items={tickerItems} />
 
       <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}${trend ? " has-trend" : ""}`}>
         {access && <PriorityCard {...access} />}

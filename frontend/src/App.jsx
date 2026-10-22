@@ -252,13 +252,49 @@ export default function App() {
       }),
     [recentKey]
   );
+  // Sort picked on the Students page: { by: grade | fee | perf, dir: asc |
+  // desc }, kept on this device. None picked: the order above.
+  const sortKey = `godview.sort.${school.id}.${user.email}`;
+  const [sortPick, setSortPick] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(sortKey) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const chooseSort = (next) => {
+    setSortPick(next);
+    try {
+      if (next) localStorage.setItem(sortKey, JSON.stringify(next));
+      else localStorage.removeItem(sortKey);
+    } catch {
+      /* private mode: fine */
+    }
+  };
+  // Fee sorting is for those who see fees
+  const sort = sortPick && (sortPick.by !== "fee" || isAdmin) ? sortPick : null;
   const [perf, setPerf] = useState(new Map());
+  const needPerf = !isAdmin || sort?.by === "perf";
   useEffect(() => {
-    if (isAdmin || !sessionId || source !== "supabase") return;
+    if (!needPerf || !sessionId || source !== "supabase") return;
     sessionResultPercents(sessionId).then(setPerf, () => setPerf(new Map()));
-  }, [isAdmin, sessionId, source]);
+  }, [needPerf, sessionId, source]);
   const ordered = useMemo(() => {
     if (mode !== "students") return visible;
+    if (sort) {
+      const dir = sort.dir === "desc" ? -1 : 1;
+      const byGrade = (a, b) => gradeRank(a.class ?? "") - gradeRank(b.class ?? "") || String(a.section ?? "").localeCompare(String(b.section ?? ""));
+      const byName = (a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      return [...visible].sort((a, b) => {
+        if (sort.by === "grade") return dir * byGrade(a, b) || byName(a, b);
+        if (sort.by === "fee") return dir * ((Number(a.fee_due) || 0) - (Number(b.fee_due) || 0)) || byGrade(a, b) || byName(a, b);
+        // Performance: students without marks go last either way
+        const pa = perf.get(a.id) ?? null;
+        const pb = perf.get(b.id) ?? null;
+        if (pa === null || pb === null) return pa === null ? (pb === null ? byGrade(a, b) || byName(a, b) : 1) : -1;
+        return dir * (pa - pb) || byGrade(a, b) || byName(a, b);
+      });
+    }
     const rest = [...visible].sort((a, b) => {
       if (isAdmin) return (Number(b.fee_due) || 0) - (Number(a.fee_due) || 0);
       const pa = perf.get(a.id) ?? null;
@@ -268,7 +304,7 @@ export default function App() {
     });
     const first = recent.map((id) => rest.find((p) => p.id === id)).filter(Boolean);
     return [...first, ...rest.filter((p) => !recent.includes(p.id))];
-  }, [visible, mode, isAdmin, perf, recent]);
+  }, [visible, mode, isAdmin, perf, recent, sort]);
 
   // On the Students page the profile follows the filtered grid; elsewhere
   // (Fees, Requests) any student in the session can be opened.
@@ -869,6 +905,7 @@ export default function App() {
           {isStudents && studentParts.length > 1 && studentsSwitch}
           {!isStudents && staffTabs}
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
+          {mode === "students" && <SortControl value={sort} onChange={chooseSort} withFee={isAdmin} />}
           {!loading && (query || pickedGrades.length > 0) && (
             <span className="toolbar-count">
               {visible.length} of {current.length}
@@ -1020,3 +1057,41 @@ export default function App() {
     </div>
   );
 }
+
+// Students page sort: Grade, Fee (office only) or Performance, and an
+// arrow to flip between low to high and high to low. "Default" is the
+// page's own order (recently opened first, then dues or results).
+const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
+function SortControl({ value, onChange, withFee }) {
+  const asc = value?.dir !== "desc";
+  return (
+    <div className="sort-control">
+      <label className="sort-select" title="Sort students">
+        <Icon name="chart" size={15} />
+        <select
+          value={value?.by ?? ""}
+          onChange={(e) => onChange(e.target.value ? { by: e.target.value, dir: value?.by === e.target.value ? value.dir : SORT_START[e.target.value] } : null)}
+          aria-label="Sort students"
+        >
+          <option value="">Sort: Default</option>
+          <option value="grade">Sort: Grade</option>
+          {withFee && <option value="fee">Sort: Fee due</option>}
+          <option value="perf">Sort: Performance</option>
+        </select>
+      </label>
+      {value && (
+        <button
+          type="button"
+          className="btn btn-secondary sort-dir"
+          onClick={() => onChange({ ...value, dir: asc ? "desc" : "asc" })}
+          aria-label={asc ? "Low to high. Switch to high to low" : "High to low. Switch to low to high"}
+          title={asc ? "Low to high" : "High to low"}
+        >
+          <Icon name={asc ? "arrowUp" : "arrowDown"} size={15} />
+          <span className="btn-label">{asc ? "Low → high" : "High → low"}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+

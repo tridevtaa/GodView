@@ -58,6 +58,16 @@ function useItems(schoolId, staff) {
   return { items, loading: events === null, setEvents };
 }
 
+// What's on in the next few days (events and dated notices), for Home's
+// scrolling banner. null while loading.
+export function useUpcoming(schoolId, staff = false, days = 14) {
+  const { items, loading } = useItems(schoolId, staff);
+  if (loading) return null;
+  const today = todayIso();
+  const until = iso(new Date(Date.now() + days * 864e5));
+  return items.filter((it) => (it.end ?? it.start) >= today && it.start <= until);
+}
+
 // The calendar page: a month at a glance and what's on, plus attendance and
 // the exam datesheet as two more tabs (they're both dated, day-by-day
 // information too, just kept per class rather than school-wide). Owners and
