@@ -48,7 +48,7 @@ export default function ExportButton({ school, role, people, label }) {
   if (isOwner) {
     return (
       <button className="btn btn-secondary" onClick={() => downloadStudentsCsv(people, filename)} disabled={!people.length} aria-label="Export" title="Export">
-        <Icon name="file" />
+        <Icon name="download" />
         <span className="btn-label">Export</span>
       </button>
     );
@@ -67,7 +67,7 @@ export default function ExportButton({ school, role, people, label }) {
         }
         title="Approved by the owner. Works once."
       >
-        <Icon name="file" />
+        <Icon name="download" />
         <span className="btn-label">Download export</span>
       </button>
     );
@@ -76,7 +76,7 @@ export default function ExportButton({ school, role, people, label }) {
   if (pending) {
     return (
       <button className="btn btn-secondary" disabled title="Waiting for the owner to approve">
-        <Icon name="file" />
+        <Icon name="download" />
         <span className="btn-label">Export requested</span>
       </button>
     );
@@ -85,7 +85,7 @@ export default function ExportButton({ school, role, people, label }) {
   return (
     <div className="popover-anchor" ref={ref}>
       <button className="btn btn-secondary" onClick={() => setAsking((a) => !a)} aria-expanded={asking} aria-label="Request an export" title="Request an export">
-        <Icon name="file" />
+        <Icon name="download" />
         <span className="btn-label">Export</span>
       </button>
       {asking && (
