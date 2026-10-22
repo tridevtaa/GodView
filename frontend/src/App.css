@@ -17427,18 +17427,26 @@ button.class-face:hover {
   color: var(--brand);
 }
 
-.sort-pick select {
-  border: 0;
-  background: none;
+.sort-current {
   color: var(--text);
-  font: inherit;
   font-size: 13.5px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The real dropdown, invisible, covering the choice and the caret */
+.sort-pick select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  padding: 0 16px 0 0;
-  margin-right: -16px;
 }
 
 .sort-pick select:focus {
@@ -17452,6 +17460,10 @@ button.class-face:hover {
 
 .sort-pick:focus-within {
   background: var(--surface-2);
+}
+
+.sort-pick:has(select:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--brand-ring);
 }
 
 .sort-dir {

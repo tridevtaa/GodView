@@ -1067,14 +1067,19 @@ const SORT_FIRST = {
   fee: { asc: "Least due", desc: "Most due" },
   perf: { asc: "Lowest first", desc: "Highest first" },
 };
+const SORT_LABEL = { "": "Default", grade: "Grade", fee: "Fee due", perf: "Results" };
 function SortControl({ value, onChange, withFee }) {
   const asc = value?.dir !== "desc";
   const words = value && SORT_FIRST[value.by];
   const next = words && (asc ? words.desc : words.asc);
   return (
     <div className={`sort-pill${value ? " is-on" : ""}`}>
+      {/* The label shows the choice at the buttons' size; the real
+          dropdown lies on top, invisible (phones force dropdown text to
+          16px, which made the pill bigger than the buttons beside it). */}
       <label className="sort-pick" title="Sort students">
         <Icon name="sort" size={16} />
+        <span className="sort-current">{SORT_LABEL[value?.by ?? ""]}</span>
         <select
           value={value?.by ?? ""}
           onChange={(e) => onChange(e.target.value ? { by: e.target.value, dir: value?.by === e.target.value ? value.dir : SORT_START[e.target.value] } : null)}
