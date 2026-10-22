@@ -23,34 +23,62 @@ function useStatus() {
 // "Turn on notifications", once, while they are off on this device. Hidden
 // for a month after Not now. (iPhones in Safari get the install banner
 // instead: notifications need the home screen app there.)
+// Why Turn on didn't work, in plain words. "push service error" comes from
+// the browser itself (it couldn't reach its push service: a VPN or
+// firewall, or Brave with Google push services off).
+const SNOOZE = (days) => {
+  try {
+    localStorage.setItem(KEY, String(Date.now() + days * 864e5));
+  } catch {
+    // Storage blocked: just hide for now.
+  }
+};
+
 export function NotifyPrompt({ text }) {
   const [status, setStatus] = useStatus();
   const [hidden, setHidden] = useState(dismissed);
   const [busy, setBusy] = useState(false);
-  if (hidden || status !== "off") return null;
+  const [problem, setProblem] = useState("");
+  if (hidden || (status !== "off" && !problem)) return null;
 
   function close() {
-    try {
-      localStorage.setItem(KEY, String(Date.now() + 30 * 864e5));
-    } catch {
-      // Storage blocked: just hide for now.
-    }
+    SNOOZE(30);
     setHidden(true);
   }
 
   async function turnOn() {
     setBusy(true);
-    setStatus(await enablePush().catch(() => "off"));
+    setProblem("");
+    try {
+      const next = await enablePush();
+      if (next === "off" && Notification.permission === "default") {
+        // The browser didn't show (or the person closed) its Allow prompt
+        setProblem("Your browser didn’t ask. Click the bell or lock icon at the left of the address bar, allow notifications, then Turn on again.");
+      } else if (next === "blocked") {
+        setProblem("Notifications are blocked for Godview. Allow them from the lock icon in the address bar, then Turn on again.");
+      }
+      setStatus(next);
+    } catch (err) {
+      // It won't work in this browser right now: say why, and rest for a week
+      SNOOZE(7);
+      setProblem(
+        /push service/i.test(err?.message ?? "")
+          ? "This browser couldn’t reach its notification service (often a VPN or firewall; in Brave, turn on Google push messaging in settings). Try another browser, or the phone app."
+          : "Couldn’t turn on notifications in this browser. Try again later, or use the phone app."
+      );
+    }
     setBusy(false);
   }
 
   return (
-    <aside className="notify" aria-label="Notifications">
+    <aside className={`notify${problem ? " has-problem" : ""}`} aria-label="Notifications" aria-live="polite">
       <Icon name="bell" size={20} className="notify-icon" />
-      <span className="notify-text">{text}</span>
-      <button className="btn btn-primary btn-sm" onClick={turnOn} disabled={busy}>
-        Turn on
-      </button>
+      <span className="notify-text">{problem || text}</span>
+      {!problem || status === "off" ? (
+        <button className="btn btn-primary btn-sm" onClick={turnOn} disabled={busy}>
+          {busy ? "Turning on…" : problem ? "Try again" : "Turn on"}
+        </button>
+      ) : null}
       <button className="btn-icon" onClick={close} aria-label="Not now">
         <Icon name="x" size={16} />
       </button>
@@ -77,11 +105,15 @@ export function HapticsMenuItem() {
 export function NotifyMenuItem() {
   const [status, setStatus] = useStatus();
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
   if (!status || status === "unsupported") return null;
 
-  const note = { on: "On", off: "Off", blocked: "Blocked in browser settings", install: "Add Godview to your home screen first" }[status];
+  const note = failed
+    ? "Couldn’t turn on in this browser"
+    : { on: "On", off: "Off", blocked: "Blocked in browser settings", install: "Add Godview to your home screen first" }[status];
   async function toggle() {
     setBusy(true);
+    setFailed(false);
     try {
       if (status === "on") {
         await disablePush();
@@ -90,6 +122,7 @@ export function NotifyMenuItem() {
         setStatus(await enablePush());
       }
     } catch {
+      setFailed(status !== "on");
       setStatus(await pushStatus().catch(() => "off"));
     }
     setBusy(false);
