@@ -1058,40 +1058,47 @@ export default function App() {
   );
 }
 
-// Students page sort: Grade, Fee (office only) or Performance, and an
-// arrow to flip between low to high and high to low. "Default" is the
-// page's own order (recently opened first, then dues or results).
+// Students page sort: one pill with the sort icon, the choice (Default,
+// Grade, Fee due for the office, Performance) and, once one is picked, a
+// direction toggle saying what comes first in words that fit the choice.
 const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
+const SORT_FIRST = {
+  grade: { asc: "Junior first", desc: "Senior first" },
+  fee: { asc: "Least due", desc: "Most due" },
+  perf: { asc: "Lowest first", desc: "Highest first" },
+};
 function SortControl({ value, onChange, withFee }) {
   const asc = value?.dir !== "desc";
+  const words = value && SORT_FIRST[value.by];
+  const next = words && (asc ? words.desc : words.asc);
   return (
-    <div className="sort-control">
-      <label className="sort-select" title="Sort students">
-        <Icon name="chart" size={15} />
+    <div className={`sort-pill${value ? " is-on" : ""}`}>
+      <label className="sort-pick" title="Sort students">
+        <Icon name="sort" size={16} />
         <select
           value={value?.by ?? ""}
           onChange={(e) => onChange(e.target.value ? { by: e.target.value, dir: value?.by === e.target.value ? value.dir : SORT_START[e.target.value] } : null)}
           aria-label="Sort students"
         >
-          <option value="">Sort: Default</option>
-          <option value="grade">Sort: Grade</option>
-          {withFee && <option value="fee">Sort: Fee due</option>}
-          <option value="perf">Sort: Performance</option>
+          <option value="">Default</option>
+          <option value="grade">Grade</option>
+          {withFee && <option value="fee">Fee due</option>}
+          <option value="perf">Performance</option>
         </select>
+        <Icon name="chevronDown" size={14} className="sort-caret" />
       </label>
       {value && (
         <button
           type="button"
-          className="btn btn-secondary sort-dir"
+          className="sort-dir"
           onClick={() => onChange({ ...value, dir: asc ? "desc" : "asc" })}
-          aria-label={asc ? "Low to high. Switch to high to low" : "High to low. Switch to low to high"}
-          title={asc ? "Low to high" : "High to low"}
+          aria-label={`${asc ? words.asc : words.desc}. Switch to ${next.toLowerCase()}`}
+          title={`Switch to ${next.toLowerCase()}`}
         >
-          <Icon name={asc ? "arrowUp" : "arrowDown"} size={15} />
-          <span className="btn-label">{asc ? "Low → high" : "High → low"}</span>
+          <Icon name={asc ? "sortUp" : "sortDown"} size={17} />
+          <span className="sort-dir-label">{asc ? words.asc : words.desc}</span>
         </button>
       )}
     </div>
   );
 }
-
