@@ -40,6 +40,7 @@ import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
 import UpdatePrompt from "./UpdatePrompt.jsx";
 import { useSwipeTabs } from "../pwa/swipeTabs.js";
+import ParentProfile from "./ParentProfile.jsx";
 
 const TABS = [
   ["home", "Home", "home"],
@@ -150,7 +151,7 @@ export default function ParentApp({ phone }) {
     );
 
   // The noticeboard opens from Home, so Home stays lit there.
-  const lit = tab === "notices" || tab === "calendar" || tab === "attendance" ? "home" : tab;
+  const lit = tab === "notices" || tab === "calendar" || tab === "attendance" || tab === "profile" ? "home" : tab;
   // Phones: swipe sideways to the next or previous tab (not in a chat).
   useSwipeTabs(
     TABS.map(([key]) => key),
@@ -186,7 +187,7 @@ export default function ParentApp({ phone }) {
               <span className="pa-school-name">{school.short_name || school.name}</span>
             )}
           </span>
-          <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} />
+          <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} onProfile={() => setTab("profile")} />
         </div>
       </header>
 
@@ -253,6 +254,25 @@ export default function ParentApp({ phone }) {
                   </h2>
                 </div>
                 <CalendarPage schoolId={child.school_id} onOpenNotices={() => setTab("notices")} />
+              </>
+            )}
+            {tab === "profile" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="idcard" /> My profile
+                  </h2>
+                </div>
+                <ParentProfile
+                  family={children ?? []}
+                  onOpenChild={(id) => {
+                    setChildId(id);
+                    setTab("home");
+                  }}
+                />
               </>
             )}
             {tab === "attendance" && (
@@ -745,7 +765,7 @@ function ChildAttendance({ child }) {
 }
 
 // Top right: the parent's number, Change password and Log out, in one menu.
-function ParentMenu({ phone, onPassword }) {
+function ParentMenu({ phone, onPassword, onProfile }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, useCallback(() => setOpen(false), []));
   return (
@@ -755,9 +775,20 @@ function ParentMenu({ phone, onPassword }) {
       </button>
       {open && (
         <div className="menu menu-right" role="menu">
-          <div className="menu-header">
-            <div className="menu-title">{showPhone(phone)}</div>
-          </div>
+          {/* Their number at the top opens their profile */}
+          <button
+            role="menuitem"
+            className="menu-header menu-header-link"
+            onClick={() => {
+              setOpen(false);
+              onProfile();
+            }}
+          >
+            <span className="menu-title">{showPhone(phone)}</span>
+            <span className="menu-subtitle">
+              My profile <Icon name="chevronRight" size={12} />
+            </span>
+          </button>
           <button
             role="menuitem"
             className="menu-item"

@@ -4,7 +4,7 @@ import { useDismiss } from "./useDismiss.js";
 import Icon from "./Icon.jsx";
 import { HapticsMenuItem, NotifyMenuItem } from "./Notify.jsx";
 
-export default function AccountMenu({ onSettings }) {
+export default function AccountMenu({ onSettings, onProfile }) {
   const { user, school, role, schools = [] } = useAuth();
   const ROLE = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
   const [open, setOpen] = useState(false);
@@ -18,13 +18,27 @@ export default function AccountMenu({ onSettings }) {
       </button>
       {open && (
         <div className="menu menu-right" role="menu">
-          <div className="menu-header">
-            {user?.displayName && <div className="menu-title">{user.displayName}</div>}
-            <div className="menu-subtitle">{user?.email}</div>
-            <div className="menu-subtitle">
+          {/* Their name at the top opens My profile */}
+          <button
+            role="menuitem"
+            className="menu-header menu-header-link"
+            onClick={() => {
+              setOpen(false);
+              onProfile?.();
+            }}
+            disabled={!onProfile}
+          >
+            {user?.displayName && <span className="menu-title">{user.displayName}</span>}
+            <span className="menu-subtitle">{user?.email}</span>
+            <span className="menu-subtitle">
               {ROLE[role]} · {school?.name}
-            </div>
-          </div>
+            </span>
+            {onProfile && (
+              <span className="menu-header-cta">
+                My profile <Icon name="chevronRight" size={12} />
+              </span>
+            )}
+          </button>
           {/* In more than one school: switch to another */}
           {schools
             .filter((m) => m.school.id !== school?.id)

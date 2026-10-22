@@ -10,7 +10,7 @@ const ICONS = { home: "home", students: "scholar", academics: "academics", atten
 // onSettings: the owner's School settings, from the account menu.
 // session: the session picker, shown beside the logo.
 // search: the common search (header on computers; above the tab bar on phones).
-export default function TopBar({ mode, onMode, sections, onSettings, session, search }) {
+export default function TopBar({ mode, onMode, sections, onSettings, onProfile, session, search }) {
   const at = sections.findIndex(([v]) => v === mode);
   const tabs = (className) => (
     <nav className={className} aria-label="Section">
@@ -39,7 +39,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, session, se
           </span>
           {search}
           {sections.length > 1 && tabs("segmented topbar-tabs")}
-          <AccountMenu onSettings={onSettings} />
+          <AccountMenu onSettings={onSettings} onProfile={onProfile} />
         </div>
       </header>
       {sections.length > 1 && tabs("tabbar")}

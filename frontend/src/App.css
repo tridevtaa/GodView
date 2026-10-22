@@ -17458,3 +17458,157 @@ button.class-face:hover {
   font-size: 13px;
   line-height: 1.4;
 }
+
+/* My profile (account menu) */
+.my-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.my-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--surface);
+}
+
+.my-profile-form .facts-title {
+  margin: 0;
+}
+
+.my-profile-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.my-profile-form input,
+.my-profile-form select {
+  height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-field);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+}
+
+.my-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.my-profile-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.my-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.my-classes-change {
+  align-self: flex-start;
+}
+
+/* A staff member's account status, above their name */
+.staff-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.staff-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.staff-status.is-active { background: var(--success-soft); color: var(--success); }
+.staff-status.is-inactive { background: var(--surface-2); color: var(--text-3); }
+.staff-status.is-left { background: var(--danger-soft); color: var(--danger); }
+
+.my-profile-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.my-profile .fact-value.is-empty {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.my-profile-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.pa-profile-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pa-facts {
+  grid-template-columns: 1fr;
+}
+
+/* The name at the top of the account menu: tap it for My profile */
+.menu-header-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-header-link:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.menu-header-link:disabled {
+  cursor: default;
+}
+
+.menu-header-link .menu-subtitle .icon,
+.menu-header-cta .icon {
+  vertical-align: -1px;
+}
+
+.menu-header-cta {
+  margin-top: 4px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 600;
+}

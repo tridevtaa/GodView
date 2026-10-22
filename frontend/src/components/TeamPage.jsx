@@ -27,6 +27,7 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 import { isOutdatedApp, reloadForNewRelease } from "../pwa/release.js";
+import { roleFor } from "./Designation.jsx";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
 // What each role can do, shown when picking one.
@@ -327,10 +328,16 @@ function JoinCode({ school }) {
 const ADDRESS_PROOF_LABEL = { aadhaar: "Aadhaar card", pan: "PAN card", dl: "Driving licence", passport: "Passport", voter_id: "Voter ID", other: "Other" };
 
 function AccessRequestRow({ request, onApprove, onReject }) {
-  const [role, setRole] = useState("teacher");
+  // Starts from what they picked at signup (Admin, Principal, Teacher…)
+  const [role, setRole] = useState(() => roleFor(request.designation));
   const [showDocs, setShowDocs] = useState(false);
   const [opening, setOpening] = useState(""); // which document is being opened
-  const facts = [request.designation, request.phone, request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  const facts = [
+    request.designation,
+    request.phone,
+    request.subjects && `Teaches ${request.subjects}`,
+    request.joining_date && `Joined ${fmtDate(request.joining_date)}`,
+  ].filter(Boolean);
   const docs = [
     ["id_proof_path", "ID proof"],
     ["address_proof_path", request.address_proof_type ? `Address proof (${ADDRESS_PROOF_LABEL[request.address_proof_type] ?? request.address_proof_type})` : "Address proof"],
@@ -397,7 +404,13 @@ function AccessRequestRow({ request, onApprove, onReject }) {
 
 function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onReject }) {
   const [picked, setPicked] = useState(request.classes ?? []);
-  const facts = [request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  // The class they asked to be class teacher of rides along on approval
+  const asked = (request.classes ?? []).find((c) => c.in_charge);
+  const sameClass = (a, b) => a.class === b.class && (a.section ?? "") === (b.section ?? "");
+  const facts = [
+    request.subjects && `Teaches ${request.subjects}`,
+    asked && `Class teacher of ${gradeLabel(asked.class)}${asked.section ? ` · ${asked.section}` : ""}`,
+  ].filter(Boolean);
 
   return (
     <div className="row row-request">
@@ -416,7 +429,7 @@ function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onR
         <button className="btn btn-secondary btn-sm" onClick={onReject}>
           Reject
         </button>
-        <button className="btn btn-primary btn-sm" disabled={!picked.length} onClick={() => onApprove(picked)}>
+        <button className="btn btn-primary btn-sm" disabled={!picked.length} onClick={() => onApprove(picked.map((c) => ({ ...c, in_charge: Boolean(asked && sameClass(asked, c)) })))}>
           Approve
         </button>
       </div>

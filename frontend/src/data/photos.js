@@ -9,7 +9,7 @@ const JPEG_QUALITY = 0.75;
 const encode = (canvas, type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 
 // Centre-crops and scales an image file to a small SIZE×SIZE photo.
-async function toThumbnail(file) {
+export async function toThumbnail(file) {
   // Some WebKit versions reject the imageOrientation option outright; retry
   // without it rather than losing the photo over EXIF rotation.
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
