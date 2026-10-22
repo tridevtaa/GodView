@@ -17396,28 +17396,38 @@ button.class-face:hover {
   }
 }
 
-/* Students page sort: a pill select and the direction arrow */
-.sort-control {
+/* Students page sort: one pill. The icon and the choice, then (once a
+   sort is picked) a joined toggle for which end comes first. */
+.sort-pill {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sort-select {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   height: var(--control-h);
-  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
-  color: var(--text-2);
   box-shadow: var(--btn-shadow);
+  overflow: hidden;
 }
 
-.sort-select select {
+.sort-pill.is-on {
+  border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
+}
+
+.sort-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 12px 0 13px;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.sort-pill.is-on .sort-pick > .icon:first-child {
+  color: var(--brand);
+}
+
+.sort-pick select {
   border: 0;
   background: none;
   color: var(--text);
@@ -17427,21 +17437,57 @@ button.class-face:hover {
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 2px;
+  padding: 0 16px 0 0;
+  margin-right: -16px;
 }
 
-.sort-select select:focus {
+.sort-pick select:focus {
   outline: none;
 }
 
-.sort-select:focus-within {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 3px var(--brand-ring);
+.sort-caret {
+  pointer-events: none;
+  color: var(--text-3);
+}
+
+.sort-pick:focus-within {
+  background: var(--surface-2);
 }
 
 .sort-dir {
-  height: var(--control-h);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  background: var(--brand-soft);
+  color: var(--brand);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sort-dir:hover {
+  background: color-mix(in srgb, var(--brand) 16%, var(--surface));
+}
+
+.sort-dir .icon {
+  transition: transform 0.2s;
+}
+
+/* Phones: the direction is just its icon */
+@media (max-width: 760px) {
+  .sort-dir-label {
+    display: none;
+  }
+
+  .sort-dir {
+    padding: 0 12px;
+  }
 }
 
 /* The notification banner explaining why it couldn't turn on */
