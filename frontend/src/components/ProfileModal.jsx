@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, listResults } from "../data/api.js";
+import { attendanceMonth, listAssignments, listResults } from "../data/api.js";
+import { idText } from "./Designation.jsx";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
@@ -49,6 +50,13 @@ const FACT_ICON = {
   Remarks: "note",
   Phone: "phone",
   Joined: "register",
+  "Student ID": "idcard",
+  "Staff ID": "idcard",
+  "Aadhaar / PAN": "idcard",
+  "Emergency contact": "phone",
+  Qualification: "academics",
+  Subjects: "book",
+  Classes: "scholar",
 };
 
 // Details in groups; empty rows and empty groups are left out.
@@ -95,6 +103,7 @@ const GROUPS = {
     [
       "School",
       [
+        ["Student ID", (p) => p.ref_no],
         ["Stream", (p) => p.stream],
         // Office details: teachers don't need them. (The bus is in the header.)
         ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
@@ -111,9 +120,20 @@ const GROUPS = {
       [
         ["Phone", (p) => phone(p.phone)],
         ["Email", (p) => p.email && <a href={`mailto:${p.email}`}>{p.email}</a>],
-        ["Joined", (p) => longDate(p.joining_date)],
+        ["Emergency contact", (p) => (p.emergency_name || p.emergency_phone) && <>{p.emergency_name}{p.emergency_name && p.emergency_phone ? " · " : ""}{phone(p.emergency_phone)}</>],
       ],
     ],
+    [
+      "Work",
+      [
+        ["Staff ID", (p) => [p.ref_no, p.employee_no].filter(Boolean).join(" · ")],
+        ["Joined", (p) => longDate(p.joining_date)],
+        ["Classes", (p) => p.classes_text, "wide"],
+        ["Subjects", (p) => p.subjects],
+        ["Qualification", (p) => p.qualification],
+      ],
+    ],
+    ["Identity", [["Aadhaar / PAN", (p) => p.id_last4 && <span className="masked">{idText(p.id_type, p.id_last4)}</span>]]],
   ],
 };
 
@@ -353,12 +373,30 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   }, [onClose, editing]);
 
   const isStudent = mode === "students";
+  // Staff: their classes this session (the class teacher one starred)
+  const [staffClasses, setStaffClasses] = useState("");
+  useEffect(() => {
+    if (mode !== "employees" || !person.email || !sessionId || !isAdmin) return;
+    let live = true;
+    listAssignments(schoolId).then(
+      (rows) => {
+        if (!live) return;
+        const mine = rows.filter((r) => r.session_id === sessionId && r.email === String(person.email).toLowerCase());
+        setStaffClasses(mine.map((r) => `${r.is_class_teacher ? "★ " : ""}${gradeLabel(r.class)}${r.section ? ` · ${r.section}` : ""}`).join(", "));
+      },
+      () => {}
+    );
+    return () => {
+      live = false;
+    };
+  }, [mode, person.email, sessionId, schoolId, isAdmin]);
+  const shown = mode === "employees" ? { ...person, classes_text: staffClasses } : person;
   const groups = GROUPS[mode]
     .map(([title, rows]) => [
       title,
       rows
         .filter(([, , , only]) => (only !== "admin" || isAdmin) && (only !== "staff" || !isAdmin))
-        .map(([label, get, wide]) => [label, get(person, routes), wide])
+        .map(([label, get, wide]) => [label, get(shown, routes), wide])
         .filter(([, v]) => v),
     ])
     .filter(([, rows]) => rows.length);
@@ -402,9 +440,10 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
             <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
             <div className="ig-head">
               <div>
+                {/* Account status, on top */}
+                <span className={`staff-status is-${person.status || "active"}`}>{{ active: "Active", inactive: "Inactive", left: "Left" }[person.status || "active"]}</span>
                 <h2 className="ig-name">{person.name}</h2>
-                <p className="ig-id">{[person.designation, person.department].filter(Boolean).join(" · ")}</p>
-                {person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>}
+                <p className="ig-id">{[person.ref_no, person.designation, person.department].filter(Boolean).join(" · ")}</p>
               </div>
               {!editing && (
                 <div className="ig-actions">

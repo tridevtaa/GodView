@@ -43,20 +43,32 @@ const FIELDS = {
   employees: [
     ["Employee", [
       ["name", "Full name", "text", true],
-      ["employee_no", "Employee no.", "text"],
       ["designation", "Designation", "text"],
       ["department", "Department", "text"],
       ["phone", "Phone", "tel"],
       ["email", "Email", "email"],
+    ]],
+    ["Work", [
       ["joining_date", "Joined", "date"],
+      ["employee_no", "School's own staff no.", "text"],
+      ["qualification", "Qualification", "text"],
+      ["subjects", "Subjects", "text"],
+      ["status", "Status", ["active", "inactive", "left"]],
+    ]],
+    ["ID & emergency", [
+      ["id_type", "ID type", ["", "aadhaar", "pan"]],
+      ["id_last4", "Aadhaar / PAN (last 4)", "text"],
+      ["emergency_name", "Emergency contact", "text"],
+      ["emergency_phone", "Emergency phone", "tel"],
     ]],
   ],
 };
 
 const STATUS_LABEL = { active: "Active", inactive: "Inactive", left: "Left (hidden)" };
 const GENDER_LABEL = { "": "Not set", F: "Female", M: "Male" };
+const ID_TYPE_LABEL = { "": "Not set", aadhaar: "Aadhaar", pan: "PAN" };
 const optionLabel = (key, opt) =>
-  key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : opt || "Not set";
+  key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : key === "id_type" ? ID_TYPE_LABEL[opt] : opt || "Not set";
 
 export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel, onDelete, routes = [] }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);
@@ -73,8 +85,7 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
   const [transport, setTransport] = useState({ uses_bus: Boolean(person.uses_bus), bus_stop_id: person.bus_stop_id ?? null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  // Students edit in steps (the field groups, then home and bus); employees
-  // have one short group.
+  // Edited in steps: the field groups (students then add home and bus).
   const steps = [...FIELDS[kind].map(([title, list]) => ({ title, keys: list.map(([k]) => k) })), ...(kind === "students" ? [{ title: "Home & bus", keys: [] }] : [])];
   const [step, setStep] = useState(0);
 

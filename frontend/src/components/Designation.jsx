@@ -45,3 +45,10 @@ export default function DesignationField({ value, onChange, autoFocus = false })
     </>
   );
 }
+
+// Aadhaar or PAN, only ever the last 4 shown: "Aadhaar •••• •••• 1234"
+export const ID_LABEL = { aadhaar: "Aadhaar", pan: "PAN" };
+export function idText(type, last4) {
+  if (!last4) return "";
+  return type === "pan" ? `PAN ••••••${last4}` : `${ID_LABEL[type] ?? "Aadhaar"} •••• •••• ${last4}`;
+}
