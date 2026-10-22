@@ -10,6 +10,9 @@ import Icon from "./Icon.jsx";
 import { haptic } from "../pwa/haptics.js";
 
 const ROLE = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
+// A staff record made from an email gets the part before @ as a stand-in
+// name; their sign-in name is better until they save their own.
+const realName = (name, email) => (name && name !== String(email).split("@")[0] ? name : "");
 const classText = (c) => `${gradeLabel(c.class)}${c.section ? ` · ${c.section}` : ""}`;
 
 // My profile, from the account menu: any staff member's own photo, name,
@@ -30,7 +33,7 @@ export default function MyProfile({ school, session, email, googleName, onBack }
   const { member, staff } = data;
   const role = member?.role;
   const isTeacher = role === "teacher";
-  const name = member?.full_name || staff?.name || googleName || email;
+  const name = member?.full_name || realName(staff?.name, email) || googleName || staff?.name || email;
   const status = staff?.status || "active";
   // Admin profile: ID, designation, contact, school, ID proof, emergency,
   // joining. Teacher profile adds subjects and qualification (their
@@ -73,6 +76,7 @@ export default function MyProfile({ school, session, email, googleName, onBack }
         <EditMyProfile
           school={school}
           data={data}
+          email={email}
           isTeacher={isTeacher}
           googleName={googleName}
           onCancel={() => setEditing(false)}
@@ -128,10 +132,10 @@ export default function MyProfile({ school, session, email, googleName, onBack }
 
 // Editing their details, in short steps: the basics, then ID and an
 // emergency contact, then (teachers) what they teach.
-function EditMyProfile({ school, data, isTeacher, googleName, onCancel, onSaved }) {
+function EditMyProfile({ school, data, email, isTeacher, googleName, onCancel, onSaved }) {
   const { member, staff } = data;
   const [form, setForm] = useState({
-    fullName: member?.full_name || staff?.name || googleName || "",
+    fullName: member?.full_name || realName(staff?.name, email) || googleName || staff?.name || "",
     designation: member?.designation || staff?.designation || "",
     phone: member?.phone || staff?.phone || "",
     idType: staff?.id_type || "aadhaar",
