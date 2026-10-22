@@ -1059,7 +1059,7 @@ export default function App() {
 }
 
 // Students page sort: one pill with the sort icon, the choice (Default,
-// Grade, Fee due for the office, Performance) and, once one is picked, a
+// Grade, Fee due for the office, Results) and, once one is picked, a
 // direction toggle saying what comes first in words that fit the choice.
 const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
 const SORT_FIRST = {
@@ -1083,7 +1083,7 @@ function SortControl({ value, onChange, withFee }) {
           <option value="">Default</option>
           <option value="grade">Grade</option>
           {withFee && <option value="fee">Fee due</option>}
-          <option value="perf">Performance</option>
+          <option value="perf">Results</option>
         </select>
         <Icon name="chevronDown" size={14} className="sort-caret" />
       </label>

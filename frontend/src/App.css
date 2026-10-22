@@ -17417,8 +17417,8 @@ button.class-face:hover {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 12px 0 13px;
+  gap: 6px;
+  padding: 0 10px 0 12px;
   color: var(--text-2);
   cursor: pointer;
 }
