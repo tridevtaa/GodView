@@ -30,7 +30,8 @@ import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
 import NoticeBoard, { AchievementsStrip, isWin, useImageUrls, useNotices } from "./NoticeBoard.jsx";
-import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
+import CalendarPage, { ComingUp, useUpcoming } from "./CalendarPage.jsx";
+import Ticker from "./Ticker.jsx";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
@@ -523,6 +524,18 @@ function ParentHome({ child, news, onGo }) {
     },
   ].filter(Boolean);
 
+  // The thin banner up top: what needs doing, then what's new and coming
+  const upcoming = useUpcoming(child.school_id, false, 14);
+  const shortDay = (d) => (d === now ? "Today" : dateText(d, { day: "numeric", month: "short" }));
+  const tickerItems = [
+    overdue.length > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${rupees(overdueTotal)} fees overdue`, onClick: go("fees") },
+    hwToday > 0 && { key: "hwt", icon: "book", tone: "amber", text: `${hwToday} homework due today`, onClick: go("homework") },
+    hwTomorrow > 0 && { key: "hwm", icon: "book", tone: "teal", text: `${hwTomorrow} homework due tomorrow`, onClick: go("homework") },
+    nextExam && daysTo <= 7 && { key: "exam", icon: "exam", tone: "pink", text: `${nextExam.subject} exam ${daysTo === 0 ? "today" : daysTo === 1 ? "tomorrow" : `in ${daysTo} days`}`, onClick: go("datesheet") },
+    ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
+    ...(upcoming ?? []).filter((it) => it.forParents !== false).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
+  ].filter(Boolean);
+
   // Home is laid out by each parent (HomeWidgets.jsx). Messages starts off
   // (it's in the bar below); + Add widget brings it back.
   // Off at first: Messages (it's in the bar) and Syllabus (in Homework)
@@ -563,6 +576,7 @@ function ParentHome({ child, news, onGo }) {
 
   return (
     <div className="home hw pa-home home-roomy">
+      <Ticker items={tickerItems} />
       {priority && (
         <div className="home-row1 is-solo">
           <PriorityCard {...priority} />

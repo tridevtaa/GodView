@@ -17287,3 +17287,159 @@ button.class-face:hover {
   background: #f0b429;
   color: #fff;
 }
+
+/* Home's ticker: a thin strip of the latest updates scrolling by */
+.ticker {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 38px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.ticker-tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 100%;
+  padding: 0 12px 0 14px;
+  border-radius: 999px 0 0 999px;
+  background: var(--brand-edge);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ticker-window {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: ticker-roll var(--ticker-time, 30s) linear infinite;
+}
+
+.ticker:hover .ticker-track,
+.ticker:active .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-roll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 18px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ticker-item .icon {
+  color: var(--c);
+}
+
+.ticker-item::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  margin-left: 18px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.ticker-item:hover span {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Reduced motion: still, swipe to see more */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-window {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ticker-track {
+    animation: none;
+  }
+
+  .ticker-track > [aria-hidden="true"] {
+    display: none;
+  }
+}
+
+/* Students page sort: a pill select and the direction arrow */
+.sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--control-h);
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  box-shadow: var(--btn-shadow);
+}
+
+.sort-select select {
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2px;
+}
+
+.sort-select select:focus {
+  outline: none;
+}
+
+.sort-select:focus-within {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.sort-dir {
+  height: var(--control-h);
+  white-space: nowrap;
+}
