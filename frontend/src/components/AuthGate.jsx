@@ -104,6 +104,7 @@ export function RequestAccess({ user, onSchool }) {
     designation: "",
     phone: "",
     subjects: "",
+    joiningDate: "",
     note: "",
     photoPath: "",
     policyAgreed: false,
@@ -294,10 +295,13 @@ export function RequestAccess({ user, onSchool }) {
             <span>Subjects you teach</span>
             <input value={form.subjects} onChange={set("subjects")} maxLength={200} placeholder="e.g. Maths, EVS" />
           </label>
-          <label>
-            <span>Note for the owner</span>
-            <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
-          </label>
+          {/* Teachers: when they joined the school (their staff record keeps it) */}
+          {form.designation === "Teacher" && (
+            <label>
+              <span>Joined the school on</span>
+              <input type="date" value={form.joiningDate} onChange={set("joiningDate")} max={new Date().toISOString().slice(0, 10)} />
+            </label>
+          )}
         </>
       )}
 
@@ -313,8 +317,12 @@ export function RequestAccess({ user, onSchool }) {
               </label>
             </>
           ) : (
-            <p className="row-sub">{school.school_name} hasn’t set a staff policy yet. Nothing to agree to here — tap Next.</p>
+            <p className="row-sub">{school.school_name} hasn’t set a staff policy yet. Nothing to agree to here, tap Next.</p>
           )}
+          <label>
+            <span>Note for the owner</span>
+            <input value={form.note} onChange={set("note")} maxLength={500} placeholder="Optional" />
+          </label>
         </div>
       )}
 

@@ -489,7 +489,7 @@ export async function staffDocumentUrl(path) {
 
 export async function requestAccess(
   code,
-  { fullName, designation, phone, subjects, note, photoPath, policyAgreed, idProofPath, addressProofType, addressProofPath, educationCertPath }
+  { fullName, designation, phone, subjects, note, photoPath, policyAgreed, idProofPath, addressProofType, addressProofPath, educationCertPath, joiningDate }
 ) {
   must(
     await supabase.rpc("request_access", {
@@ -505,6 +505,7 @@ export async function requestAccess(
       p_address_proof_type: addressProofType || null,
       p_address_proof_path: addressProofPath,
       p_education_cert_path: educationCertPath,
+      p_joining_date: (designation === "Teacher" && joiningDate) || null,
     })
   );
 }

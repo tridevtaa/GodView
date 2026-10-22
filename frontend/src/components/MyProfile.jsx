@@ -45,7 +45,7 @@ export default function MyProfile({ school, session, email, googleName, onBack }
     isTeacher && ["Qualification", staff?.qualification, "academics"],
     ["Aadhaar / PAN", staff?.id_last4 && idText(staff.id_type, staff.id_last4), "idcard"],
     ["Emergency contact", [staff?.emergency_name, staff?.emergency_phone].filter(Boolean).join(" · "), "phone"],
-    ["Joined", staff?.joining_date && new Date(staff.joining_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }), "register"],
+    ["Joined the school", staff?.joining_date && new Date(staff.joining_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }), "register"],
   ].filter(Boolean);
 
   return (
@@ -91,6 +91,7 @@ export default function MyProfile({ school, session, email, googleName, onBack }
                 emergency_phone: f.emergencyPhone.trim() || null,
                 qualification: f.qualification.trim() || null,
                 subjects: f.subjects.trim() || null,
+                joining_date: f.joiningDate || d.staff.joining_date,
               },
             }));
             setEditing(false);
@@ -139,6 +140,7 @@ function EditMyProfile({ school, data, isTeacher, googleName, onCancel, onSaved 
     emergencyPhone: staff?.emergency_phone || "",
     qualification: staff?.qualification || "",
     subjects: staff?.subjects || "",
+    joiningDate: staff?.joining_date || "",
   });
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -179,6 +181,12 @@ function EditMyProfile({ school, data, isTeacher, googleName, onCancel, onSaved 
             <span>Contact number</span>
             <input type="tel" value={form.phone} onChange={set("phone")} maxLength={20} autoComplete="tel" />
           </label>
+          {staff && (
+            <label>
+              <span>Joined the school on</span>
+              <input type="date" value={form.joiningDate} onChange={set("joiningDate")} max={new Date().toISOString().slice(0, 10)} />
+            </label>
+          )}
         </>
       )}
       {step === 1 && (

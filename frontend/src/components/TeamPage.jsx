@@ -332,7 +332,12 @@ function AccessRequestRow({ request, onApprove, onReject }) {
   const [role, setRole] = useState(() => roleFor(request.designation));
   const [showDocs, setShowDocs] = useState(false);
   const [opening, setOpening] = useState(""); // which document is being opened
-  const facts = [request.designation, request.phone, request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  const facts = [
+    request.designation,
+    request.phone,
+    request.subjects && `Teaches ${request.subjects}`,
+    request.joining_date && `Joined ${fmtDate(request.joining_date)}`,
+  ].filter(Boolean);
   const docs = [
     ["id_proof_path", "ID proof"],
     ["address_proof_path", request.address_proof_type ? `Address proof (${ADDRESS_PROOF_LABEL[request.address_proof_type] ?? request.address_proof_type})` : "Address proof"],

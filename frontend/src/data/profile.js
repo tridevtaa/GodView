@@ -37,6 +37,7 @@ export async function saveMyProfile(schoolId, f) {
       p_emergency_phone: f.emergencyPhone,
       p_qualification: f.qualification,
       p_subjects: f.subjects,
+      p_joining_date: f.joiningDate || null,
     })
   );
 }
