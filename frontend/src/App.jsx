@@ -1070,10 +1070,17 @@ const SORT_FIRST = {
 const SORT_LABEL = { "": "Default", grade: "Grade", fee: "Fee due", perf: "Results" };
 function SortControl({ value, onChange, withFee }) {
   const asc = value?.dir !== "desc";
+  // A focus ring only for keyboard users (Tab), never on a tap or click
+  const [kbd, setKbd] = useState(false);
   const words = value && SORT_FIRST[value.by];
   const next = words && (asc ? words.desc : words.asc);
   return (
-    <div className={`sort-pill${value ? " is-on" : ""}`}>
+    <div
+      className={`sort-pill${value ? " is-on" : ""}${kbd ? " is-kbd" : ""}`}
+      onKeyUp={(e) => e.key === "Tab" && setKbd(true)}
+      onPointerDown={() => setKbd(false)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setKbd(false)}
+    >
       {/* The label shows the choice at the buttons' size; the real
           dropdown lies on top, invisible (phones force dropdown text to
           16px, which made the pill bigger than the buttons beside it). */}
