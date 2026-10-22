@@ -17443,3 +17443,18 @@ button.class-face:hover {
   height: var(--control-h);
   white-space: nowrap;
 }
+
+/* The notification banner explaining why it couldn't turn on */
+.notify.has-problem {
+  border-color: var(--warning-line);
+  background: var(--warning-soft);
+}
+
+.notify.has-problem .notify-icon {
+  color: var(--warning);
+}
+
+.notify.has-problem .notify-text {
+  font-size: 13px;
+  line-height: 1.4;
+}
