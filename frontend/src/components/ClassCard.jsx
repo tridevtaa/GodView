@@ -74,7 +74,8 @@ export function ClassTeacherBadge({ teachers }) {
 }
 
 // A student's class, for staff (student page) and parents (Home): the
-// teachers (class teacher first, with a star) and the classmates as rows
+// teachers (class teacher first, with a star, each with what they teach)
+// and the classmates as rows
 // of faces to swipe through; See all lays a row out in full.
 // teachers: null while loading. mates: [{ id, name, photo_src? }].
 // onOpenMate: staff open a classmate's page.
@@ -90,7 +91,7 @@ export default function ClassCard({ title, teachers, mates, onOpenMate }) {
       {all.length > 0 && (
         <FaceRow
           label="Teachers"
-          items={all.map((t) => ({ key: t.id ?? t.name, person: t, text: shortName(t.name), sub: t.is_class_teacher ? "Class teacher" : t.designation, star: t.is_class_teacher }))}
+          items={all.map((t) => ({ key: t.id ?? t.name, person: t, text: shortName(t.name), sub: t.is_class_teacher ? "Class teacher" : t.designation, subject: t.subjects, star: t.is_class_teacher }))}
         />
       )}
       {mates.length > 0 && (
@@ -139,10 +140,11 @@ function FaceRow({ label, items }) {
                 )}
               </span>
               <span className="class-face-name">{it.text}</span>
+              {it.subject && <span className="class-face-subject">{it.subject}</span>}
             </>
           );
           return (
-            <li key={it.key} title={[it.person.name, it.sub].filter(Boolean).join(" · ")}>
+            <li key={it.key} title={[it.person.name, it.sub, it.subject].filter(Boolean).join(" · ")}>
               {it.onClick ? (
                 <button type="button" className="class-face" onClick={it.onClick}>
                   {inner}
