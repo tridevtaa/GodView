@@ -7,6 +7,7 @@ import { gradeLabel } from "./PersonCard.jsx";
 
 const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
 const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
+const TimetablePage = lazy(() => import("./TimetablePage.jsx"));
 
 // What goes on the calendar, each with its icon (and colour, in CSS).
 export const KINDS = [
@@ -85,6 +86,8 @@ export default function CalendarPage({
   attIsAdmin = false,
   attReadOnly = false,
   attOpenAt = 0,
+  ttIsAdmin = false,
+  ttReadOnly = false,
   onOpenStudent,
 }) {
   const { items, loading, setEvents } = useItems(schoolId, staff);
@@ -94,7 +97,7 @@ export default function CalendarPage({
   });
   const [picked, setPicked] = useState(null); // a day, "YYYY-MM-DD"
   const [editing, setEditing] = useState(null); // an entry's row, or {} for new
-  const [view, setView] = useState("calendar"); // "calendar" | "attendance" | "datesheet"
+  const [view, setView] = useState("calendar"); // "calendar" | "attendance" | "datesheet" | "timetable"
 
   useEffect(() => {
     if (adding) setEditing({ starts_on: picked ?? todayIso() });
@@ -137,7 +140,7 @@ export default function CalendarPage({
   return (
     <div className="cal">
       {session && (
-        <nav className="segmented segmented-sm ds-tabs" aria-label="Calendar, attendance or datesheet">
+        <nav className="segmented segmented-sm ds-tabs" aria-label="Calendar, attendance, datesheet or timetable">
           <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>
             <Icon name="calendar" size={15} /> Calendar
           </button>
@@ -149,9 +152,18 @@ export default function CalendarPage({
           <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
             <Icon name="exam" size={15} /> Datesheet
           </button>
+          <button className={view === "timetable" ? "active" : ""} onClick={() => setView("timetable")}>
+            <Icon name="table" size={15} /> Timetable
+          </button>
         </nav>
       )}
-      {view === "attendance" ? (
+      {view === "timetable" ? (
+        <div className="cal-datesheet">
+          <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
+            <TimetablePage school={{ id: schoolId }} session={session} students={students} me={me} isAdmin={ttIsAdmin} readOnly={ttReadOnly} />
+          </Suspense>
+        </div>
+      ) : view === "attendance" ? (
         <div className="cal-datesheet">
           <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
             <AttendancePage

@@ -741,6 +741,19 @@
   gap: 8px;
 }
 
+.pa-tt-day {
+  margin-bottom: 18px;
+}
+
+.pa-tt-day-title {
+  margin: 0 0 8px;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .pa-hw-due {
   margin-left: auto;
   padding: 3px 10px;

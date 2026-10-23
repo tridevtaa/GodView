@@ -8,6 +8,7 @@ const ENROLMENT_FIELDS = ["class", "section", "stream", "roll_no", "status"];
 const STUDENT_FIELDS = [
   "admission_no", "name", "gender", "dob", "father_name", "mother_name", "admission_date", "admission_type",
   "remarks", "status", "left_on", "photo_path", "photo_url",
+  "aadhaar_doc_path", "birth_cert_path", "transfer_cert_path", "transfer_cert_pending",
 ];
 // student_private: owners and admins only
 const PRIVATE_FIELDS = [

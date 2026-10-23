@@ -81,6 +81,7 @@ export default function App() {
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
+  const [slcPendingOnly, setSlcPendingOnly] = useState(false);
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
@@ -214,10 +215,12 @@ export default function App() {
     [people]
   );
   const gradeChoices = useMemo(() => (mode === "students" ? gradeOptions(current) : []), [current, mode]);
-  const inGrade = useMemo(
-    () => (mode === "students" && pickedGrades.length ? current.filter((p) => pickedGrades.includes(p.class)) : current),
-    [current, mode, pickedGrades]
-  );
+  const inGrade = useMemo(() => {
+    let rows = current;
+    if (mode === "students" && pickedGrades.length) rows = rows.filter((p) => pickedGrades.includes(p.class));
+    if (mode === "students" && slcPendingOnly) rows = rows.filter((p) => p.transfer_cert_pending);
+    return rows;
+  }, [current, mode, pickedGrades, slcPendingOnly]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -704,6 +707,8 @@ export default function App() {
               attIsAdmin={leads}
               attReadOnly={isPrincipal}
               attOpenAt={quick.kind === "attendance" ? quick.at : 0}
+              ttIsAdmin={isAdmin}
+              ttReadOnly={isPrincipal || viewOnly}
               onOpenStudent={(id) => openStudent(id)}
             />
           </>
@@ -856,6 +861,16 @@ export default function App() {
           {isStudents && studentParts.length > 1 && studentsSwitch}
           {!isStudents && staffTabs}
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
+          {isStudents && isAdmin && (
+            <button
+              type="button"
+              className={`chip-btn${slcPendingOnly ? " is-on" : ""}`}
+              onClick={() => setSlcPendingOnly((v) => !v)}
+              title="Students still owing a transfer certificate"
+            >
+              <Icon name="file" size={14} /> SLC pending
+            </button>
+          )}
           {!loading && (query || pickedGrades.length > 0) && (
             <span className="toolbar-count">
               {visible.length} of {current.length}
@@ -930,7 +945,7 @@ export default function App() {
         ) : (
           <Grid
             items={ordered}
-            resetKey={`${mode}|${query}|${pickedGrades.join(",")}`}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${slcPendingOnly}`}
             render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
           />
         )}
@@ -995,6 +1010,7 @@ export default function App() {
       {adding && (
         <AddModal
           mode={mode}
+          schoolId={school.id}
           grades={schoolGrades}
           routes={routes}
           students={mode === "students" ? people : []}

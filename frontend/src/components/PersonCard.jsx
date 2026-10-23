@@ -108,6 +108,11 @@ export default function PersonCard({ person, mode, index, showFee = false, onOpe
     >
       <Photo person={person} />
       {person.status === "inactive" && <span className="pc-flag">Inactive</span>}
+      {isStudent && showFee && person.transfer_cert_pending && (
+        <span className="pc-flag pc-doc-flag" title="Transfer certificate (SLC) still owed">
+          SLC pending
+        </span>
+      )}
       {isStudent && showFee && fee !== "unknown" && (
         <span className={`pc-fee is-${fee}`} title={feeTitle(person)} aria-label={feeTitle(person)} />
       )}

@@ -11,6 +11,7 @@ import {
   childHomework,
   childDatesheet,
   childSyllabus,
+  childTimetable,
   parentUnread,
   attendanceMonth,
   setParentPassword,
@@ -1007,29 +1008,75 @@ function HomeworkTab({ child, since }) {
 
 // ------------------------------------------------------------- datesheet ---
 
+const DAY_NAME = { 1: "Monday", 2: "Tuesday", 3: "Wednesday", 4: "Thursday", 5: "Friday", 6: "Saturday", 7: "Sunday" };
+
 function DatesheetTab({ child, since }) {
-  const load = useCallback(() => childDatesheet(child.id), [child.id]);
-  const { data, error } = useLoad(load);
-  if (error) return <p className="notice notice-error">{error}</p>;
-  if (!data) return <div className="pa-card pa-skeleton" aria-busy="true" />;
-  if (!data.length) return <Empty icon="exam" title="No exams on the datesheet yet" text="The exam schedule appears here as soon as the school sets it." />;
+  const [view, setView] = useState("datesheet");
+  const loadDates = useCallback(() => childDatesheet(child.id), [child.id]);
+  const loadTimetable = useCallback(() => childTimetable(child.id), [child.id]);
+  const dates = useLoad(loadDates);
+  const timetable = useLoad(loadTimetable);
+  const { data, error } = view === "datesheet" ? dates : timetable;
+
   return (
-    <ul className="pa-hw">
-      {data.map((d) => (
-        <li key={d.id} className={`pa-card pa-hw-item${isNew(d.created_at, since) ? " is-new" : ""}`}>
-          <div className="pa-hw-head">
-            <strong>{d.subject}</strong>
-            {isNew(d.created_at, since) && <NewTag />}
-            <span className="badge badge-brand">{d.exam_name}</span>
-          </div>
-          <p className="pa-hw-body">
-            {dateText(d.exam_date, { weekday: "short", day: "numeric", month: "short" })}
-            {d.start_time ? ` · ${d.start_time}` : ""}
-            {d.notes ? ` · ${d.notes}` : ""}
-          </p>
-        </li>
-      ))}
-    </ul>
+    <>
+      <nav className="segmented segmented-sm ds-tabs pa-switch" aria-label="Datesheet or timetable">
+        <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
+          <Icon name="exam" size={15} /> Datesheet
+        </button>
+        <button className={view === "timetable" ? "active" : ""} onClick={() => setView("timetable")}>
+          <Icon name="table" size={15} /> Timetable
+        </button>
+      </nav>
+      {error ? (
+        <p className="notice notice-error">{error}</p>
+      ) : !data ? (
+        <div className="pa-card pa-skeleton" aria-busy="true" />
+      ) : !data.length ? (
+        view === "datesheet" ? (
+          <Empty icon="exam" title="No exams on the datesheet yet" text="The exam schedule appears here as soon as the school sets it." />
+        ) : (
+          <Empty icon="table" title="No timetable set yet" text="The weekly timetable appears here as soon as the school sets it." />
+        )
+      ) : view === "datesheet" ? (
+        <ul className="pa-hw">
+          {data.map((d) => (
+            <li key={d.id} className={`pa-card pa-hw-item${isNew(d.created_at, since) ? " is-new" : ""}`}>
+              <div className="pa-hw-head">
+                <strong>{d.subject}</strong>
+                {isNew(d.created_at, since) && <NewTag />}
+                <span className="badge badge-brand">{d.exam_name}</span>
+              </div>
+              <p className="pa-hw-body">
+                {dateText(d.exam_date, { weekday: "short", day: "numeric", month: "short" })}
+                {d.start_time ? ` · ${d.start_time}` : ""}
+                {d.notes ? ` · ${d.notes}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        [...new Set(data.map((x) => x.day_of_week))].sort((a, b) => a - b).map((day) => (
+          <section key={day} className="pa-tt-day">
+            <h3 className="pa-tt-day-title">{DAY_NAME[day]}</h3>
+            <ul className="pa-hw">
+              {data
+                .filter((x) => x.day_of_week === day)
+                .sort((a, b) => a.period_no - b.period_no)
+                .map((x) => (
+                  <li key={`${x.day_of_week}-${x.period_no}`} className="pa-card pa-hw-item">
+                    <div className="pa-hw-head">
+                      <span className="badge badge-brand">Period {x.period_no}</span>
+                      <strong>{x.subject}</strong>
+                    </div>
+                    {x.teacher_name && <p className="pa-hw-body">{x.teacher_name}</p>}
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))
+      )}
+    </>
   );
 }
 

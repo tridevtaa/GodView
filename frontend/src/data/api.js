@@ -97,9 +97,12 @@ async function savePrivate(schoolId, rows) {
 }
 
 export async function addStudent(schoolId, sessionId, fields) {
-  const { student, private: priv, enrolment } = splitFields(fields);
+  // `id` lets the caller pre-generate the id, so documents can be uploaded to
+  // their final storage path (keyed by student id) before this insert runs.
+  const { id, ...rest } = fields;
+  const { student, private: priv, enrolment } = splitFields(rest);
   const saved = must(
-    await supabase.from("students").insert({ ...student, school_id: schoolId }).select().single()
+    await supabase.from("students").insert({ ...(id ? { id } : {}), ...student, school_id: schoolId }).select().single()
   );
   await savePrivate(schoolId, [{ student_id: saved.id, school_id: schoolId, ...priv }]);
   const enrol = { student_id: saved.id, session_id: sessionId, school_id: schoolId, class: "", ...enrolment };
@@ -291,6 +294,31 @@ export async function uploadPhoto(schoolId, kind, person, blob) {
     // not stored: fine
   }
   return { photo_path: path, photo_src: signedUrl };
+}
+
+// ------------------------------------------------------- student docs ---
+
+const STUDENT_DOCS_BUCKET = "student-documents";
+const STUDENT_DOC_EXT = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "application/pdf": "pdf" };
+
+// Aadhaar card, birth certificate or transfer certificate for a student, kept
+// at <school>/students/<student>/<kind>.<ext>. `studentId` may be a freshly
+// generated id for a student not yet inserted: addStudent is given that same
+// id, so the document lands at its final path before the row exists.
+export async function uploadStudentDocument(schoolId, studentId, kind, file) {
+  const ext = STUDENT_DOC_EXT[file.type];
+  if (!ext) throw new Error("unsupported-file-type");
+  const path = `${schoolId}/students/${studentId}/${kind}.${ext}`;
+  const { error } = await supabase.storage.from(STUDENT_DOCS_BUCKET).upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+  return path;
+}
+
+// A short-lived link to view one of the documents above.
+export async function studentDocumentUrl(path) {
+  const { data, error } = await supabase.storage.from(STUDENT_DOCS_BUCKET).createSignedUrl(path, 60 * 10);
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 // ------------------------------------------------------ notes & results ---
@@ -1281,6 +1309,66 @@ export async function deleteDatesheetEntry(id) {
 // One child's exam schedule (for their parents, and staff who can see them).
 export async function childDatesheet(studentId) {
   return must(await supabase.rpc("child_datesheet", { student: studentId }));
+}
+
+// ------------------------------------------------------------ timetable ---
+
+// Every slot the signed-in staff member can see this session (their classes,
+// plus any slot naming them as the teacher). Filtered to a class client-side,
+// the same way as the datesheet.
+export async function listTimetable(schoolId, sessionId) {
+  return must(
+    await supabase.from("timetable_slots").select("*").eq("school_id", schoolId).eq("session_id", sessionId).order("day_of_week").order("period_no")
+  );
+}
+
+// Sets (or clears, when subject is empty) one period for a class or section.
+// `section` is always a real string here (possibly "" for a school that
+// doesn't split sections), never null — the unique constraint and this
+// upsert's conflict target only work when it's never null (Postgres never
+// treats two NULLs as conflicting, so a null section would insert a fresh
+// duplicate row on every save instead of updating the existing one).
+export async function saveTimetableSlot(schoolId, sessionId, { klass, section, day_of_week, period_no, subject, teacher_email }) {
+  if (!subject?.trim()) return deleteTimetableSlot(schoolId, sessionId, { klass, section, day_of_week, period_no });
+  return must(
+    await supabase
+      .from("timetable_slots")
+      .upsert(
+        {
+          school_id: schoolId,
+          session_id: sessionId,
+          class: klass,
+          section: section ?? "",
+          day_of_week,
+          period_no,
+          subject: subject.trim(),
+          teacher_email: teacher_email || null,
+        },
+        { onConflict: "school_id,session_id,class,section,day_of_week,period_no" }
+      )
+      .select()
+      .single()
+  );
+}
+
+export async function deleteTimetableSlot(schoolId, sessionId, { klass, section, day_of_week, period_no }) {
+  must(
+    await supabase
+      .from("timetable_slots")
+      .delete()
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .eq("class", klass)
+      .eq("day_of_week", day_of_week)
+      .eq("period_no", period_no)
+      .eq("section", section ?? "")
+  );
+  return null;
+}
+
+// One child's weekly timetable (for their parents, and staff who can see them).
+export async function childTimetable(studentId) {
+  return must(await supabase.rpc("child_timetable", { student: studentId }));
 }
 
 // The syllabus entries the signed-in staff member can see this session.

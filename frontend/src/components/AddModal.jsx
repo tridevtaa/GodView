@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import PlacePicker from "./PlacePicker.jsx";
 import TransportPicker from "./TransportPicker.jsx";
 import { gradeLabel, tintFor } from "./PersonCard.jsx";
+import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 import { StepBar } from "./Steps.jsx";
+import { uploadStudentDocument } from "../data/api.js";
+
+// Document kind (matches storage.uploadStudentDocument) -> the person field
+// its saved path goes into (students.aadhaar_doc_path etc.).
+const DOC_PATH_FIELD = { aadhaar: "aadhaar_doc_path", birth_certificate: "birth_cert_path", transfer_certificate: "transfer_cert_path" };
 
 const EMPLOYEE_FIELDS = [
   ["name", "Full name", "text", true],
@@ -36,7 +42,7 @@ function suggestAdmissionNo(students, grade) {
   return prefix + String(next).padStart(width, "0");
 }
 
-export default function AddModal({ mode, grades = [], routes = [], students = [], onClose, onSave, onManageRoutes }) {
+export default function AddModal({ mode, schoolId, grades = [], routes = [], students = [], onClose, onSave, onManageRoutes }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -46,7 +52,7 @@ export default function AddModal({ mode, grades = [], routes = [], students = []
   return (
     <div className="modal-backdrop" onClick={onClose}>
       {mode === "students" ? (
-        <AddStudent grades={grades} routes={routes} students={students} onClose={onClose} onSave={onSave} onManageRoutes={onManageRoutes} />
+        <AddStudent schoolId={schoolId} grades={grades} routes={routes} students={students} onClose={onClose} onSave={onSave} onManageRoutes={onManageRoutes} />
       ) : (
         <AddEmployee onClose={onClose} onSave={onSave} />
       )}
@@ -54,8 +60,17 @@ export default function AddModal({ mode, grades = [], routes = [], students = []
   );
 }
 
-function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes }) {
+function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onManageRoutes }) {
   const [step, setStep] = useState(0);
+  // Generated up front so documents can be uploaded to their final storage
+  // path (keyed by this id) before the student row exists; save() passes
+  // the same id to onSave so the insert lands at that path.
+  const [studentId] = useState(() => crypto.randomUUID());
+  const [docs, setDocs] = useState({});
+  // Checked when the parent doesn't have the transfer certificate on hand
+  // yet: the admission isn't held up for it, but it's tracked as owed
+  // (transfer_cert_pending) until someone uploads it.
+  const [slcDeferred, setSlcDeferred] = useState(false);
   const [form, setForm] = useState({
     name: "",
     gender: "",
@@ -65,6 +80,8 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
     stream: "",
     admission_no: "",
     admission_date: today(),
+    // Every admission through this form is a new one; the school's own
+    // record of transfers-in is the transfer certificate, not this field.
     admission_type: "New",
     parent_name: "",
     mother_name: "",
@@ -78,6 +95,22 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  async function pickDocument(kind, e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setDocs((d) => ({ ...d, [kind]: { name: file.name, busy: true, error: "" } }));
+    try {
+      const path = await uploadStudentDocument(schoolId, studentId, kind, file);
+      setForm((f) => ({ ...f, [DOC_PATH_FIELD[kind]]: path }));
+      // The SLC is in hand now, so there's nothing left to collect later.
+      if (kind === "transfer_certificate") setSlcDeferred(false);
+      setDocs((d) => ({ ...d, [kind]: { name: file.name, busy: false, error: "" } }));
+    } catch {
+      setDocs((d) => ({ ...d, [kind]: { name: file.name, busy: false, error: "Couldn’t upload. Try a smaller photo or PDF." } }));
+    }
+  }
 
   // Grades from the school's list, else from the students.
   const gradeOptions = useMemo(() => {
@@ -105,9 +138,16 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
   }
 
   const taken = form.admission_no.trim() && students.some((s) => s.admission_no?.toLowerCase() === form.admission_no.trim().toLowerCase());
+  // The school's entry grade (Nursery, or whichever sorts lowest) is the one
+  // nobody transfers into, so no SLC is expected for it.
+  const entryGradeCode = grades.length
+    ? grades.reduce((min, g) => (gradeRank(g.code) < gradeRank(min.code) ? g : min), grades[0]).code
+    : null;
+  const needsSlc = Boolean(form.class) && form.class !== entryGradeCode;
+  const slcOk = !needsSlc || slcDeferred || Boolean(form.transfer_cert_path);
   const stepOk = [
     Boolean(form.name.trim()),
-    Boolean(form.class && form.admission_no.trim() && !taken),
+    Boolean(form.class && form.admission_no.trim() && !taken) && slcOk,
     tenDigits(form.parent_phone) && tenDigits(form.mother_phone),
     true,
   ];
@@ -120,7 +160,9 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
     const stop = route?.stops.find((s) => s.id === transport.bus_stop_id);
     try {
       await onSave({
+        id: studentId,
         ...form,
+        transfer_cert_pending: needsSlc && slcDeferred && !form.transfer_cert_path,
         address: home?.address ?? "",
         city: home?.city ?? "",
         state: home?.state ?? "",
@@ -246,15 +288,32 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
               <span>Admission date</span>
               <input type="date" value={form.admission_date} onChange={set("admission_date")} />
             </label>
-            <div className="field">
-              <span>Admission type</span>
-              <div className="choice-row">
-                {["New", "Old"].map((v) => (
-                  <button type="button" key={v} className={`choice${form.admission_type === v ? " on" : ""}`} onClick={() => setForm((f) => ({ ...f, admission_type: v }))}>
-                    {v}
-                  </button>
-                ))}
-              </div>
+            <div className="field-block span-2">
+              <span className="field-label">Documents</span>
+              <p className="row-sub">A photo or scan of each. Aadhaar and birth certificate are optional.</p>
+              <DocPicker label="Aadhaar card" kind="aadhaar" doc={docs.aadhaar} onPick={pickDocument} />
+              <DocPicker label="Birth certificate" kind="birth_certificate" doc={docs.birth_certificate} onPick={pickDocument} />
+              {needsSlc && (
+                <>
+                  <DocPicker label="Transfer certificate (SLC) *" kind="transfer_certificate" doc={docs.transfer_certificate} onPick={pickDocument} />
+                  <label className="checkbox checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={slcDeferred}
+                      onChange={(e) => setSlcDeferred(e.target.checked)}
+                      disabled={Boolean(form.transfer_cert_path)}
+                    />
+                    <span>Not available yet — collect it later</span>
+                  </label>
+                  {slcDeferred ? (
+                    <p className="row-sub">This student will be flagged on the students list until the SLC is uploaded.</p>
+                  ) : (
+                    !form.transfer_cert_path && (
+                      <small className="field-error">Required for a student joining from another school, or mark it for later.</small>
+                    )
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
@@ -333,6 +392,23 @@ function AddStudent({ grades, routes, students, onClose, onSave, onManageRoutes 
         </span>
       </footer>
     </form>
+  );
+}
+
+// One document upload slot (Aadhaar, birth certificate, transfer
+// certificate): a photo or PDF, uploaded as soon as it's picked.
+function DocPicker({ label, kind, doc, onPick }) {
+  const saved = Boolean(doc?.name) && !doc?.busy && !doc?.error;
+  return (
+    <label className="field-block doc-pick">
+      <span>{label}</span>
+      <span className={`doc-pick-box${saved ? " is-set" : ""}`}>
+        <Icon name={saved ? "check" : "upload"} size={16} />
+        {doc?.busy ? "Uploading…" : saved ? doc.name : "Choose a photo or PDF"}
+      </span>
+      <input type="file" accept="image/*,application/pdf" onChange={(e) => onPick(kind, e)} hidden />
+      {doc?.error && <span className="field-error">{doc.error}</span>}
+    </label>
   );
 }
 
