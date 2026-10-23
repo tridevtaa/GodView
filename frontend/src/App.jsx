@@ -61,6 +61,7 @@ const MarksPage = lazy(SCREENS.MarksPage);
 const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
+const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
@@ -176,6 +177,22 @@ export default function App() {
   const [routes, setRoutes] = useState([]);
   // Staff: the people (employees) and, for the owner, who can sign in.
   const [staffTab, setStaffTab] = useState("people");
+  // Staff > People as cards or as the org chart, kept on this device.
+  const [staffView, setStaffView] = useState(() => {
+    try {
+      return localStorage.getItem("godview.staffView") === "chart" ? "chart" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const chooseStaffView = (v) => {
+    setStaffView(v);
+    try {
+      localStorage.setItem("godview.staffView", v);
+    } catch {
+      /* private mode: fine */
+    }
+  };
   // School settings (profile) or the Transport tab.
   const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
@@ -904,6 +921,19 @@ export default function App() {
         <div className="toolbar toolbar-students toolbar-sticky">
           {isStudents && studentParts.length > 1 && studentsSwitch}
           {!isStudents && staffTabs}
+          {!isStudents && (
+            <nav className="segmented segmented-sm staff-view" aria-label="View">
+              {[
+                ["list", "grid", "Cards"],
+                ["chart", "users", "Chart"],
+              ].map(([v, icon, label]) => (
+                <button key={v} className={staffView === v ? "active" : ""} onClick={() => chooseStaffView(v)} aria-label={label} title={label}>
+                  <Icon name={icon} size={15} />
+                  <span className="staff-view-label">{label}</span>
+                </button>
+              ))}
+            </nav>
+          )}
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
           {mode === "students" && <SortControl value={sort} onChange={chooseSort} withFee={isAdmin} />}
           {!loading && (query || pickedGrades.length > 0) && (
@@ -969,6 +999,15 @@ export default function App() {
               <div key={i} className="card card-skeleton" />
             ))}
           </div>
+        ) : !isStudents && staffView === "chart" && current.length > 0 ? (
+          <OrgChart
+            staff={current}
+            school={school}
+            canEdit={canEdit && !viewOnly}
+            matches={query.trim() ? new Set(visible.map((p) => p.id)) : null}
+            onOpen={(id) => openStudent(id)}
+            onPatch={patch}
+          />
         ) : visible.length === 0 ? (
           <div className="empty">
             <p className="empty-title">No {mode} found</p>
