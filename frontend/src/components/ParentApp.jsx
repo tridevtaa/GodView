@@ -35,6 +35,7 @@ import Ticker from "./Ticker.jsx";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
+import { SchoolContactCard } from "./SchoolContact.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
@@ -303,6 +304,7 @@ export default function ParentApp({ phone }) {
             )}
             {tab === "home" && <NotifyPrompt text="Get notified about school messages and notices." />}
             {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
+            {tab === "home" && <SchoolContactCard school={child.school} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
