@@ -664,7 +664,8 @@ export default function App() {
         mode={litMode}
         onMode={switchMode}
         sections={sections}
-        onSettings={isOwner ? () => openOwner("profile") : null}
+        // Owners: the whole school profile. Admins: its contact details for parents.
+        onSettings={isAdmin ? () => openOwner("profile") : null}
         onProfile={() => switchMode("me")}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
         search={globalSearch}
@@ -793,12 +794,13 @@ export default function App() {
             </div>
             <NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />
           </>
-        ) : mode === "team" ? (
+        ) : mode === "team" && isAdmin ? (
           <TeamPage
             view="school"
             school={school}
             session={currentSession}
             me={user.email}
+            isOwner={isOwner}
             onSchoolSaved={setSchool}
           />
         ) : mode === "fees" ? (
