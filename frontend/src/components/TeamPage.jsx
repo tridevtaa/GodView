@@ -23,6 +23,7 @@ import {
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
+import { SchoolContactPanel } from "./SchoolContact.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -38,11 +39,12 @@ const ROLE_HINT = {
 };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-// Owner only, in two places:
-// view "school": School settings (profile and join code, transport).
+// Two places:
+// view "school": School settings. The owner: the profile and join code, and
+// the contact details for parents. Admins: only the contact details.
 // view "access": Staff > App access (join requests, export requests, who
 // can sign in and with what role, class assignments).
-export default function TeamPage({ view = "access", school, session, me, onSchoolSaved, onCount }) {
+export default function TeamPage({ view = "access", school, session, me, isOwner = true, onSchoolSaved, onCount }) {
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -118,7 +120,8 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
             <h1 className="page-count">School</h1>
           </div>
         </div>
-        <SchoolProfile key={school.id} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
+        {isOwner && <SchoolProfile key={school.id} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />}
+        <SchoolContactPanel key={`contact-${school.id}`} school={school} onSaved={onSchoolSaved} />
       </>
     );
   }

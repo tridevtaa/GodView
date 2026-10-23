@@ -7,7 +7,7 @@ const ICONS = { home: "home", students: "scholar", academics: "academics", atten
 
 // sections: [[value, label, badgeCount?], …], already filtered by role.
 // Wide screens: tabs in the top bar. Phones: an app-style bar at the bottom.
-// onSettings: the owner's School settings, from the account menu.
+// onSettings: School settings (owners and admins), from the account menu.
 // session: the session picker, shown beside the logo.
 // search: the common search (header on computers; above the tab bar on phones).
 export default function TopBar({ mode, onMode, sections, onSettings, onProfile, session, search }) {

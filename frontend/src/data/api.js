@@ -654,10 +654,8 @@ const LOGOS = "school-logos";
 
 export const logoUrl = (path) => (path ? supabase.storage.from(LOGOS).getPublicUrl(path).data.publicUrl : "");
 
-export const SCHOOL_FIELDS = [
-  "name", "short_name", "board", "affiliation_no", "udise_code", "principal_name",
-  "address", "city", "state", "pincode", "phone", "email", "website", "staff_policy",
-];
+// The owner's school profile; contact details are saved by updateSchoolContact.
+export const SCHOOL_FIELDS = ["name", "short_name", "board", "affiliation_no", "udise_code", "principal_name", "staff_policy"];
 
 // Owner only (enforced by RLS and column grants). Returns the saved school.
 export async function updateSchool(schoolId, fields) {
@@ -665,6 +663,14 @@ export async function updateSchool(schoolId, fields) {
     SCHOOL_FIELDS.filter((k) => k in fields).map((k) => [k, fields[k]?.trim?.() || (k === "name" ? fields[k] : null)])
   );
   return must(await supabase.from("schools").update(row).eq("id", schoolId).select().single());
+}
+
+// The school's contact details for parents (owners and admins). Returns the
+// school with them applied.
+export const CONTACT_FIELDS = ["phone", "phone_2", "email", "website", "address", "city", "state", "pincode", "office_hours"];
+export async function updateSchoolContact(school, fields) {
+  must(await supabase.rpc("update_school_contact", { p_school: school.id, ...Object.fromEntries(CONTACT_FIELDS.map((k) => [`p_${k}`, fields[k] ?? ""])) }));
+  return { ...school, ...Object.fromEntries(CONTACT_FIELDS.map((k) => [k, String(fields[k] ?? "").trim() || null])) };
 }
 
 // How big the logo shows in the header (0.5 to 2; 1 = default).
@@ -1144,7 +1150,7 @@ export async function parentFamily() {
   );
   const schoolIds = [...new Set(kids.map((k) => k.school_id))];
   const schools = schoolIds.length
-    ? must(await supabase.from("schools").select("id, name, short_name, logo_path, address, city, state, pincode, phone, email").in("id", schoolIds))
+    ? must(await supabase.from("schools").select("id, name, short_name, logo_path, address, city, state, pincode, phone, phone_2, email, website, office_hours, lat, lng").in("id", schoolIds))
     : [];
   const bySchool = new Map(schools.map((s) => [s.id, s]));
   const children = kids.map((k) => {
