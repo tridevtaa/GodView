@@ -23,6 +23,15 @@ const EMPLOYEE_FIELDS = [
 const STEPS = ["Student", "Class", "Family", "Home & bus"];
 const EMPLOYEE_STEPS = ["Role", "Contact"];
 const today = () => new Date().toISOString().slice(0, 10);
+// A starting point for Date of birth, not today: most new admissions are
+// nursery-age (about 3½), so this saves scrolling years back in the date
+// picker. Easy to change for an older grade; just a default, not a guess
+// anyone has to accept.
+const defaultDob = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 42);
+  return d.toISOString().slice(0, 10);
+};
 // Empty, or a 10-digit Indian mobile (an optional +91 or 0 in front is fine).
 const tenDigits = (v) => !v.trim() || v.replace(/\D/g, "").replace(/^(91|0)(?=\d{10}$)/, "").length === 10;
 
@@ -74,7 +83,7 @@ function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onMan
   const [form, setForm] = useState({
     name: "",
     gender: "",
-    dob: "",
+    dob: defaultDob(),
     class: "",
     section: "",
     stream: "",
