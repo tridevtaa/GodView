@@ -3,6 +3,7 @@ import { cancelPayment, listFeeHeads, recordPayment, setConcession, studentLedge
 import { METHODS, rupees } from "../data/money.js";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -79,6 +80,7 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
           onCancel={() => setPaying(false)}
           onSave={async (form) => {
             const saved = await recordPayment(person.id, form);
+            haptic("success");
             setPaying(false);
             await changed();
             setReceipt(saved?.receipt_no);

@@ -1,4 +1,8 @@
 import {
+  DownloadSimple,
+  ArrowsDownUp,
+  SortAscending,
+  SortDescending,
   ArrowClockwise,
   ArrowDown,
   ArrowLeft,
@@ -70,6 +74,12 @@ import {
 // "regular" for controls; "duotone" where an icon carries meaning on its
 // own (navigation, the student's facts).
 const PHOSPHOR = {
+  sort: ArrowsDownUp,
+  download: DownloadSimple,
+  // Low to high points up, high to low down (Phosphor's "Descending" icon
+  // is the one with the arrow up)
+  sortUp: SortDescending,
+  sortDown: SortAscending,
   search: MagnifyingGlass,
   plus: Plus,
   create: PlusSquare,

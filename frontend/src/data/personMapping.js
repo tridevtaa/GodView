@@ -79,6 +79,11 @@ export function clean(column, value) {
   if (["dob", "admission_date", "left_on", "joining_date"].includes(column)) {
     return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
   }
+  // Staff and parents: the last 4 of an Aadhaar or PAN (letters too)
+  if (column === "id_last4") {
+    const chars = String(v).toUpperCase().replace(/[^0-9A-Z]/g, "");
+    return chars.length >= 4 ? chars.slice(-4) : null;
+  }
   if (column === "aadhaar_last4") {
     const digits = String(v).replace(/\D/g, "");
     return digits.length >= 4 && !/^0+$/.test(digits) ? digits.slice(-4) : null;

@@ -4,6 +4,7 @@ import { peek, remember, swr } from "../data/cache.js";
 import { DateLeaf, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { gradeLabel } from "./PersonCard.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
 const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
@@ -56,6 +57,16 @@ function useItems(schoolId, staff) {
     [events, notices]
   );
   return { items, loading: events === null, setEvents };
+}
+
+// What's on in the next few days (events and dated notices), for Home's
+// scrolling banner. null while loading.
+export function useUpcoming(schoolId, staff = false, days = 14) {
+  const { items, loading } = useItems(schoolId, staff);
+  if (loading) return null;
+  const today = todayIso();
+  const until = iso(new Date(Date.now() + days * 864e5));
+  return items.filter((it) => (it.end ?? it.start) >= today && it.start <= until);
 }
 
 // The calendar page: a month at a glance and what's on, plus attendance and
@@ -353,6 +364,7 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
     const entryRow = { ...form, ends_on: days ? form.ends_on : null };
     try {
       onSaved(isNew ? await addCalendarEvent(schoolId, entryRow) : await updateCalendarEvent(entry.id, entryRow));
+      haptic("success");
     } catch {
       setError("Couldn’t save. Check your connection and try again.");
       setBusy(false);

@@ -6,6 +6,7 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
+import { haptic } from "../pwa/haptics.js";
 
 // Present, Absent or on Leave. (Days already saved as late still count
 // as present in the totals.)
@@ -176,6 +177,7 @@ function Register({ school, session, day, group, canMark, viewer, onOpenStudent 
     setError("");
     try {
       await saveAttendance(school.id, session.id, day, Object.entries(marks).map(([student_id, status]) => ({ student_id, status })));
+      haptic("success");
       setSaved({ by: "you", at: new Date().toISOString() });
       setDirty(false);
       setDone(true);

@@ -60,6 +60,8 @@ const InboxPage = lazy(SCREENS.InboxPage);
 const MarksPage = lazy(SCREENS.MarksPage);
 const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
+const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
+const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
@@ -176,6 +178,22 @@ export default function App() {
   const [routes, setRoutes] = useState([]);
   // Staff: the people (employees) and, for the owner, who can sign in.
   const [staffTab, setStaffTab] = useState("people");
+  // Staff > People as cards or as the org chart, kept on this device.
+  const [staffView, setStaffView] = useState(() => {
+    try {
+      return localStorage.getItem("godview.staffView") === "chart" ? "chart" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const chooseStaffView = (v) => {
+    setStaffView(v);
+    try {
+      localStorage.setItem("godview.staffView", v);
+    } catch {
+      /* private mode: fine */
+    }
+  };
   // School settings (profile) or the Transport tab.
   const openOwner = (tab) => switchMode(tab === "transport" ? "transport" : "team");
   const loadRoutes = useCallback(
@@ -254,13 +272,49 @@ export default function App() {
       }),
     [recentKey]
   );
+  // Sort picked on the Students page: { by: grade | fee | perf, dir: asc |
+  // desc }, kept on this device. None picked: the order above.
+  const sortKey = `godview.sort.${school.id}.${user.email}`;
+  const [sortPick, setSortPick] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(sortKey) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const chooseSort = (next) => {
+    setSortPick(next);
+    try {
+      if (next) localStorage.setItem(sortKey, JSON.stringify(next));
+      else localStorage.removeItem(sortKey);
+    } catch {
+      /* private mode: fine */
+    }
+  };
+  // Fee sorting is for those who see fees
+  const sort = sortPick && (sortPick.by !== "fee" || isAdmin) ? sortPick : null;
   const [perf, setPerf] = useState(new Map());
+  const needPerf = !isAdmin || sort?.by === "perf";
   useEffect(() => {
-    if (isAdmin || !sessionId || source !== "supabase") return;
+    if (!needPerf || !sessionId || source !== "supabase") return;
     sessionResultPercents(sessionId).then(setPerf, () => setPerf(new Map()));
-  }, [isAdmin, sessionId, source]);
+  }, [needPerf, sessionId, source]);
   const ordered = useMemo(() => {
     if (mode !== "students") return visible;
+    if (sort) {
+      const dir = sort.dir === "desc" ? -1 : 1;
+      const byGrade = (a, b) => gradeRank(a.class ?? "") - gradeRank(b.class ?? "") || String(a.section ?? "").localeCompare(String(b.section ?? ""));
+      const byName = (a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""));
+      return [...visible].sort((a, b) => {
+        if (sort.by === "grade") return dir * byGrade(a, b) || byName(a, b);
+        if (sort.by === "fee") return dir * ((Number(a.fee_due) || 0) - (Number(b.fee_due) || 0)) || byGrade(a, b) || byName(a, b);
+        // Performance: students without marks go last either way
+        const pa = perf.get(a.id) ?? null;
+        const pb = perf.get(b.id) ?? null;
+        if (pa === null || pb === null) return pa === null ? (pb === null ? byGrade(a, b) || byName(a, b) : 1) : -1;
+        return dir * (pa - pb) || byGrade(a, b) || byName(a, b);
+      });
+    }
     const rest = [...visible].sort((a, b) => {
       if (isAdmin) return (Number(b.fee_due) || 0) - (Number(a.fee_due) || 0);
       const pa = perf.get(a.id) ?? null;
@@ -270,7 +324,7 @@ export default function App() {
     });
     const first = recent.map((id) => rest.find((p) => p.id === id)).filter(Boolean);
     return [...first, ...rest.filter((p) => !recent.includes(p.id))];
-  }, [visible, mode, isAdmin, perf, recent]);
+  }, [visible, mode, isAdmin, perf, recent, sort]);
 
   // On the Students page the profile follows the filtered grid; elsewhere
   // (Fees, Requests) any student in the session can be opened.
@@ -310,6 +364,14 @@ export default function App() {
       // On Students, so that tab is lit and Back goes to the list.
       setMode("students");
       setOpenId(m[1]);
+      // History as if opened from the list: the list underneath, the
+      // student on top. Otherwise Back (or closing the chat) lands on an
+      // entry that isn't the student and closes the page.
+      if (!window.history.state?.student) {
+        const url = window.location.pathname + window.location.search;
+        window.history.replaceState(null, "", "/");
+        window.history.pushState({ student: m[1] }, "", url);
+      }
     }
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -605,7 +667,9 @@ export default function App() {
         mode={litMode}
         onMode={switchMode}
         sections={sections}
-        onSettings={isOwner ? () => openOwner("profile") : null}
+        // Owners: the whole school profile. Admins: its contact details for parents.
+        onSettings={isAdmin ? () => openOwner("profile") : null}
+        onProfile={() => switchMode("me")}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
         search={globalSearch}
       />
@@ -644,6 +708,8 @@ export default function App() {
             onOpenStudent={dataMode === "students" ? (id) => openStudent(id) : undefined}
             routes={routes}
           />
+        ) : mode === "me" ? (
+          <MyProfile school={school} session={currentSession} email={user.email} googleName={user.displayName} onBack={() => switchMode("home")} />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
           <>
             <div className="page-header">
@@ -733,18 +799,20 @@ export default function App() {
             </div>
             <NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />
           </>
-        ) : mode === "team" ? (
+        ) : mode === "team" && isAdmin ? (
           <TeamPage
             view="school"
             school={school}
             session={currentSession}
             me={user.email}
+            isOwner={isOwner}
             onSchoolSaved={setSchool}
           />
         ) : mode === "fees" ? (
           <FeesPage
             heading={studentsSwitch}
             onCollect={(student) => setCollect({ student })}
+            onOpenStudent={(id) => openStudent(id)}
             refreshAt={feesAt}
             school={school}
             role={role}
@@ -860,7 +928,21 @@ export default function App() {
         <div className="toolbar toolbar-students toolbar-sticky">
           {isStudents && studentParts.length > 1 && studentsSwitch}
           {!isStudents && staffTabs}
+          {!isStudents && (
+            <nav className="segmented segmented-sm staff-view" aria-label="View">
+              {[
+                ["list", "grid", "Cards"],
+                ["chart", "users", "Chart"],
+              ].map(([v, icon, label]) => (
+                <button key={v} className={staffView === v ? "active" : ""} onClick={() => chooseStaffView(v)} aria-label={label} title={label}>
+                  <Icon name={icon} size={15} />
+                  <span className="staff-view-label">{label}</span>
+                </button>
+              ))}
+            </nav>
+          )}
           {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
+          {mode === "students" && <SortControl value={sort} onChange={chooseSort} withFee={isAdmin} />}
           {isStudents && isAdmin && (
             <button
               type="button"
@@ -934,6 +1016,15 @@ export default function App() {
               <div key={i} className="card card-skeleton" />
             ))}
           </div>
+        ) : !isStudents && staffView === "chart" && current.length > 0 ? (
+          <OrgChart
+            staff={current}
+            school={school}
+            canEdit={canEdit && !viewOnly}
+            matches={query.trim() ? new Set(visible.map((p) => p.id)) : null}
+            onOpen={(id) => openStudent(id)}
+            onPatch={patch}
+          />
         ) : visible.length === 0 ? (
           <div className="empty">
             <p className="empty-title">No {mode} found</p>
@@ -1020,6 +1111,63 @@ export default function App() {
         />
       )}
       </Suspense>
+    </div>
+  );
+}
+
+// Students page sort: one pill with the sort icon, the choice (Default,
+// Grade, Fee due for the office, Results) and, once one is picked, a
+// direction toggle saying what comes first in words that fit the choice.
+const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
+const SORT_FIRST = {
+  grade: { asc: "Junior first", desc: "Senior first" },
+  fee: { asc: "Least due", desc: "Most due" },
+  perf: { asc: "Lowest first", desc: "Highest first" },
+};
+const SORT_LABEL = { "": "Default", grade: "Grade", fee: "Fee due", perf: "Results" };
+function SortControl({ value, onChange, withFee }) {
+  const asc = value?.dir !== "desc";
+  // A focus ring only for keyboard users (Tab), never on a tap or click
+  const [kbd, setKbd] = useState(false);
+  const words = value && SORT_FIRST[value.by];
+  const next = words && (asc ? words.desc : words.asc);
+  return (
+    <div
+      className={`sort-pill${value ? " is-on" : ""}${kbd ? " is-kbd" : ""}`}
+      onKeyUp={(e) => e.key === "Tab" && setKbd(true)}
+      onPointerDown={() => setKbd(false)}
+      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setKbd(false)}
+    >
+      {/* The label shows the choice at the buttons' size; the real
+          dropdown lies on top, invisible (phones force dropdown text to
+          16px, which made the pill bigger than the buttons beside it). */}
+      <label className="sort-pick" title="Sort students">
+        <Icon name="sort" size={16} />
+        <span className="sort-current">{SORT_LABEL[value?.by ?? ""]}</span>
+        <select
+          value={value?.by ?? ""}
+          onChange={(e) => onChange(e.target.value ? { by: e.target.value, dir: value?.by === e.target.value ? value.dir : SORT_START[e.target.value] } : null)}
+          aria-label="Sort students"
+        >
+          <option value="">Default</option>
+          <option value="grade">Grade</option>
+          {withFee && <option value="fee">Fee due</option>}
+          <option value="perf">Results</option>
+        </select>
+        <Icon name="chevronDown" size={14} className="sort-caret" />
+      </label>
+      {value && (
+        <button
+          type="button"
+          className="sort-dir"
+          onClick={() => onChange({ ...value, dir: asc ? "desc" : "asc" })}
+          aria-label={`${asc ? words.asc : words.desc}. Switch to ${next.toLowerCase()}`}
+          title={`Switch to ${next.toLowerCase()}`}
+        >
+          <Icon name={asc ? "sortUp" : "sortDown"} size={17} />
+          <span className="sort-dir-label">{asc ? words.asc : words.desc}</span>
+        </button>
+      )}
     </div>
   );
 }

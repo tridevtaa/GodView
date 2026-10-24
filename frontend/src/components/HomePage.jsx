@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { listHomework } from "../data/api.js";
+import { useEffect, useState } from "react";
+import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
-import { Caption, MiniRing, Thumb } from "./TileVisuals.jsx";
-import { ComingUp } from "./CalendarPage.jsx";
-import { CATEGORY, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
+import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
+import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./TileVisuals.jsx";
+import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
+import { ComingUp, useUpcoming } from "./CalendarPage.jsx";
+import Ticker from "./Ticker.jsx";
+import { AchievementsStrip, isWin, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
@@ -85,12 +87,54 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // The latest notice, for a line under its tile
   const lastNotice = (notices ?? [])[0];
 
-  // Tiles only for what has no tab of its own (Students, Homework, Inbox
-  // and Staff are a tap away below): the office gets attendance and
-  // notices. badge: what's waiting on this person; hot: the tile glows.
   const go = (to) => () => onGo(to);
-  const rawTiles = [
-    // The office's top card is fees, so attendance becomes a tile for them
+
+  // Home is laid out by each person (HomeWidgets.jsx). Shown at first:
+  // only what has no tab of its own (the office's attendance and notices),
+  // the students' wins for teachers, Coming up and Quick actions. Students,
+  // Inbox, Homework and Staff can be added back from + Add widget.
+  const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
+  const meta = [
+    isAdmin && { key: "attendance" },
+    isAdmin && { key: "notices" },
+    { key: "students", defaultOn: false },
+    { key: "inbox", defaultOn: false },
+    prio !== "homework" && { key: "homework", defaultOn: false },
+    leads && { key: "staff", defaultOn: false },
+    showWins && wins.length > 0 && { key: "news" },
+    { key: "upcoming" },
+    quickActions.length > 0 && { key: "quick" },
+  ].filter(Boolean);
+  const layout = useHomeLayout(`home:staff:${school.id}:${role}`, meta);
+  const on = new Set(layout.visible);
+
+  // Only load what a shown widget needs
+  const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
+  const staffKey = `people:employees:${school.id}:`;
+  const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
+  const wantInbox = on.has("inbox");
+  const wantStaff = on.has("staff");
+  useEffect(() => {
+    if (wantInbox) swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
+  }, [school.id, wantInbox]);
+  useEffect(() => {
+    if (wantStaff) swr(staffKey, () => loadEmployees(school.id).then(withPhotoUrls), setStaff, { persist: true, maxAge: 120000 }).catch(() => {});
+  }, [school.id, wantStaff, staffKey]);
+
+  const unread = (threads ?? []).filter((t) => Number(t.unread) > 0).length;
+  const requests = (threads ?? []).filter((t) => Number(t.open_requests) > 0).length;
+  const lastThread = (threads ?? []).find((t) => t.last_from_parent);
+  const byId = new Map(students.map((p) => [p.id, p]));
+  const chatPeople = (threads ?? []).map((t) => byId.get(t.student_id)).filter(Boolean);
+  const inactive = students.filter((p) => p.status === "inactive").length;
+  const birthdays = birthdaysSoon(students);
+  const firstNames = (list) => list.slice(0, 2).map((p) => p.name.split(" ")[0]).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "");
+  const nextDue = (homework ?? []).map((h) => h.due_date).filter((d) => d && d >= new Date().toISOString().slice(0, 10)).sort()[0];
+  const dayShort = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+
+  // Each tile: a number and a word. badge: what's waiting on this person;
+  // hot: something new, the tile glows.
+  const tileList = [
     isAdmin && {
       key: "attendance",
       icon: "register",
@@ -119,9 +163,94 @@ export default function HomePage({ school, me, name, role, students, loading, se
       visual: lastNotice && showsImage(lastNotice) && <Thumb src={urls.get(lastNotice.image_path)} />,
       onClick: go("notices"),
     },
+    {
+      key: "students",
+      icon: "scholar",
+      tone: "indigo",
+      label: leads ? "Students" : "My students",
+      value: loading ? undefined : students.length,
+      note: inactive ? `${n(inactive)} inactive` : null,
+      visual: !loading && students.length > 0 && (
+        <>
+          <FacePile people={students} />
+          {birthdays.length > 0 && <Caption>🎂 {firstNames(birthdays)}, birthday this week</Caption>}
+        </>
+      ),
+      onClick: go("students"),
+    },
+    {
+      key: "inbox",
+      icon: "plane",
+      tone: "violet",
+      label: "Unread Messages",
+      value: threads === null ? undefined : unread,
+      badge: requests,
+      badgeLabel: `${requests} request${requests === 1 ? "" : "s"} waiting`,
+      hot: unread > 0,
+      sub: lastThread && `${byId.get(lastThread.student_id)?.name?.split(" ")[0] ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
+      visual: threads !== null && <FacePile people={chatPeople} total={chatPeople.length} max={4} />,
+      onClick: go("requests"),
+    },
+    prio !== "homework" && {
+      key: "homework",
+      icon: "book",
+      tone: "teal",
+      label: "New Homework",
+      value: homework === null ? undefined : thisWeek,
+      badge: leads ? 0 : dueTomorrow,
+      badgeLabel: `${dueTomorrow} due tomorrow`,
+      visual: homework !== null && (
+        <>
+          <WeekStrip dates={(homework ?? []).map((h) => h.due_date).filter(Boolean)} />
+          <Caption>{nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"}</Caption>
+        </>
+      ),
+      onClick: go("homework"),
+    },
+    leads && {
+      key: "staff",
+      icon: "idcard",
+      tone: "pink",
+      label: "Staff Members",
+      value: staff === null ? undefined : staff.length,
+      visual: staff?.length > 0 && <FacePile people={staff} />,
+      onClick: go("employees"),
+    },
+  ].filter(Boolean);
+  // Until someone arranges Home, tiles that need attention lead and are wide
+  const auto = arrangeTiles(tileList.filter((t) => on.has(t.key)));
+  const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
+
+  // The thin banner up top: reminders first, then notices and what's on
+  const upcoming = useUpcoming(school.id, true, 14);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const shortDay = (d) => (d === todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
+  const tickerItems = [
+    left > 0 && {
+      key: "att",
+      icon: "register",
+      tone: "red",
+      text: today?.marked ? `${left} class${left === 1 ? "" : "es"} haven’t marked attendance yet` : "Attendance isn’t marked yet today",
+      onClick: go("attendance"),
+    },
+    isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${n(overdue)} students have overdue fees`, onClick: go("fees") },
+    !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
+    ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
+    ...(upcoming ?? []).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
+    birthdays.length > 0 && { key: "bd", icon: "cake", tone: "pink", text: `Birthdays this week: ${firstNames(birthdays)}`, onClick: go("students") },
   ].filter(Boolean);
 
-  const { tiles, spans } = arrangeTiles(rawTiles);
+  const items = Object.fromEntries(tileList.map(({ fresh, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: autoWide.has(t.key) ? "wide" : "small", tile: t }]));
+  items.news = { kind: "section", label: "News & Achievements", icon: "trophy", tone: "amber", size: "full", node: <AchievementsStrip items={wins} urls={urls} viewAll={!(showBanner && (notices === null || plain.length > 0))} onOpenNotices={go("notices")} /> };
+  items.upcoming = {
+    kind: "section",
+    label: "Coming up",
+    icon: "calendar",
+    tone: "violet",
+    size: quickActions.length ? "wide" : "full",
+    node: <ComingUp schoolId={school.id} session={session} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />,
+  };
+  items.quick = { kind: "section", label: "Quick actions", icon: "lightning", tone: "amber", size: "wide", phoneHidden: true, node: <QuickActionsPanel actions={quickActions} onAction={onAction} /> };
 
   // Owners: anyone waiting for app access comes first, beside the fees
   const access =
@@ -172,8 +301,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
           onClick: actions.some(([k]) => k === "homework") ? () => onAction("homework") : go("homework"),
         };
 
-  // The + menu's actions, less what the top card already offers.
-  const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
   // The banner shows while there are plain notices (or they're loading).
   const banner = showBanner && (notices === null || plain.length > 0);
 
@@ -190,27 +317,15 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
       <NotifyPrompt text="Get notified when parents write." />
 
+      <Ticker items={tickerItems} />
+
       <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}${trend ? " has-trend" : ""}`}>
         {access && <PriorityCard {...access} />}
         <PriorityCard {...priority} trend={trend} />
         {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
 
-      {/* Tiles in two even rows on computers */}
-      {tiles.length > 0 && (
-        <div className="hw-grid" style={{ "--half": spans / 2 }}>
-          {tiles.map((t, i) => (
-            <Tile key={t.key} {...t} index={i} />
-          ))}
-        </div>
-      )}
-
-      {showWins && <AchievementsStrip items={wins} urls={urls} viewAll={!banner} onOpenNotices={go("notices")} />}
-
-      <div className={`home-bottom-row${quickActions.length ? "" : " is-solo"}`}>
-        <ComingUp schoolId={school.id} session={session} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />
-        <QuickActionsPanel actions={quickActions} onAction={onAction} />
-      </div>
+      <EditableHome layout={layout} items={items} />
     </div>
   );
 }
@@ -290,64 +405,6 @@ function NoticeBanner({ notices, urls, onOpenNotices }) {
           ))}
         </div>
       )}
-    </section>
-  );
-}
-
-// Students' wins, posted the same way as any notice (just tagged with a
-// category and a picture). Nothing to show yet: the section just stays
-// off the page, rather than taking up room with an empty box. viewAll:
-// only when the banner (which has its own) is off the page.
-const isWin = (x) => Boolean(x.category) && showsImage(x);
-
-function AchievementsStrip({ items, urls, viewAll, onOpenNotices }) {
-  const rowRef = useRef(null);
-  if (!items.length) return null;
-  const scroll = (dir) => rowRef.current?.scrollBy({ left: dir * 280, behavior: "smooth" });
-
-  return (
-    <section className="home-news">
-      <header className="home-notice-head">
-        <span className="home-news-icon">
-          <Icon name="trophy" size={18} weight="fill" />
-        </span>
-        <span className="home-notice-text">
-          <strong>News &amp; Achievements</strong>
-        </span>
-        {viewAll && (
-          <button type="button" className="home-section-all" onClick={onOpenNotices}>
-            View all <Icon name="arrowRight" size={13} />
-          </button>
-        )}
-      </header>
-      <div className="home-news-wrap">
-        {items.length > 2 && (
-          <button type="button" className="home-news-arrow is-prev" onClick={() => scroll(-1)} aria-label="Scroll left">
-            <Icon name="chevronLeft" size={16} />
-          </button>
-        )}
-        <div className="home-news-row" ref={rowRef}>
-          {items.map((it, i) => {
-            const cat = CATEGORY[it.category];
-            return (
-              <button type="button" key={it.id} className="home-news-card" style={{ "--d": `${i * 50}ms` }} onClick={onOpenNotices}>
-                <img src={urls.get(it.image_path)} alt="" loading="lazy" />
-                <span className="home-news-meta">
-                  {cat && <span className={`achv-tag t-${cat.tone}`}>{cat.label}</span>}
-                  <span className="row-sub">{dateText(it.created_at)}</span>
-                </span>
-                <strong className="home-news-title">{it.title}</strong>
-                {it.body && <p className="home-news-body">{it.body}</p>}
-              </button>
-            );
-          })}
-        </div>
-        {items.length > 2 && (
-          <button type="button" className="home-news-arrow is-next" onClick={() => scroll(1)} aria-label="Scroll right">
-            <Icon name="chevronRight" size={16} />
-          </button>
-        )}
-      </div>
     </section>
   );
 }

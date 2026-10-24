@@ -16,7 +16,6 @@ import {
   attendanceMonth,
   setParentPassword,
   parentHasOwnPassword,
-  classTeachersFor,
   classmatesForParent,
 } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
@@ -25,21 +24,25 @@ import { LogoMark } from "./Logo.jsx";
 import { Photo, gradeLabel, setGradeLabels, tintFor } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import InstallPrompt from "./InstallPrompt.jsx";
-import { NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
+import { HapticsMenuItem, NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
 import { onNotificationOpen, syncPush } from "../pwa/push.js";
 import { onFresh } from "../pwa/fresh.js";
 import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
-import NoticeBoard, { useNotices } from "./NoticeBoard.jsx";
-import CalendarPage, { ComingUp } from "./CalendarPage.jsx";
-import { PriorityCard, Tile, arrangeTiles } from "./Widgets.jsx";
-import ClassCard from "./ClassCard.jsx";
+import NoticeBoard, { AchievementsStrip, isWin, useImageUrls, useNotices } from "./NoticeBoard.jsx";
+import CalendarPage, { ComingUp, useUpcoming } from "./CalendarPage.jsx";
+import Ticker from "./Ticker.jsx";
+import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
+import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
+import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
+import { SchoolContactCard } from "./SchoolContact.jsx";
 import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
 import UpdatePrompt from "./UpdatePrompt.jsx";
 import { useSwipeTabs } from "../pwa/swipeTabs.js";
+import ParentProfile from "./ParentProfile.jsx";
 
 const TABS = [
   ["home", "Home", "home"],
@@ -150,7 +153,7 @@ export default function ParentApp({ phone }) {
     );
 
   // The noticeboard opens from Home, so Home stays lit there.
-  const lit = tab === "notices" || tab === "calendar" ? "home" : tab;
+  const lit = tab === "notices" || tab === "calendar" || tab === "attendance" || tab === "profile" ? "home" : tab;
   // Phones: swipe sideways to the next or previous tab (not in a chat).
   useSwipeTabs(
     TABS.map(([key]) => key),
@@ -186,7 +189,7 @@ export default function ParentApp({ phone }) {
               <span className="pa-school-name">{school.short_name || school.name}</span>
             )}
           </span>
-          <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} />
+          <ParentMenu phone={phone} onPassword={() => setPwOpen(true)} onProfile={() => setTab("profile")} />
         </div>
       </header>
 
@@ -255,6 +258,38 @@ export default function ParentApp({ phone }) {
                 <CalendarPage schoolId={child.school_id} onOpenNotices={() => setTab("notices")} />
               </>
             )}
+            {tab === "profile" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="idcard" /> My profile
+                  </h2>
+                </div>
+                <ParentProfile
+                  family={children ?? []}
+                  onOpenChild={(id) => {
+                    setChildId(id);
+                    setTab("home");
+                  }}
+                />
+              </>
+            )}
+            {tab === "attendance" && (
+              <>
+                <div className="pa-page-head">
+                  <button className="back-btn" onClick={() => setTab("home")} aria-label="Back to Home" title="Back">
+                    <Icon name="chevronLeft" size={22} />
+                  </button>
+                  <h2 className="nb-page-title">
+                    <Icon name="register" /> Attendance
+                  </h2>
+                </div>
+                <ChildAttendance key={child.id} child={child} />
+              </>
+            )}
             {tab === "notices" && (
               <>
                 <div className="pa-page-head">
@@ -270,6 +305,7 @@ export default function ParentApp({ phone }) {
             )}
             {tab === "home" && <NotifyPrompt text="Get notified about school messages and notices." />}
             {tab === "home" && <ParentHome key={child.id} child={child} news={(v) => count(child.id, v)} onGo={setTab} />}
+            {tab === "home" && <SchoolContactCard school={child.school} />}
             {tab === "fees" && <FeesTab key={child.id} child={child} since={since} />}
             {tab === "results" && <ResultsTab key={child.id} child={child} since={since} />}
             {tab === "homework" && <HomeworkTab key={child.id} child={child} since={since} />}
@@ -295,10 +331,15 @@ function ParentHome({ child, news, onGo }) {
   const [fees, setFees] = useState(null);
   const [results, setResults] = useState(null);
   const [homework, setHomework] = useState(null);
+  const [attDays, setAttDays] = useState(null);
+  const [exams, setExams] = useState(null);
+  const [syllabus, setSyllabus] = useState(null);
   useEffect(() => {
     parentFees(child.id, child.school_id).then(setFees, () => setFees(false));
     (child.session ? listResults(child.id, child.session.id) : Promise.resolve([])).then(setResults, () => setResults(false));
     childHomework(child.id).then(setHomework, () => setHomework(false));
+    attendanceMonth(child.id, today()).then(setAttDays, () => setAttDays(false));
+    childDatesheet(child.id).then(setExams, () => setExams(false));
   }, [child.id, child.school_id, child.session]);
 
   const now = today();
@@ -349,6 +390,17 @@ function ParentHome({ child, news, onGo }) {
   // The school's notices: a tile is the way into the Noticeboard.
   const [notices] = useNotices(child.school_id);
   const latestNotice = (notices ?? [])[0];
+  const noticeUrls = useImageUrls(notices);
+  const wins = (notices ?? []).filter(isWin);
+
+  // Attendance this month, and today's mark
+  const marked = attDays || [];
+  const presentDays = marked.filter((d) => d.status === "present" || d.status === "late").length;
+  const attPct = marked.length ? Math.round((presentDays / marked.length) * 100) : null;
+  const todayMark = marked.find((d) => d.day === now);
+  // The next exam on the datesheet
+  const nextExam = (exams || []).filter((d) => d.exam_date >= now).sort((a, b) => a.exam_date.localeCompare(b.exam_date))[0];
+  const daysTo = nextExam ? Math.round((new Date(`${nextExam.exam_date}T12:00:00`) - new Date(`${now}T12:00:00`)) / 864e5) : null;
 
   // Fees, the wide tile: what's due now (red when overdue, amber when due,
   // green when all paid) and a ring of how much of the year is paid.
@@ -443,11 +495,49 @@ function ParentHome({ child, news, onGo }) {
       sub: unread ? "From the school, waiting for you" : null,
       onClick: go("inbox"),
     },
+    attDays !== false && {
+      key: "attendance",
+      icon: "register",
+      tone: attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red",
+      label: "Attendance",
+      value: attDays === null ? undefined : attPct === null ? "–" : `${attPct}%`,
+      sub: todayMark ? `Today: ${MARK_TEXT[todayMark.status]}` : attDays?.length ? "Today: not marked yet" : null,
+      visual: attPct !== null && (
+        <>
+          <MiniRing pct={attPct} />
+          <Caption>this month</Caption>
+        </>
+      ),
+      onClick: go("attendance"),
+    },
+    nextExam && {
+      key: "exam",
+      icon: "exam",
+      tone: daysTo <= 2 ? "red" : daysTo <= 7 ? "amber" : "pink",
+      label: nextExam.exam_name,
+      value: nextExam.subject,
+      badge: news("datesheet"),
+      badgeLabel: "New on the datesheet",
+      sub: `${dateText(nextExam.exam_date, { weekday: "short", day: "numeric", month: "short" })}${nextExam.start_time ? ` · ${nextExam.start_time}` : ""} · ${daysTo === 0 ? "today" : daysTo === 1 ? "tomorrow" : `in ${daysTo} days`}`,
+      hot: daysTo <= 2,
+      onClick: go("datesheet"),
+    },
+    {
+      key: "syllabus",
+      icon: "academics",
+      tone: "teal",
+      label: "Syllabus",
+      value: syllabus === null ? undefined : syllabus.length ? syllabus[0].subject : "–",
+      sub: syllabus?.[0]?.body,
+      onClick: go("homework"),
+    },
     {
       key: "notices",
       icon: "notice",
       tone: "orange",
       label: "Notices",
+      // Wide by default: the latest notice's title fits beside the count
+      wide: true,
       value: notices === null ? undefined : notices.length,
       badge: news("notices"),
       badgeLabel: `${plural(news("notices"), "new notice")}`,
@@ -456,40 +546,79 @@ function ParentHome({ child, news, onGo }) {
       onClick: go("notices"),
     },
   ].filter(Boolean);
-  const { tiles, spans } = arrangeTiles(rawTiles);
+
+  // The thin banner up top: what needs doing, then what's new and coming
+  const upcoming = useUpcoming(child.school_id, false, 14);
+  const shortDay = (d) => (d === now ? "Today" : dateText(d, { day: "numeric", month: "short" }));
+  const tickerItems = [
+    overdue.length > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${rupees(overdueTotal)} fees overdue`, onClick: go("fees") },
+    hwToday > 0 && { key: "hwt", icon: "book", tone: "amber", text: `${hwToday} homework due today`, onClick: go("homework") },
+    hwTomorrow > 0 && { key: "hwm", icon: "book", tone: "teal", text: `${hwTomorrow} homework due tomorrow`, onClick: go("homework") },
+    nextExam && daysTo <= 7 && { key: "exam", icon: "exam", tone: "pink", text: `${nextExam.subject} exam ${daysTo === 0 ? "today" : daysTo === 1 ? "tomorrow" : `in ${daysTo} days`}`, onClick: go("datesheet") },
+    ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
+    ...(upcoming ?? []).filter((it) => it.forParents !== false).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
+  ].filter(Boolean);
+
+  // Home is laid out by each parent (HomeWidgets.jsx). Messages starts off
+  // (it's in the bar below); + Add widget brings it back.
+  // Off at first: Messages (it's in the bar) and Syllabus (in Homework)
+  const meta = [
+    ...rawTiles.map((t) => ({ key: t.key, defaultOn: t.key !== "inbox" && t.key !== "syllabus" })),
+    wins.length > 0 && { key: "news" },
+    { key: "class" },
+    { key: "upcoming" },
+  ].filter(Boolean);
+  const layout = useHomeLayout("home:parent", meta);
+  const on = new Set(layout.visible);
+  const wantSyllabus = on.has("syllabus");
+  useEffect(() => {
+    if (wantSyllabus) childSyllabus(child.id).then((rows) => setSyllabus([...rows].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))), () => setSyllabus([]));
+  }, [child.id, wantSyllabus]);
+  const auto = arrangeTiles(rawTiles.filter((t) => on.has(t.key) && !t.wide));
+  const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
+  const items = Object.fromEntries(
+    rawTiles.map(({ fresh, wide, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: wide || autoWide.has(t.key) ? "wide" : "small", tile: t }])
+  );
+  items.news = {
+    kind: "section",
+    label: "News & Achievements",
+    icon: "trophy",
+    tone: "amber",
+    size: "full",
+    node: <AchievementsStrip items={wins} urls={noticeUrls} viewAll onOpenNotices={() => onGo("notices")} />,
+  };
+  items.class = { kind: "section", label: "Class", icon: "academics", tone: "indigo", size: "full", node: <ParentClass child={child} /> };
+  items.upcoming = {
+    kind: "section",
+    label: "Coming up",
+    icon: "calendar",
+    tone: "violet",
+    size: "full",
+    node: <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />,
+  };
 
   return (
     <div className="home hw pa-home home-roomy">
+      <Ticker items={tickerItems} />
       {priority && (
         <div className="home-row1 is-solo">
           <PriorityCard {...priority} />
         </div>
       )}
 
-      <div className="hw-grid" style={{ "--half": spans / 2 }}>
-        {tiles.map((t, i) => (
-          <Tile key={t.key} {...t} index={i} />
-        ))}
-      </div>
-
-      <ParentClass child={child} onMessage={() => onGo("inbox")} />
-
-      <div className="home-bottom-row is-solo">
-        <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />
-      </div>
+      <EditableHome layout={layout} items={items} />
     </div>
   );
 }
 
 // The child's class: teachers with photos, classmates by first name only.
-function ParentClass({ child, onMessage }) {
-  const [teachers, setTeachers] = useState(null);
-  const [mates, setMates] = useState([]);
+function ParentClass({ child }) {
   const sessionId = child.session?.id;
+  const teachers = useClassTeachers(child.id, sessionId);
+  const [mates, setMates] = useState([]);
   useEffect(() => {
     if (!sessionId) return;
     let live = true;
-    classTeachersFor(child.id, sessionId).then((r) => live && setTeachers(r), () => live && setTeachers([]));
     classmatesForParent(child.id, sessionId).then((r) => live && setMates(r), () => {});
     return () => {
       live = false;
@@ -501,7 +630,6 @@ function ParentClass({ child, onMessage }) {
       title={`${gradeLabel(child.class)}${child.section ? ` ${child.section}` : ""}`}
       teachers={teachers}
       mates={mates}
-      onMessage={onMessage}
     />
   );
 }
@@ -550,11 +678,12 @@ function ChildHero({ child, onTab }) {
   const dueTotal = dueNow.reduce((t, d) => t + Number(d.balance), 0);
   const overdue = dueNow.some((d) => d.due_date && d.due_date < now);
   const stats = [
-    ["Attendance", att === null ? "–" : `${att}%`, "green", "home"],
+    ["Attendance", att === null ? "–" : `${att}%`, "green", "attendance"],
     ["Result", result ? `${result.pct}%` : "–", "violet", "results"],
     fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
   ].filter(Boolean);
   const schoolPhone = child.school?.phone;
+  const teachers = useClassTeachers(child.id, child.session?.id);
 
   return (
     <div className="profile-page pa-profile">
@@ -568,6 +697,7 @@ function ChildHero({ child, onTab }) {
               <h1 className="ig-name">{child.name}</h1>
               {child.admission_no && <p className="ig-id">#{child.admission_no}</p>}
             </div>
+            <ClassTeacherBadge teachers={teachers} />
             <ul className="ig-stats">
               {stats.map(([label, value, tone, to]) => (
                 <li key={label}>
@@ -606,8 +736,39 @@ function ChildHero({ child, onTab }) {
   );
 }
 
+// This month's attendance: a dot for each marked day, and the totals.
+function ChildAttendance({ child }) {
+  const [days, setDays] = useState(null);
+  useEffect(() => {
+    attendanceMonth(child.id, today()).then(setDays, () => setDays([]));
+  }, [child.id]);
+  if (!days) return <div className="pa-card pa-skeleton" aria-busy="true" />;
+  if (!days.length) return <Empty icon="register" title="No attendance this month yet" text="Each day shows here once the class teacher marks it." />;
+  const n = (s) => days.filter((d) => d.status === s).length;
+  const present = n("present") + n("late");
+  const month = new Date().toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  return (
+    <section className="pa-card month-att">
+      <h3 className="pa-h2">{month}</h3>
+      <div className="month-att-dots">
+        {days.map((d) => (
+          <i key={d.day} className={`att-dot att-${d.status}`} title={`${dateText(d.day, { weekday: "short", day: "numeric", month: "short" })}: ${MARK_TEXT[d.status] ?? d.status}`} />
+        ))}
+      </div>
+      <p className="month-att-sum">
+        <strong>
+          Present {present} of {days.length} {days.length === 1 ? "day" : "days"}
+        </strong>
+        {n("absent") > 0 && ` · ${n("absent")} absent`}
+        {n("late") > 0 && ` · ${n("late")} late`}
+        {n("leave") > 0 && ` · ${n("leave")} on leave`}
+      </p>
+    </section>
+  );
+}
+
 // Top right: the parent's number, Change password and Log out, in one menu.
-function ParentMenu({ phone, onPassword }) {
+function ParentMenu({ phone, onPassword, onProfile }) {
   const [open, setOpen] = useState(false);
   const ref = useDismiss(open, useCallback(() => setOpen(false), []));
   return (
@@ -617,9 +778,20 @@ function ParentMenu({ phone, onPassword }) {
       </button>
       {open && (
         <div className="menu menu-right" role="menu">
-          <div className="menu-header">
-            <div className="menu-title">{showPhone(phone)}</div>
-          </div>
+          {/* Their number at the top opens their profile */}
+          <button
+            role="menuitem"
+            className="menu-header menu-header-link"
+            onClick={() => {
+              setOpen(false);
+              onProfile();
+            }}
+          >
+            <span className="menu-title">{showPhone(phone)}</span>
+            <span className="menu-subtitle">
+              My profile <Icon name="chevronRight" size={12} />
+            </span>
+          </button>
           <button
             role="menuitem"
             className="menu-item"
@@ -632,6 +804,7 @@ function ParentMenu({ phone, onPassword }) {
             Change password
           </button>
           <NotifyMenuItem />
+          <HapticsMenuItem />
           <button role="menuitem" className="menu-item" onClick={logOut}>
             <Icon name="logout" />
             Log out

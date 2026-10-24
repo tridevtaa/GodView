@@ -23,10 +23,12 @@ import {
 } from "../data/api.js";
 import ClassPicker from "./ClassPicker.jsx";
 import SchoolProfile from "./SchoolProfile.jsx";
+import { SchoolContactPanel } from "./SchoolContact.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 import { isOutdatedApp, reloadForNewRelease } from "../pwa/release.js";
+import { roleFor } from "./Designation.jsx";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
 // What each role can do, shown when picking one.
@@ -37,11 +39,12 @@ const ROLE_HINT = {
 };
 const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
-// Owner only, in two places:
-// view "school": School settings (profile and join code, transport).
+// Two places:
+// view "school": School settings. The owner: the profile and join code, and
+// the contact details for parents. Admins: only the contact details.
 // view "access": Staff > App access (join requests, export requests, who
 // can sign in and with what role, class assignments).
-export default function TeamPage({ view = "access", school, session, me, onSchoolSaved, onCount }) {
+export default function TeamPage({ view = "access", school, session, me, isOwner = true, onSchoolSaved, onCount }) {
   const [members, setMembers] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [classes, setClasses] = useState([]);
@@ -117,7 +120,8 @@ export default function TeamPage({ view = "access", school, session, me, onSchoo
             <h1 className="page-count">School</h1>
           </div>
         </div>
-        <SchoolProfile key={school.id} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />
+        {isOwner && <SchoolProfile key={school.id} school={school} onSaved={onSchoolSaved} aside={<JoinCode school={school} />} />}
+        <SchoolContactPanel key={`contact-${school.id}`} school={school} onSaved={onSchoolSaved} />
       </>
     );
   }
@@ -327,10 +331,16 @@ function JoinCode({ school }) {
 const ADDRESS_PROOF_LABEL = { aadhaar: "Aadhaar card", pan: "PAN card", dl: "Driving licence", passport: "Passport", voter_id: "Voter ID", other: "Other" };
 
 function AccessRequestRow({ request, onApprove, onReject }) {
-  const [role, setRole] = useState("teacher");
+  // Starts from what they picked at signup (Admin, Principal, Teacher…)
+  const [role, setRole] = useState(() => roleFor(request.designation));
   const [showDocs, setShowDocs] = useState(false);
   const [opening, setOpening] = useState(""); // which document is being opened
-  const facts = [request.designation, request.phone, request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  const facts = [
+    request.designation,
+    request.phone,
+    request.subjects && `Teaches ${request.subjects}`,
+    request.joining_date && `Joined ${fmtDate(request.joining_date)}`,
+  ].filter(Boolean);
   const docs = [
     ["id_proof_path", "ID proof"],
     ["address_proof_path", request.address_proof_type ? `Address proof (${ADDRESS_PROOF_LABEL[request.address_proof_type] ?? request.address_proof_type})` : "Address proof"],
@@ -397,7 +407,13 @@ function AccessRequestRow({ request, onApprove, onReject }) {
 
 function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onReject }) {
   const [picked, setPicked] = useState(request.classes ?? []);
-  const facts = [request.subjects && `Teaches ${request.subjects}`].filter(Boolean);
+  // The class they asked to be class teacher of rides along on approval
+  const asked = (request.classes ?? []).find((c) => c.in_charge);
+  const sameClass = (a, b) => a.class === b.class && (a.section ?? "") === (b.section ?? "");
+  const facts = [
+    request.subjects && `Teaches ${request.subjects}`,
+    asked && `Class teacher of ${gradeLabel(asked.class)}${asked.section ? ` · ${asked.section}` : ""}`,
+  ].filter(Boolean);
 
   return (
     <div className="row row-request">
@@ -416,7 +432,7 @@ function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onR
         <button className="btn btn-secondary btn-sm" onClick={onReject}>
           Reject
         </button>
-        <button className="btn btn-primary btn-sm" disabled={!picked.length} onClick={() => onApprove(picked)}>
+        <button className="btn btn-primary btn-sm" disabled={!picked.length} onClick={() => onApprove(picked.map((c) => ({ ...c, in_charge: Boolean(asked && sameClass(asked, c)) })))}>
           Approve
         </button>
       </div>

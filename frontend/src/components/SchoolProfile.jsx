@@ -12,13 +12,6 @@ const FIELDS = [
   ["affiliation_no", "Affiliation no.", { maxLength: 40 }],
   ["udise_code", "UDISE code", { inputMode: "numeric", pattern: "\\d{11}", title: "11 digits", maxLength: 11 }],
   ["principal_name", "Principal", { maxLength: 120 }],
-  ["phone", "Phone", { type: "tel", maxLength: 20 }],
-  ["email", "Email", { type: "email", maxLength: 120 }],
-  ["website", "Website", { type: "url", maxLength: 200, placeholder: "https://" }],
-  ["address", "Address", { maxLength: 300, wide: true }],
-  ["city", "City", { maxLength: 80 }],
-  ["state", "State", { maxLength: 80 }],
-  ["pincode", "PIN code", { inputMode: "numeric", pattern: "\\d{6}", title: "6 digits", maxLength: 6 }],
   [
     "staff_policy",
     "Staff policy (code of conduct, handbook, …)",
@@ -26,12 +19,11 @@ const FIELDS = [
   ],
 ];
 
-// Edited in five short steps.
+// Edited in three short steps. Contact details have their own panel
+// (SchoolContact), which admins can edit too.
 const STEPS = [
   ["Name & logo", ["name", "short_name"]],
   ["Board", ["board", "affiliation_no", "udise_code", "principal_name"]],
-  ["Contact", ["phone", "email", "website"]],
-  ["Address", ["address", "city", "state", "pincode"]],
   ["Staff policy", ["staff_policy"]],
 ];
 
@@ -82,11 +74,7 @@ export default function SchoolProfile({ school, onSaved, aside }) {
       setEditing(false);
     } catch (err) {
       setState("idle");
-      setError(
-        /pincode|udise|name_length/.test(err?.message ?? "")
-          ? "Check the PIN (6 digits), UDISE code (11 digits) and name."
-          : "Couldn’t save. Try again."
-      );
+      setError(/udise|name_length/.test(err?.message ?? "") ? "Check the UDISE code (11 digits) and name." : "Couldn’t save. Try again.");
     }
   }
 
@@ -129,7 +117,7 @@ export default function SchoolProfile({ school, onSaved, aside }) {
         <div className="school-id">
           <h2 className="school-name">{school.name}</h2>
           <p className="row-sub">
-            {meta.length ? meta.join(" · ") : "Add the board, address and contact details"}
+            {meta.length ? meta.join(" · ") : "Add the board and principal"}
             {missing > 0 && meta.length > 0 && <span className="school-missing"> · {missing} details to add</span>}
           </p>
         </div>
