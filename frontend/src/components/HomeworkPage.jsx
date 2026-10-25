@@ -85,6 +85,16 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
     return [...m];
   }, [shown]);
 
+  // Unit wise, grouped by subject: Unit 1, 2, 3… in the order they were
+  // added (oldest first reads like a course outline).
+  const syllabusBySubject = useMemo(() => {
+    const m = new Map();
+    for (const y of shownSyllabus) m.set(y.subject, [...(m.get(y.subject) ?? []), y]);
+    return [...m]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([subject, units]) => [subject, [...units].sort((a, b) => a.created_at.localeCompare(b.created_at))]);
+  }, [shownSyllabus]);
+
   async function remove(id) {
     try {
       await deleteHomework(id);
@@ -248,25 +258,46 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           <p className="row-sub">{readOnly ? "The syllabus teachers post appears here." : "Syllabus you post appears here and in parents’ Godview app right away."}</p>
         </section>
       ) : (
-        <ul className="hw-list syll-list">
-          {shownSyllabus.map((y) => (
-            <li key={y.id} className="syll-card">
-              <div className="syll-subject">
-                <span className="tag">{y.section ? classText(y.class, y.section) : `${gradeLabel(y.class)} · all sections`}</span>
-                <strong>{y.subject}</strong>
-                <span className="row-sub">{y.author_name || y.created_by}</span>
-              </div>
-              <div className="syll-body-col">
-                <p className="hw-body">{y.body}</p>
-                {!readOnly && (y.created_by === me || isAdmin) && (
-                  <button className="icon-btn-sm syll-remove" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
-                    <Icon name="trash" size={15} />
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        syllabusBySubject.map(([subject, units]) => (
+          <section key={subject} className="hw-day">
+            <h2 className="hw-day-title">{subject}</h2>
+            <ul className="hw-list syll-list">
+              {units.map((y) => (
+                <li key={y.id} className="syll-card">
+                  <div className="syll-subject">
+                    <span className="tag">{y.section ? classText(y.class, y.section) : `${gradeLabel(y.class)} · all sections`}</span>
+                    <strong>{y.unit || "General"}</strong>
+                    <span className="row-sub">{y.author_name || y.created_by}</span>
+                  </div>
+                  <div className="syll-body-col">
+                    {y.unit ? (
+                      <p className="syll-topics">
+                        {y.body
+                          .split(",")
+                          .map((t) => t.trim())
+                          .filter(Boolean)
+                          .map((t, i) => (
+                            <span key={i} className="syll-topic">
+                              {t}
+                            </span>
+                          ))}
+                      </p>
+                    ) : (
+                      // Posted before units: too free-form to split into topic
+                      // chips, so it keeps showing as a paragraph.
+                      <p className="hw-body">{y.body}</p>
+                    )}
+                    {!readOnly && (y.created_by === me || isAdmin) && (
+                      <button className="icon-btn-sm syll-remove" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
+                        <Icon name="trash" size={15} />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
     </>
   );
@@ -384,12 +415,14 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
 function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel, onSaved }) {
   const [target, setTarget] = useState(initial || groups[0]?.key || "");
   const [whole, setWhole] = useState(false);
-  const [form, setForm] = useState({ subject: "", body: "" });
+  const [form, setForm] = useState({ unit: "", subject: "", body: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const group = groups.find((g) => g.key === target);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const ok = group && form.subject.trim() && form.body.trim();
+  // One entry is one unit, so unit and subject together are what place it —
+  // both required, same as exam and subject are for the datesheet.
+  const ok = group && form.unit.trim() && form.subject.trim() && form.body.trim();
 
   async function submit(e) {
     e.preventDefault();
@@ -414,22 +447,34 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
           <span>All sections of {gradeLabel(group.klass)}</span>
         </label>
       )}
-      <input className="input" list="syl-subjects" value={form.subject} onChange={set("subject")} placeholder="Subject, e.g. Maths" maxLength={80} required />
+      <div className="form-grid">
+        <label>
+          <span>Unit</span>
+          <input className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
+        </label>
+        <label>
+          <span>Subject</span>
+          <input className="input" list="syl-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Science" maxLength={80} required />
+        </label>
+      </div>
       <datalist id="syl-subjects">
         {SUBJECTS.map((x) => (
           <option key={x} value={x} />
         ))}
       </datalist>
-      <textarea
-        className="textarea"
-        rows={4}
-        maxLength={4000}
-        value={form.body}
-        onChange={set("body")}
-        placeholder="Topics covered, e.g. Chapters 1-3: Numbers, Addition, Subtraction"
-        aria-label="Syllabus"
-        required
-      />
+      <label>
+        <span>Topics</span>
+        <textarea
+          className="textarea"
+          rows={3}
+          maxLength={1000}
+          value={form.body}
+          onChange={set("body")}
+          placeholder="Short, comma separated — e.g. Crop production, Soil preparation, Irrigation, Harvesting"
+          required
+        />
+      </label>
+      <p className="row-sub">Keep topics short, a few words each — not a paragraph.</p>
 
       {error && <p className="field-error">{error}</p>}
       <div className="hw-form-foot">

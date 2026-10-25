@@ -1122,6 +1122,12 @@ function HomeworkTab({ child, since }) {
   const { data, error } = view === "homework" ? hw : syll;
   const now = today();
   const due = (d) => (!d ? "" : d < now ? "Was due" : d === now ? "Due today" : `Due ${dateText(d, { weekday: "short", day: "numeric", month: "short" })}`);
+  // Unit wise, grouped by subject — same as the staff view.
+  const syllBySubject = useMemo(() => {
+    const m = new Map();
+    for (const y of syll.data ?? []) m.set(y.subject, [...(m.get(y.subject) ?? []), y]);
+    return [...m].sort(([a], [b]) => a.localeCompare(b));
+  }, [syll.data]);
 
   return (
     <>
@@ -1162,18 +1168,37 @@ function HomeworkTab({ child, since }) {
           ))}
         </ul>
       ) : (
-        <ul className="pa-hw">
-          {data.map((y) => (
-            <li key={y.id} className={`pa-card pa-hw-item${isNew(y.created_at, since) ? " is-new" : ""}`}>
-              <div className="pa-hw-head">
-                <strong>{y.subject}</strong>
-                {isNew(y.created_at, since) && <NewTag />}
-              </div>
-              <p className="pa-hw-body">{y.body}</p>
-              {y.author_name && <span className="row-sub">By {y.author_name}</span>}
-            </li>
-          ))}
-        </ul>
+        syllBySubject.map(([subject, units]) => (
+          <section key={subject} className="pa-tt-day">
+            <h3 className="pa-tt-day-title">{subject}</h3>
+            <ul className="pa-hw">
+              {units.map((y) => (
+                <li key={y.id} className={`pa-card pa-hw-item${isNew(y.created_at, since) ? " is-new" : ""}`}>
+                  <div className="pa-hw-head">
+                    <strong>{y.unit || "General"}</strong>
+                    {isNew(y.created_at, since) && <NewTag />}
+                  </div>
+                  {y.unit ? (
+                    <p className="syll-topics">
+                      {y.body
+                        .split(",")
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                        .map((t, i) => (
+                          <span key={i} className="syll-topic">
+                            {t}
+                          </span>
+                        ))}
+                    </p>
+                  ) : (
+                    <p className="pa-hw-body">{y.body}</p>
+                  )}
+                  {y.author_name && <span className="row-sub">By {y.author_name}</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))
       )}
     </>
   );

@@ -1391,12 +1391,21 @@ export async function listSyllabus(schoolId, sessionId) {
   );
 }
 
-// Sets the syllabus for a subject in a class (section null = every section).
-export async function addSyllabusEntry(schoolId, sessionId, { klass, section, subject, body }) {
+// Sets one unit of a subject's syllabus for a class (section null = every
+// section).
+export async function addSyllabusEntry(schoolId, sessionId, { klass, section, subject, unit, body }) {
   return must(
     await supabase
       .from("syllabus")
-      .insert({ school_id: schoolId, session_id: sessionId, class: klass, section: section || null, subject: subject.trim(), body: body.trim() })
+      .insert({
+        school_id: schoolId,
+        session_id: sessionId,
+        class: klass,
+        section: section || null,
+        subject: subject.trim(),
+        unit: unit?.trim() || null,
+        body: body.trim(),
+      })
       .select()
       .single()
   );

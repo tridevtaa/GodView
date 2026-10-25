@@ -6916,6 +6916,24 @@ input[type="date"]::-webkit-date-and-time-value {
   padding-right: 30px; /* room for the remove button, top right */
 }
 
+/* Topics as short chips, not a paragraph — the point of unit-wise syllabus */
+.syll-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding-right: 30px; /* room for the remove button, top right */
+}
+
+.syll-topic {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
 .syll-remove {
   position: absolute;
   top: -2px;
