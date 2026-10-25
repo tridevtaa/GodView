@@ -1689,3 +1689,19 @@ export async function runInsight(schoolId, section = "fees") {
   }
   return data;
 }
+
+// ------------------------------------------------------- the assistant ---
+
+// One question to the assistant (Premium; owners, admins, the principal).
+// body: { message, history, page, facts, name, pages, forms }. Returns
+// { say, action: { type, target } }. Throws { code } like runInsight.
+export async function askConcierge(schoolId, body) {
+  const { data, error } = await supabase.functions.invoke("concierge", { body: { school_id: schoolId, ...body } });
+  if (error) {
+    const reply = await error.context?.json?.().catch(() => null);
+    const e = new Error(reply?.error || "ai_failed");
+    e.code = reply?.error || "ai_failed";
+    throw e;
+  }
+  return data;
+}

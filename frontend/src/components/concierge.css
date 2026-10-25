@@ -1,0 +1,463 @@
+/* The assistant (/avatar): a room full screen, the person on the left,
+   a glass panel on the right and the chips under it. Phones: the panel
+   is a sheet at the bottom and the room crops to the person. */
+
+.cg {
+  --cg-ink: #fff;
+  --cg-ink-2: rgba(255, 255, 255, 0.72);
+  --cg-glass: rgba(255, 255, 255, 0.1);
+  --cg-glass-2: rgba(255, 255, 255, 0.16);
+  --cg-line: rgba(255, 255, 255, 0.2);
+  --cg-glow: #8fa0ff;
+  --cg-side: max(24px, 6vw);
+  --cg-w: min(440px, 100% - 2 * var(--cg-side));
+
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  overflow: hidden;
+  background: radial-gradient(120% 90% at 22% 55%, #3a2c22 0%, #1c1612 55%, #0e0b09 100%);
+  color: var(--cg-ink);
+  font-family: var(--font);
+  animation: cg-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes cg-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.cg-open,
+.cg-open body {
+  overflow: hidden;
+}
+
+.cg-open {
+  scrollbar-gutter: auto;
+}
+
+/* ---------- The person ---------- */
+
+.cg-stage,
+.cg-stage video,
+.cg-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cg-stage video,
+.cg-still {
+  object-fit: cover;
+  object-position: 30% 50%;
+}
+
+.cg-stage video {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.cg-stage video.is-front {
+  opacity: 1;
+}
+
+/* Only a still so far: it breathes, a slow zoom in and out. */
+.cg-still {
+  transform-origin: 30% 60%;
+  animation: cg-breathe 9s ease-in-out infinite alternate;
+}
+
+@keyframes cg-breathe {
+  to {
+    transform: scale(1.025);
+  }
+}
+
+/* No still either: a glowing orb where the person will sit. */
+.cg-orb {
+  position: absolute;
+  top: 50%;
+  left: 28%;
+  width: 220px;
+  height: 220px;
+  margin: -110px 0 0 -110px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 34%, rgba(255, 255, 255, 0.85), transparent 30%),
+    radial-gradient(circle at 50% 50%, #9aa8ff 0%, #5b68c4 45%, #1d2366 100%);
+  box-shadow:
+    0 0 60px 10px rgba(143, 160, 255, 0.35),
+    0 0 160px 40px rgba(91, 104, 196, 0.25);
+  animation: cg-orb-idle 5s ease-in-out infinite;
+}
+
+.cg-orb.is-listen {
+  animation: cg-orb-listen 1.4s ease-in-out infinite;
+}
+
+.cg-orb.is-think {
+  animation: cg-orb-think 2.4s linear infinite;
+}
+
+.cg-orb.is-talk,
+.cg-orb.is-greet,
+.cg-orb.is-gesture {
+  animation: cg-orb-talk 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes cg-orb-idle {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes cg-orb-listen {
+  50% {
+    transform: scale(1.1);
+    box-shadow:
+      0 0 80px 20px rgba(143, 160, 255, 0.5),
+      0 0 200px 60px rgba(91, 104, 196, 0.3);
+  }
+}
+
+@keyframes cg-orb-think {
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+@keyframes cg-orb-talk {
+  to {
+    transform: scale(1.07);
+  }
+}
+
+/* Darkens the right, so the panel reads over any room. */
+.cg-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 30%, rgba(12, 9, 7, 0.45) 62%, rgba(12, 9, 7, 0.7) 100%),
+    linear-gradient(180deg, rgba(12, 9, 7, 0.5) 0%, transparent 18%, transparent 75%, rgba(12, 9, 7, 0.55) 100%);
+  pointer-events: none;
+}
+
+/* ---------- Top: brand, voice, close ---------- */
+
+.cg-top {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(16px + env(safe-area-inset-top)) var(--cg-side) 16px;
+}
+
+.cg-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+.cg-top-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.cg-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--cg-line);
+  border-radius: 50%;
+  background: var(--cg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--cg-ink);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cg-icon:hover {
+  background: var(--cg-glass-2);
+}
+
+.cg-icon:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cg-icon.is-on {
+  border-color: transparent;
+  background: #fff;
+  color: #1d2366;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.18);
+  animation: cg-mic 1.4s ease-in-out infinite;
+}
+
+@keyframes cg-mic {
+  50% {
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.08);
+  }
+}
+
+.cg-icon:focus-visible,
+.cg-chip:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ---------- The panel ---------- */
+
+.cg-panel {
+  position: absolute;
+  top: 50%;
+  right: var(--cg-side);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: var(--cg-w);
+  padding: 28px;
+  border: 1px solid var(--cg-line);
+  border-radius: 28px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05));
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%);
+}
+
+/* Listening, thinking or speaking: a ring and five bars. */
+/* Idle: hidden, keeping its place so the panel doesn't jump. */
+.cg-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 14px;
+  visibility: hidden;
+  color: var(--cg-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.cg-bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 14px;
+}
+
+.cg-bars i {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--cg-glow);
+  animation: cg-bar 0.9s ease-in-out infinite;
+}
+
+.cg-bars i:nth-child(2) {
+  animation-delay: -0.2s;
+}
+.cg-bars i:nth-child(3) {
+  animation-delay: -0.4s;
+}
+.cg-bars i:nth-child(4) {
+  animation-delay: -0.6s;
+}
+.cg-bars i:nth-child(5) {
+  animation-delay: -0.8s;
+}
+
+@keyframes cg-bar {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.cg-status.is-on {
+  visibility: visible;
+}
+
+.cg-say {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.cg-error {
+  margin: 0;
+  color: #ffc2b6;
+  font-size: 13px;
+}
+
+.cg-ask {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 20px;
+  border: 1px solid var(--cg-line);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.cg-ask:focus-within {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.cg-ask input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--cg-ink);
+  font: inherit;
+  font-size: 16px; /* phones zoom into anything smaller */
+}
+
+.cg-ask input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ---------- Chips ---------- */
+
+.cg-choices,
+.cg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Right edge in line with the panel's */
+.cg-chips {
+  position: absolute;
+  right: var(--cg-side);
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  justify-content: flex-end;
+  width: min(640px, 100% - 2 * var(--cg-side));
+}
+
+.cg-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--cg-line);
+  border-radius: 999px;
+  background: var(--cg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: var(--cg-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cg-chip:hover {
+  background: var(--cg-glass-2);
+}
+
+.cg-chip-sub {
+  color: var(--cg-ink-2);
+  font-size: 12px;
+}
+
+/* Short screens: the panel sits higher, clear of the chips. */
+@media (max-height: 640px) and (min-width: 761px) {
+  .cg-panel {
+    top: 80px;
+    transform: none;
+  }
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 760px) {
+  .cg {
+    --cg-side: 16px;
+  }
+
+  .cg-stage video,
+  .cg-still {
+    object-position: 25% 30%;
+  }
+
+  .cg-orb {
+    top: 28%;
+    left: 50%;
+    width: 160px;
+    height: 160px;
+    margin: -80px 0 0 -80px;
+  }
+
+  .cg-shade {
+    background: linear-gradient(180deg, rgba(12, 9, 7, 0.45) 0%, transparent 16%, transparent 38%, rgba(12, 9, 7, 0.75) 62%, rgba(12, 9, 7, 0.9) 100%);
+  }
+
+  .cg-panel {
+    top: auto;
+    right: var(--cg-side);
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    left: var(--cg-side);
+    gap: 14px;
+    width: auto;
+    padding: 20px;
+    border-radius: 24px;
+    transform: none;
+  }
+
+  .cg-say {
+    font-size: 21px;
+  }
+
+  /* One row that scrolls sideways */
+  .cg-chips {
+    right: 0;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+    left: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    width: auto;
+    padding: 0 var(--cg-side);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .cg-chips::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cg,
+  .cg-still,
+  .cg-orb,
+  .cg-bars i,
+  .cg-icon.is-on {
+    animation: none !important;
+  }
+}
