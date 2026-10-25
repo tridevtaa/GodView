@@ -62,6 +62,7 @@ const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
 const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
+const Concierge = lazy(() => import("./components/Concierge.jsx"));
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
@@ -82,6 +83,8 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState(null);
   const [openTab, setOpenTab] = useState("details");
+  // The assistant, full screen at /avatar.
+  const [asking, setAsking] = useState(false);
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   const [slcPendingOnly, setSlcPendingOnly] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -97,6 +100,8 @@ export default function App() {
   const isPrincipal = role === "principal";
   // Owners, admins and the principal: they see the whole school.
   const leads = isAdmin || isPrincipal;
+  // The assistant is Premium, for the people who see the whole school.
+  const canAsk = leads && school.plan === "premium";
   const [pendingCount, setPendingCount] = useState(0);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
@@ -356,7 +361,10 @@ export default function App() {
     [dataMode, rememberOpened]
   );
   useEffect(() => {
-    const onPop = (e) => setOpenId(e.state?.student ?? null);
+    const onPop = (e) => {
+      setOpenId(e.state?.student ?? null);
+      setAsking(Boolean(e.state?.avatar));
+    };
     window.addEventListener("popstate", onPop);
     // A link straight to /students/<id> (e.g. after a reload).
     const m = /^\/students\/([0-9a-f-]{36})$/.exec(window.location.pathname);
@@ -373,8 +381,16 @@ export default function App() {
         window.history.pushState({ student: m[1] }, "", url);
       }
     }
+    // A link straight to /avatar: Home underneath, so Back closes it.
+    if (window.location.pathname === "/avatar") {
+      window.history.replaceState(null, "", "/");
+      if (canAsk) {
+        window.history.pushState({ avatar: true }, "", "/avatar");
+        setAsking(true);
+      }
+    }
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const studentPage = openIndex !== -1 && dataMode === "students";
   // Top of the page when a student opens; back where you were when it closes.
   useLayoutEffect(() => {
@@ -642,6 +658,76 @@ export default function App() {
       setQuick({ kind, at: Date.now() });
     }
   }
+  // The assistant: opens as its own history entry, so Back closes it.
+  const openAsk = useCallback(() => {
+    if (!window.history.state?.avatar) window.history.pushState({ avatar: true }, "", "/avatar");
+    setAsking(true);
+  }, []);
+  const closeAsk = useCallback(() => {
+    if (window.history.state?.avatar) window.history.back();
+    else setAsking(false);
+  }, []);
+  // What it asked for: the page, a student, a form or the bus map. Its
+  // /avatar entry gives way to the page, so Back doesn't reopen it.
+  const askAct = useRef(null);
+  askAct.current = ({ type, target, id }) => {
+    setAsking(false);
+    if (window.history.state?.avatar) window.history.replaceState(null, "", "/");
+    if (type === "student") {
+      switchMode("students");
+      return openStudent(id);
+    }
+    if (type === "start") return runAction(target);
+    if (type === "map") {
+      switchMode("transport");
+      return setView("map");
+    }
+    if (target === "attendance") {
+      switchMode("calendar");
+      return setQuick({ kind: "attendance", at: Date.now() });
+    }
+    switchMode(target);
+  };
+  const onAskAct = useCallback((a) => askAct.current(a), []);
+  // Pages it can open, each once; the chips are the most used of them.
+  const askPages = (() => {
+    const seen = new Set();
+    return [
+      ...sections,
+      ...studentParts,
+      ...(seesAttendance ? [["attendance", "Attendance"]] : []),
+      ["calendar", "Calendar"],
+      ["notices", "Noticeboard"],
+      ...(canWrite ? [["marks", "Results"]] : []),
+      ["me", "My profile"],
+    ]
+      .filter(([k]) => !seen.has(k) && seen.add(k))
+      .map(([k, l]) => [k, l]);
+  })();
+  const askChips = ["attendance", "fees", "students", "requests", "employees", "transport", "calendar", "homework", "notices"]
+    .map((k) => askPages.find(([x]) => x === k))
+    .filter(Boolean);
+  // Figures the app already shows this person, for answers without a lookup.
+  const askFacts = useMemo(() => {
+    if (!asking) return {};
+    const f = { session: currentSession?.name ?? "", students: searchStudents.length };
+    if (isAdmin) {
+      const owing = searchStudents.filter((p) => Number(p.fee_due) > 0);
+      f.fees = {
+        due_rupees: owing.reduce((t, p) => t + Number(p.fee_due), 0),
+        students_owing: owing.length,
+        students_overdue: searchStudents.filter((p) => p.fee_status === "overdue").length,
+      };
+      f.bus_routes = routes.length;
+    }
+    if (today) {
+      f.attendance_today = { present: today.present, absent: today.absent, on_leave: today.leave, marked: today.marked };
+      if (today.classes) f.attendance_today.classes_not_marked = `${today.notMarked} of ${today.classes}`;
+    }
+    f.inbox_waiting = inboxCount;
+    if (isOwner) f.staff_waiting_for_app_access = pendingCount;
+    return f;
+  }, [asking, currentSession, searchStudents, isAdmin, isOwner, routes, today, inboxCount, pendingCount]);
   const staffTabs = isOwner && (
     <nav className="segmented segmented-sm page-switch" aria-label="Staff">
       {[
@@ -672,6 +758,7 @@ export default function App() {
         onProfile={() => switchMode("me")}
         session={sessions.length > 0 && <SessionSelect sessions={sessions} value={sessionId} current={currentSession} onChange={switchSession} />}
         search={globalSearch}
+        onAsk={canAsk ? openAsk : null}
       />
       {/* Quietly shrinks full-size ERP photos in the background (computers, owners/admins). */}
       {!loading && isAdmin && dataMode === "students" && <PhotoUpgrade schoolId={school.id} students={people} onPhoto={patch} />}
@@ -1049,6 +1136,20 @@ export default function App() {
       <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
+        {asking && canAsk && (
+          <Concierge
+            school={school}
+            name={user.displayName}
+            students={searchStudents}
+            facts={askFacts}
+            page={mode}
+            pages={askPages}
+            forms={plusActions.map(([k, l]) => [k, l])}
+            chips={askChips}
+            onAct={onAskAct}
+            onClose={closeAsk}
+          />
+        )}
         {collect && isAdmin && (
           <CollectFee
             school={school}

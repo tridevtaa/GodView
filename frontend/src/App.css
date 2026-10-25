@@ -377,6 +377,33 @@ a:hover {
   object-fit: cover;
 }
 
+/* The account, and the assistant beside it (Premium leads) */
+.topbar-right {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.ask-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #9aa8ff, var(--brand) 55%, var(--brand-edge));
+  box-shadow: var(--shadow-md), 0 0 0 3px var(--brand-soft);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.ask-btn:hover {
+  transform: scale(1.06);
+}
+
 /* ---------- Menus ---------- */
 
 .popover-anchor {
@@ -1313,6 +1340,11 @@ a:hover {
     width: 32px;
     height: 32px;
     font-size: 13px;
+  }
+
+  .ask-btn {
+    width: 32px;
+    height: 32px;
   }
 
   .page {

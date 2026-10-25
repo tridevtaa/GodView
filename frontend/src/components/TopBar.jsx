@@ -10,7 +10,8 @@ const ICONS = { home: "home", students: "scholar", academics: "academics", atten
 // onSettings: School settings (owners and admins), from the account menu.
 // session: the session picker, shown beside the logo.
 // search: the common search (header on computers; above the tab bar on phones).
-export default function TopBar({ mode, onMode, sections, onSettings, onProfile, session, search }) {
+// onAsk: opens the assistant (Premium leads), a sparkle beside the account.
+export default function TopBar({ mode, onMode, sections, onSettings, onProfile, session, search, onAsk }) {
   const at = sections.findIndex(([v]) => v === mode);
   const tabs = (className) => (
     <nav className={className} aria-label="Section">
@@ -39,7 +40,14 @@ export default function TopBar({ mode, onMode, sections, onSettings, onProfile, 
           </span>
           {search}
           {sections.length > 1 && tabs("segmented topbar-tabs")}
-          <AccountMenu onSettings={onSettings} onProfile={onProfile} />
+          <span className="topbar-right">
+            {onAsk && (
+              <button type="button" className="ask-btn" onClick={onAsk} aria-label="Ask GodView" title="Ask GodView">
+                <Icon name="sparkle" size={18} weight="fill" />
+              </button>
+            )}
+            <AccountMenu onSettings={onSettings} onProfile={onProfile} />
+          </span>
         </div>
       </header>
       {sections.length > 1 && tabs("tabbar")}

@@ -45,6 +45,7 @@ import {
   SunHorizon,
   UsersFour,
   MegaphoneSimple,
+  Microphone,
   PushPin,
   MapTrifold,
   Note,
@@ -55,6 +56,8 @@ import {
   Plus,
   PlusSquare,
   SignOut,
+  SpeakerHigh,
+  SpeakerSlash,
   SquaresFour,
   House,
   Student,
@@ -148,6 +151,9 @@ const PHOSPHOR = {
   bell: Bell,
   trophy: Trophy,
   lightning: Lightning,
+  mic: Microphone,
+  speaker: SpeakerHigh,
+  speakerOff: SpeakerSlash,
 };
 
 // Father and mother, drawn in Phosphor's style (256 grid, soft fill under a
