@@ -111,10 +111,22 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
       <div className="page-header">
         <div>
           <h1 className="sr-only">Homework &amp; syllabus</h1>
-          {/* The page's own switch sits on the same row as the Students one */}
+          {/* Leads already have a "Homework" tab in the heading (shared with
+              Students and Fees), so repeating it here would show "Homework"
+              twice; they get a single Syllabus toggle instead. Teachers have
+              no heading, so they get the full Homework/Syllabus switch. */}
           <div className="page-meta">
             {heading}
-            {!writing && (
+            {!writing && heading && (
+              <button
+                type="button"
+                className={`chip-btn${view === "syllabus" ? " is-on" : ""}`}
+                onClick={() => setView(view === "syllabus" ? "homework" : "syllabus")}
+              >
+                <Icon name="academics" size={14} /> Syllabus
+              </button>
+            )}
+            {!writing && !heading && (
               <nav className="segmented segmented-sm page-switch" aria-label="Homework or syllabus">
                 <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
                   <Icon name="book" size={15} /> Homework
