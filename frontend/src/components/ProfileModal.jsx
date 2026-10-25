@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, listAssignments, listResults } from "../data/api.js";
+import { attendanceMonth, listAssignments, listResults, studentDocumentUrl, updateStudent, uploadStudentDocument } from "../data/api.js";
 import { idText } from "./Designation.jsx";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
@@ -136,6 +136,85 @@ const GROUPS = {
     ["Identity", [["Aadhaar / PAN", (p) => p.id_last4 && <span className="masked">{idText(p.id_type, p.id_last4)}</span>]]],
   ],
 };
+
+// kind (matches uploadStudentDocument) -> the students column its path is
+// kept in, and the label shown.
+const DOC_KINDS = [
+  ["aadhaar", "aadhaar_doc_path", "Aadhaar card"],
+  ["birth_certificate", "birth_cert_path", "Birth certificate"],
+  ["transfer_certificate", "transfer_cert_path", "Transfer certificate (SLC)"],
+];
+
+// The three documents collected at admission (or added later): a signed
+// link to view whichever are on file, and — for owners/admins — a way to
+// upload or replace one. Uploading the SLC also clears "collect later".
+function StudentDocuments({ person, schoolId, sessionId, canEdit, onUpdate }) {
+  const [docs, setDocs] = useState({}); // kind -> { busy, error }
+  const [opening, setOpening] = useState("");
+
+  async function openDoc(path, kind) {
+    setOpening(kind);
+    try {
+      window.open(await studentDocumentUrl(path), "_blank", "noopener");
+    } catch {
+      // best effort; the link just won't open
+    } finally {
+      setOpening("");
+    }
+  }
+
+  async function pick(kind, pathField, e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setDocs((d) => ({ ...d, [kind]: { busy: true, error: "" } }));
+    try {
+      const path = await uploadStudentDocument(schoolId, person.id, kind, file);
+      const changes = { [pathField]: path, ...(kind === "transfer_certificate" ? { transfer_cert_pending: false } : {}) };
+      onUpdate(person.id, await updateStudent(person, sessionId, changes));
+      setDocs((d) => ({ ...d, [kind]: { busy: false, error: "" } }));
+    } catch {
+      setDocs((d) => ({ ...d, [kind]: { busy: false, error: "Couldn’t upload. Try a smaller photo or PDF." } }));
+    }
+  }
+
+  return (
+    <section className="profile-group g-documents">
+      <h3 className="facts-title">Documents</h3>
+      <ul className="profile-docs">
+        {DOC_KINDS.map(([kind, pathField, label]) => {
+          const path = person[pathField];
+          const doc = docs[kind];
+          return (
+            <li key={kind} className="profile-doc-row">
+              <span className="profile-doc-label">
+                {label}
+                {kind === "transfer_certificate" && !path && person.transfer_cert_pending && <span className="badge badge-warning">Pending</span>}
+              </span>
+              <span className="profile-doc-actions">
+                {path && (
+                  <button type="button" className="link-btn" onClick={() => openDoc(path, kind)} disabled={opening === kind}>
+                    {opening === kind ? "Opening…" : "View"}
+                  </button>
+                )}
+                {canEdit ? (
+                  <label className="doc-pick-box profile-doc-pick">
+                    <Icon name="upload" size={13} />
+                    {doc?.busy ? "Uploading…" : path ? "Replace" : "Upload"}
+                    <input type="file" accept="image/*,application/pdf" onChange={(e) => pick(kind, pathField, e)} hidden />
+                  </label>
+                ) : (
+                  !path && <span className="row-sub">Not uploaded</span>
+                )}
+              </span>
+              {doc?.error && <span className="field-error">{doc.error}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
 // This month's attendance: a dot per marked day and the totals.
 export function MonthAttendance({ studentId, title = "This month" }) {
@@ -562,6 +641,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 </section>
               ))}
               {isStudent && <StudentClass person={person} sessionId={sessionId} students={students} onOpenStudent={onOpenStudent} />}
+              {isStudent && <StudentDocuments person={person} schoolId={schoolId} sessionId={sessionId} canEdit={canEdit} onUpdate={onUpdate} />}
               {isStudent && isAdmin && (
                 <section className="profile-group profile-facts g-parents">
                   <StudentParents person={person} canEdit={canEdit} />
