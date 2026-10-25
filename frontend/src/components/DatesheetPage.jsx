@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addDatesheetEntry, deleteDatesheetEntry, listDatesheet } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -107,15 +107,25 @@ export default function DatesheetPage({ school, session, students, me, isAdmin, 
 
       {writing && (
         <DatesheetForm schoolId={school.id} sessionId={session.id} groups={groups} isAdmin={isAdmin} initial={filter} onCancel={() => setWriting(false)}
-          onSaved={(d) => { setDates((xs) => [...(xs ?? []), d]); setWriting(false); }} />
+          onSaved={(d) => setDates((xs) => [...(xs ?? []), d])} />
       )}
 
-      {!writing && groups.length > 1 && dates?.length > 0 && (
-        <ClassSwitcher groups={groups} value={filter} onChange={setFilter} allLabel="All classes" />
+      {/* No "All classes" — a mixed-class datesheet read as cluttered, so
+          it's always one class at a time, same as the syllabus. */}
+      {!writing && groups.length > 1 && (
+        <ClassSwitcher groups={groups} value={filter} onChange={setFilter} />
       )}
 
       {writing ? null : dates === null ? (
         <div className="card card-skeleton hw-skeleton" />
+      ) : !filter && groups.length > 1 ? (
+        <section className="hw-empty">
+          <span className="hw-empty-icon">
+            <Icon name="exam" size={22} />
+          </span>
+          <strong>Choose a class</strong>
+          <p className="row-sub">Pick a class above to see its datesheet.</p>
+        </section>
       ) : !byExamDate.length ? (
         <section className="hw-empty">
           <span className="hw-empty-icon">
@@ -164,8 +174,12 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
   const [target, setTarget] = useState(initial || groups[0]?.key || "");
   const [whole, setWhole] = useState(false);
   const [form, setForm] = useState({ exam_name: "", subject: "", exam_date: "", start_time: "", notes: "" });
+  // Exams posted this time round, so the form can stay open for the next one
+  // instead of closing and having to be reopened for every subject.
+  const [added, setAdded] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const subjectRef = useRef(null);
   const group = groups.find((g) => g.key === target);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   const ok = group && form.exam_name.trim() && form.subject.trim() && form.exam_date;
@@ -176,10 +190,16 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
     setBusy(true);
     setError("");
     try {
-      onSaved(await addDatesheetEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form }));
+      const saved = await addDatesheetEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form });
+      onSaved(saved);
       haptic("success");
+      // Same exam name stays filled in — ready for the next subject.
+      setAdded((a) => [...a, saved.subject]);
+      setForm((f) => ({ ...f, subject: "", exam_date: "", start_time: "", notes: "" }));
+      subjectRef.current?.focus();
     } catch {
       setError("Couldn’t save that exam. Check you teach this class and try again.");
+    } finally {
       setBusy(false);
     }
   }
@@ -193,6 +213,11 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
           <span>All sections of {gradeLabel(group.klass)}</span>
         </label>
       )}
+      {added.length > 0 && (
+        <p className="row-sub syll-added">
+          <Icon name="check" size={13} /> Added {added.join(", ")}. Keep going, or Done when finished.
+        </p>
+      )}
       <div className="form-grid">
         <label>
           <span>Exam</span>
@@ -205,7 +230,7 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
         </label>
         <label>
           <span>Subject</span>
-          <input className="input" list="ds-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Maths" maxLength={80} required />
+          <input ref={subjectRef} className="input" list="ds-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Maths" maxLength={80} required />
           <datalist id="ds-subjects">
             {SUBJECTS.map((x) => (
               <option key={x} value={x} />
@@ -226,10 +251,10 @@ function DatesheetForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel
       {error && <p className="field-error">{error}</p>}
       <div className="hw-form-foot">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
-          Cancel
+          {added.length ? "Done" : "Cancel"}
         </button>
         <button className="btn btn-primary" disabled={busy || !ok}>
-          {busy ? "Saving…" : "Add to datesheet"}
+          {busy ? "Saving…" : added.length ? "Add next exam" : "Add to datesheet"}
         </button>
       </div>
     </form>
