@@ -1,0 +1,12 @@
+{
+  "poster": "still.jpg",
+  "focus": "32% 30%",
+  "clips": {
+    "idle": ["idle-1.mp4"],
+    "listen": [],
+    "think": [],
+    "talk": [],
+    "gesture": [],
+    "greet": []
+  }
+}

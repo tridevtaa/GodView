@@ -11,3 +11,8 @@
 
 /sw.js
   Cache-Control: no-cache
+
+# The assistant's clips and still: names stay the same when a clip is
+# redone, so a day only.
+/concierge/*
+  Cache-Control: public, max-age=86400
