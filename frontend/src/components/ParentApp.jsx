@@ -1187,6 +1187,7 @@ function HomeworkTab({ child, since }) {
                     <li key={y.id} className="syll-unit-row">
                       <div className="syll-unit-label">
                         <span className="syll-unit-badge">{y.unit || "General"}</span>
+                        {y.chapter && <strong className="syll-unit-chapter">{y.chapter}</strong>}
                         {!singleAuthor && y.author_name && <span className="row-sub">By {y.author_name}</span>}
                       </div>
                       <div className="syll-unit-topics">

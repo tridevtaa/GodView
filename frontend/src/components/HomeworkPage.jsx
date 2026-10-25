@@ -287,6 +287,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
                     <li key={y.id} className="syll-unit-row">
                       <div className="syll-unit-label">
                         <span className="syll-unit-badge">{y.unit || "General"}</span>
+                        {y.chapter && <strong className="syll-unit-chapter">{y.chapter}</strong>}
                         {!singleAuthor && <span className="row-sub">{y.author_name || y.created_by}</span>}
                       </div>
                       <div className="syll-unit-topics">
@@ -437,7 +438,7 @@ function HomeworkForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
 function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel, onSaved }) {
   const [target, setTarget] = useState(initial || groups[0]?.key || "");
   const [whole, setWhole] = useState(false);
-  const [form, setForm] = useState({ unit: "", subject: "", body: "" });
+  const [form, setForm] = useState({ unit: "", chapter: "", subject: "", body: "" });
   // Units posted this time round, so the form can stay open for the next one
   // instead of closing and having to be reopened for every unit.
   const [added, setAdded] = useState([]);
@@ -446,9 +447,10 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
   const unitRef = useRef(null);
   const group = groups.find((g) => g.key === target);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  // One entry is one unit, so unit and subject together are what place it —
-  // both required, same as exam and subject are for the datesheet.
-  const ok = group && form.unit.trim() && form.subject.trim() && form.body.trim();
+  // One entry is one unit, so unit, its chapter name and subject together are
+  // what place it — all required, same as exam and subject are for the
+  // datesheet.
+  const ok = group && form.unit.trim() && form.chapter.trim() && form.subject.trim() && form.body.trim();
 
   async function submit(e) {
     e.preventDefault();
@@ -460,8 +462,8 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
       onSaved(saved);
       haptic("success");
       // Same class and subject stay filled in — ready for the next unit.
-      setAdded((a) => [...a, saved.unit]);
-      setForm((f) => ({ ...f, unit: "", body: "" }));
+      setAdded((a) => [...a, [saved.unit, saved.chapter].filter(Boolean).join(" — ")]);
+      setForm((f) => ({ ...f, unit: "", chapter: "", body: "" }));
       unitRef.current?.focus();
     } catch {
       setError("Couldn’t save the syllabus. Check you teach this class and try again.");
@@ -489,8 +491,12 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
       <div className="syll-form-split">
         <div className="syll-form-left">
           <label>
-            <span>Unit / Chapter</span>
+            <span>Unit</span>
             <input ref={unitRef} className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
+          </label>
+          <label>
+            <span>Chapter name</span>
+            <input className="input" value={form.chapter} onChange={set("chapter")} placeholder="e.g. Our Environment" maxLength={100} required />
           </label>
           <label>
             <span>Subject</span>

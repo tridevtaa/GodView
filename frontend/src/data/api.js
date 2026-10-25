@@ -1393,7 +1393,7 @@ export async function listSyllabus(schoolId, sessionId) {
 
 // Sets one unit of a subject's syllabus for a class (section null = every
 // section).
-export async function addSyllabusEntry(schoolId, sessionId, { klass, section, subject, unit, body }) {
+export async function addSyllabusEntry(schoolId, sessionId, { klass, section, subject, unit, chapter, body }) {
   return must(
     await supabase
       .from("syllabus")
@@ -1404,6 +1404,7 @@ export async function addSyllabusEntry(schoolId, sessionId, { klass, section, su
         section: section || null,
         subject: subject.trim(),
         unit: unit?.trim() || null,
+        chapter: chapter?.trim() || null,
         body: body.trim(),
       })
       .select()
