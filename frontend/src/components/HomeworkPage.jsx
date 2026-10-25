@@ -85,14 +85,19 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
     return [...m];
   }, [shown]);
 
-  // Unit wise, grouped by subject: Unit 1, 2, 3… in the order they were
-  // added (oldest first reads like a course outline).
-  const syllabusBySubject = useMemo(() => {
+  // One tile per subject (per class, so "All classes" doesn't blend two
+  // classes' EVS into one tile), its units inside in the order they were
+  // added — reads like a course outline instead of a wall of cards.
+  const syllabusGroups = useMemo(() => {
     const m = new Map();
-    for (const y of shownSyllabus) m.set(y.subject, [...(m.get(y.subject) ?? []), y]);
-    return [...m]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([subject, units]) => [subject, [...units].sort((a, b) => a.created_at.localeCompare(b.created_at))]);
+    for (const y of shownSyllabus) {
+      const key = `${y.subject}|${y.class}|${y.section ?? ""}`;
+      if (!m.has(key)) m.set(key, { subject: y.subject, class: y.class, section: y.section, units: [] });
+      m.get(key).units.push(y);
+    }
+    return [...m.values()]
+      .map((g) => ({ ...g, units: g.units.sort((a, b) => a.created_at.localeCompare(b.created_at)) }))
+      .sort((a, b) => a.subject.localeCompare(b.subject) || gradeRank(a.class) - gradeRank(b.class) || (a.section ?? "").localeCompare(b.section ?? ""));
   }, [shownSyllabus]);
 
   async function remove(id) {
@@ -255,46 +260,57 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           <p className="row-sub">{readOnly ? "The syllabus teachers post appears here." : "Syllabus you post appears here and in parents’ Godview app right away."}</p>
         </section>
       ) : (
-        syllabusBySubject.map(([subject, units]) => (
-          <section key={subject} className="hw-day">
-            <h2 className="hw-day-title">{subject}</h2>
-            <ul className="hw-list syll-list">
-              {units.map((y) => (
-                <li key={y.id} className="syll-card">
-                  <div className="syll-subject">
-                    <span className="tag">{y.section ? classText(y.class, y.section) : `${gradeLabel(y.class)} · all sections`}</span>
-                    <strong>{y.unit || "General"}</strong>
-                    <span className="row-sub">{y.author_name || y.created_by}</span>
-                  </div>
-                  <div className="syll-body-col">
-                    {y.unit ? (
-                      <p className="syll-topics">
-                        {y.body
-                          .split(",")
-                          .map((t) => t.trim())
-                          .filter(Boolean)
-                          .map((t, i) => (
-                            <span key={i} className="syll-topic">
-                              {t}
-                            </span>
-                          ))}
-                      </p>
-                    ) : (
-                      // Posted before units: too free-form to split into topic
-                      // chips, so it keeps showing as a paragraph.
-                      <p className="hw-body">{y.body}</p>
-                    )}
-                    {!readOnly && (y.created_by === me || isAdmin) && (
-                      <button className="icon-btn-sm syll-remove" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
-                        <Icon name="trash" size={15} />
-                      </button>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <ul className="syll-list">
+          {syllabusGroups.map((g) => {
+            // One byline for the whole tile when every unit shares an
+            // author; otherwise each unit shows its own, since they differ.
+            const authors = [...new Set(g.units.map((y) => y.author_name || y.created_by))];
+            const singleAuthor = authors.length === 1 ? authors[0] : null;
+            return (
+              <li key={`${g.subject}|${g.class}|${g.section ?? ""}`} className="syll-subject-card">
+                <div className="syll-subject-head">
+                  <span className="tag">{g.section ? classText(g.class, g.section) : `${gradeLabel(g.class)} · all sections`}</span>
+                  <h3>{g.subject}</h3>
+                  {singleAuthor && <span className="row-sub">By {singleAuthor}</span>}
+                </div>
+                <ul className="syll-units">
+                  {g.units.map((y) => (
+                    <li key={y.id} className="syll-unit-row">
+                      <div className="syll-unit-label">
+                        <span className="syll-unit-badge">{y.unit || "General"}</span>
+                        {!singleAuthor && <span className="row-sub">{y.author_name || y.created_by}</span>}
+                      </div>
+                      <div className="syll-unit-topics">
+                        {y.unit ? (
+                          <p className="syll-topics">
+                            {y.body
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean)
+                              .map((t, i) => (
+                                <span key={i} className="syll-topic">
+                                  {t}
+                                </span>
+                              ))}
+                          </p>
+                        ) : (
+                          // Posted before units: too free-form to split into
+                          // topic chips, so it keeps showing as a paragraph.
+                          <p className="hw-body">{y.body}</p>
+                        )}
+                      </div>
+                      {!readOnly && (y.created_by === me || isAdmin) && (
+                        <button className="icon-btn-sm syll-unit-remove" onClick={() => removeSyllabus(y.id)} aria-label="Remove unit" title="Remove">
+                          <Icon name="trash" size={15} />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

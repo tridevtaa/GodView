@@ -1168,37 +1168,51 @@ function HomeworkTab({ child, since }) {
           ))}
         </ul>
       ) : (
-        syllBySubject.map(([subject, units]) => (
-          <section key={subject} className="pa-tt-day">
-            <h3 className="pa-tt-day-title">{subject}</h3>
-            <ul className="pa-hw">
-              {units.map((y) => (
-                <li key={y.id} className={`pa-card pa-hw-item${isNew(y.created_at, since) ? " is-new" : ""}`}>
-                  <div className="pa-hw-head">
-                    <strong>{y.unit || "General"}</strong>
-                    {isNew(y.created_at, since) && <NewTag />}
-                  </div>
-                  {y.unit ? (
-                    <p className="syll-topics">
-                      {y.body
-                        .split(",")
-                        .map((t) => t.trim())
-                        .filter(Boolean)
-                        .map((t, i) => (
-                          <span key={i} className="syll-topic">
-                            {t}
-                          </span>
-                        ))}
-                    </p>
-                  ) : (
-                    <p className="pa-hw-body">{y.body}</p>
-                  )}
-                  {y.author_name && <span className="row-sub">By {y.author_name}</span>}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <ul className="syll-list">
+          {syllBySubject.map(([subject, units]) => {
+            // One byline for the whole subject when every unit shares an
+            // author; otherwise each unit shows its own.
+            const authors = [...new Set(units.map((y) => y.author_name).filter(Boolean))];
+            const singleAuthor = authors.length === 1 ? authors[0] : null;
+            const freshHere = units.some((y) => isNew(y.created_at, since));
+            return (
+              <li key={subject} className="syll-subject-card">
+                <div className="syll-subject-head">
+                  <h3>{subject}</h3>
+                  {freshHere && <NewTag />}
+                  {singleAuthor && <span className="row-sub">By {singleAuthor}</span>}
+                </div>
+                <ul className="syll-units">
+                  {units.map((y) => (
+                    <li key={y.id} className="syll-unit-row">
+                      <div className="syll-unit-label">
+                        <span className="syll-unit-badge">{y.unit || "General"}</span>
+                        {!singleAuthor && y.author_name && <span className="row-sub">By {y.author_name}</span>}
+                      </div>
+                      <div className="syll-unit-topics">
+                        {y.unit ? (
+                          <p className="syll-topics">
+                            {y.body
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean)
+                              .map((t, i) => (
+                                <span key={i} className="syll-topic">
+                                  {t}
+                                </span>
+                              ))}
+                          </p>
+                        ) : (
+                          <p className="pa-hw-body">{y.body}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </>
   );

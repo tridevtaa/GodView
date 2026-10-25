@@ -6878,42 +6878,102 @@ input[type="date"]::-webkit-date-and-time-value {
   gap: 10px;
 }
 
-/* Syllabus: subject on the left, the topics covered on the right — reads
-   like a page in a book rather than a form-style card stack. */
-.syll-card {
+/* Syllabus: one tile per subject (per class), its units inside — a course
+   outline, not a stack of near-identical cards repeating the same class and
+   author on every single line. Standalone (not riding on .hw-list/.pa-list)
+   so it looks the same in the staff and parent views. */
+.syll-list {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syll-subject-card {
   padding: 16px 20px;
   border-radius: var(--r-lg);
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
 
-.syll-subject {
+.syll-subject-head {
   display: flex;
-  flex: 0 0 180px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.syll-subject-head h3 {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.syll-units {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.syll-unit-row {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 12px 30px 12px 0;
+}
+
+.syll-unit-row + .syll-unit-row {
+  border-top: 1px solid var(--border);
+}
+
+.syll-unit-label {
+  display: flex;
+  flex: 0 0 150px;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding-right: 20px;
-  border-right: 1px solid var(--border);
 }
 
-.syll-subject strong {
-  font-size: 15px;
-  line-height: 1.3;
+.syll-unit-badge {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.syll-body-col {
-  position: relative;
+.syll-unit-topics {
   flex: 1;
   min-width: 0;
 }
 
-.syll-body-col .hw-body {
+.syll-unit-topics .hw-body {
   margin: 0;
-  padding-right: 30px; /* room for the remove button, top right */
+}
+
+.syll-unit-remove {
+  position: absolute;
+  top: 10px;
+  right: 0;
+}
+
+@media (max-width: 640px) {
+  .syll-unit-row {
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 30px;
+  }
+
+  .syll-unit-label {
+    flex: none;
+  }
 }
 
 .syll-added {
@@ -6966,7 +7026,6 @@ input[type="date"]::-webkit-date-and-time-value {
   flex-wrap: wrap;
   gap: 6px;
   margin: 0;
-  padding-right: 30px; /* room for the remove button, top right */
 }
 
 .syll-topic {
@@ -6976,28 +7035,6 @@ input[type="date"]::-webkit-date-and-time-value {
   color: var(--text-2);
   font-size: 12.5px;
   font-weight: 600;
-}
-
-.syll-remove {
-  position: absolute;
-  top: -2px;
-  right: 0;
-}
-
-@media (max-width: 640px) {
-  .syll-card {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .syll-subject {
-    flex: none;
-    width: 100%;
-    padding-right: 0;
-    padding-bottom: 10px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
 }
 
 .hw-empty {
