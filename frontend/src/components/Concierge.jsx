@@ -342,12 +342,12 @@ export default function Concierge({ school, name, students, facts, page, pages, 
 
   return (
     <div className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}`}>
+      {/* The still also sits under the clips, so the room shows while they load. */}
+      {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
       {clips ? (
         <ClipStage clips={clips} focus={manifest.focus} want={want} onShotEnd={() => setShot(null)} />
-      ) : poster ? (
-        <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />
       ) : (
-        <div className={`cg-orb is-${want}`} aria-hidden="true" />
+        !poster && <div className={`cg-orb is-${want}`} aria-hidden="true" />
       )}
       <div className="cg-shade" aria-hidden="true" />
 
