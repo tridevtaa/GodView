@@ -202,10 +202,11 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
         />
       )}
 
-      {/* While writing, just the form. The class filter only when there's
-          something to filter. Syllabus has no "All classes" — a mixed-class
-          view read as cluttered, so it's always one class at a time. */}
-      {!writing && groups.length > 1 && items?.length > 0 && (
+      {/* While writing, just the form. Homework's class filter only when
+          there's something to filter; syllabus always needs it, since it has
+          no "All classes" — without a switcher to pick from, "choose a
+          class" below would have nothing to point to. */}
+      {!writing && groups.length > 1 && (view === "syllabus" || items?.length > 0) && (
         <ClassSwitcher groups={groups} value={filter} onChange={setFilter} allLabel={view === "homework" ? "All classes" : undefined} />
       )}
 
