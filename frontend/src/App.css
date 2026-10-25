@@ -6916,6 +6916,42 @@ input[type="date"]::-webkit-date-and-time-value {
   padding-right: 30px; /* room for the remove button, top right */
 }
 
+/* Add-syllabus form: unit/subject on the left, topics on the right —
+   mirrors how a posted entry reads. */
+.syll-form-split {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.syll-form-left {
+  display: flex;
+  flex: 0 0 220px;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.syll-form-right {
+  flex: 1;
+  min-width: 0;
+}
+
+.syll-form-right textarea {
+  flex: 1;
+  min-height: 110px;
+}
+
+@media (max-width: 640px) {
+  .syll-form-split {
+    flex-direction: column;
+  }
+
+  .syll-form-left {
+    flex: none;
+  }
+}
+
 /* Topics as short chips, not a paragraph — the point of unit-wise syllabus */
 .syll-topics {
   display: flex;

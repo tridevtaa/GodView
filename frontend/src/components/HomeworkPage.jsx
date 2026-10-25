@@ -447,34 +447,37 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
           <span>All sections of {gradeLabel(group.klass)}</span>
         </label>
       )}
-      <div className="form-grid">
-        <label>
-          <span>Unit</span>
-          <input className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
-        </label>
-        <label>
-          <span>Subject</span>
-          <input className="input" list="syl-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Science" maxLength={80} required />
+      {/* Unit and subject on the left (what it is), topics on the right
+          (what's in it) — same split as how a posted entry reads. */}
+      <div className="syll-form-split">
+        <div className="syll-form-left">
+          <label>
+            <span>Unit / Chapter</span>
+            <input className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
+          </label>
+          <label>
+            <span>Subject</span>
+            <input className="input" list="syl-subjects" value={form.subject} onChange={set("subject")} placeholder="e.g. Science" maxLength={80} required />
+          </label>
+          <datalist id="syl-subjects">
+            {SUBJECTS.map((x) => (
+              <option key={x} value={x} />
+            ))}
+          </datalist>
+        </div>
+        <label className="syll-form-right">
+          <span>Topics</span>
+          <textarea
+            className="textarea"
+            maxLength={1000}
+            value={form.body}
+            onChange={set("body")}
+            placeholder="Short, comma separated — e.g. Crop production, Soil preparation, Irrigation, Harvesting"
+            required
+          />
+          <small className="row-sub">A few words each, not a paragraph.</small>
         </label>
       </div>
-      <datalist id="syl-subjects">
-        {SUBJECTS.map((x) => (
-          <option key={x} value={x} />
-        ))}
-      </datalist>
-      <label>
-        <span>Topics</span>
-        <textarea
-          className="textarea"
-          rows={3}
-          maxLength={1000}
-          value={form.body}
-          onChange={set("body")}
-          placeholder="Short, comma separated — e.g. Crop production, Soil preparation, Irrigation, Harvesting"
-          required
-        />
-      </label>
-      <p className="row-sub">Keep topics short, a few words each — not a paragraph.</p>
 
       {error && <p className="field-error">{error}</p>}
       <div className="hw-form-foot">
