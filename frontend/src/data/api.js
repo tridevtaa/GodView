@@ -1676,11 +1676,11 @@ export async function latestInsight(schoolId, section = "fees") {
   return { insight: latest.data?.[0] ?? null, used: month.count ?? 0 };
 }
 
-// Runs a new analysis (Premium). auto: the daily refresh, which returns
-// the last result if it's from the last day. Throws { code } on "premium",
-// "limit", "busy" or "ai_failed".
-export async function runInsight(schoolId, section = "fees", auto = false) {
-  const { data, error } = await supabase.functions.invoke("ai-insights", { body: { school_id: schoolId, section, auto } });
+// The daily refresh (Premium): a new analysis, or the last one if it's
+// from the last day. Throws { code } on "premium", "limit", "busy" or
+// "ai_failed".
+export async function runInsight(schoolId, section = "fees") {
+  const { data, error } = await supabase.functions.invoke("ai-insights", { body: { school_id: schoolId, section } });
   if (error) {
     const body = await error.context?.json?.().catch(() => null);
     const e = new Error(body?.error || "ai_failed");
