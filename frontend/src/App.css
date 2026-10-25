@@ -14585,94 +14585,6 @@ button.achv-tag {
   box-shadow: 0 3px 12px color-mix(in srgb, var(--c) 12%, transparent);
 }
 
-/* Coming up: small cards in a row, swiped */
-.hw-strip {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.hw-strip-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 2px;
-  border: 0;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.hw-strip-head strong {
-  font-size: 17px;
-}
-
-.hw-strip-head span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--brand);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.hw-strip-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  margin: 0 calc(-1 * var(--gutter));
-  padding: 2px var(--gutter) 10px;
-  scroll-snap-type: x mandatory;
-  scroll-padding: 0 var(--gutter);
-  scrollbar-width: none;
-}
-
-.hw-strip-row::-webkit-scrollbar {
-  display: none;
-}
-
-.hw-card {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  gap: 10px;
-  width: 156px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  scroll-snap-align: start;
-  cursor: pointer;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: var(--d, 0ms);
-}
-
-.hw-card:active {
-  transform: scale(0.97);
-}
-
-.hw-card-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.hw-card-title {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
 /* Phones: two tiles a row; a big one (or an odd one out) across both */
 @media (max-width: 760px) {
   .hw-grid {
@@ -14693,7 +14605,6 @@ button.achv-tag {
 @media (prefers-reduced-motion: reduce) {
   .hw-tile,
   .hw-wide,
-  .hw-card,
   .hw-badge,
   .hw-wide-icon {
     animation: none !important;
