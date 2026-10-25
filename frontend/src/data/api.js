@@ -515,6 +515,22 @@ export async function staffDocumentUrl(path) {
   return data.signedUrl;
 }
 
+// The KYC documents from a staff member's own (most recent) join request, if
+// they joined that way — owners and admins only. null when there isn't one
+// (added directly, without a request).
+export async function staffDocumentsFor(schoolId, email) {
+  const rows = must(
+    await supabase
+      .from("access_requests")
+      .select("id_proof_path, address_proof_path, address_proof_type, education_cert_path")
+      .eq("school_id", schoolId)
+      .eq("email", email.toLowerCase())
+      .order("created_at", { ascending: false })
+      .limit(1)
+  );
+  return rows[0] ?? null;
+}
+
 export async function requestAccess(
   code,
   { fullName, designation, phone, subjects, note, photoPath, policyAgreed, idProofPath, addressProofType, addressProofPath, educationCertPath, joiningDate }

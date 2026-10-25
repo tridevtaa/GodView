@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { savePhoto } from "../data/photos.js";
-import { attendanceMonth, listAssignments, listResults, studentDocumentUrl, updateStudent, uploadStudentDocument } from "../data/api.js";
+import { attendanceMonth, listAssignments, listResults, staffDocumentsFor, staffDocumentUrl, studentDocumentUrl, updateStudent, uploadStudentDocument } from "../data/api.js";
 import { idText } from "./Designation.jsx";
 import ProfileEdit from "./ProfileEdit.jsx";
 import DeletePerson from "./DeletePerson.jsx";
@@ -211,6 +211,66 @@ function StudentDocuments({ person, schoolId, sessionId, canEdit, onUpdate }) {
             </li>
           );
         })}
+      </ul>
+    </section>
+  );
+}
+
+const ADDRESS_PROOF_LABEL = { aadhaar: "Aadhaar card", pan: "PAN card", dl: "Driving licence", passport: "Passport", voter_id: "Voter ID", other: "Other" };
+
+// The KYC documents submitted with a staff member's join request, if they
+// joined that way — owners and admins only, unlike the student documents
+// above, which anyone who can see that student also sees. Nothing shows for
+// staff added directly (no request), or once there's truly nothing on file.
+function StaffDocuments({ schoolId, email }) {
+  const [request, setRequest] = useState(null); // null = still loading
+  const [opening, setOpening] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    setRequest(null);
+    staffDocumentsFor(schoolId, email).then(
+      (r) => live && setRequest(r ?? {}),
+      () => live && setRequest({})
+    );
+    return () => {
+      live = false;
+    };
+  }, [schoolId, email]);
+
+  async function openDoc(path, key) {
+    setOpening(key);
+    try {
+      window.open(await staffDocumentUrl(path), "_blank", "noopener");
+    } catch {
+      // best effort; the link just won't open
+    } finally {
+      setOpening("");
+    }
+  }
+
+  if (!request) return null;
+  const docs = [
+    ["id_proof_path", "ID proof"],
+    ["address_proof_path", request.address_proof_type ? `Address proof (${ADDRESS_PROOF_LABEL[request.address_proof_type] ?? request.address_proof_type})` : "Address proof"],
+    ["education_cert_path", "Education / employment certificate"],
+  ].filter(([k]) => request[k]);
+  if (!docs.length) return null;
+
+  return (
+    <section className="profile-group g-documents">
+      <h3 className="facts-title">Documents</h3>
+      <ul className="profile-docs">
+        {docs.map(([key, label]) => (
+          <li key={key} className="profile-doc-row">
+            <span className="profile-doc-label">{label}</span>
+            <span className="profile-doc-actions">
+              <button type="button" className="link-btn" onClick={() => openDoc(request[key], key)} disabled={opening === key}>
+                {opening === key ? "Opening…" : "View"}
+              </button>
+            </span>
+          </li>
+        ))}
       </ul>
     </section>
   );
@@ -642,6 +702,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               ))}
               {isStudent && <StudentClass person={person} sessionId={sessionId} students={students} onOpenStudent={onOpenStudent} />}
               {isStudent && <StudentDocuments person={person} schoolId={schoolId} sessionId={sessionId} canEdit={canEdit} onUpdate={onUpdate} />}
+              {!isStudent && isAdmin && person.email && <StaffDocuments schoolId={schoolId} email={person.email} />}
               {isStudent && isAdmin && (
                 <section className="profile-group profile-facts g-parents">
                   <StudentParents person={person} canEdit={canEdit} />
