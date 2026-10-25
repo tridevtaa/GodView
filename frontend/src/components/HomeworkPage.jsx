@@ -248,18 +248,18 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           <p className="row-sub">{readOnly ? "The syllabus teachers post appears here." : "Syllabus you post appears here and in parents’ Godview app right away."}</p>
         </section>
       ) : (
-        <ul className="hw-list">
+        <ul className="hw-list syll-list">
           {shownSyllabus.map((y) => (
-            <li key={y.id} className="hw-card">
-              <div className="hw-card-head">
+            <li key={y.id} className="syll-card">
+              <div className="syll-subject">
                 <span className="tag">{y.section ? classText(y.class, y.section) : `${gradeLabel(y.class)} · all sections`}</span>
                 <strong>{y.subject}</strong>
-              </div>
-              <p className="hw-body">{y.body}</p>
-              <div className="hw-foot">
                 <span className="row-sub">{y.author_name || y.created_by}</span>
+              </div>
+              <div className="syll-body-col">
+                <p className="hw-body">{y.body}</p>
                 {!readOnly && (y.created_by === me || isAdmin) && (
-                  <button className="icon-btn-sm" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
+                  <button className="icon-btn-sm syll-remove" onClick={() => removeSyllabus(y.id)} aria-label="Remove syllabus entry" title="Remove">
                     <Icon name="trash" size={15} />
                   </button>
                 )}

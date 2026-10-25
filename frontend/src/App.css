@@ -6878,6 +6878,66 @@ input[type="date"]::-webkit-date-and-time-value {
   gap: 10px;
 }
 
+/* Syllabus: subject on the left, the topics covered on the right — reads
+   like a page in a book rather than a form-style card stack. */
+.syll-card {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 16px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.syll-subject {
+  display: flex;
+  flex: 0 0 180px;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-right: 20px;
+  border-right: 1px solid var(--border);
+}
+
+.syll-subject strong {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.syll-body-col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.syll-body-col .hw-body {
+  margin: 0;
+  padding-right: 30px; /* room for the remove button, top right */
+}
+
+.syll-remove {
+  position: absolute;
+  top: -2px;
+  right: 0;
+}
+
+@media (max-width: 640px) {
+  .syll-card {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .syll-subject {
+    flex: none;
+    width: 100%;
+    padding-right: 0;
+    padding-bottom: 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 .hw-empty {
   display: flex;
   flex-direction: column;
