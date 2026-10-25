@@ -7,9 +7,10 @@
 // an insight quoting a number that isn't in the data is dropped. Each
 // result is saved in ai_insights, which the app reads to show the latest.
 //
-// { auto: true } is the app's once-a-day refresh: if this section was
+// Insights renew by themselves, at most once a day: if this section was
 // analysed in the last FRESH_HOURS, that result comes back and nothing
-// runs (so many people opening the page cost one run a day).
+// runs (so many people opening the page cost one run a day). There is no
+// way to force a new one.
 // { pack_only: true } returns the figures instead (Premium owners and
 // admins only), for the model comparison script.
 //
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ error: "method" }, 405);
 
-  const { school_id, section = "fees", pack_only = false, auto = false } = await req.json().catch(() => ({}));
+  const { school_id, section = "fees", pack_only = false } = await req.json().catch(() => ({}));
   if (typeof school_id !== "string" || !/^[0-9a-f-]{36}$/.test(school_id) || !Object.hasOwn(SECTIONS, section)) {
     return reply({ error: "bad_request" }, 400);
   }
@@ -74,7 +75,7 @@ Deno.serve(async (req) => {
     .eq("section", section)
     .gte("created_at", monthStart.toISOString());
   const used = count ?? 0;
-  if (auto && !pack_only) {
+  if (!pack_only) {
     const { data: latest } = await admin
       .from("ai_insights")
       .select("*")

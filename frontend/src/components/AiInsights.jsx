@@ -6,9 +6,10 @@ import { useDismiss } from "./useDismiss.js";
 
 // AI insights (Premium) on Fees, Transport and Results, built into the
 // pages: the main ones in the AI card (AiCard, "What AI thinks can help"),
-// the rest as short lines next to the figure they explain (Hint). Refreshed once a day by itself: the first owner or admin to open
-// a page after that kicks off a new analysis in the background, and the
-// last one shows meanwhile. Other plans see a locked "Insights" button.
+// the rest as short lines next to the figure they explain (Hint). No
+// refresh button: they renew by themselves once a day. The first owner or
+// admin to open a page after that starts a new analysis in the background,
+// and the last one shows meanwhile. Other plans see a locked button.
 
 const COPY = {
   fees: {
@@ -61,17 +62,17 @@ async function load(e, schoolId, section, auto) {
   }
   e.loading = false;
   notify(e);
-  if (auto && !e.tried && (!e.insight || Date.now() - new Date(e.insight.created_at) > STALE)) run(e, schoolId, section, true);
+  if (auto && !e.tried && (!e.insight || Date.now() - new Date(e.insight.created_at) > STALE)) run(e, schoolId, section);
 }
 
-async function run(e, schoolId, section, auto) {
+async function run(e, schoolId, section) {
   if (e.running) return;
   e.tried = true;
   e.running = true;
   e.error = "";
   notify(e);
   try {
-    const res = await runInsight(schoolId, section, auto);
+    const res = await runInsight(schoolId, section);
     if (res?.insight) e.insight = res.insight;
   } catch (err) {
     e.error = ERRORS[err.code] ?? ERRORS.ai_failed;
@@ -101,7 +102,6 @@ export function useInsights(school, section, enabled = true) {
     insight: e.insight,
     running: e.running,
     error: e.error,
-    refresh: () => run(e, school.id, section, false),
   };
 }
 
@@ -208,7 +208,7 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
               ))}
             </span>
           ) : (
-            <span className="ai-mini-wait">{insight ? "Nothing stands out right now." : "Tap to run the first analysis."}</span>
+            <span className="ai-mini-wait">{insight ? "Nothing stands out right now." : "First insights are on their way."}</span>
           )}
         </button>
       ) : (
@@ -217,11 +217,6 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
             <button type="button" className="ai-card-tap ai-card-head" onClick={toggle} aria-expanded="true">
               {head}
             </button>
-            {!ins.running && insight !== undefined && (
-              <button type="button" className="icon-btn-sm ai-card-refresh" onClick={ins.refresh} aria-label="Analyse again" title="Analyse again">
-                <Icon name="refresh" size={16} />
-              </button>
-            )}
           </div>
           {ins.error && <p className="notice notice-error ai-key-error">{ins.error}</p>}
           {loading ? (
@@ -273,7 +268,7 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
               ))}
             </ol>
           ) : (
-            <p className="ai-empty ai-card-empty">{insight ? "Nothing stands out right now." : "No analysis yet. Tap ↻ to run one."}</p>
+            <p className="ai-empty ai-card-empty">{insight ? "Nothing stands out right now." : "First insights are on their way."}</p>
           )}
         </>
       )}
