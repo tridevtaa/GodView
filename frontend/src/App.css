@@ -6916,6 +6916,14 @@ input[type="date"]::-webkit-date-and-time-value {
   padding-right: 30px; /* room for the remove button, top right */
 }
 
+.syll-added {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+  font-weight: 600;
+}
+
 /* Add-syllabus form: unit/subject on the left, topics on the right —
    mirrors how a posted entry reads. */
 .syll-form-split {

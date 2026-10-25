@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { addHomework, addSyllabusEntry, deleteHomework, deleteSyllabusEntry, listHomework, listSyllabus } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -193,10 +193,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
           isAdmin={isAdmin}
           initial={filter}
           onCancel={() => setWriting(false)}
-          onSaved={(y) => {
-            setSyllabus((xs) => [y, ...(xs ?? [])]);
-            setWriting(false);
-          }}
+          onSaved={(y) => setSyllabus((xs) => [y, ...(xs ?? [])])}
         />
       )}
 
@@ -416,8 +413,12 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
   const [target, setTarget] = useState(initial || groups[0]?.key || "");
   const [whole, setWhole] = useState(false);
   const [form, setForm] = useState({ unit: "", subject: "", body: "" });
+  // Units posted this time round, so the form can stay open for the next one
+  // instead of closing and having to be reopened for every unit.
+  const [added, setAdded] = useState([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const unitRef = useRef(null);
   const group = groups.find((g) => g.key === target);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
   // One entry is one unit, so unit and subject together are what place it —
@@ -430,10 +431,16 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
     setBusy(true);
     setError("");
     try {
-      onSaved(await addSyllabusEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form }));
+      const saved = await addSyllabusEntry(schoolId, sessionId, { klass: group.klass, section: whole ? null : group.section, ...form });
+      onSaved(saved);
       haptic("success");
+      // Same class and subject stay filled in — ready for the next unit.
+      setAdded((a) => [...a, saved.unit]);
+      setForm((f) => ({ ...f, unit: "", body: "" }));
+      unitRef.current?.focus();
     } catch {
       setError("Couldn’t save the syllabus. Check you teach this class and try again.");
+    } finally {
       setBusy(false);
     }
   }
@@ -447,13 +454,18 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
           <span>All sections of {gradeLabel(group.klass)}</span>
         </label>
       )}
+      {added.length > 0 && (
+        <p className="row-sub syll-added">
+          <Icon name="check" size={13} /> Added {added.join(", ")}. Keep going, or Done when finished.
+        </p>
+      )}
       {/* Unit and subject on the left (what it is), topics on the right
           (what's in it) — same split as how a posted entry reads. */}
       <div className="syll-form-split">
         <div className="syll-form-left">
           <label>
             <span>Unit / Chapter</span>
-            <input className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
+            <input ref={unitRef} className="input" value={form.unit} onChange={set("unit")} placeholder="e.g. Unit 1" maxLength={60} required />
           </label>
           <label>
             <span>Subject</span>
@@ -482,10 +494,10 @@ function SyllabusForm({ schoolId, sessionId, groups, isAdmin, initial, onCancel,
       {error && <p className="field-error">{error}</p>}
       <div className="hw-form-foot">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
-          Cancel
+          {added.length ? "Done" : "Cancel"}
         </button>
         <button className="btn btn-primary" disabled={busy || !ok}>
-          {busy ? "Saving…" : "Post syllabus"}
+          {busy ? "Saving…" : added.length ? "Add next unit" : "Post syllabus"}
         </button>
       </div>
     </form>
