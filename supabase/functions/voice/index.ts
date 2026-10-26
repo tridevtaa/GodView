@@ -35,7 +35,7 @@ const cors = {
 };
 const fail = (error: string, status: number) =>
   new Response(JSON.stringify({ error }), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const audio = (body: Blob | Uint8Array) => new Response(body, { headers: { ...cors, "Content-Type": "application/octet-stream" } });
+const audio = (body: Blob | Uint8Array) => new Response(body as BodyInit, { headers: { ...cors, "Content-Type": "application/octet-stream" } });
 
 // Mood from the app -> speaking rate.
 const PACE: Record<string, number> = { pleased: 1.03, concerned: 0.94, sorry: 0.94 };

@@ -16,13 +16,17 @@
 //
 // Deploy with:
 //   npx supabase functions deploy ai-insights
+// Groq answers first, free (see _shared/groq.ts; needs GROQ_API_KEY). Its
+// answer is kept if at least two insights pass the number check; otherwise,
+// or when Groq is over its limits, Claude answers as before.
 // Needs the ANTHROPIC_API_KEY secret. AI_MODEL (optional secret) picks
-// the model; Claude Sonnet 5.5 by default. SUPABASE_URL, SUPABASE_ANON_KEY
+// the Claude model; Claude Sonnet 5.5 by default. SUPABASE_URL, SUPABASE_ANON_KEY
 // and SUPABASE_SERVICE_ROLE_KEY are provided by Supabase.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 import { SECTIONS, checkInsights, schemaFor, userMessage } from "../_shared/insights.js";
+import { groqJson } from "../_shared/groq.ts";
 
 const MONTHLY_LIMIT = 60; // a month for each section: a daily refresh plus some by hand
 const FRESH_HOURS = 20;
@@ -46,6 +50,7 @@ Deno.serve(async (req) => {
   if (typeof school_id !== "string" || !/^[0-9a-f-]{36}$/.test(school_id) || !Object.hasOwn(SECTIONS, section)) {
     return reply({ error: "bad_request" }, 400);
   }
+  const sec = SECTIONS[section as keyof typeof SECTIONS];
 
   // As the signed-in user: the database decides what they may see
   const user = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -89,58 +94,87 @@ Deno.serve(async (req) => {
   }
   if (!pack_only && used >= MONTHLY_LIMIT) return reply({ error: "limit", limit: MONTHLY_LIMIT }, 429);
 
-  const { data: pack, error: packError } = await user.rpc(SECTIONS[section].pack, { p_school: school_id });
+  const { data: pack, error: packError } = await user.rpc(sec.pack, { p_school: school_id });
   if (packError || !pack || pack.error) return reply({ error: "no_data" }, 500);
   if (pack_only) return reply({ pack });
 
-  let response;
-  try {
-    // Server-side fallback: if the model declines, Anthropic retries on
-    // another model in the same call. Cast: the SDK's types may not list
-    // the "default" form yet.
-    response = await anthropic.beta.messages.create({
-      model: MODEL,
-      max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: SECTIONS[section].system,
-      output_config: { format: { type: "json_schema", schema: schemaFor(section) } },
-      messages: [{ role: "user", content: userMessage(section, pack) }],
-    } as unknown as Parameters<typeof anthropic.beta.messages.create>[0]);
-  } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) return reply({ error: "busy" }, 503);
-    if (err instanceof Anthropic.APIError) {
-      console.log(`claude ${err.status} ${String(err.message).slice(0, 300)}`);
+  const system = sec.system;
+  const question = userMessage(section, pack);
+  let answer: { result: ReturnType<typeof checkInsights>; model: string; inT: number | null; outT: number | null } | null = null;
+
+  // Free first: Groq, kept if it gives at least two insights that pass.
+  const fast = await groqJson({
+    system,
+    messages: [{ role: "user", content: question }],
+    schema: schemaFor(section),
+    name: "insights",
+    maxTokens: 4000,
+    minTokens: 1500,
+    timeoutMs: 45000,
+    effort: "medium",
+  });
+  if (fast) {
+    const result = checkInsights(section, fast.json, pack);
+    if (result.insights.length >= 2) answer = { result, model: fast.model, inT: fast.inputTokens, outT: fast.outputTokens };
+    else console.log(`groq kept ${result.insights.length}, dropped ${result.dropped}: asking Claude`);
+  }
+
+  if (!answer) {
+    let response;
+    try {
+      // Server-side fallback: if the model declines, Anthropic retries on
+      // another model in the same call. Cast: the SDK's types may not list
+      // the "default" form yet.
+      response = await anthropic.beta.messages.create({
+        model: MODEL,
+        max_tokens: 16000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        system,
+        output_config: { format: { type: "json_schema", schema: schemaFor(section) } },
+        messages: [{ role: "user", content: question }],
+      } as unknown as Parameters<typeof anthropic.beta.messages.create>[0]);
+    } catch (err) {
+      if (err instanceof Anthropic.RateLimitError) return reply({ error: "busy" }, 503);
+      if (err instanceof Anthropic.APIError) {
+        console.log(`claude ${err.status} ${String(err.message).slice(0, 300)}`);
+        return reply({ error: "ai_failed" }, 502);
+      }
+      console.log(`claude ${String(err).slice(0, 300)}`);
       return reply({ error: "ai_failed" }, 502);
     }
-    console.log(`claude ${String(err).slice(0, 300)}`);
-    return reply({ error: "ai_failed" }, 502);
+
+    const message = response as unknown as Anthropic.Message;
+    if (message.stop_reason === "refusal" || message.stop_reason === "max_tokens") {
+      console.log(`claude stopped: ${message.stop_reason}`);
+      return reply({ error: "ai_failed" }, 502);
+    }
+    const text = message.content.find((b) => b.type === "text");
+    let parsed;
+    try {
+      parsed = JSON.parse(text && text.type === "text" ? text.text : "");
+    } catch {
+      return reply({ error: "ai_failed" }, 502);
+    }
+    answer = {
+      result: checkInsights(section, parsed, pack),
+      model: message.model ?? MODEL,
+      inT: message.usage?.input_tokens ?? null,
+      outT: message.usage?.output_tokens ?? null,
+    };
   }
 
-  const message = response as unknown as Anthropic.Message;
-  if (message.stop_reason === "refusal" || message.stop_reason === "max_tokens") {
-    console.log(`claude stopped: ${message.stop_reason}`);
-    return reply({ error: "ai_failed" }, 502);
-  }
-  const text = message.content.find((b) => b.type === "text");
-  let parsed;
-  try {
-    parsed = JSON.parse(text && text.type === "text" ? text.text : "");
-  } catch {
-    return reply({ error: "ai_failed" }, 502);
-  }
-
-  const result = checkInsights(section, parsed, pack);
+  const { result } = answer;
   const { data: saved, error: saveError } = await admin
     .from("ai_insights")
     .insert({
       school_id,
       section,
-      model: message.model ?? MODEL,
+      model: answer.model,
       result: { insights: result.insights, hints: result.hints },
       dropped: result.dropped,
-      input_tokens: message.usage?.input_tokens ?? null,
-      output_tokens: message.usage?.output_tokens ?? null,
+      input_tokens: answer.inT,
+      output_tokens: answer.outT,
       created_by: auth.user.email ?? null,
     })
     .select()

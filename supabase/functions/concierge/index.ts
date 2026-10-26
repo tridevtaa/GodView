@@ -10,8 +10,11 @@
 //
 // Deploy with:
 //   npx supabase functions deploy concierge
-// Needs the ANTHROPIC_API_KEY secret. CONCIERGE_MODEL (optional secret)
-// picks the model; Claude Opus 5.5 by default.
+// Groq answers first, free and fast (see _shared/groq.ts; needs
+// GROQ_API_KEY); Claude answers when Groq is over its limits, slow, or
+// gives no usable reply. Needs the ANTHROPIC_API_KEY secret.
+// CONCIERGE_MODEL (optional secret) picks the Claude model; Claude Opus
+// 5.5 by default.
 //
 // Each person can ask ASK_PER_10_MIN questions in 10 minutes and
 // ASK_PER_DAY a day (India time), counted in assistant_usage. If that
@@ -19,6 +22,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
+import { groqJson } from "../_shared/groq.ts";
 
 const MODEL = Deno.env.get("CONCIERGE_MODEL") || "claude-opus-5-5";
 const ASK_PER_10_MIN = Number(Deno.env.get("ASK_PER_10_MIN")) || 20;
@@ -153,37 +157,52 @@ Deno.serve(async (req) => {
   if (turns.at(-1)?.role === "user") turns.pop();
   turns.push({ role: "user", content: `${context}\n\nThey said: ${message.trim()}` });
 
-  let response;
-  try {
-    // Server-side fallback: if the model declines, Anthropic retries on
-    // another model in the same call. Cast: the SDK's types may not list
-    // the "default" form yet.
-    response = await anthropic.beta.messages.create({
-      model: MODEL,
-      max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system: SYSTEM,
-      output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-      messages: turns,
-    } as unknown as Parameters<typeof anthropic.beta.messages.create>[0]);
-  } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) return reply({ error: "busy" }, 503);
-    console.log(`claude ${err instanceof Anthropic.APIError ? err.status : ""} ${String(err instanceof Error ? err.message : err).slice(0, 300)}`);
-    return reply({ error: "ai_failed" }, 502);
-  }
+  // Free and fast first: Groq. Kept if it says something.
+  const fast = await groqJson({
+    system: SYSTEM,
+    messages: turns.map((t) => ({ role: t.role === "assistant" ? ("assistant" as const) : ("user" as const), content: String(t.content) })),
+    schema: SCHEMA,
+    name: "reply",
+    maxTokens: 1500,
+    minTokens: 600,
+    timeoutMs: 8000,
+    effort: "low",
+  });
+  // deno-lint-ignore no-explicit-any
+  let out: any = fast && String((fast.json as { say?: unknown })?.say ?? "").trim() ? fast.json : null;
 
-  const msg = response as unknown as Anthropic.Message;
-  if (msg.stop_reason === "refusal" || msg.stop_reason === "max_tokens") {
-    console.log(`claude stopped: ${msg.stop_reason}`);
-    return reply({ error: "ai_failed" }, 502);
-  }
-  const text = msg.content.find((b) => b.type === "text");
-  let out;
-  try {
-    out = JSON.parse(text && text.type === "text" ? text.text : "");
-  } catch {
-    return reply({ error: "ai_failed" }, 502);
+  if (!out) {
+    let response;
+    try {
+      // Server-side fallback: if the model declines, Anthropic retries on
+      // another model in the same call. Cast: the SDK's types may not list
+      // the "default" form yet.
+      response = await anthropic.beta.messages.create({
+        model: MODEL,
+        max_tokens: 4000,
+        betas: ["server-side-fallback-2026-07-01"],
+        fallbacks: "default",
+        system: SYSTEM,
+        output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
+        messages: turns,
+      } as unknown as Parameters<typeof anthropic.beta.messages.create>[0]);
+    } catch (err) {
+      if (err instanceof Anthropic.RateLimitError) return reply({ error: "busy" }, 503);
+      console.log(`claude ${err instanceof Anthropic.APIError ? err.status : ""} ${String(err instanceof Error ? err.message : err).slice(0, 300)}`);
+      return reply({ error: "ai_failed" }, 502);
+    }
+
+    const msg = response as unknown as Anthropic.Message;
+    if (msg.stop_reason === "refusal" || msg.stop_reason === "max_tokens") {
+      console.log(`claude stopped: ${msg.stop_reason}`);
+      return reply({ error: "ai_failed" }, 502);
+    }
+    const text = msg.content.find((b) => b.type === "text");
+    try {
+      out = JSON.parse(text && text.type === "text" ? text.text : "");
+    } catch {
+      return reply({ error: "ai_failed" }, 502);
+    }
   }
 
   // Only what this person can open; anything else becomes a plain answer.
