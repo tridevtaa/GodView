@@ -28,6 +28,7 @@ import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
 import { AiCard, Hint, InsightsButton, hintFor, useInsights } from "./components/AiInsights.jsx";
+import { primeVoice } from "./components/voicePlayer.js";
 
 const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
@@ -660,6 +661,8 @@ export default function App() {
   }
   // The assistant: opens as its own history entry, so Back closes it.
   const openAsk = useCallback(() => {
+    // This tap unlocks sound on phones, so her greeting can be heard.
+    primeVoice();
     if (!window.history.state?.avatar) window.history.pushState({ avatar: true }, "", "/avatar");
     setAsking(true);
   }, []);
