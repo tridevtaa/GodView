@@ -45,6 +45,8 @@ const LEAVE_PLAIN_MS = 600;
 const CLOUD_RETRY_MS = 10 * 60 * 1000;
 // Longest wait for her voice before the device voice takes over.
 const CLOUD_WAIT_MS = 6000;
+// Longest the greeting clip waits for its sound before starting anyway.
+const GREET_WAIT_MS = 2500;
 let cloudOffUntil = 0;
 
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
@@ -88,11 +90,12 @@ function findStudents(all, name) {
 function useClips() {
   const [m, setM] = useState(null);
   useEffect(() => {
-    // Unknown paths come back as the app's page, so a bad answer just means none yet.
+    // Unknown paths come back as the app's page, so a bad answer just means
+    // none yet ({}: no clips, but the page knows and can greet anyway).
     fetch(`${BASE}clips.json`, { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j && typeof j === "object" && setM(j))
-      .catch(() => {});
+      .then((j) => setM(j && typeof j === "object" ? j : {}))
+      .catch(() => setM({}));
   }, []);
   return m;
 }
@@ -104,7 +107,9 @@ function useClips() {
 // mid-clip (she starts talking), the new clip fades in over the old.
 // Looping states pick a fresh variant each time.
 // after: the state to go to when a one-off clip (greet, nod) is over.
-function ClipStage({ clips, focus, want, after, onShotEnd }) {
+// onStart(state): a clip has just started playing (the greeting's sound
+// starts with its video).
+function ClipStage({ clips, focus, want, after, onShotEnd, onStart }) {
   const els = useRef([null, null]);
   const cur = useRef({ i: 0, src: "", state: "" });
   const queued = useRef(null); // { i, src, state }: waiting in the hidden video
@@ -116,6 +121,8 @@ function ClipStage({ clips, focus, want, after, onShotEnd }) {
   wantRef.current = want;
   const afterRef = useRef(after);
   afterRef.current = after;
+  const onStartRef = useRef(onStart);
+  onStartRef.current = onStart;
 
   // A mood ("talk-pleased") falls back to its plain state ("talk").
   // Looping in a mood, the plain clips join in so it doesn't repeat.
@@ -142,6 +149,7 @@ function ClipStage({ clips, focus, want, after, onShotEnd }) {
       cur.current = { i, src, state };
       setCut(clean);
       setFront(i);
+      onStartRef.current?.(state);
       // Once the old video is out of sight, load the next clip into it.
       setTimeout(
         () => {
@@ -256,6 +264,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const busy = useRef(false);
   const soundUrl = useRef("");
   const greeted = useRef(false);
+  const greetBlob = useRef(null);
   const speakSeq = useRef(0);
   const first = String(name ?? "").split(" ")[0];
   // Typing counts as listening: the person leans in. The gesture always
@@ -282,8 +291,10 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   // how: pleased | concerned | sorry, for the tone of her voice.
   // overClip: a clip that already shows her speaking (the greeting) plays;
   // keep it rather than switching to thinking and talking.
+  // blob: the sound already fetched (the greeting), played at once.
+  // deviceOnly: straight to the device voice (her voice just failed).
   const speak = useCallback(
-    (text, how = "", { overClip = false } = {}) => {
+    (text, how = "", { overClip = false, blob = null, deviceOnly = false } = {}) => {
       hush();
       if (!voiceOn || !text) return setPhase("idle");
       const n = speakSeq.current;
@@ -315,7 +326,18 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         synth.speak(u);
         talkFor(1500 + text.length * 90);
       };
-      if (Date.now() < cloudOffUntil) return device();
+      const playBlob = (b) => {
+        const a = voiceAudio();
+        if (soundUrl.current) URL.revokeObjectURL(soundUrl.current);
+        soundUrl.current = URL.createObjectURL(b);
+        a.src = soundUrl.current;
+        a.onended = finish;
+        a.play()
+          .then(() => talkFor(Number.isFinite(a.duration) ? a.duration * 1000 + 1500 : 1500 + text.length * 90))
+          .catch(device);
+      };
+      if (blob) return playBlob(blob);
+      if (deviceOnly || Date.now() < cloudOffUntil) return device();
 
       // Her own voice: she thinks for the moment it takes to arrive.
       if (!overClip) setPhase("think");
@@ -325,17 +347,10 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         device();
       }, CLOUD_WAIT_MS);
       assistantVoice(school.id, text, how)
-        .then((blob) => {
+        .then((b) => {
           clearTimeout(slow);
           if (gaveUp || n !== speakSeq.current) return;
-          const a = voiceAudio();
-          if (soundUrl.current) URL.revokeObjectURL(soundUrl.current);
-          soundUrl.current = URL.createObjectURL(blob);
-          a.src = soundUrl.current;
-          a.onended = finish;
-          a.play()
-            .then(() => talkFor(Number.isFinite(a.duration) ? a.duration * 1000 + 1500 : 1500 + text.length * 90))
-            .catch(device);
+          playBlob(b);
         })
         .catch(() => {
           clearTimeout(slow);
@@ -493,18 +508,49 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   // Hello: the greeting clip, and said aloud each time the assistant opens
   // (after the first time it comes from the voice cache). Browsers only let
   // a page make sound after a tap, so not on a fresh load of /avatar.
+  // Her lips move in the clip's first seconds, so the sound is fetched as
+  // soon as the page opens, the clip waits for it (up to GREET_WAIT_MS),
+  // and the sound starts when the clip actually starts playing.
+  const greetLine = `${greeting()}${first ? `, ${first}` : ""}. How can I help?`;
+  const greetSound = useRef(null); // Promise<Blob | null>, started on open
+  const greetPending = useRef(false); // play the greeting when its clip starts
+  if (greetSound.current === null) {
+    const canSpeak = voiceOn && Boolean(navigator.userActivation?.hasBeenActive) && Date.now() >= cloudOffUntil;
+    greetSound.current = canSpeak
+      ? Promise.race([assistantVoice(school.id, greetLine, "pleased").catch(() => null), new Promise((r) => setTimeout(() => r(null), GREET_WAIT_MS))])
+      : Promise.resolve(null);
+  }
+
   useEffect(() => {
     window.speechSynthesis?.getVoices?.();
-    const clip = Boolean(clips?.greet?.length);
-    if (clip) setShot("greet");
-    if (greeted.current || !navigator.userActivation?.hasBeenActive) return;
-    // Voices can arrive a moment after the page opens.
-    const t = setTimeout(() => {
-      greeted.current = true;
-      speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`, "pleased", { overClip: clip });
-    }, 500);
-    return () => clearTimeout(t);
-  }, [Boolean(clips)]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (greeted.current || !manifest) return;
+    greeted.current = true;
+    const loud = voiceOn && Boolean(navigator.userActivation?.hasBeenActive);
+    if (!clips?.greet?.length) {
+      if (loud) setTimeout(() => speak(greetLine, "pleased"), 300);
+      return;
+    }
+    let live = true;
+    greetSound.current.then((blob) => {
+      if (!live) return;
+      greetBlob.current = blob;
+      greetPending.current = loud;
+      setShot("greet");
+    });
+    return () => {
+      live = false;
+    };
+  }, [manifest]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clipStarted = useCallback(
+    (state) => {
+      if (state !== "greet" || !greetPending.current) return;
+      greetPending.current = false;
+      // No sound fetched in time: the device voice, so it still matches.
+      speak(greetLine, "pleased", { overClip: true, blob: greetBlob.current, deviceOnly: !greetBlob.current });
+    },
+    [speak, greetLine]
+  );
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -533,7 +579,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       {/* The still also sits under the clips, so the room shows while they load. */}
       {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
       {clips ? (
-        <ClipStage clips={clips} focus={manifest.focus} want={want} after={under} onShotEnd={() => setShot(null)} />
+        <ClipStage clips={clips} focus={manifest.focus} want={want} after={under} onShotEnd={() => setShot(null)} onStart={clipStarted} />
       ) : (
         !poster && <div className={`cg-orb is-${wantBase}`} aria-hidden="true" />
       )}
