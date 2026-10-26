@@ -3,7 +3,7 @@
   "focus": "38% 28%",
   "clips": {
     "idle": ["idle-1.mp4", "idle-2.mp4", "idle-3.mp4"],
-    "listen": [],
+    "listen": ["listen.mp4"],
     "think": ["think.mp4"],
     "talk": ["talk-1.mp4", "talk-2.mp4", "talk-3.mp4"],
     "gesture": ["gesture.mp4"],
