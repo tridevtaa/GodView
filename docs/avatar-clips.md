@@ -183,28 +183,38 @@ mood's list (`talk-pleased` and so on); if the answer runs on, the plain
 
 ## 5. Her voice
 
-She speaks with Microsoft's Indian English voice "Neerja", through the
-`voice` function: cheerful for good news, empathetic for worrying news or
-an apology. Azure's free tier gives 0.5 million characters a month (about
-3,000 answers) and then refuses instead of billing; lines said before come
-from a cache and cost nothing. When the voice is off or used up, the
-device's own voice speaks instead.
+She speaks with a Google Chirp 3 HD Indian English voice
+(`en-IN-Chirp3-HD-Sulafat`, a warm female voice) through the `voice`
+function. The mood sets her pace a little; the voice follows the wording.
+Lines said before come from a cache and cost nothing.
+
+Cost: Google gives 1 million Chirp 3 HD characters free a month (about
+6,000 answers) and bills after that, so the function stops at 900,000 and
+the device's own voice speaks for the rest of the month. The same happens
+when the voice isn't set up or is slow.
 
 Setup, once:
 
-1. Sign in at portal.azure.com (a free Microsoft account; Azure asks for a
-   card to check identity, the free tier never charges it).
-2. **Create a resource** > search **Speech** > **Speech service** > Create.
-   Region **Central India**, pricing tier **Free F0**, any name.
-3. Open it > **Keys and Endpoint**: copy **KEY 1** and the **Location**
-   (for example `centralindia`).
-4. In a terminal, from the GodView folder:
+1. Open console.cloud.google.com with your Google account and create a
+   project (for example "GodView voice").
+2. Turn on billing for it when asked (Google needs a card on file even for
+   the free allowance; new accounts also get free trial credit).
+3. Open **APIs & Services > Library**, search **Cloud Text-to-Speech API**
+   and press **Enable**.
+4. **APIs & Services > Credentials > Create credentials > API key**. Then
+   edit the key: under **API restrictions** choose **Restrict key**, tick
+   **Cloud Text-to-Speech API**, save, and copy the key.
+5. Optional, for peace of mind: **Billing > Budgets & alerts**, a budget of
+   ₹100 that emails you.
+6. In a terminal:
 
    ```sh
    cd ~/Desktop/GodView
-   npx supabase secrets set AZURE_SPEECH_KEY=<KEY 1> AZURE_SPEECH_REGION=centralindia
+   npx supabase secrets set GOOGLE_TTS_KEY=<the key>
    npx supabase functions deploy voice
    ```
 
-To try another Azure voice, set `VOICE_NAME` (for example
-`en-IN-AashiNeural`); the moods only change voices that support styles.
+Other voices: try them at cloud.google.com/text-to-speech (English
+(India), Chirp 3 HD), then set `VOICE_NAME`, for example
+`en-IN-Chirp3-HD-Achernar` (soft) or `en-IN-Chirp3-HD-Vindemiatrix`
+(gentle). `VOICE_MONTHLY_CHARS` changes the monthly stop.
