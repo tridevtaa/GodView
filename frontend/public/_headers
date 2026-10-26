@@ -13,6 +13,10 @@
   Cache-Control: no-cache
 
 # The assistant's clips and still: names stay the same when a clip is
-# redone, so a day only.
-/concierge/*
+# redone, so a day only. Its clips.json is checked each time, so new clips
+# show at once.
+/concierge/*.mp4
+  Cache-Control: public, max-age=86400
+
+/concierge/*.jpg
   Cache-Control: public, max-age=86400

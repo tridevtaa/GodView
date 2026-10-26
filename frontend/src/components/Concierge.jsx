@@ -70,7 +70,7 @@ function useClips() {
   const [m, setM] = useState(null);
   useEffect(() => {
     // Unknown paths come back as the app's page, so a bad answer just means none yet.
-    fetch(`${BASE}clips.json`)
+    fetch(`${BASE}clips.json`, { cache: "no-cache" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => j && typeof j === "object" && setM(j))
       .catch(() => {});
