@@ -11,9 +11,14 @@
       "think.mp4"
     ],
     "talk": [
-      "talk-1.mp4"
+      "talk-1.mp4",
+      "talk-2.mp4"
     ],
-    "gesture": [],
-    "greet": []
+    "gesture": [
+      "gesture.mp4"
+    ],
+    "greet": [
+      "greet.mp4"
+    ]
   }
 }
