@@ -96,56 +96,112 @@ function useClips() {
   return m;
 }
 
-// Two stacked videos: the next clip loads in the hidden one, starts, then
-// fades in over the other. Looping states pick a fresh variant each time.
-function ClipStage({ clips, focus, want, onShotEnd }) {
+// Two stacked videos. While one plays, the clip most likely to follow is
+// loaded and paused on its first frame in the hidden one; when the clip
+// ends it starts and swaps in at once, with no fade (every clip begins and
+// ends on the same still, so the seam doesn't show). When the state changes
+// mid-clip (she starts talking), the new clip fades in over the old.
+// Looping states pick a fresh variant each time.
+// after: the state to go to when a one-off clip (greet, nod) is over.
+function ClipStage({ clips, focus, want, after, onShotEnd }) {
   const els = useRef([null, null]);
   const cur = useRef({ i: 0, src: "", state: "" });
+  const queued = useRef(null); // { i, src, state }: waiting in the hidden video
+  const aim = useRef(""); // the state last started (or starting)
   const seq = useRef(0);
   const [front, setFront] = useState(0);
+  const [cut, setCut] = useState(false);
   const wantRef = useRef(want);
   wantRef.current = want;
+  const afterRef = useRef(after);
+  afterRef.current = after;
 
-  const play = useCallback(
+  // A mood ("talk-pleased") falls back to its plain state ("talk").
+  // Looping in a mood, the plain clips join in so it doesn't repeat.
+  const pick = useCallback(
     (state) => {
-      // A mood ("talk-pleased") falls back to its plain state ("talk").
-      // Looping in a mood, the plain clips join in so it doesn't repeat.
       const base = state.split("-")[0];
       const own = clips[state] ?? [];
       const plain = clips[base] ?? [];
       const pool = !own.length ? (plain.length ? plain : clips.idle ?? []) : cur.current.state === state ? [...own, ...plain] : own;
-      if (!pool.length) return;
+      if (!pool.length) return "";
       const fresh = pool.length > 1 ? pool.filter((s) => s !== cur.current.src) : pool;
-      const src = fresh[Math.floor(Math.random() * fresh.length)];
-      const i = 1 - cur.current.i;
-      const v = els.current[i];
-      if (!v) return;
-      const n = ++seq.current;
-      v.src = BASE + src;
-      v.play()
-        .then(() => {
-          if (n !== seq.current) return;
-          const old = els.current[cur.current.i];
-          cur.current = { i, src, state };
-          setFront(i);
-          setTimeout(() => old?.pause(), 400);
-        })
-        .catch(() => {});
+      return fresh[Math.floor(Math.random() * fresh.length)];
     },
     [clips]
   );
 
-  useEffect(() => play(want), [want, play]);
+  // What plays after the current clip: the same state again, or for a
+  // one-off clip, the state underneath it.
+  const nextState = () => (SHOTS.includes(wantRef.current) ? afterRef.current : wantRef.current);
+
+  const show = useCallback(
+    (i, src, state, clean, n) => {
+      const old = els.current[cur.current.i];
+      cur.current = { i, src, state };
+      setCut(clean);
+      setFront(i);
+      // Once the old video is out of sight, load the next clip into it.
+      setTimeout(
+        () => {
+          if (n !== seq.current) return;
+          old?.pause();
+          const st = nextState();
+          const nsrc = pick(st);
+          const v = els.current[1 - i];
+          if (!nsrc || !v) return;
+          v.src = BASE + nsrc;
+          v.load();
+          queued.current = { i: 1 - i, src: nsrc, state: st };
+        },
+        clean ? 60 : 400
+      );
+    },
+    [pick] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // Starts a state now (mid-clip): into the hidden video, then fade.
+  const play = useCallback(
+    (state) => {
+      aim.current = state;
+      const q = queued.current;
+      const n = ++seq.current;
+      queued.current = null;
+      const { i, src } = q && q.state === state ? q : { i: 1 - cur.current.i, src: pick(state) };
+      const v = els.current[i];
+      if (!src || !v) return;
+      if (!(q && q.state === state)) v.src = BASE + src;
+      v.play()
+        .then(() => n === seq.current && show(i, src, state, false, n))
+        .catch(() => {});
+    },
+    [pick, show]
+  );
+
+  useEffect(() => {
+    if (want !== aim.current) play(want);
+  }, [want, play]);
 
   const ended = (i) => {
     if (i !== cur.current.i) return;
-    const { state } = cur.current;
-    if (SHOTS.includes(state) && wantRef.current === state) onShotEnd();
-    else play(wantRef.current);
+    const shotOver = SHOTS.includes(cur.current.state) && wantRef.current === cur.current.state;
+    const state = nextState();
+    const q = queued.current;
+    if (q && q.state === state) {
+      // The seam: the queued clip starts on the frame this one ended on.
+      aim.current = state;
+      queued.current = null;
+      const n = ++seq.current;
+      els.current[q.i]
+        .play()
+        .then(() => n === seq.current && show(q.i, q.src, q.state, true, n))
+        .catch(() => {});
+    } else play(state);
+    if (shotOver) onShotEnd();
   };
 
   return (
-    <div className="cg-stage">
+    <div className={`cg-stage${cut ? " is-cut" : ""}`}>
       {[0, 1].map((i) => (
         <video
           key={i}
@@ -207,8 +263,9 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   // the nod (question heard) as soon as the answer is ready.
   const busyNow = phase !== "idle" || Boolean(draft.trim());
   const talk = mood ? `talk-${mood}` : "talk";
-  const want =
-    shot === "gesture" ? shot : shot === "nod" && phase === "think" ? shot : busyNow ? (phase === "idle" ? "listen" : phase === "talk" ? talk : phase) : shot === "nod" ? "idle" : shot ?? "idle";
+  // under: what she does with no one-off clip playing.
+  const under = busyNow ? (phase === "idle" ? "listen" : phase === "talk" ? talk : phase) : "idle";
+  const want = shot === "gesture" ? shot : shot === "nod" && phase === "think" ? shot : busyNow || shot === "nod" ? under : shot ?? "idle";
   const wantBase = want.split("-")[0];
   useEffect(() => {
     if ((shot === "greet" && busyNow) || (shot === "nod" && phase !== "think")) setShot(null);
@@ -485,7 +542,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       {/* The still also sits under the clips, so the room shows while they load. */}
       {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
       {clips ? (
-        <ClipStage clips={clips} focus={manifest.focus} want={want} onShotEnd={() => setShot(null)} />
+        <ClipStage clips={clips} focus={manifest.focus} want={want} after={under} onShotEnd={() => setShot(null)} />
       ) : (
         !poster && <div className={`cg-orb is-${wantBase}`} aria-hidden="true" />
       )}

@@ -63,6 +63,11 @@
   opacity: 1;
 }
 
+/* A clip ending into the next: a straight cut, the frames match. */
+.cg-stage.is-cut video {
+  transition: none;
+}
+
 /* Only a still so far: it breathes, a slow zoom in and out. */
 .cg-still {
   transform-origin: 30% 60%;
