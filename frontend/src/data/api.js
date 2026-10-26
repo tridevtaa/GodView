@@ -1693,8 +1693,17 @@ export async function runInsight(schoolId, section = "fees") {
 // ------------------------------------------------------- the assistant ---
 
 // One question to the assistant (Premium; owners, admins, the principal).
-// body: { message, history, page, facts, name, pages, forms }. Returns
-// { say, action: { type, target } }. Throws { code } like runInsight.
+// The assistant's voice: one line as an MP3 (Blob), said in a mood
+// (pleased | concerned | sorry). Throws when the voice is off or the
+// month's free allowance is used up; the caller uses the device voice.
+export async function assistantVoice(schoolId, text, mood = "") {
+  const { data, error } = await supabase.functions.invoke("voice", { body: { school_id: schoolId, text, mood } });
+  if (error || !(data instanceof Blob) || !data.size) throw error || new Error("voice");
+  return data;
+}
+
+// body: { message, history, page, facts, name, pages, forms, cards, card }.
+// Returns { say, mood, action: { type, target } }. Throws { code } like runInsight.
 export async function askConcierge(schoolId, body) {
   const { data, error } = await supabase.functions.invoke("concierge", { body: { school_id: schoolId, ...body } });
   if (error) {
