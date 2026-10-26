@@ -12,11 +12,21 @@
 //   npx supabase functions deploy concierge
 // Needs the ANTHROPIC_API_KEY secret. CONCIERGE_MODEL (optional secret)
 // picks the model; Claude Opus 5.5 by default.
+//
+// Each person can ask ASK_PER_10_MIN questions in 10 minutes and
+// ASK_PER_DAY a day (India time), counted in assistant_usage. If that
+// check itself fails (say, before its migration), questions are allowed.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Anthropic from "npm:@anthropic-ai/sdk@0.133.0";
 
 const MODEL = Deno.env.get("CONCIERGE_MODEL") || "claude-opus-5-5";
+const ASK_PER_10_MIN = Number(Deno.env.get("ASK_PER_10_MIN")) || 20;
+const ASK_PER_DAY = Number(Deno.env.get("ASK_PER_DAY")) || 150;
+
+const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -110,6 +120,18 @@ Deno.serve(async (req) => {
   if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
   const { data: school } = await user.from("schools").select("name, plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);
+
+  const { data: over, error: limitError } = await admin.rpc("assistant_take", {
+    p_user: auth.user.id,
+    p_school: school_id,
+    p_kind: "ask",
+    p_amount: 1,
+    p_burst: ASK_PER_10_MIN,
+    p_daily: ASK_PER_DAY,
+  });
+  if (limitError) console.log(`limits: ${limitError.message}`);
+  else if (over === "burst") return reply({ error: "too_fast" }, 429);
+  else if (over === "daily") return reply({ error: "daily_limit" }, 429);
 
   const context = [
     `School: ${school.name}. Speaking with: ${String(name).slice(0, 60) || "a school lead"}. They are on the "${String(page).slice(0, 20)}" page.`,

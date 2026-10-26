@@ -31,6 +31,8 @@ const ERRORS = {
   premium: "The assistant is part of the Premium plan.",
   not_allowed: "The assistant is for owners, admins and the principal.",
   busy: "Lots of questions right now. Try again in a minute.",
+  too_fast: "Let's pause for a moment. Try again in a few minutes.",
+  daily_limit: "That's all the questions for today. Ask me again tomorrow.",
   ai_failed: "Something went wrong there. Try asking again.",
 };
 // How long before this page gives way to the one asked for: with the
