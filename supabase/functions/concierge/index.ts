@@ -62,7 +62,7 @@ const SYSTEM = `You are the GodView assistant, a calm, warm voice inside a schoo
 
 Your reply is read aloud, so:
 - One or two short sentences, at most 30 words. Plain words, no lists, no markdown, no emoji, no dashes used as punctuation.
-- Money in rupees, written like "₹4.2 lakh" or "₹12,500".
+- Money in rupees, written like "₹4.2 lakh", "₹1.3 crore" or "₹12,500". Never say million or billion.
 
 You can do one thing per reply, chosen in "action":
 - "go": open a page. target is a page key from the user's list.
@@ -96,6 +96,16 @@ const SCHEMA = {
   required: ["say", "mood", "action"],
   additionalProperties: false,
 };
+
+// Indian units even if the model slips: "₹2.6 million" -> "₹26 lakh",
+// "₹1.5 billion" -> "₹150 crore".
+const short = (n: number) => String(Number(n.toFixed(1)));
+export function indianUnits(text: string) {
+  return text.replace(/₹\s?(\d+(?:\.\d+)?)\s?(million|billion)\b/gi, (_, num: string, unit: string) => {
+    const lakh = Number(num) * (unit.toLowerCase() === "million" ? 10 : 10000);
+    return lakh >= 100 ? `₹${short(lakh / 100)} crore` : `₹${short(lakh)} lakh`;
+  });
+}
 
 const list = (v: unknown) => (Array.isArray(v) ? v : []).filter((x) => Array.isArray(x) && typeof x[0] === "string" && typeof x[1] === "string").slice(0, 20) as [string, string][];
 
@@ -206,7 +216,7 @@ Deno.serve(async (req) => {
   }
 
   // Only what this person can open; anything else becomes a plain answer.
-  const say = String(out?.say ?? "").replaceAll("\u2014", ", ").slice(0, 400);
+  const say = indianUnits(String(out?.say ?? "").replaceAll("\u2014", ", ")).slice(0, 400);
   let action = { type: String(out?.action?.type ?? "none"), target: String(out?.action?.target ?? "").slice(0, 80) };
   const ok =
     (action.type === "go" && pages.some(([k]) => k === action.target)) ||

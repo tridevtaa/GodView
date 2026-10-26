@@ -237,6 +237,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const [card, setCard] = useState(null); // fees | attendance
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState("");
+  const [asked, setAsked] = useState(""); // the question being answered
   const [choices, setChoices] = useState([]);
   const [error, setError] = useState("");
   const [more, setMore] = useState(false);
@@ -396,6 +397,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     const line = cardLine(kind, reports);
     if (!line) return false;
     setError("");
+    setAsked("");
     setCard(kind);
     setChoices([]);
     setReply(line.say);
@@ -410,6 +412,9 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     busy.current = true;
     hush();
     setDraft("");
+    // The question takes the old answer's place while she thinks.
+    setAsked(q);
+    setReply("");
     setChoices([]);
     setError("");
     setPhase("think");
@@ -560,7 +565,10 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
           </span>
           {STATUS[wantBase] ?? ""}
         </div>
-        <h1 className="cg-say">{reply || `${greeting()}${first ? `, ${first}` : ""}. How can I help?`}</h1>
+        {asked && reply && <p className="cg-asked">{asked}</p>}
+        <h1 className={`cg-say${asked && !reply ? " is-asked" : ""}`}>
+          {reply || (asked ? `\u201c${asked}\u201d` : `${greeting()}${first ? `, ${first}` : ""}. How can I help?`)}
+        </h1>
         {choices.length > 0 && (
           <div className="cg-choices">
             {choices.map((p) => (
