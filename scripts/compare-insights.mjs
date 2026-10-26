@@ -12,6 +12,8 @@
 //   SUPABASE_SECRET_KEY=...   (only for --school: reads the fee figures)
 //   ANTHROPIC_API_KEY=...
 //   OPENROUTER_API_KEY=...    (GPT, Gemini, Mistral, Kimi, DeepSeek)
+//   GROQ_API_KEY=...          (GPT-OSS 120B on Groq's free plan, as the live
+//                              feature uses it; turn on Zero Data Retention)
 //
 // The figures include student names. OpenRouter calls ask for providers
 // that don't keep or train on data (zero data retention); a model with no
@@ -32,6 +34,7 @@ const SUPABASE_URL = "https://zvnsbuviuogrnquwkbsa.supabase.co";
 // list: every term must be in the id, none of "not". Edit freely.
 const CANDIDATES = [
   { label: "Claude Sonnet 5.5", via: "anthropic", model: "claude-sonnet-5-5", price: [2, 10] },
+  { label: "GPT-OSS 120B (Groq, free)", via: "groq", model: "openai/gpt-oss-120b" },
   { label: "GPT-6.1 Sol", via: "openrouter", terms: ["openai/gpt-6.1-sol"], not: ["pro"] },
   { label: "Gemini 3.8 Flash", via: "openrouter", terms: ["google/gemini-3.8-flash"], not: ["lite", ":batch"] },
   { label: "Mistral Large 4", via: "openrouter", terms: ["mistralai/mistral-large-4"] },
@@ -142,6 +145,31 @@ async function runOpenRouter(c, pack, model) {
   return { id: `${model.id}${body.provider ? ` via ${body.provider}` : ""}`, json: JSON.parse(stripFence(text)), inT, outT, cost };
 }
 
+// Same request as the live feature (supabase/functions/_shared/groq.ts).
+async function runGroq(c, pack) {
+  if (!process.env.GROQ_API_KEY) throw new Error("No GROQ_API_KEY in scripts/.env.local");
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: c.model,
+      messages: [
+        { role: "system", content: SECTIONS[SECTION].system },
+        { role: "user", content: userMessage(SECTION, pack) },
+      ],
+      response_format: { type: "json_schema", json_schema: { name: "insights", strict: true, schema: schemaFor(SECTION) } },
+      reasoning_effort: "medium",
+      include_reasoning: false,
+      max_completion_tokens: 4000,
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || body.error) throw new Error(body.error?.message ?? `HTTP ${res.status}`);
+  const choice = body.choices?.[0];
+  if (choice?.finish_reason !== "stop") throw new Error(`Stopped: ${choice?.finish_reason}`);
+  return { id: `${body.model} via Groq`, json: JSON.parse(choice.message.content), inT: body.usage?.prompt_tokens ?? 0, outT: body.usage?.completion_tokens ?? 0, cost: 0 };
+}
+
 // ------------------------------------------------------------------ report ---
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
@@ -201,6 +229,7 @@ const results = await Promise.all(
     try {
       let out;
       if (c.via === "anthropic") out = await runAnthropic(c, pack);
+      else if (c.via === "groq") out = await runGroq(c, pack);
       else {
         const model = pick?.(c);
         if (!model) throw new Error(`Not found on OpenRouter (looked for ${c.terms.join(" + ")})`);
