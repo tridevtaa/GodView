@@ -85,20 +85,21 @@ For each clip:
 Add this ending to every prompt:
 
 > Static locked-off camera, no zoom, no pan, no cuts. The lighting and framing
-> never change. Slow, subtle, natural movement. No music. In the final second
+> never change. Slow, subtle, natural movement. No music. No subtitles, no
+> captions, no on-screen text of any kind. In the final second
 > she is back in exactly the starting pose: hands resting together in her lap,
 > mouth closed, looking into the camera.
 
 | File | Prompt (then the ending above) |
 |---|---|
-| `idle-1.mp4` | She sits calmly, breathing slowly, blinks naturally a few times, with a tiny relaxed shift of her shoulders. She does not speak. |
-| `idle-2.mp4` | She sits relaxed, glances briefly toward the sunset through the window on the left, then back to the camera with a faint smile. She does not speak. |
-| `listen.mp4` | She listens attentively to someone off camera: she leans forward very slightly, tilts her head a little and nods gently twice, then settles back. She does not speak. |
-| `think.mp4` | She thinks for a moment: she glances up and slightly to the side with her lips closed and a small thoughtful tilt of the head, then looks back at the camera. She does not speak. |
+| `idle-1.mp4` | She sits calmly, breathing slowly, blinks naturally a few times, with a tiny relaxed shift of her shoulders. She does not speak; her lips stay closed the whole time. |
+| `idle-2.mp4` | She sits relaxed, glances briefly toward the sunset through the window on the left, then back to the camera with a faint smile. She does not speak; her lips stay closed the whole time. |
+| `listen.mp4` | She listens attentively to someone off camera: she leans forward very slightly, tilts her head a little and nods gently twice, then settles back. She does not speak; her lips stay closed the whole time. |
+| `think.mp4` | She thinks for a moment: she glances up and slightly to the side with her lips closed and a small thoughtful tilt of the head, then looks back at the camera. She does not speak; her lips stay closed the whole time. |
 | `talk-1.mp4` | She speaks warmly to the camera in a calm, friendly voice, with small natural head movements, and says: "Of course. Let me open that for you, it will only take a moment." Then she closes her mouth with a slight smile. |
 | `talk-2.mp4` | She explains something in a friendly way, lifting one hand slightly from her lap in a small open gesture and lowering it again, and says: "Attendance looks good today. Most classes have already been marked." Then she closes her mouth. |
 | `talk-3.mp4` | She speaks softly with a gentle smile and a small nod in the middle of the sentence, and says: "Fees collected this month are on track. Would you like to see the details?" Then she closes her mouth. |
-| `gesture.mp4` | Within the first two seconds she smiles and opens one hand, palm up, toward the right side of the frame, as if showing someone the way. She holds it there for a moment, then slowly rests her hand back in her lap. She does not speak. |
+| `gesture.mp4` | Within the first two seconds she smiles and opens one hand, palm up, toward the right side of the frame, as if showing someone the way. She holds it there for a moment, then slowly rests her hand back in her lap. She does not speak; her lips stay closed the whole time. |
 | `greet.mp4` | She looks up at the camera as if someone has just walked in, smiles warmly and says: "Hello! How can I help you today?" with a small welcoming nod, then settles back. |
 
 The spoken lines are there only to get natural lip movement: the app plays
