@@ -8,7 +8,10 @@
 // Cost: Google gives 1 million Chirp 3 HD characters free a month and
 // bills after that, so this function counts what it sends and stops at
 // VOICE_MONTHLY_CHARS (900,000 by default). The app then uses the
-// device's own voice until the next month.
+// device's own voice until the next month. So that one school can't use
+// up everyone's month, each school also gets VOICE_SCHOOL_DAILY_CHARS a
+// day (30,000, about 200 answers; counted in assistant_usage, and not
+// checked if that check itself fails).
 //
 // Deploy with:
 //   npx supabase functions deploy voice
@@ -20,6 +23,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const KEY = Deno.env.get("GOOGLE_TTS_KEY") ?? "";
 const VOICE = Deno.env.get("VOICE_NAME") || "en-IN-Chirp3-HD-Sulafat";
 const MONTHLY = Number(Deno.env.get("VOICE_MONTHLY_CHARS")) || 900_000;
+const SCHOOL_DAILY = Number(Deno.env.get("VOICE_SCHOOL_DAILY_CHARS")) || 30_000;
 const BUCKET = "voice-cache";
 
 const cors = {
@@ -91,9 +95,11 @@ Deno.serve(async (req) => {
   });
   // Same people as the assistant: owners, admins and the principal of a
   // Premium school. Checked while the cache is looked up.
+  let uid = "";
   const allowed = (async () => {
     const { data: auth } = await user.auth.getUser();
     if (!auth?.user) return "signed_out";
+    uid = auth.user.id;
     const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
     const { data: isPrincipal } = isAdmin ? { data: false } : await user.rpc("is_principal", { school: school_id });
     if (!isAdmin && !isPrincipal) return "not_allowed";
@@ -106,6 +112,17 @@ Deno.serve(async (req) => {
   if (no) return fail(no, no === "signed_out" ? 401 : 403);
   if (cached.data) return audio(cached.data);
   if (used + text.length > MONTHLY) return fail("voice_unavailable", 503);
+  // This school's share for today; only new speech counts.
+  const { data: over, error: limitError } = await admin.rpc("assistant_take", {
+    p_user: uid,
+    p_school: school_id,
+    p_kind: "voice",
+    p_amount: text.length,
+    p_burst: null,
+    p_daily: SCHOOL_DAILY,
+  });
+  if (limitError) console.log(`limits: ${limitError.message}`);
+  else if (over) return fail("voice_unavailable", 503);
 
   const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(KEY)}`, {
     method: "POST",
