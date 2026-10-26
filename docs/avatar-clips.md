@@ -180,3 +180,31 @@ Moods: Claude tags each answer pleased, concerned, sorry or neutral, and a
 report card opening counts as "show". The first talking clip comes from that
 mood's list (`talk-pleased` and so on); if the answer runs on, the plain
 `talk` clips mix in. A mood with no clips just uses `talk`.
+
+## 5. Her voice
+
+She speaks with Microsoft's Indian English voice "Neerja", through the
+`voice` function: cheerful for good news, empathetic for worrying news or
+an apology. Azure's free tier gives 0.5 million characters a month (about
+3,000 answers) and then refuses instead of billing; lines said before come
+from a cache and cost nothing. When the voice is off or used up, the
+device's own voice speaks instead.
+
+Setup, once:
+
+1. Sign in at portal.azure.com (a free Microsoft account; Azure asks for a
+   card to check identity, the free tier never charges it).
+2. **Create a resource** > search **Speech** > **Speech service** > Create.
+   Region **Central India**, pricing tier **Free F0**, any name.
+3. Open it > **Keys and Endpoint**: copy **KEY 1** and the **Location**
+   (for example `centralindia`).
+4. In a terminal, from the GodView folder:
+
+   ```sh
+   cd ~/Desktop/GodView
+   npx supabase secrets set AZURE_SPEECH_KEY=<KEY 1> AZURE_SPEECH_REGION=centralindia
+   npx supabase functions deploy voice
+   ```
+
+To try another Azure voice, set `VOICE_NAME` (for example
+`en-IN-AashiNeural`); the moods only change voices that support styles.

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 import { LogoMark } from "./Logo.jsx";
-import { askConcierge } from "../data/api.js";
+import { askConcierge, assistantVoice } from "../data/api.js";
 import ReportCard, { cardLine, reportFacts, useReports } from "./ConciergeCards.jsx";
 import "./concierge.css";
 
@@ -14,7 +14,9 @@ import "./concierge.css";
 // listed in /concierge/clips.json. Each clip starts and ends on the same
 // still, so any clip can follow any other. Until the clips exist the page
 // shows the still (if there is one) or a glowing orb instead.
-// Speech in and out use the browser's own voices: nothing per minute.
+// Her voice comes from the voice function (Azure's free tier, cached);
+// when that is off, slow or used up, the device's own voice speaks.
+// Listening uses the browser's speech recognition: nothing per minute.
 
 const BASE = "/concierge/";
 // Clips that play once, then hand back to the state underneath.
@@ -35,6 +37,14 @@ const ERRORS = {
 // gesture clip, long enough for her hand to open toward it (about 2s).
 const LEAVE_MS = 2000;
 const LEAVE_PLAIN_MS = 600;
+
+// After a failed fetch, the device voice for this long before trying again.
+const CLOUD_RETRY_MS = 10 * 60 * 1000;
+// Longest wait for her voice before the device voice takes over.
+const CLOUD_WAIT_MS = 6000;
+// An empty sound, played on the first tap so phones allow audio later.
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+let cloudOffUntil = 0;
 
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
@@ -186,6 +196,11 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const leaveTimer = useRef(0);
   const leaving = useRef(false);
   const busy = useRef(false);
+  const sound = useRef(null); // one <audio> for her voice, reused
+  const soundUrl = useRef("");
+  const unlocked = useRef(false);
+  const speakSeq = useRef(0);
+  const audioEl = () => (sound.current ??= new Audio());
   const first = String(name ?? "").split(" ")[0];
   // Typing counts as listening: the person leans in. The gesture always
   // plays out; the greeting gives way as soon as someone types or speaks;
@@ -199,33 +214,77 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     if ((shot === "greet" && busyNow) || (shot === "nod" && phase !== "think")) setShot(null);
   }, [shot, busyNow, phase]);
 
+  // Stops whatever she is saying, in either voice.
+  const hush = useCallback(() => {
+    speakSeq.current++;
+    clearTimeout(talkTimer.current);
+    window.speechSynthesis?.cancel();
+    sound.current?.pause();
+  }, []);
+
+  // how: pleased | concerned | sorry, for the tone of her voice.
   const speak = useCallback(
-    (text) => {
-      const synth = window.speechSynthesis;
-      clearTimeout(talkTimer.current);
-      if (!voiceOn || !synth || !text) return setPhase("idle");
+    (text, how = "") => {
+      hush();
+      if (!voiceOn || !text) return setPhase("idle");
+      const n = speakSeq.current;
       let over = false;
       const finish = () => {
-        if (over) return;
+        if (over || n !== speakSeq.current) return;
         over = true;
         clearTimeout(talkTimer.current);
         setPhase((p) => (p === "talk" ? "idle" : p));
       };
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      const v = pickVoice();
-      if (v) {
-        u.voice = v;
-        u.lang = v.lang;
-      } else u.lang = "en-IN";
-      u.onend = finish;
-      u.onerror = finish;
-      setPhase("talk");
-      synth.speak(u);
       // Some browsers never say it ended: stop talking after a generous guess.
-      talkTimer.current = setTimeout(finish, 1500 + text.length * 90);
+      const talkFor = (ms) => {
+        setPhase("talk");
+        clearTimeout(talkTimer.current);
+        talkTimer.current = setTimeout(finish, ms);
+      };
+      const device = () => {
+        const synth = window.speechSynthesis;
+        if (n !== speakSeq.current) return;
+        if (!synth) return setPhase((p) => (p === "think" ? "idle" : p));
+        const u = new SpeechSynthesisUtterance(text);
+        const v = pickVoice();
+        if (v) {
+          u.voice = v;
+          u.lang = v.lang;
+        } else u.lang = "en-IN";
+        u.onend = finish;
+        u.onerror = finish;
+        synth.speak(u);
+        talkFor(1500 + text.length * 90);
+      };
+      if (Date.now() < cloudOffUntil) return device();
+
+      // Her own voice: she thinks for the moment it takes to arrive.
+      setPhase("think");
+      let gaveUp = false;
+      const slow = setTimeout(() => {
+        gaveUp = true;
+        device();
+      }, CLOUD_WAIT_MS);
+      assistantVoice(school.id, text, how)
+        .then((blob) => {
+          clearTimeout(slow);
+          if (gaveUp || n !== speakSeq.current) return;
+          const a = audioEl();
+          if (soundUrl.current) URL.revokeObjectURL(soundUrl.current);
+          soundUrl.current = URL.createObjectURL(blob);
+          a.src = soundUrl.current;
+          a.onended = finish;
+          a.play()
+            .then(() => talkFor(Number.isFinite(a.duration) ? a.duration * 1000 + 1500 : 1500 + text.length * 90))
+            .catch(device);
+        })
+        .catch(() => {
+          clearTimeout(slow);
+          cloudOffUntil = Date.now() + CLOUD_RETRY_MS;
+          if (!gaveUp) device();
+        });
     },
-    [voiceOn]
+    [voiceOn, hush, school.id]
   );
 
   const go = useCallback(
@@ -252,24 +311,24 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
           setMood("show");
         }
         setReply(say);
-        return speak(say);
+        return speak(say, how);
       }
       if (action?.type === "student") {
         const found = findStudents(students, action.target);
         if (found.length === 1) {
           setReply(say);
           go({ type: "student", id: found[0].id });
-          return speak(say);
+          return speak(say, how);
         }
         const line = found.length ? `I found ${found.length} students called ${action.target}. Which one?` : `I couldn't find a student called ${action.target}.`;
         if (!found.length) setMood("sorry");
         setReply(line);
         setChoices(found.slice(0, 6));
-        return speak(line);
+        return speak(line, found.length ? "" : "sorry");
       }
       setReply(say);
       if (action && action.type !== "none") go(action);
-      speak(say);
+      speak(say, how);
     },
     [students, go, speak, reports]
   );
@@ -283,7 +342,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     setChoices([]);
     setReply(line.say);
     setMood(line.mood || "show");
-    speak(line.say);
+    speak(line.say, line.mood);
     return true;
   };
 
@@ -291,7 +350,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     const q = text.trim();
     if (!q || busy.current) return;
     busy.current = true;
-    window.speechSynthesis?.cancel();
+    hush();
     setDraft("");
     setChoices([]);
     setError("");
@@ -315,7 +374,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       const msg = ERRORS[e.code] ?? ERRORS.ai_failed;
       setError(msg);
       setMood("sorry");
-      speak(msg);
+      speak(msg, "sorry");
     } finally {
       busy.current = false;
     }
@@ -325,7 +384,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
 
   function listen() {
     if (rec.current) return rec.current.stop();
-    window.speechSynthesis?.cancel();
+    hush();
     const r = new SR();
     r.lang = "en-IN";
     r.interimResults = true;
@@ -357,7 +416,10 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   function toggleVoice() {
     const on = !voiceOn;
     setVoiceOn(on);
-    if (!on) window.speechSynthesis?.cancel();
+    if (!on) {
+      hush();
+      setPhase((p) => (p === "talk" ? "idle" : p));
+    }
     try {
       localStorage.setItem("gv-voice", on ? "on" : "off");
     } catch {
@@ -384,7 +446,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       /* private window */
     }
     // Voices can arrive a moment after the page opens.
-    const t = setTimeout(() => speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`), 500);
+    const t = setTimeout(() => speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`, "pleased"), 500);
     return () => clearTimeout(t);
   }, [Boolean(clips)]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -399,14 +461,27 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       clearTimeout(leaveTimer.current);
       rec.current?.abort();
       // Opening a page keeps the sentence going; closing stops it.
-      if (!leaving.current) window.speechSynthesis?.cancel();
+      if (!leaving.current) hush();
     };
-  }, [onClose]);
+  }, [onClose, hush]);
 
   const shown = more ? chips : chips.slice(0, 4);
 
   return (
-    <div className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}`}>
+    <div
+      className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}`}
+      // Phones only play sound started by a tap: the first tap here plays
+      // silence on her audio element, so her voice can play later.
+      onPointerDownCapture={() => {
+        if (unlocked.current) return;
+        unlocked.current = true;
+        const a = audioEl();
+        if (!a.src) {
+          a.src = SILENT;
+          a.play().catch(() => {});
+        }
+      }}
+    >
       {/* The still also sits under the clips, so the room shows while they load. */}
       {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
       {clips ? (
