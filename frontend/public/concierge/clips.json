@@ -7,6 +7,6 @@
     "think": ["think.mp4"],
     "talk": ["talk-1.mp4", "talk-2.mp4", "talk-3.mp4"],
     "gesture": ["gesture.mp4"],
-    "greet": []
+    "greet": ["greet.mp4"]
   }
 }
