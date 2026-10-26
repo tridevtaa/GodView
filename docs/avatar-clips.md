@@ -84,22 +84,26 @@ For each clip:
 
 Add this ending to every prompt:
 
-> Static locked-off camera, no zoom, no pan, no cuts. The lighting and framing
-> never change. Slow, subtle, natural movement. No music. No subtitles, no
-> captions, no on-screen text of any kind. In the final second
-> she is back in exactly the starting pose: hands resting together in her lap,
-> mouth closed, looking into the camera.
+> One continuous shot from a single fixed camera: no cuts, no second angle,
+> no zoom, no pan. The lighting and framing never change. Slow, subtle,
+> natural movement. No music. No subtitles, no captions, no on-screen text of
+> any kind. In the final second she is back in exactly the starting pose:
+> hands clasped together in her lap, mouth closed, looking into the camera.
+
+Silent clips (every clip without a spoken line) also end with: "This is a
+silent clip: no dialogue and no voice." Flow tends to make her talk
+otherwise.
 
 | File | Prompt (then the ending above) |
 |---|---|
-| `idle-1.mp4` | She sits calmly, breathing slowly, blinks naturally a few times, with a tiny relaxed shift of her shoulders. She does not speak; her lips stay closed the whole time. |
-| `idle-2.mp4` | She sits relaxed, glances briefly toward the sunset through the window on the left, then back to the camera with a faint smile. She does not speak; her lips stay closed the whole time. |
-| `listen.mp4` | She listens attentively to someone off camera: she leans forward very slightly, tilts her head a little and nods gently twice, then settles back. She does not speak; her lips stay closed the whole time. |
-| `think.mp4` | She thinks for a moment: she glances up and slightly to the side with her lips closed and a small thoughtful tilt of the head, then looks back at the camera. She does not speak; her lips stay closed the whole time. |
+| `idle-1.mp4` | She sits calmly, breathing slowly, blinks naturally a few times, with a tiny relaxed shift of her shoulders. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
+| `idle-2.mp4` | She sits relaxed, glances briefly toward the sunset through the window on the left, then back to the camera with a faint smile. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
+| `listen.mp4` | She silently listens to a question from someone off camera, the way a person listens on a video call: she leans forward very slightly, tilts her head a little and nods gently twice, then settles back. Her mouth stays closed, lips gently together, the whole time; she makes no sound. This is a silent clip: no dialogue and no voice. |
+| `think.mp4` | She thinks for a moment: she glances up and slightly to the side with her lips closed and a small thoughtful tilt of the head, then looks back at the camera. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
 | `talk-1.mp4` | She speaks warmly to the camera in a calm, friendly voice, with small natural head movements, and says: "Of course. Let me open that for you, it will only take a moment." Then she closes her mouth with a slight smile. |
 | `talk-2.mp4` | She explains something in a friendly way, lifting one hand slightly from her lap in a small open gesture and lowering it again, and says: "Attendance looks good today. Most classes have already been marked." Then she closes her mouth. |
 | `talk-3.mp4` | She speaks softly with a gentle smile and a small nod in the middle of the sentence, and says: "Fees collected this month are on track. Would you like to see the details?" Then she closes her mouth. |
-| `gesture.mp4` | Within the first two seconds she smiles and opens one hand, palm up, toward the right side of the frame, as if showing someone the way. She holds it there for a moment, then slowly rests her hand back in her lap. She does not speak; her lips stay closed the whole time. |
+| `gesture.mp4` | Within the first two seconds she smiles and opens one hand, palm up, toward the right side of the frame, as if showing someone the way. She holds it there for a moment, then slowly rests her hand back in her lap. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
 | `greet.mp4` | She looks up at the camera as if someone has just walked in, smiles warmly and says: "Hello! How can I help you today?" with a small welcoming nod, then settles back. |
 
 The spoken lines are there only to get natural lip movement: the app plays
@@ -113,15 +117,16 @@ Same steps, same ending as above.
 
 | File | When it plays | Prompt (then the ending above) |
 |---|---|---|
-| `idle-3.mp4` | waiting (more variety) | She lifts one hand and gently tucks a loose strand of hair behind her ear, then rests the hand back in her lap and settles. She does not speak; her lips stay closed the whole time. |
-| `idle-4.mp4` | waiting (more variety) | She glances down at her hands for a moment with a soft, private smile, as if remembering something pleasant, then looks back up into the camera. She does not speak; her lips stay closed the whole time. |
-| `nod.mp4` | right after a question is asked | Within the first second she gives one small, clear nod with a slight smile, as if to say "understood", then holds still and looks into the camera. She does not speak; her lips stay closed the whole time. |
+| `idle-3.mp4` | waiting (more variety) | She sits calmly and takes one slow, relaxed breath, her shoulders rising and settling gently. Then she glances briefly toward the right side of the room with a soft, warm smile, as if noticing something pleasant, and slowly looks back into the camera. Her hands stay clasped together in her lap the whole time. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
+| `idle-4.mp4` | waiting (more variety) | She glances down at her hands for a moment with a soft, private smile, as if remembering something pleasant, then looks back up into the camera. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
+| `nod.mp4` | right after a question is asked | Within the first second she gives one small, clear nod with a slight smile, as if to say "understood", then holds still and looks into the camera. She does not speak; her lips stay closed the whole time. This is a silent clip: no dialogue and no voice. |
 | `talk-pleased.mp4` | good news | She speaks with a bright, genuine smile that reaches her eyes, her eyebrows lifting a little with pleasure, and says: "That's lovely news. Everything is looking really good this week." Then she closes her mouth, still smiling. |
 | `talk-concerned.mp4` | worrying figures | She speaks gently with a slightly concerned expression, brows drawn together a little and a small sympathetic tilt of the head, and says: "A few classes still need some attention. Let me show you which ones." Then she closes her mouth. |
 | `talk-sorry.mp4` | can't help, not found, errors | She speaks with a small apologetic smile and a tiny shrug of one shoulder, and says: "I'm sorry, I couldn't find that. Could you say it another way?" Then she closes her mouth. |
-| `talk-show.mp4` | a report card opens | She turns her head and shoulders slightly toward the right side of the frame, opens one hand toward it as if showing a screen beside her, and says: "Here is the report. Let me walk you through it." Then she turns back to the camera and lowers her hand. |
+| `talk-show.mp4` | a report card opens | She turns her head and shoulders slightly toward the right side of the frame, opens one hand toward it as if showing a screen beside her, and says: "Here is the report. Let me walk you through it." Then she turns back to the camera and clasps her hands in her lap again. |
 
-Checks on top of the usual ones: `nod` must nod in the first second (it is
+Check every clip's last second for a sudden change of camera angle (Flow
+sometimes adds one); it can be trimmed off. Checks on top of the usual ones: `nod` must nod in the first second (it is
 cut short as soon as the answer is ready); the three silent ones must keep
 her lips closed all the way through.
 
