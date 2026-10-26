@@ -714,6 +714,13 @@
   animation: none;
 }
 
+/* Flow's clips carry a few black rows on the top and bottom edges: a
+   slight zoom keeps them off screen. */
+.cg.has-clips .cg-stage,
+.cg.has-clips .cg-still {
+  transform: scale(1.015);
+}
+
 .cg.has-clips .cg-shade,
 .cg.has-still .cg-shade {
   background:

@@ -13,8 +13,8 @@ before that, a glowing orb.
 
 **The look:** a minimalist luxury villa at golden hour. Warm beige textured
 plaster, a tall window on the left over a calm sea and hazy mountains, an
-olive tree and a pale stone sculpture. The woman wears a charcoal textured
-wrap blazer, dark brown hair in a loose updo, and sits in a rounded cream
+olive tree and a pale stone sculpture. The woman wears a crisp white silk
+blouse and navy trousers, dark brown hair in a loose updo, and sits in a rounded cream
 boucle armchair. She sits a little back and **in the left third** of the
 frame: the panel goes on the plain plaster wall on the right, and from a
 little further away loose lip sync isn't noticed.
@@ -51,7 +51,7 @@ Every clip starts and ends on this image, so take time over it.
 > subtle organic relief; on the far right, a recessed wall niche with soft
 > hidden warm lighting. Warm, gentle sunset light from the window.
 >
-> The same woman, in the same charcoal textured wool wrap blazer, dark brown
+> The same woman, in the same crisp white silk blouse and navy trousers, dark brown
 > hair in a loose elegant updo with a few soft strands framing her face, sits
 > in a rounded cream boucle armchair. She is in the left third of the frame,
 > her face about one third in from the left edge, about three metres from the
