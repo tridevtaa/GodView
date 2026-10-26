@@ -1,5 +1,5 @@
 // The assistant's voice (Premium): turns one reply into speech with a
-// Google Chirp 3 HD Indian English voice and returns an MP3. The mood
+// Google Chirp 3 HD voice (British English by default) and returns an MP3. The mood
 // sets her pace a little (a touch brighter for good news, slower for
 // worrying news or an apology); the voice itself follows the wording.
 // Lines already spoken ("Opening Fees.") come from a private storage
@@ -16,12 +16,14 @@
 // Deploy with:
 //   npx supabase functions deploy voice
 // Needs the GOOGLE_TTS_KEY secret (an API key allowed to use the Cloud
-// Text-to-Speech API). VOICE_NAME (optional) picks another voice.
+// Text-to-Speech API). VOICE_NAME (optional) picks another voice; its
+// language comes from the name ("en-US-Chirp3-HD-Leda" is US English).
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const KEY = Deno.env.get("GOOGLE_TTS_KEY") ?? "";
-const VOICE = Deno.env.get("VOICE_NAME") || "en-IN-Chirp3-HD-Sulafat";
+const VOICE = Deno.env.get("VOICE_NAME") || "en-GB-Chirp3-HD-Sulafat";
+const LANG = VOICE.split("-").slice(0, 2).join("-");
 const MONTHLY = Number(Deno.env.get("VOICE_MONTHLY_CHARS")) || 900_000;
 const SCHOOL_DAILY = Number(Deno.env.get("VOICE_SCHOOL_DAILY_CHARS")) || 30_000;
 const BUCKET = "voice-cache";
@@ -129,7 +131,7 @@ Deno.serve(async (req) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       input: { text },
-      voice: { languageCode: "en-IN", name: VOICE },
+      voice: { languageCode: LANG, name: VOICE },
       audioConfig: { audioEncoding: "MP3", speakingRate: rate },
     }),
   }).catch(() => null);

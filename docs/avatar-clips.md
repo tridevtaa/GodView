@@ -188,9 +188,9 @@ mood's list (`talk-pleased` and so on); if the answer runs on, the plain
 
 ## 5. Her voice
 
-She speaks with a Google Chirp 3 HD Indian English voice
-(`en-IN-Chirp3-HD-Sulafat`, a warm female voice) through the `voice`
-function. The mood sets her pace a little; the voice follows the wording.
+She speaks with a Google Chirp 3 HD voice in British English
+(`en-GB-Chirp3-HD-Sulafat`, a warm female voice; the Indian English one
+sounded too strongly accented) through the `voice` function. The mood sets her pace a little; the voice follows the wording.
 Lines said before come from a cache and cost nothing.
 
 Cost: Google gives 1 million Chirp 3 HD characters free a month (about
@@ -219,7 +219,7 @@ Setup, once:
    npx supabase functions deploy voice
    ```
 
-Other voices: try them at cloud.google.com/text-to-speech (English
-(India), Chirp 3 HD), then set `VOICE_NAME`, for example
-`en-IN-Chirp3-HD-Achernar` (soft) or `en-IN-Chirp3-HD-Vindemiatrix`
-(gentle). `VOICE_MONTHLY_CHARS` changes the monthly stop.
+Other voices: try them at cloud.google.com/text-to-speech (Chirp 3 HD),
+then set `VOICE_NAME`; the accent comes from the start of the name, for
+example `en-US-Chirp3-HD-Sulafat` (American), `en-AU-Chirp3-HD-Sulafat`
+(Australian) or `en-IN-Chirp3-HD-Sulafat` (Indian). `VOICE_MONTHLY_CHARS` changes the monthly stop.

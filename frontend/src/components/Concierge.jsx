@@ -3,6 +3,7 @@ import Icon from "./Icon.jsx";
 import { LogoMark } from "./Logo.jsx";
 import { askConcierge, assistantVoice } from "../data/api.js";
 import ReportCard, { cardLine, reportFacts, useReports } from "./ConciergeCards.jsx";
+import { primeVoice, voiceAudio } from "./voicePlayer.js";
 import "./concierge.css";
 
 // godview.in/avatar: the assistant as a page. A person sits in a room on
@@ -44,8 +45,6 @@ const LEAVE_PLAIN_MS = 600;
 const CLOUD_RETRY_MS = 10 * 60 * 1000;
 // Longest wait for her voice before the device voice takes over.
 const CLOUD_WAIT_MS = 6000;
-// An empty sound, played on the first tap so phones allow audio later.
-const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 let cloudOffUntil = 0;
 
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
@@ -254,11 +253,9 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const leaveTimer = useRef(0);
   const leaving = useRef(false);
   const busy = useRef(false);
-  const sound = useRef(null); // one <audio> for her voice, reused
   const soundUrl = useRef("");
-  const unlocked = useRef(false);
+  const greeted = useRef(false);
   const speakSeq = useRef(0);
-  const audioEl = () => (sound.current ??= new Audio());
   const first = String(name ?? "").split(" ")[0];
   // Typing counts as listening: the person leans in. The gesture always
   // plays out; the greeting gives way as soon as someone types or speaks;
@@ -278,12 +275,14 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     speakSeq.current++;
     clearTimeout(talkTimer.current);
     window.speechSynthesis?.cancel();
-    sound.current?.pause();
+    voiceAudio()?.pause();
   }, []);
 
   // how: pleased | concerned | sorry, for the tone of her voice.
+  // overClip: a clip that already shows her speaking (the greeting) plays;
+  // keep it rather than switching to thinking and talking.
   const speak = useCallback(
-    (text, how = "") => {
+    (text, how = "", { overClip = false } = {}) => {
       hush();
       if (!voiceOn || !text) return setPhase("idle");
       const n = speakSeq.current;
@@ -296,7 +295,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       };
       // Some browsers never say it ended: stop talking after a generous guess.
       const talkFor = (ms) => {
-        setPhase("talk");
+        if (!overClip) setPhase("talk");
         clearTimeout(talkTimer.current);
         talkTimer.current = setTimeout(finish, ms);
       };
@@ -318,7 +317,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       if (Date.now() < cloudOffUntil) return device();
 
       // Her own voice: she thinks for the moment it takes to arrive.
-      setPhase("think");
+      if (!overClip) setPhase("think");
       let gaveUp = false;
       const slow = setTimeout(() => {
         gaveUp = true;
@@ -328,7 +327,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         .then((blob) => {
           clearTimeout(slow);
           if (gaveUp || n !== speakSeq.current) return;
-          const a = audioEl();
+          const a = voiceAudio();
           if (soundUrl.current) URL.revokeObjectURL(soundUrl.current);
           soundUrl.current = URL.createObjectURL(blob);
           a.src = soundUrl.current;
@@ -486,26 +485,19 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     }
   }
 
-  // Hello: the greeting clip, and said aloud once a day (browsers only
-  // let a page speak after a tap, so not on a fresh load).
+  // Hello: the greeting clip, and said aloud each time the assistant opens
+  // (after the first time it comes from the voice cache). Browsers only let
+  // a page make sound after a tap, so not on a fresh load of /avatar.
   useEffect(() => {
     window.speechSynthesis?.getVoices?.();
-    if (clips?.greet?.length) setShot("greet");
-    let said = "";
-    try {
-      said = localStorage.getItem("gv-greeted") ?? "";
-    } catch {
-      /* private window */
-    }
-    const day = new Date().toDateString();
-    if (said === day || !navigator.userActivation?.hasBeenActive) return;
-    try {
-      localStorage.setItem("gv-greeted", day);
-    } catch {
-      /* private window */
-    }
+    const clip = Boolean(clips?.greet?.length);
+    if (clip) setShot("greet");
+    if (greeted.current || !navigator.userActivation?.hasBeenActive) return;
     // Voices can arrive a moment after the page opens.
-    const t = setTimeout(() => speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`, "pleased"), 500);
+    const t = setTimeout(() => {
+      greeted.current = true;
+      speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`, "pleased", { overClip: clip });
+    }, 500);
     return () => clearTimeout(t);
   }, [Boolean(clips)]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -529,17 +521,9 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   return (
     <div
       className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}`}
-      // Phones only play sound started by a tap: the first tap here plays
-      // silence on her audio element, so her voice can play later.
-      onPointerDownCapture={() => {
-        if (unlocked.current) return;
-        unlocked.current = true;
-        const a = audioEl();
-        if (!a.src) {
-          a.src = SILENT;
-          a.play().catch(() => {});
-        }
-      }}
+      // Phones only play sound a tap started: opened from a link, the
+      // first tap here unlocks her voice (opening from the app already did).
+      onPointerDownCapture={primeVoice}
     >
       {/* The still also sits under the clips, so the room shows while they load. */}
       {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
