@@ -105,6 +105,26 @@ Add this ending to every prompt:
 The spoken lines are there only to get natural lip movement: the app plays
 the clips muted and speaks the real answer with the browser's voice.
 
+### Emotion clips (optional, make after the nine above)
+
+These make her react instead of looking the same every time. Each is
+optional: whatever is missing falls back to the plain clip (`talk`, `idle`).
+Same steps, same ending as above.
+
+| File | When it plays | Prompt (then the ending above) |
+|---|---|---|
+| `idle-3.mp4` | waiting (more variety) | She lifts one hand and gently tucks a loose strand of hair behind her ear, then rests the hand back in her lap and settles. She does not speak; her lips stay closed the whole time. |
+| `idle-4.mp4` | waiting (more variety) | She glances down at her hands for a moment with a soft, private smile, as if remembering something pleasant, then looks back up into the camera. She does not speak; her lips stay closed the whole time. |
+| `nod.mp4` | right after a question is asked | Within the first second she gives one small, clear nod with a slight smile, as if to say "understood", then holds still and looks into the camera. She does not speak; her lips stay closed the whole time. |
+| `talk-pleased.mp4` | good news | She speaks with a bright, genuine smile that reaches her eyes, her eyebrows lifting a little with pleasure, and says: "That's lovely news. Everything is looking really good this week." Then she closes her mouth, still smiling. |
+| `talk-concerned.mp4` | worrying figures | She speaks gently with a slightly concerned expression, brows drawn together a little and a small sympathetic tilt of the head, and says: "A few classes still need some attention. Let me show you which ones." Then she closes her mouth. |
+| `talk-sorry.mp4` | can't help, not found, errors | She speaks with a small apologetic smile and a tiny shrug of one shoulder, and says: "I'm sorry, I couldn't find that. Could you say it another way?" Then she closes her mouth. |
+| `talk-show.mp4` | a report card opens | She turns her head and shoulders slightly toward the right side of the frame, opens one hand toward it as if showing a screen beside her, and says: "Here is the report. Let me walk you through it." Then she turns back to the camera and lowers her hand. |
+
+Checks on top of the usual ones: `nod` must nod in the first second (it is
+cut short as soon as the answer is ready); the three silent ones must keep
+her lips closed all the way through.
+
 ## 4. Hand them over
 
 Put `still.png` and the nine clips in one folder (for example
@@ -128,10 +148,15 @@ Put `still.png` and the nine clips in one folder (for example
   "poster": "still.jpg",
   "focus": "30% 40%",
   "clips": {
-    "idle": ["idle-1.mp4", "idle-2.mp4"],
+    "idle": ["idle-1.mp4", "idle-2.mp4", "idle-3.mp4", "idle-4.mp4"],
     "listen": ["listen.mp4"],
     "think": ["think.mp4"],
     "talk": ["talk-1.mp4", "talk-2.mp4", "talk-3.mp4"],
+    "talk-pleased": ["talk-pleased.mp4"],
+    "talk-concerned": ["talk-concerned.mp4"],
+    "talk-sorry": ["talk-sorry.mp4"],
+    "talk-show": ["talk-show.mp4"],
+    "nod": ["nod.mp4"],
     "gesture": ["gesture.mp4"],
     "greet": ["greet.mp4"]
   }
@@ -146,6 +171,12 @@ Put `still.png` and the nine clips in one folder (for example
   doesn't visibly repeat.
 
 How they play: idle loops while nothing happens; listen while the mic is open
-or something is being typed; think while Claude answers; talk loops while the
-answer is spoken; gesture plays briefly before the page opens what was asked
-for; greet plays once when the assistant opens.
+or something is being typed; nod once when a question is sent, then think
+while Claude answers; talk loops while the answer is spoken; gesture plays
+briefly before the page opens what was asked for; greet plays once when the
+assistant opens.
+
+Moods: Claude tags each answer pleased, concerned, sorry or neutral, and a
+report card opening counts as "show". The first talking clip comes from that
+mood's list (`talk-pleased` and so on); if the answer runs on, the plain
+`talk` clips mix in. A mood with no clips just uses `talk`.

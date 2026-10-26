@@ -1139,6 +1139,8 @@ export default function App() {
         {asking && canAsk && (
           <Concierge
             school={school}
+            sessionId={currentSession?.id}
+            seesFees={isAdmin}
             name={user.displayName}
             students={searchStudents}
             facts={askFacts}

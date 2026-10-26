@@ -3,7 +3,9 @@
 // and a few figures it already shows them (students, dues, today's
 // attendance). Claude answers in one or two spoken sentences and may pick
 // one thing to do: open a page, a student (by name; the app finds them),
-// a form, or the bus map. The app checks that choice again before acting.
+// a form, the bus map, or a report card shown beside the answer. It also
+// picks a mood for the reply, which picks her expression. The app checks
+// that choice again before acting.
 // Owners, admins and the principal of a Premium school.
 //
 // Deploy with:
@@ -53,7 +55,12 @@ You can do one thing per reply, chosen in "action":
 - "student": open a student's profile. target is the student's name as the user said it.
 - "start": open a form. target is a form key from the user's list.
 - "map": open the full bus map. target is "".
+- "card": show a report card right here, beside your answer, without leaving. target is a card key from the user's list.
 - "none": just answer. target is "".
+
+When they ask how something is going (fees, attendance) and there is a card for it, show the card and give the headline in your reply. Open the page instead when they want to work on it (mark attendance, collect a fee, see every defaulter).
+
+Pick a "mood" for how your reply is said: "pleased" for good news or thanks, "concerned" for worrying figures (low attendance, large dues, classes still not marked late in the day), "sorry" when you can't help or can't find something, otherwise "neutral".
 
 Only use page and form keys from the lists you are given. When you open something, say so in a few words ("Opening Fees for you."). Only quote numbers that appear in the figures you are given; if the answer needs data you don't have, open the page where it lives and say so. If you can't help, say what you can do instead. Never claim to have changed or saved anything: forms open for the user to fill in.`;
 
@@ -61,17 +68,18 @@ const SCHEMA = {
   type: "object",
   properties: {
     say: { type: "string" },
+    mood: { type: "string", enum: ["neutral", "pleased", "concerned", "sorry"] },
     action: {
       type: "object",
       properties: {
-        type: { type: "string", enum: ["none", "go", "student", "start", "map"] },
+        type: { type: "string", enum: ["none", "go", "student", "start", "map", "card"] },
         target: { type: "string" },
       },
       required: ["type", "target"],
       additionalProperties: false,
     },
   },
-  required: ["say", "action"],
+  required: ["say", "mood", "action"],
   additionalProperties: false,
 };
 
@@ -88,6 +96,8 @@ Deno.serve(async (req) => {
   }
   const pages = list(body.pages).filter(([k]) => Object.hasOwn(PAGES, k));
   const forms = list(body.forms);
+  const cards = list(body.cards);
+  const card = typeof body.card === "string" ? body.card.slice(0, 20) : "";
 
   const user = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
@@ -105,7 +115,8 @@ Deno.serve(async (req) => {
     `School: ${school.name}. Speaking with: ${String(name).slice(0, 60) || "a school lead"}. They are on the "${String(page).slice(0, 20)}" page.`,
     `Pages they can open:\n${pages.map(([k, l]) => `- ${k} (${l}): ${PAGES[k]}`).join("\n")}`,
     `Forms they can open:\n${forms.map(([k, l]) => `- ${k}: ${l}`).join("\n") || "- none"}`,
-    `Figures (today, ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}):\n${JSON.stringify(facts).slice(0, 1500)}`,
+    `Cards you can show:\n${cards.map(([k, l]) => `- ${k}: ${l}`).join("\n") || "- none"}${card ? `\nOn screen now: the ${card} card.` : ""}`,
+    `Figures (now, ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}):\n${JSON.stringify(facts).slice(0, 3000)}`,
   ].join("\n\n");
 
   // Earlier turns as plain text; the last user turn carries the context.
@@ -160,8 +171,11 @@ Deno.serve(async (req) => {
     (action.type === "go" && pages.some(([k]) => k === action.target)) ||
     (action.type === "start" && forms.some(([k]) => k === action.target)) ||
     (action.type === "student" && action.target.trim()) ||
-    (action.type === "map" && pages.some(([k]) => k === "transport"));
+    (action.type === "map" && pages.some(([k]) => k === "transport")) ||
+    (action.type === "card" && cards.some(([k]) => k === action.target));
   if (!ok) action = { type: "none", target: "" };
 
-  return reply({ say, action });
+  const mood = ["pleased", "concerned", "sorry"].includes(out?.mood) ? out.mood : "neutral";
+
+  return reply({ say, mood, action });
 });

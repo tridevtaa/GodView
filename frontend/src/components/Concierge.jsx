@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 import { LogoMark } from "./Logo.jsx";
 import { askConcierge } from "../data/api.js";
+import ReportCard, { cardLine, reportFacts, useReports } from "./ConciergeCards.jsx";
 import "./concierge.css";
 
 // godview.in/avatar: the assistant as a page. A person sits in a room on
@@ -17,7 +18,12 @@ import "./concierge.css";
 
 const BASE = "/concierge/";
 // Clips that play once, then hand back to the state underneath.
-const SHOTS = ["greet", "gesture"];
+const SHOTS = ["greet", "gesture", "nod"];
+// Report cards she can show here; chips with these keys open the card.
+const CARDS = [
+  ["fees", "Fee report"],
+  ["attendance", "Attendance today"],
+];
 const STATUS = { listen: "Listening…", think: "Thinking…", talk: "Speaking…", gesture: "Speaking…", greet: "Speaking…" };
 const ERRORS = {
   premium: "The assistant is part of the Premium plan.",
@@ -92,7 +98,12 @@ function ClipStage({ clips, focus, want, onShotEnd }) {
 
   const play = useCallback(
     (state) => {
-      const pool = clips[state]?.length ? clips[state] : clips.idle ?? [];
+      // A mood ("talk-pleased") falls back to its plain state ("talk").
+      // Looping in a mood, the plain clips join in so it doesn't repeat.
+      const base = state.split("-")[0];
+      const own = clips[state] ?? [];
+      const plain = clips[base] ?? [];
+      const pool = !own.length ? (plain.length ? plain : clips.idle ?? []) : cur.current.state === state ? [...own, ...plain] : own;
       if (!pool.length) return;
       const fresh = pool.length > 1 ? pool.filter((s) => s !== cur.current.src) : pool;
       const src = fresh[Math.floor(Math.random() * fresh.length)];
@@ -145,13 +156,18 @@ function ClipStage({ clips, focus, want, onShotEnd }) {
 // pages / forms: [key, label] this person can open. chips: [key, label],
 // the most used first. facts: figures the app already shows them.
 // onAct({ type: "go" | "student" | "start" | "map", target | id }).
-export default function Concierge({ school, name, students, facts, page, pages, forms, chips, onAct, onClose }) {
+// sessionId: for the report cards; seesFees: may this person see the fee card.
+export default function Concierge({ school, sessionId, seesFees, name, students, facts, page, pages, forms, chips, onAct, onClose }) {
   const manifest = useClips();
   const clips = manifest?.clips && Object.values(manifest.clips).some((l) => l?.length) ? manifest.clips : null;
   const poster = manifest?.poster ? BASE + manifest.poster : null;
+  const reports = useReports(sessionId, seesFees);
+  const cards = CARDS.filter(([k]) => reports[k]);
 
   const [phase, setPhase] = useState("idle"); // idle | listen | think | talk
-  const [shot, setShot] = useState(null); // greet | gesture, while it plays
+  const [shot, setShot] = useState(null); // greet | gesture | nod, while it plays
+  const [mood, setMood] = useState(""); // how she says it: pleased | concerned | sorry | show
+  const [card, setCard] = useState(null); // fees | attendance
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState("");
   const [choices, setChoices] = useState([]);
@@ -172,12 +188,16 @@ export default function Concierge({ school, name, students, facts, page, pages, 
   const busy = useRef(false);
   const first = String(name ?? "").split(" ")[0];
   // Typing counts as listening: the person leans in. The gesture always
-  // plays out; the greeting gives way as soon as someone types or speaks.
+  // plays out; the greeting gives way as soon as someone types or speaks;
+  // the nod (question heard) as soon as the answer is ready.
   const busyNow = phase !== "idle" || Boolean(draft.trim());
-  const want = shot === "gesture" ? shot : busyNow ? (phase === "idle" ? "listen" : phase) : shot ?? "idle";
+  const talk = mood ? `talk-${mood}` : "talk";
+  const want =
+    shot === "gesture" ? shot : shot === "nod" && phase === "think" ? shot : busyNow ? (phase === "idle" ? "listen" : phase === "talk" ? talk : phase) : shot === "nod" ? "idle" : shot ?? "idle";
+  const wantBase = want.split("-")[0];
   useEffect(() => {
-    if (shot === "greet" && busyNow) setShot(null);
-  }, [shot, busyNow]);
+    if ((shot === "greet" && busyNow) || (shot === "nod" && phase !== "think")) setShot(null);
+  }, [shot, busyNow, phase]);
 
   const speak = useCallback(
     (text) => {
@@ -222,8 +242,18 @@ export default function Concierge({ school, name, students, facts, page, pages, 
   );
 
   const respond = useCallback(
-    (say, action) => {
+    (say, action, how = "") => {
       setChoices([]);
+      setMood(how);
+      if (action?.type === "card") {
+        // She turns toward the card as it opens.
+        if (reports[action.target]) {
+          setCard(action.target);
+          setMood("show");
+        }
+        setReply(say);
+        return speak(say);
+      }
       if (action?.type === "student") {
         const found = findStudents(students, action.target);
         if (found.length === 1) {
@@ -232,6 +262,7 @@ export default function Concierge({ school, name, students, facts, page, pages, 
           return speak(say);
         }
         const line = found.length ? `I found ${found.length} students called ${action.target}. Which one?` : `I couldn't find a student called ${action.target}.`;
+        if (!found.length) setMood("sorry");
         setReply(line);
         setChoices(found.slice(0, 6));
         return speak(line);
@@ -240,8 +271,21 @@ export default function Concierge({ school, name, students, facts, page, pages, 
       if (action && action.type !== "none") go(action);
       speak(say);
     },
-    [students, go, speak]
+    [students, go, speak, reports]
   );
+
+  // A chip or the AI asked for a card: open it and read out its headline.
+  const showCard = (kind) => {
+    const line = cardLine(kind, reports);
+    if (!line) return false;
+    setError("");
+    setCard(kind);
+    setChoices([]);
+    setReply(line.say);
+    setMood(line.mood || "show");
+    speak(line.say);
+    return true;
+  };
 
   const ask = async (text) => {
     const q = text.trim();
@@ -252,13 +296,26 @@ export default function Concierge({ school, name, students, facts, page, pages, 
     setChoices([]);
     setError("");
     setPhase("think");
+    if (clips?.nod?.length) setShot("nod");
     try {
-      const res = await askConcierge(school.id, { message: q, history: history.current, page, facts, name, pages, forms });
+      const res = await askConcierge(school.id, {
+        message: q,
+        history: history.current,
+        page,
+        facts: { ...facts, ...reportFacts(reports) },
+        name,
+        pages,
+        forms,
+        cards,
+        card,
+      });
       history.current = [...history.current, { role: "user", text: q }, { role: "assistant", text: res.say }].slice(-8);
-      respond(res.say, res.action);
+      respond(res.say, res.action, res.mood && res.mood !== "neutral" ? res.mood : "");
     } catch (e) {
-      setPhase("idle");
-      setError(ERRORS[e.code] ?? ERRORS.ai_failed);
+      const msg = ERRORS[e.code] ?? ERRORS.ai_failed;
+      setError(msg);
+      setMood("sorry");
+      speak(msg);
     } finally {
       busy.current = false;
     }
@@ -349,13 +406,13 @@ export default function Concierge({ school, name, students, facts, page, pages, 
   const shown = more ? chips : chips.slice(0, 4);
 
   return (
-    <div className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}`}>
+    <div className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}`}>
       {/* The still also sits under the clips, so the room shows while they load. */}
       {poster && <img className="cg-still" src={poster} alt="" style={manifest.focus ? { objectPosition: manifest.focus } : undefined} />}
       {clips ? (
         <ClipStage clips={clips} focus={manifest.focus} want={want} onShotEnd={() => setShot(null)} />
       ) : (
-        !poster && <div className={`cg-orb is-${want}`} aria-hidden="true" />
+        !poster && <div className={`cg-orb is-${wantBase}`} aria-hidden="true" />
       )}
       <div className="cg-shade" aria-hidden="true" />
 
@@ -383,7 +440,7 @@ export default function Concierge({ school, name, students, facts, page, pages, 
             <i />
             <i />
           </span>
-          {STATUS[want] ?? ""}
+          {STATUS[wantBase] ?? ""}
         </div>
         <h1 className="cg-say">{reply || `${greeting()}${first ? `, ${first}` : ""}. How can I help?`}</h1>
         {choices.length > 0 && (
@@ -407,6 +464,17 @@ export default function Concierge({ school, name, students, facts, page, pages, 
           </div>
         )}
         {error && <p className="cg-error">{error}</p>}
+        {card && (
+          <ReportCard
+            kind={card}
+            reports={reports}
+            onOpen={() => {
+              const label = pages.find(([k]) => k === card)?.[1] ?? "it";
+              respond(`Opening ${label}.`, { type: "go", target: card });
+            }}
+            onClose={() => setCard(null)}
+          />
+        )}
         <form
           className="cg-ask"
           onSubmit={(e) => {
@@ -429,7 +497,14 @@ export default function Concierge({ school, name, students, facts, page, pages, 
 
       <nav className="cg-chips" aria-label="Go to">
         {shown.map(([key, label]) => (
-          <button key={key} type="button" className="cg-chip" onClick={() => respond(`Opening ${label}.`, { type: "go", target: key })}>
+          <button
+            key={key}
+            type="button"
+            className={`cg-chip${card === key ? " is-on" : ""}`}
+            aria-pressed={cards.some(([k]) => k === key) ? card === key : undefined}
+            // Fees and Attendance open their card here; the rest go to the page.
+            onClick={() => (card === key ? setCard(null) : showCard(key) || respond(`Opening ${label}.`, { type: "go", target: key }))}
+          >
             {label}
           </button>
         ))}
