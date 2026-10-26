@@ -25,8 +25,10 @@ const ERRORS = {
   busy: "Lots of questions right now. Try again in a minute.",
   ai_failed: "Something went wrong there. Try asking again.",
 };
-// How long the gesture plays before this page gives way to the one asked for.
-const LEAVE_MS = 1400;
+// How long before this page gives way to the one asked for: with the
+// gesture clip, long enough for her hand to open toward it (about 2s).
+const LEAVE_MS = 2000;
+const LEAVE_PLAIN_MS = 600;
 
 const SR = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
 
@@ -169,8 +171,13 @@ export default function Concierge({ school, name, students, facts, page, pages, 
   const leaving = useRef(false);
   const busy = useRef(false);
   const first = String(name ?? "").split(" ")[0];
-  // Typing counts as listening: the person leans in.
-  const want = shot ?? (phase === "idle" && draft.trim() ? "listen" : phase);
+  // Typing counts as listening: the person leans in. The gesture always
+  // plays out; the greeting gives way as soon as someone types or speaks.
+  const busyNow = phase !== "idle" || Boolean(draft.trim());
+  const want = shot === "gesture" ? shot : busyNow ? (phase === "idle" ? "listen" : phase) : shot ?? "idle";
+  useEffect(() => {
+    if (shot === "greet" && busyNow) setShot(null);
+  }, [shot, busyNow]);
 
   const speak = useCallback(
     (text) => {
@@ -203,12 +210,13 @@ export default function Concierge({ school, name, students, facts, page, pages, 
 
   const go = useCallback(
     (action) => {
-      if (clips?.gesture?.length) setShot("gesture");
+      const gesture = Boolean(clips?.gesture?.length);
+      if (gesture) setShot("gesture");
       clearTimeout(leaveTimer.current);
       leaveTimer.current = setTimeout(() => {
         leaving.current = true;
         onAct(action);
-      }, LEAVE_MS);
+      }, gesture ? LEAVE_MS : LEAVE_PLAIN_MS);
     },
     [clips, onAct]
   );
