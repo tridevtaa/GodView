@@ -14,7 +14,7 @@ import "./concierge.css";
 // listed in /concierge/clips.json. Each clip starts and ends on the same
 // still, so any clip can follow any other. Until the clips exist the page
 // shows the still (if there is one) or a glowing orb instead.
-// Her voice comes from the voice function (Azure's free tier, cached);
+// Her voice comes from the voice function (Google, free allowance, cached);
 // when that is off, slow or used up, the device's own voice speaks.
 // Listening uses the browser's speech recognition: nothing per minute.
 

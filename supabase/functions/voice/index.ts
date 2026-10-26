@@ -1,24 +1,25 @@
-// The assistant's voice (Premium): turns one reply into speech with
-// Microsoft's Indian English voice "Neerja", in the mood of the reply
-// (cheerful for good news, empathetic for worrying news or an apology).
-// Returns an MP3. Lines already spoken ("Opening Fees.") come from a
-// private storage cache, so they cost nothing the second time.
+// The assistant's voice (Premium): turns one reply into speech with a
+// Google Chirp 3 HD Indian English voice and returns an MP3. The mood
+// sets her pace a little (a touch brighter for good news, slower for
+// worrying news or an apology); the voice itself follows the wording.
+// Lines already spoken ("Opening Fees.") come from a private storage
+// cache, so they cost nothing the second time.
 //
-// Cost: Azure's free tier (F0) gives 0.5 million characters a month and
-// then refuses instead of billing; the app then falls back to the
-// device's own voice until the next check.
+// Cost: Google gives 1 million Chirp 3 HD characters free a month and
+// bills after that, so this function counts what it sends and stops at
+// VOICE_MONTHLY_CHARS (900,000 by default). The app then uses the
+// device's own voice until the next month.
 //
 // Deploy with:
 //   npx supabase functions deploy voice
-// Needs the AZURE_SPEECH_KEY and AZURE_SPEECH_REGION secrets (the key and
-// region of a Speech resource, e.g. "centralindia"). VOICE_NAME (optional)
-// picks another Azure voice.
+// Needs the GOOGLE_TTS_KEY secret (an API key allowed to use the Cloud
+// Text-to-Speech API). VOICE_NAME (optional) picks another voice.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const KEY = Deno.env.get("AZURE_SPEECH_KEY") ?? "";
-const REGION = Deno.env.get("AZURE_SPEECH_REGION") ?? "";
-const VOICE = Deno.env.get("VOICE_NAME") || "en-IN-NeerjaNeural";
+const KEY = Deno.env.get("GOOGLE_TTS_KEY") ?? "";
+const VOICE = Deno.env.get("VOICE_NAME") || "en-IN-Chirp3-HD-Sulafat";
+const MONTHLY = Number(Deno.env.get("VOICE_MONTHLY_CHARS")) || 900_000;
 const BUCKET = "voice-cache";
 
 const cors = {
@@ -28,23 +29,10 @@ const cors = {
 };
 const fail = (error: string, status: number) =>
   new Response(JSON.stringify({ error }), { status, headers: { ...cors, "Content-Type": "application/json" } });
-const audio = (body: Blob | ArrayBuffer) => new Response(body, { headers: { ...cors, "Content-Type": "application/octet-stream" } });
+const audio = (body: Blob | Uint8Array) => new Response(body, { headers: { ...cors, "Content-Type": "application/octet-stream" } });
 
-// Mood from the app -> Azure speaking style and how strongly.
-const STYLES: Record<string, [string, number]> = {
-  pleased: ["cheerful", 0.8],
-  concerned: ["empathetic", 1],
-  sorry: ["empathetic", 1],
-};
-
-const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-function ssml(text: string, mood: string) {
-  const style = STYLES[mood];
-  const said = `<prosody rate="-4%">${xml(text)}</prosody>`;
-  const inner = style ? `<mstts:express-as style="${style[0]}" styledegree="${style[1]}">${said}</mstts:express-as>` : said;
-  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-IN"><voice name="${VOICE}">${inner}</voice></speak>`;
-}
+// Mood from the app -> speaking rate.
+const PACE: Record<string, number> = { pleased: 1.03, concerned: 0.94, sorry: 0.94 };
 
 async function sha(s: string) {
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -54,6 +42,7 @@ async function sha(s: string) {
 const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+const store = () => admin.storage.from(BUCKET);
 
 // Runs after the reply has gone out, where the runtime allows it.
 function later(p: Promise<unknown>) {
@@ -61,20 +50,34 @@ function later(p: Promise<unknown>) {
   if (rt) rt.waitUntil(p);
 }
 
-async function keep(path: string, mp3: ArrayBuffer) {
-  const put = () => admin.storage.from(BUCKET).upload(path, mp3, { contentType: "audio/mpeg", upsert: true });
+async function save(path: string, body: Uint8Array | string, contentType: string) {
+  const put = () => store().upload(path, body, { contentType, upsert: true });
   let { error } = await put();
   if (error && /not found/i.test(error.message)) {
     await admin.storage.createBucket(BUCKET, { public: false });
     ({ error } = await put());
   }
-  if (error) console.log(`cache: ${error.message}`);
+  if (error) console.log(`save ${path}: ${error.message}`);
+}
+
+// Characters sent this month (Asia/Kolkata), kept beside the cache.
+// Two replies at the same moment can both count from the same number;
+// the cap sits well under the free million to allow for that.
+const monthPath = () => `usage/${new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }).slice(0, 7)}.json`;
+async function usedThisMonth() {
+  const { data } = await store().download(monthPath());
+  if (!data) return 0;
+  try {
+    return Number(JSON.parse(await data.text()).chars) || 0;
+  } catch {
+    return 0;
+  }
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return fail("method", 405);
-  if (!KEY || !REGION) return fail("voice_off", 501);
+  if (!KEY) return fail("voice_off", 501);
 
   const body = await req.json().catch(() => ({}));
   const { school_id } = body;
@@ -97,27 +100,29 @@ Deno.serve(async (req) => {
     const { data: school } = await user.from("schools").select("plan").eq("id", school_id).single();
     return school?.plan === "premium" ? "" : "premium";
   })();
-  const path = `${await sha(`${VOICE}|${STYLES[mood]?.[0] ?? ""}|${text}`)}.mp3`;
-  const [no, cached] = await Promise.all([allowed, admin.storage.from(BUCKET).download(path)]);
+  const rate = PACE[mood] ?? 1;
+  const path = `lines/${await sha(`${VOICE}|${rate}|${text}`)}.mp3`;
+  const [no, cached, used] = await Promise.all([allowed, store().download(path), usedThisMonth()]);
   if (no) return fail(no, no === "signed_out" ? 401 : 403);
   if (cached.data) return audio(cached.data);
+  if (used + text.length > MONTHLY) return fail("voice_unavailable", 503);
 
-  const res = await fetch(`https://${REGION}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+  const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(KEY)}`, {
     method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": KEY,
-      "Content-Type": "application/ssml+xml",
-      "X-Microsoft-OutputFormat": "audio-24khz-48kbitrate-mono-mp3",
-      "User-Agent": "godview-voice",
-    },
-    body: ssml(text, mood),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      input: { text },
+      voice: { languageCode: "en-IN", name: VOICE },
+      audioConfig: { audioEncoding: "MP3", speakingRate: rate },
+    }),
   }).catch(() => null);
   if (!res?.ok) {
-    // 429: the month's free characters are used up (or too many at once).
-    console.log(`azure ${res?.status ?? "network"} ${res ? (await res.text()).slice(0, 200) : ""}`);
+    console.log(`google ${res?.status ?? "network"} ${res ? (await res.text()).slice(0, 300) : ""}`);
     return fail("voice_unavailable", 503);
   }
-  const mp3 = await res.arrayBuffer();
-  later(keep(path, mp3));
+  const { audioContent } = await res.json();
+  const mp3 = Uint8Array.from(atob(audioContent ?? ""), (c) => c.charCodeAt(0));
+  if (!mp3.length) return fail("voice_unavailable", 503);
+  later(Promise.all([save(path, mp3, "audio/mpeg"), save(monthPath(), JSON.stringify({ chars: used + text.length }), "application/json")]));
   return audio(mp3);
 });
