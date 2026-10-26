@@ -34,8 +34,8 @@ const ERRORS = {
   ai_failed: "Something went wrong there. Try asking again.",
 };
 // How long before this page gives way to the one asked for: with the
-// gesture clip, long enough for her hand to open toward it (about 2s).
-const LEAVE_MS = 2000;
+// gesture clip, long enough for her hand to open toward it (out 1.5 to 4s).
+const LEAVE_MS = 2500;
 const LEAVE_PLAIN_MS = 600;
 
 // After a failed fetch, the device voice for this long before trying again.
