@@ -5,4 +5,5 @@
 -- "collect later"; this flag is how that follow-up is tracked and surfaced
 -- (a filter on the students list) until the document is actually uploaded.
 
-alter table public.students add column transfer_cert_pending boolean not null default false;
+-- "if not exists": this was first applied by hand, so it may already be there.
+alter table public.students add column if not exists transfer_cert_pending boolean not null default false;
