@@ -42,7 +42,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, onProfile, 
           {sections.length > 1 && tabs("segmented topbar-tabs")}
           <span className="topbar-right">
             {onAsk && (
-              <button type="button" className="ask-btn" onClick={onAsk} aria-label="Ask GodView" title="Ask GodView">
+              <button type="button" className="ask-btn" onClick={onAsk} aria-label="Ask Goddess" title="Ask Goddess">
                 <Icon name="sparkle" size={18} weight="fill" />
               </button>
             )}

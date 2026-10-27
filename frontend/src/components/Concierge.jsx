@@ -535,7 +535,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     // Voices can arrive a moment after the page opens.
     const t = setTimeout(() => {
       greeted.current = true;
-      speak(`${greeting()}${first ? `, ${first}` : ""}. How can I help?`, "pleased", { overClip: clip });
+      speak(`${greeting()}${first ? `, ${first}` : ""}. I'm Goddess — how can I help?`, "pleased", { overClip: clip });
     }, 500);
     return () => clearTimeout(t);
   }, [Boolean(clips)]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -599,7 +599,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
           </span>
           {STATUS[wantBase] ?? ""}
         </div>
-        <h1 className="cg-say">{reply || `${greeting()}${first ? `, ${first}` : ""}. How can I help?`}</h1>
+        <h1 className="cg-say">{reply || `${greeting()}${first ? `, ${first}` : ""}. I'm Goddess — how can I help?`}</h1>
         {choices.length > 0 && (
           <div className="cg-choices">
             {choices.map((p) => (
@@ -639,7 +639,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
             ask(draft);
           }}
         >
-          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask GodView anything" aria-label="Ask GodView" enterKeyHint="send" autoComplete="off" />
+          <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Ask Goddess anything" aria-label="Ask Goddess" enterKeyHint="send" autoComplete="off" />
           {draft.trim() && phase !== "listen" ? (
             <button type="submit" className="cg-icon" aria-label="Send" title="Send" disabled={phase === "think"}>
               <Icon name="send" size={20} />
