@@ -191,6 +191,7 @@
   color: var(--cg-ink);
   cursor: pointer;
   transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .cg-icon:hover {
@@ -338,6 +339,8 @@
   color: var(--cg-ink);
   font: inherit;
   font-size: 16px; /* phones zoom into anything smaller */
+  -webkit-tap-highlight-color: transparent; /* the box some phones flash on tap/typing */
+  -webkit-appearance: none;
 }
 
 .cg-ask input::placeholder {
