@@ -259,6 +259,8 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const rec = useRef(null);
   const talkTimer = useRef(0);
   const leaveTimer = useRef(0);
+  const leaveFire = useRef(null);
+  const leaveMin = useRef(0);
   const leaving = useRef(false);
   const busy = useRef(false);
   const soundUrl = useRef("");
@@ -290,10 +292,19 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   // overClip: a clip that already shows her speaking (the greeting) plays;
   // keep it rather than switching to thinking and talking.
   const speak = useCallback(
-    (text, how = "", { overClip = false } = {}) => {
+    (text, how = "", { overClip = false, onStart } = {}) => {
       hush();
-      if (!voiceOn || !text) return setPhase("idle");
+      if (!voiceOn || !text) {
+        onStart?.();
+        return setPhase("idle");
+      }
       const n = speakSeq.current;
+      let started = false;
+      const begin = () => {
+        if (started) return;
+        started = true;
+        onStart?.();
+      };
       let over = false;
       const finish = () => {
         if (over || n !== speakSeq.current) return;
@@ -308,6 +319,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         talkTimer.current = setTimeout(finish, ms);
       };
       const device = () => {
+        begin();
         const synth = window.speechSynthesis;
         if (n !== speakSeq.current) return;
         if (!synth) return setPhase((p) => (p === "think" ? "idle" : p));
@@ -341,7 +353,10 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
           a.src = soundUrl.current;
           a.onended = finish;
           a.play()
-            .then(() => talkFor(Number.isFinite(a.duration) ? a.duration * 1000 + 1500 : 1500 + text.length * 90))
+            .then(() => {
+              begin();
+              talkFor(Number.isFinite(a.duration) ? a.duration * 1000 + 1500 : 1500 + text.length * 90);
+            })
             .catch(device);
         })
         .catch(() => {
@@ -353,18 +368,33 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     [voiceOn, hush, school.id]
   );
 
+  // Leaves for the page/student the action points to: once her voice has
+  // actually started (not just after a guessed delay — the cloud voice is a
+  // network call and can take a couple of seconds), wait the usual gesture
+  // timing, then go. If her voice never starts at all (muted, or both the
+  // cloud and device voice failed), leave anyway rather than get stuck.
   const go = useCallback(
     (action) => {
       const gesture = Boolean(clips?.gesture?.length);
       if (gesture) setShot("gesture");
       clearTimeout(leaveTimer.current);
-      leaveTimer.current = setTimeout(() => {
+      const minMs = gesture ? LEAVE_MS : LEAVE_PLAIN_MS;
+      const fire = () => {
         leaving.current = true;
         onAct(action);
-      }, gesture ? LEAVE_MS : LEAVE_PLAIN_MS);
+      };
+      leaveFire.current = fire;
+      leaveMin.current = minMs;
+      leaveTimer.current = setTimeout(fire, CLOUD_WAIT_MS + minMs);
     },
     [clips, onAct]
   );
+
+  const onVoiceStart = useCallback(() => {
+    if (!leaveFire.current) return;
+    clearTimeout(leaveTimer.current);
+    leaveTimer.current = setTimeout(leaveFire.current, leaveMin.current);
+  }, []);
 
   const respond = useCallback(
     (say, action, how = "") => {
@@ -384,7 +414,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         if (found.length === 1) {
           setReply(say);
           go({ type: "student", id: found[0].id });
-          return speak(say, how);
+          return speak(say, how, { onStart: onVoiceStart });
         }
         const line = found.length ? `I found ${found.length} students called ${action.target}. Which one?` : `I couldn't find a student called ${action.target}.`;
         if (!found.length) setMood("sorry");
@@ -393,10 +423,11 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         return speak(line, found.length ? "" : "sorry");
       }
       setReply(say);
-      if (action && action.type !== "none") go(action);
-      speak(say, how);
+      const navigating = action && action.type !== "none";
+      if (navigating) go(action);
+      speak(say, how, navigating ? { onStart: onVoiceStart } : undefined);
     },
-    [students, go, speak, reports]
+    [students, go, speak, reports, onVoiceStart]
   );
 
   // A chip or the AI asked for a card: open it and read out its headline.
@@ -580,7 +611,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
                   setChoices([]);
                   setReply(`Opening ${p.name}.`);
                   go({ type: "student", id: p.id });
-                  speak(`Opening ${p.name}.`);
+                  speak(`Opening ${p.name}.`, "", { onStart: onVoiceStart });
                 }}
               >
                 {p.name}
