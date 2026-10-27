@@ -489,6 +489,12 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     r.onresult = (e) => {
       heard = Array.from(e.results, (x) => x[0].transcript).join("");
       setDraft(heard);
+      // Her mic used to wait for the engine's own pause-detection to end
+      // the recognition, which on some machines takes several seconds (or
+      // longer with background noise) and looked like it was stuck
+      // listening. Ending it the moment the final transcript is in is
+      // immediate instead.
+      if (e.results[e.results.length - 1].isFinal) r.stop();
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Allow the microphone to talk to GodView.");
