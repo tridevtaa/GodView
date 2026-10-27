@@ -537,8 +537,13 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     window.speechSynthesis?.getVoices?.();
     const clip = Boolean(clips?.greet?.length);
     if (clip) setShot("greet");
-    if (greeted.current || !navigator.userActivation?.hasBeenActive) return;
-    // Voices can arrive a moment after the page opens.
+    if (greeted.current) return;
+    // Whether a tap has unlocked sound isn't reliably detectable (the
+    // userActivation API this used to check is missing on some phones'
+    // Safari, which skipped the greeting on them every time, forever).
+    // Just try: opening the page from its own icon/link is itself a tap
+    // on most phones, and speak() already does nothing harmful if sound
+    // really is still locked.
     const t = setTimeout(() => {
       greeted.current = true;
       speak(`${greeting()}${first ? `, ${first}` : ""}. I'm Goddess — how can I help?`, "pleased", { overClip: clip });
