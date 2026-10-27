@@ -334,13 +334,21 @@
   height: 44px;
   padding: 0;
   border: 0;
-  outline: 0;
+  outline: none;
+  box-shadow: none;
   background: none;
   color: var(--cg-ink);
   font: inherit;
   font-size: 16px; /* phones zoom into anything smaller */
   -webkit-tap-highlight-color: transparent; /* the box some phones flash on tap/typing */
   -webkit-appearance: none;
+  appearance: none;
+}
+
+.cg-ask input:focus,
+.cg-ask input:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .cg-ask input::placeholder {
