@@ -55,13 +55,21 @@ function greeting() {
 }
 
 // A warm English voice, Indian English first; whatever the device has.
+// Chosen once and kept: the device's voice list can be empty on the first
+// call and fill in moments later, which used to make the fallback voice
+// itself change partway through a session.
+let cachedDeviceVoice;
 function pickVoice() {
+  if (cachedDeviceVoice !== undefined) return cachedDeviceVoice;
   const en = (window.speechSynthesis?.getVoices?.() ?? []).filter((v) => /^en/i.test(v.lang));
+  if (!en.length) return null; // list not loaded yet; try again next call
+  let found = null;
   for (const re of [/Veena|Neerja|Isha/i, /Google UK English Female/i, /Samantha|Serena|Karen|Moira|Aria|Jenny|Libby|Sonia/i, /female/i]) {
-    const v = en.find((x) => re.test(x.name));
-    if (v) return v;
+    found = en.find((x) => re.test(x.name));
+    if (found) break;
   }
-  return en.find((v) => v.lang === "en-IN") ?? en[0] ?? null;
+  cachedDeviceVoice = found ?? en.find((v) => v.lang === "en-IN") ?? en[0] ?? null;
+  return cachedDeviceVoice;
 }
 
 const norm = (s) =>
