@@ -1,0 +1,94 @@
+/* The standalone pages: privacy policy and account deletion. */
+:root {
+  --brand: #5b68c4;
+  --ink: #1d2034;
+  --ink-2: #5d6075;
+  --line: #e6e7f0;
+  --bg: #ffffff;
+  --on-brand: #ffffff;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand: #9ea8ff;
+    --ink: #eceef8;
+    --ink-2: #a9adc4;
+    --line: #2c2f45;
+    --bg: #12131c;
+    --on-brand: #12131c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.home {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home img {
+  border-radius: 8px;
+}
+
+h1 {
+  margin: 28px 0 4px;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+h2 {
+  margin: 32px 0 8px;
+  font-size: 19px;
+}
+
+p,
+li {
+  color: var(--ink);
+}
+
+ul,
+ol {
+  padding-left: 22px;
+}
+
+li + li {
+  margin-top: 8px;
+}
+
+a {
+  color: var(--brand);
+}
+
+.muted {
+  color: var(--ink-2);
+}
+
+.button {
+  display: inline-block;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: var(--on-brand);
+  font-weight: 600;
+  text-decoration: none;
+}

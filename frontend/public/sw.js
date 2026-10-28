@@ -11,6 +11,7 @@ const CACHE = "godview-shell-v6";
 // old one; starting a fresh cache drops those stale copies once.
 const PHOTOS = "godview-photos-v2";
 const DAY = 24 * 60 * 60 * 1000;
+const STANDALONE = ["/privacy", "/delete-account", "/.well-known"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(["/", "/manifest.webmanifest", "/icon-192.png"])));
@@ -45,6 +46,10 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.origin !== self.location.origin) return; // other Supabase calls, fonts, map tiles: straight to network
+
+  // Standalone pages (privacy policy, account deletion, the Android app's
+  // link file) aren't the app: never serve or store them as the app's page.
+  if (STANDALONE.some((p) => url.pathname === p || url.pathname.startsWith(p + "/"))) return;
 
   // Pages: the fresh page if it arrives within 0.8s (so new releases show
   // at once on a good connection), else the stored one straight away; the
