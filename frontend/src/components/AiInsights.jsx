@@ -1,13 +1,11 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { latestInsight, runInsight } from "../data/api.js";
 import { rupees, rupeesShort } from "../data/money.js";
 import Icon from "./Icon.jsx";
 import { useDismiss } from "./useDismiss.js";
 
-// AI insights (Premium) on Fees, Transport and Results, built into the
-// pages: the main ones in the AI card (AiCard, "What AI thinks can help"),
-// the rest as short lines next to the figure they explain (Hint). No
-// refresh button: they renew by themselves once a day. The first owner or
+// AI insights (Premium) on Fees, Transport, Results, Homework and Staff, built into the
+// pages, in the AI card (AiCard). No refresh button: they renew by themselves once a day. The first owner or
 // admin to open a page after that starts a new analysis in the background,
 // and the last one shows meanwhile. Other plans see a locked button.
 
@@ -27,6 +25,16 @@ const COPY = {
     running: "Reading this session’s exam results",
     person: "Open",
   },
+  staff: {
+    locked: "AI reads your staff numbers and points out classes with no class teacher, gaps in records and who is waiting for access.",
+    running: "Reading your staff records",
+    person: null,
+  },
+  homework: {
+    locked: "AI reads how much homework each class and subject gets, and points out who has gone quiet.",
+    running: "Reading this session’s homework",
+    person: null,
+  },
 };
 const ERRORS = {
   limit: "This month’s analyses are used up. The last one is shown.",
@@ -34,6 +42,7 @@ const ERRORS = {
   no_data: "There isn’t enough data yet to analyse.",
   ai_failed: "The analysis didn’t go through. Try again.",
 };
+const RANK = { high: 0, medium: 1, low: 2 };
 const STALE = 20 * 36e5; // the daily refresh, in ms (the edge function has the same)
 
 const ago = (t) => {
@@ -105,45 +114,93 @@ export function useInsights(school, section, enabled = true) {
   };
 }
 
-// The hint for one spot ("" if none). target: a route name, bus number or
-// student id, for spots that need one.
-export function hintFor(ins, slot, target = "") {
-  if (!ins?.on) return "";
-  return (ins.insight?.result?.hints ?? []).find((h) => h.slot === slot && (h.target ?? "") === target)?.text ?? "";
-}
-
-// A short AI line next to a figure.
-export function Hint({ ins, slot, target = "", className = "" }) {
-  const text = hintFor(ins, slot, target);
-  if (!text) return null;
-  return (
-    <span className={`ai-hint ${className}`}>
-      <Icon name="sparkle" size={12} weight="fill" />
-      {text}
-    </span>
-  );
-}
-
 // ------------------------------------------------------------ the cards ---
 
 // The number on a card, formatted by the app (the AI only picks it)
-function statText(it) {
-  const v = Number(it.stat_value);
+function statText(it, v = Number(it.stat_value)) {
   if (!Number.isFinite(v)) return "";
   if (it.stat_unit === "rupees") return rupeesShort(v);
   if (it.stat_unit === "percent") return `${Math.round(v)}%`;
-  if (it.stat_unit === "days") return `${Math.round(v)} days`;
+  if (it.stat_unit === "days") return Math.round(v) === 1 ? "1 day" : `${Math.round(v)} days`;
   if (it.stat_unit === "km") return `${v} km`;
   return Math.round(v).toLocaleString("en-IN");
 }
 
-const UNIT_ICON = { rupees: "rupee", count: "users", percent: "chart", days: "calendar", km: "pin" };
+// A new analysis writes itself in once, for a few seconds after it first
+// shows on this device; after that it just sits there.
+const firstSeen = new Map();
+function isFresh(stamp) {
+  if (!stamp) return false;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return false;
+  if (!firstSeen.has(stamp)) firstSeen.set(stamp, Date.now());
+  return Date.now() - firstSeen.get(stamp) < 4000;
+}
 
-// The AI card, "What AI thinks can help": closed, a short line per insight
-// (icon, number, title); tapped, the full cards. Open or closed is
-// remembered on this device. opens: screens this page can go to;
-// onPerson(id): a named student.
-export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
+// The number, counting up to its value when fresh.
+function CountUp({ it, play }) {
+  const [p, setP] = useState(play && it.stat_unit !== "km" ? 0 : 1);
+  useEffect(() => {
+    if (p === 1) return;
+    const start = performance.now();
+    let raf;
+    const tick = (t) => {
+      const x = Math.min(1, (t - start) / 1100);
+      setP(x === 1 ? 1 : 1 - (1 - x) ** 3);
+      if (x < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return p === 1 ? statText(it) : statText(it, Math.round(Number(it.stat_value) * p));
+}
+
+// Text arriving word by word when fresh.
+function Words({ text, play, from = 0 }) {
+  if (!play) return text;
+  let n = from;
+  return text.split(/(\s+)/).map((w, i) =>
+    w.trim() ? (
+      <span key={i} className="ai-word" style={{ "--w": n++ }}>
+        {w}
+      </span>
+    ) : (
+      w
+    )
+  );
+}
+
+// An insight as one short sentence, its number highlighted inside it: the
+// AI's own wording ("{stat}" marks the number) if it fits on a line, or built
+// from its parts. A plain count needs its label to say what it counts.
+const MESSAGE_MAX = 46;
+function Message({ it, play, from }) {
+  const stat = statText(it);
+  const title = String(it.title ?? "").replace(/[.:\s]+$/, "");
+  if (!stat) return <Words text={`${title}.`} play={play} from={from} />;
+  const own = it.message?.includes("{stat}") && it.message.replace("{stat}", stat).length <= MESSAGE_MAX;
+  const text = own ? it.message : it.stat_unit === "count" ? `{stat} ${it.stat_label}.` : `${title} at {stat}.`;
+  const at = text.indexOf("{stat}");
+  const before = text.slice(0, at);
+  const after = text.slice(at + "{stat}".length);
+  const n = before.split(/\s+/).filter(Boolean).length;
+  return (
+    <>
+      <Words text={before} play={play} from={from} />
+      <mark className={`ai-kpi${play ? " ai-word" : ""}`} style={{ "--w": from + n }}>
+        <CountUp it={it} play={play} />
+      </mark>
+      <Words text={after} play={play} from={from + n + 1} />
+    </>
+  );
+}
+
+// The AI card, no title: the Goddess's thoughts, one card per insight in the
+// glass of her panel, stacked like messages, the top one's tail pointing up at
+// her portrait in the top bar. Closed, one short sentence; open, each grows in
+// place to show why and what to do. lead: the page's own tile, first in the
+// row. Open or closed is remembered on this device.
+// opens: screens this page can go to; onPerson(id): a named student.
+export function AiCard({ ins, lead, opens = [], onOpen, onPerson, max = 3 }) {
   const copy = COPY[ins.section];
   const memo = `gv-ai-open:${ins.section}`;
   const [open, setOpen] = useState(() => {
@@ -164,91 +221,62 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
     });
 
   const insight = ins.insight;
-  const items = (insight?.result?.insights ?? []).slice(0, max);
+  // The most important few (the sort keeps the AI's own order within a priority)
+  const items = [...(insight?.result?.insights ?? [])].sort((a, b) => (RANK[a.priority] ?? 3) - (RANK[b.priority] ?? 3)).slice(0, max);
   const loading = insight === undefined || (ins.running && !insight);
-  const when = ins.running ? (insight ? "Updating" : "Analysing") : insight ? ago(insight.created_at) : "";
-
-  const head = (
-    <>
-      <span className="ai-card-badge">
-        <Icon name="sparkle" size={18} weight="fill" />
-      </span>
-      <span className="ai-card-titles">
-        <strong>What AI thinks can help</strong>
-        {when && (
-          <span className="ai-key-when">
-            {ins.running && <span className="ai-pulse" />}
-            {when}
-          </span>
-        )}
-      </span>
-      <Icon name="chevronDown" size={18} className="ai-card-chev" />
-    </>
-  );
+  const when = ins.running ? (insight ? "Updating" : "") : insight ? ago(insight.created_at) : "";
+  const play = isFresh(insight?.created_at && `${ins.section}:${insight.created_at}`);
+  // The tail of her top message points at her portrait in the top bar,
+  // wherever that is
+  const card = useRef(null);
+  const [tailRight, setTailRight] = useState(null);
+  useLayoutEffect(() => {
+    const place = () => {
+      const face = document.querySelector(".ask-btn")?.getBoundingClientRect();
+      const box = card.current?.getBoundingClientRect();
+      setTailRight(face && box ? box.right - (face.left + face.width / 2) : null);
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, []);
   const lineOf = (p) => p.line ?? [p.class, p.overdue != null ? rupees(p.overdue) : null].filter(Boolean).join(" · ");
 
   return (
-    <section className={`ai-card${open ? " is-open" : ""}`}>
-      {!open ? (
-        // Closed: the whole card opens it
-        <button type="button" className="ai-card-tap" onClick={toggle} aria-expanded="false">
-          <span className="ai-card-head">{head}</span>
-          {loading ? (
-            <span className="ai-mini-wait">{copy.running}…</span>
-          ) : items.length ? (
-            <span className="ai-mini">
-              {items.map((it, i) => (
-                <span key={i} className={`ai-mini-row is-${it.priority}`}>
-                  <span className="ai-mini-icon">
-                    <Icon name={UNIT_ICON[it.stat_unit] ?? "sparkle"} size={14} weight="bold" />
-                  </span>
-                  {statText(it) && <strong>{statText(it)}</strong>}
-                  <span className="ai-mini-text">{it.title}</span>
-                </span>
-              ))}
-            </span>
-          ) : (
-            <span className="ai-mini-wait">{insight ? "Nothing stands out right now." : "First insights are on their way."}</span>
-          )}
-        </button>
-      ) : (
-        <>
-          <div className="ai-card-top">
-            <button type="button" className="ai-card-tap ai-card-head" onClick={toggle} aria-expanded="true">
-              {head}
-            </button>
-          </div>
-          {ins.error && <p className="notice notice-error ai-key-error">{ins.error}</p>}
-          {loading ? (
-            <div className="ai-rows" aria-busy="true">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="ai-row-item is-skeleton" />
-              ))}
+    <section ref={card} className={`ai-card${open ? " is-open" : ""}`}>
+      {tailRight !== null && (
+        <svg className="ai-tail" style={{ right: tailRight - 9 }} width="18" height="9" viewBox="0 0 18 9" aria-hidden="true">
+          <path d="M0 9C5 9 6.5 1 9 1s4 8 9 8z" />
+          <path d="M0 9C5 9 6.5 1 9 1s4 8 9 8" />
+        </svg>
+      )}
+      {open && ins.error && <p className="notice notice-error ai-key-error">{ins.error}</p>}
+      <div className={`ai-cards${lead ? " has-lead" : ""}`}>
+        {lead && <div className="ai-lead">{lead}</div>}
+        <div className="ai-msgs">
+          {loading || !items.length ? (
+            <div className="ai-thought">
+              <p className="ai-card-note">{loading ? `${copy.running}…` : insight ? "Nothing stands out right now." : "First insights are on their way."}</p>
             </div>
-          ) : items.length ? (
-            <ol className="ai-rows">
-              {items.map((it, i) => (
-                <li key={i} className={`ai-row-item is-${it.priority}`}>
-                  <span className="ai-mini-icon">
-                    <Icon name={UNIT_ICON[it.stat_unit] ?? "sparkle"} size={15} weight="bold" />
-                  </span>
-                  <div className="ai-row-body">
-                    {statText(it) && (
-                      <p className="ai-row-stat">
-                        <strong>{statText(it)}</strong> {it.stat_label}
-                      </p>
-                    )}
-                    <p className="ai-row-title">{it.title}</p>
+          ) : (
+            items.map((it, i) => (
+              <article key={i} className={`ai-thought is-${it.priority}`} style={{ "--i": i + 1 }} onClick={open ? undefined : toggle}>
+                <p className="ai-message">
+                  <Message it={it} play={play} from={i * 5} />
+                </p>
+                <div className="ai-col-more">
+                  <div className="ai-col-more-in">
+                    {it.why && <p className="ai-col-why">{it.why}</p>}
                     {opens.includes(it.open) ? (
-                      <button type="button" className="ai-row-action" onClick={() => onOpen(it.open, it)}>
+                      <button type="button" className="ai-col-action" onClick={() => onOpen(it.open, it)}>
                         {it.action}
                         <Icon name="arrowRight" size={13} />
                       </button>
                     ) : (
-                      <p className="ai-row-action is-text">{it.action}</p>
+                      <p className="ai-col-action is-text">{it.action}</p>
                     )}
                     {it.people?.length > 0 && (
-                      <p className="ai-row-people">
+                      <p className="ai-col-people">
                         {it.people.slice(0, 3).map((p, j) => (
                           <span key={p.id}>
                             {j > 0 && " · "}
@@ -264,14 +292,23 @@ export function AiCard({ ins, opens = [], onOpen, onPerson, max = 4 }) {
                       </p>
                     )}
                   </div>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="ai-empty ai-card-empty">{insight ? "Nothing stands out right now." : "First insights are on their way."}</p>
+                </div>
+              </article>
+            ))
           )}
-        </>
-      )}
+          {items.length > 0 && (
+            <button type="button" className="ai-card-toggle" onClick={toggle} aria-expanded={open} aria-label={open ? "Hide insights" : "Show insights"}>
+              {when && (
+                <span className="ai-key-when">
+                  {ins.running && <span className="ai-pulse" />}
+                  {when}
+                </span>
+              )}
+              <Icon name="chevronDown" size={18} className="ai-card-chev" />
+            </button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }

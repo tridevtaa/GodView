@@ -1,6 +1,6 @@
 // AI insights (Premium). The app sends { school_id, section } where
-// section is "fees", "transport" or "results". Owners and admins of a
-// Premium school (and the principal, for results), up to MONTHLY_LIMIT
+// section is "fees", "transport", "results", "homework" or "staff". Owners and admins of a
+// Premium school (and the principal, for results and homework), up to MONTHLY_LIMIT
 // times a month for each section. The figures come from that section's
 // database function (as the signed-in user, so the database checks
 // they're allowed); see _shared/insights.js. The AI's answer is checked:
@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
   const { data: auth } = await user.auth.getUser();
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
   const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
-  const { data: isPrincipal } = section === "results" ? await user.rpc("is_principal", { school: school_id }) : { data: false };
+  const { data: isPrincipal } = section === "results" || section === "homework" ? await user.rpc("is_principal", { school: school_id }) : { data: false };
   if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
   // As the user: the service role has no grant on schools in this project
   const { data: school } = await user.from("schools").select("plan").eq("id", school_id).single();
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
       school_id,
       section,
       model: answer.model,
-      result: { insights: result.insights, hints: result.hints },
+      result: { insights: result.insights },
       dropped: result.dropped,
       input_tokens: answer.inT,
       output_tokens: answer.outT,

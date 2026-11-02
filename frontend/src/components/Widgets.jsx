@@ -6,29 +6,33 @@ import { TrendPanel } from "./HomeTrend.jsx";
 // Each has its own colour (tone: indigo, violet, teal, pink, orange,
 // amber, green, red).
 
-// A tile: coloured icon, one big number, one word. badge: what's waiting
-// there (a red count); hot: something new, the tile glows a little;
-// urgent: it needs this person now, so it turns red. sub: the latest
-// update there, in a line under the word. big: twice as wide (Home makes
-// the tiles that need attention big). visual: a small picture of the data
-// on the right (TileVisuals.jsx), hidden when the tile is too narrow.
-// note: a short line that always shows (e.g. "18 inactive"), unlike sub.
-export function Tile({ icon, tone, label, value, format, badge = 0, badgeLabel, hot = false, urgent = false, sub, note, big = false, visual, onClick, index = 0 }) {
+// A tile: one big number and its label, then what else there is to know,
+// side by side once the tile is wide enough, like the pages' tiles. badge:
+// what's waiting there (written out in facts too; it glows a little and
+// arrangeTiles puts it first); hot: something new, the same glow; urgent: it
+// needs this person now, so it turns red. facts: short lines that always
+// show; sub: the latest update there, for wide tiles. big: twice as wide
+// (Home makes the tiles that need attention big).
+export function Tile({ tone, label, value, format, badge = 0, hot = false, urgent = false, sub, facts = [], big = false, onClick, index = 0 }) {
+  const lines = facts.filter(Boolean);
+  const long = typeof value === "string" && value.length > 6;
+  const wordy = long && value.split(" ").some((w) => w.length > 9);
   return (
-    <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}${big ? " is-big" : ""}`} style={{ "--d": `${index * 60 + 60}ms` }} onClick={onClick}>
-      <span className="hw-icon">
-        <Icon name={icon} size={28} weight="fill" />
-      </span>
-      {badge > 0 && (
-        <span className="hw-badge" aria-label={badgeLabel} title={badgeLabel}>
-          {badge > 99 ? "99+" : badge}
+    <button className={`hw-tile t-${urgent ? "red" : tone}${urgent ? " is-urgent" : hot || badge > 0 ? " is-hot" : ""}${big ? " is-big" : ""}`} onClick={onClick} style={{ "--d": `${index * 60}ms` }}>
+      <span className="hw-split">
+        <span className="hw-main">
+          <strong className={`hw-value${long ? " is-long" : ""}${wordy ? " is-wordy" : ""}`}>{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
+          <span className="hw-label">{label}</span>
         </span>
-      )}
-      <strong className="hw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
-      <span className="hw-label">{label}</span>
-      {note && <span className="hw-note">{note}</span>}
-      {sub && <span className="hw-sub">{sub}</span>}
-      {visual && <span className="hw-visual">{visual}</span>}
+        {(lines.length > 0 || sub) && (
+          <span className="hw-facts">
+            {sub && <span className="hw-sub">{sub}</span>}
+            {lines.map((f) => (
+              <span key={f}>{f}</span>
+            ))}
+          </span>
+        )}
+      </span>
     </button>
   );
 }
@@ -60,30 +64,28 @@ export function arrangeTiles(raw) {
 // colours the status chip, and the card softly pulses when urgent.
 // label: small words above the big title. status: a short chip in the
 // tone's colour. pct: a thin bar under the text. cta: the button's words.
-export function PriorityCard({ tone, urgent = false, icon, label = "", title, status = "", sub, hint = "", pct = null, cta, onClick, trend = null }) {
+export function PriorityCard({ tone, urgent = false, label = "", title, status = "", sub, pct = null, cta, onClick, trend = null }) {
+  const long = typeof title === "string" && title.length > 8;
   const head = (
     <>
-      <span className="home-att-icon">
-        <Icon name={icon} size={26} weight="fill" />
-      </span>
-      <span className="home-att-text">
-        {label && <span className="home-att-label">{label}</span>}
-        <strong className="home-att-title">{title}</strong>
-        {(status || sub) && (
-          <span className="home-att-line">
-            {status && <span className={`home-att-status t-${tone}`}>{status}</span>}
-            {sub && <span className="home-att-sub">{sub}</span>}
-          </span>
-        )}
-        {hint && (
-          <span className="home-att-hint">
-            <Icon name="sparkle" size={13} weight="fill" />
-            {hint}
-          </span>
-        )}
-        {pct !== null && (
-          <span className="home-att-bar">
-            <span className="home-att-bar-fill" style={{ width: `${pct}%` }} />
+      <span className="home-att-top">
+        <span className="home-att-main">
+          <strong className={`home-att-title${long ? " is-long" : ""}`}>{title}</strong>
+          {label && <span className="home-att-label">{label}</span>}
+        </span>
+        {(status || sub || pct !== null) && (
+          <span className="home-att-more">
+            {(status || sub) && (
+              <span className="home-att-line">
+                {status && <span className={`home-att-status t-${tone}`}>{status}</span>}
+                {sub && <span className="home-att-sub">{sub}</span>}
+              </span>
+            )}
+            {pct !== null && (
+              <span className="home-att-bar">
+                <span className="home-att-bar-fill" style={{ width: `${pct}%` }} />
+              </span>
+            )}
           </span>
         )}
       </span>
@@ -95,12 +97,14 @@ export function PriorityCard({ tone, urgent = false, icon, label = "", title, st
       )}
     </>
   );
-  // With a trend (computers only): the same heading as a strip, the
-  // numbers and chart under it.
+  // The number on the left, what it means on the right, the button wide under
+  // both. With a trend (computers only): how it's going, smaller, under or beside.
   return (
     <div className={`home-att${label ? " has-label" : ""}${urgent ? " is-urgent" : ""}${trend ? " has-trend" : ""}`}>
-      {trend ? <div className="home-att-head">{head}</div> : head}
-      {trend && <TrendPanel trend={trend} />}
+      <div className="home-att-split">
+        <div className="home-att-head">{head}</div>
+        {trend && <TrendPanel trend={trend} />}
+      </div>
     </div>
   );
 }

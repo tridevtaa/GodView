@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { addHomework, addSyllabusEntry, deleteHomework, deleteSyllabusEntry, listHomework, listSyllabus } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
+import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 import { haptic } from "../pwa/haptics.js";
+
+const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
 
 const SUBJECTS = ["English", "Hindi", "Maths", "EVS", "Science", "Social Studies", "Punjabi", "Sanskrit", "Computer", "GK", "Drawing"];
 const iso = (d) => d.toISOString().slice(0, 10);
@@ -21,8 +24,13 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // readOnly: the principal sees every class's homework and syllabus but can't
 // give, post or remove any.
 // giveAt: when set (a time), open the homework form (the + button).
-export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0 }) {
-  const [view, setView] = useState("homework"); // "homework" | "syllabus"
+// view, onView: which of homework, syllabus or attendance shows. Attendance
+// is for leads and class teachers, with its own rights (attIsAdmin, attReadOnly).
+export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0, view, onView: setView, seesAttendance = false, attIsAdmin = false, attReadOnly = false, onOpenStudent }) {
+  const [tilesAt, setTilesAt] = useState(null);
+  // Premium: for the owner, admins and the principal
+  const seesInsights = isAdmin || readOnly;
+  const ins = useInsights(school, "homework", seesInsights);
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
   const [syllabus, setSyllabus] = useState(() => (session ? peek(`syllabus:${session.id}`) ?? null : null));
   // Keep the remembered lists in step with what's on screen (new, removed).
@@ -36,7 +44,8 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
   const [writing, setWriting] = useState(false);
   useEffect(() => {
     if (giveAt && !readOnly) (setView("homework"), setWriting(true));
-  }, [giveAt, readOnly]);
+  }, [giveAt, readOnly]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onAttendance = view === "attendance";
   const [filter, setFilter] = useState(""); // "class|section" or ""
 
   // The classes this person can set work for, from the students they see.
@@ -121,58 +130,77 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
 
   const items = view === "homework" ? homework : syllabus;
 
+  // One tile: homework this week, with what's due and how many classes got it
+  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+  const due = (homework ?? []).filter((h) => h.due_date === tomorrow()).length;
+  const week = (homework ?? []).filter((h) => h.created_at >= weekAgo);
+  const classesWith = new Set(week.map((h) => `${h.class}|${h.section ?? ""}`)).size;
+  const tile = (
+    <StatCards
+      items={[
+        {
+          color: "indigo",
+          label: "Given this week",
+          value: homework ? week.length : undefined,
+          note: homework && (
+            <span className="sw-facts">
+              <span>{due} due tomorrow</span>
+              <span>
+                {classesWith} of {groups.length} classes
+              </span>
+            </span>
+          ),
+        },
+      ]}
+    />
+  );
+
   return (
     <>
+      <div ref={setTilesAt} />
+      {!writing && !onAttendance && (ins.on ? <AiCard ins={ins} lead={tile} opens={["homework", "syllabus"]} onOpen={setView} /> : tile)}
       <div className="page-header">
         <div>
-          <h1 className="sr-only">Homework &amp; syllabus</h1>
+          <h1 className="sr-only">Academics</h1>
           {/* The page's own switch sits on the same row as the Students one */}
           <div className="page-meta">
             {heading}
             {!writing && (
-              <nav className="segmented segmented-sm page-switch" aria-label="Homework or syllabus">
+              <nav className="segmented segmented-sm page-switch" aria-label="Homework, syllabus or attendance">
                 <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
                   <Icon name="book" size={15} /> Homework
                 </button>
                 <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
                   <Icon name="academics" size={15} /> Syllabus
                 </button>
+                {(seesAttendance || onAttendance) && (
+                  <button className={onAttendance ? "active" : ""} onClick={() => setView("attendance")}>
+                    <Icon name="register" size={15} /> Attendance
+                  </button>
+                )}
               </nav>
             )}
           </div>
         </div>
-        {groups.length > 0 && !writing && !readOnly && (
+        {!writing && !onAttendance && (
           <div className="page-actions">
-            <button className="btn btn-primary" onClick={() => setWriting(true)}>
-              <Icon name="plus" />
-              {view === "homework" ? "Give homework" : "Add syllabus"}
-            </button>
+            {seesInsights && school.plan !== "premium" && <InsightsButton section="homework" label="Homework insights" />}
+            {groups.length > 0 && !readOnly && (
+              <button className="btn btn-primary" onClick={() => setWriting(true)}>
+                <Icon name="plus" />
+                {view === "homework" ? "Give homework" : "Add syllabus"}
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {!writing && view === "homework" && homework && (
-        <StatCards
-          items={(() => {
-            const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-            const due = homework.filter((h) => h.due_date === tomorrow());
-            const week = homework.filter((h) => h.created_at >= weekAgo);
-            const classesWith = new Set(week.map((h) => `${h.class}|${h.section ?? ""}`)).size;
-            return [
-              { icon: "calendar", label: "Due tomorrow", value: due.length, tone: due.length ? "due" : undefined, color: due.length ? undefined : "indigo" },
-              { icon: "book", color: "teal", label: "This week", value: week.length },
-              {
-                icon: "academics",
-                color: "violet",
-                label: "Classes",
-                value: classesWith,
-                bar: groups.length ? { value: classesWith, max: groups.length, label: `${classesWith} of ${groups.length} classes got homework this week` } : undefined,
-              },
-            ];
-          })()}
-        />
-      )}
-
+      {onAttendance ? (
+        <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
+          <AttendancePage school={school} session={session} students={students} me={me} isAdmin={attIsAdmin} readOnly={attReadOnly} onOpenStudent={onOpenStudent} tilesAt={tilesAt} />
+        </Suspense>
+      ) : (
+      <>
       {error && <p className="notice notice-error">{error}</p>}
       {!groups.length && <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>}
 
@@ -322,6 +350,8 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
             );
           })}
         </ul>
+      )}
+      </>
       )}
     </>
   );

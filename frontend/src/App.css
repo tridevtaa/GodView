@@ -385,17 +385,25 @@ a:hover {
   gap: 10px;
 }
 
+/* Her small portrait in the top bar */
+.goddess-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #cdbfae;
+  object-fit: cover;
+}
+
 .ask-btn {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 36px;
   height: 36px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #9aa8ff, var(--brand) 55%, var(--brand-edge));
+  background: none;
   box-shadow: var(--shadow-md), 0 0 0 3px var(--brand-soft);
-  color: #fff;
   cursor: pointer;
   transition: transform 0.2s ease;
 }
@@ -4046,6 +4054,7 @@ a:hover {
 
 .fc-add-icon {
   display: grid;
+  flex: none;
   place-items: center;
   width: 52px;
   height: 52px;
@@ -4474,18 +4483,73 @@ a:hover {
     padding-right: 16px;
   }
 
+  /* Two columns: three can't hold a full amount and its yearly total. The
+     total goes under the grade's name, once there's an amount. */
   .fc-grid {
-    grid-template-columns: minmax(0, 1fr) 120px 76px;
-    gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 132px;
+    gap: 0 8px;
     padding: 0 16px;
+  }
+
+  .fc-cols > :last-child,
+  .fc-row:not(.is-set) .fc-year {
+    display: none;
+  }
+
+  .fc-row .fc-grade {
+    grid-area: 1 / 1;
+  }
+
+  .fc-row:not(.is-set) .fc-grade {
+    grid-area: 1 / 1 / span 2 / 1;
+  }
+
+  .fc-row .fc-amount {
+    grid-area: 1 / 2 / span 2 / 2;
+  }
+
+  .fc-row .fc-year {
+    grid-area: 2 / 1;
+    font-size: 12px;
+    text-align: left;
   }
 
   .fc-count {
     display: none;
   }
 
+  /* The fee's name gets its own line; the frequency and buttons share the next */
+  .fc-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .fc-title {
+    display: contents;
+  }
+
+  .fc-name {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    font-size: 18px;
+  }
+
+  .fc-head-end {
+    margin-left: auto;
+  }
+
+  /* minmax(0, 1fr): a long line can't push the card wider than the screen */
   .fc-dues {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .fc-dues-avg {
+    display: block;
+    margin-top: 2px;
+    white-space: normal;
   }
 }
 
@@ -4612,6 +4676,19 @@ a:hover {
 @media (max-width: 720px) {
   .fc-mini {
     padding: 16px;
+  }
+
+  /* The frequency drops under the name when both won't fit on a line */
+  .fc-mini-main {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+
+  .fc-mini-freq {
+    height: auto;
+    min-height: 30px;
+    padding-block: 4px;
+    line-height: 1.25;
   }
 
   .fc-mini-stats {
@@ -9927,6 +10004,27 @@ input[type="date"]::-webkit-date-and-time-value {
     padding: 0 10px;
   }
 
+  /* Small phones: three tabs fit on words alone */
+  .ds-tabs.page-switch,
+  .page-switch:has(button:nth-child(3)) {
+    overflow: hidden;
+  }
+
+  .page-switch:has(button:nth-child(3)) button {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0 6px;
+  }
+}
+
+@media (max-width: 400px) {
+  .page-switch:has(button:nth-child(3)) .icon {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+
   .page-header:has(.page-switch) > .page-actions,
   .page-header:has(.page-switch) > .att-day,
   .inbox-head > .btn {
@@ -11004,6 +11102,135 @@ input[type="date"]::-webkit-date-and-time-value {
   cursor: pointer;
 }
 
+/* Filter & sort: one button, one panel. A sheet on phones. */
+.filter-count {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.filter-back {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 22, 40, 0.32);
+  animation: filter-fade 0.15s ease-out;
+}
+
+@keyframes filter-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.filter-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100%);
+  max-height: min(640px, 100%);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.filter-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 8px 20px;
+}
+
+.filter-head h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.filter-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 20px 8px;
+  overflow-y: auto;
+}
+
+.filter-body h3 {
+  margin: 14px 0 8px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The sort's direction: beside the filter, or at the row's end on phones */
+.sort-arrow {
+  flex: none;
+  width: 44px;
+  padding: 0;
+}
+
+@media (max-width: 760px) {
+  .toolbar-students .sort-arrow {
+    order: 1;
+    margin-left: auto;
+  }
+}
+
+.filter-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+}
+
+.filter-foot .link-btn:disabled {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+@media (max-width: 760px) {
+  .filter-back {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .filter-sheet {
+    width: 100%;
+    max-height: 85%;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+    animation: filter-rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes filter-rise {
+  from {
+    transform: translateY(24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-back,
+  .filter-sheet {
+    animation: none;
+  }
+}
+
 .chip-btn.is-on {
   border-color: var(--brand);
   background: var(--brand);
@@ -11189,41 +11416,6 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 
 /* Ring */
-.stat-ring {
-  flex: none;
-  width: 56px;
-  height: 56px;
-  transform: rotate(-90deg);
-}
-
-.stat-ring circle {
-  fill: none;
-  stroke-width: 6;
-}
-
-.stat-ring-bg {
-  stroke: var(--brand-soft);
-}
-
-.stat-ring-fg {
-  stroke: var(--brand);
-  stroke-linecap: round;
-  stroke-dasharray: var(--c);
-  stroke-dashoffset: var(--off);
-  animation: ring-fill 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.stat-ring.is-paid .stat-ring-fg { stroke: var(--success); }
-.stat-ring.is-due .stat-ring-fg { stroke: var(--warning); }
-.stat-ring.is-overdue .stat-ring-fg { stroke: var(--danger); }
-
-.stat-ring text {
-  fill: var(--text);
-  font-size: 13px;
-  font-weight: 700;
-  transform: rotate(90deg);
-  transform-origin: 28px 28px;
-}
 
 @keyframes ring-fill {
   from {
@@ -11285,12 +11477,6 @@ input[type="date"]::-webkit-date-and-time-value {
   .stat-dots button.is-on {
     width: 18px;
     background: var(--brand);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .stat-ring-fg {
-    animation: none !important;
   }
 }
 
@@ -11515,44 +11701,9 @@ input[type="date"]::-webkit-date-and-time-value {
   animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.home-att-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 4px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.home-att-text {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-
 /* Alone in the row: a slim strip, the button at its end */
 .home-row1.is-solo .home-att {
-  flex-direction: row;
-  align-items: center;
-  gap: 14px;
   padding: 14px 18px;
-}
-
-.home-row1.is-solo .home-att-icon {
-  flex: none;
-  margin: 0;
-}
-
-.home-row1.is-solo .home-att-text {
-  flex: 1;
-  gap: 6px;
-}
-
-.home-row1.is-solo .home-att-cta {
-  flex: none;
-  margin: 0;
 }
 
 .home-att-title {
@@ -11566,13 +11717,6 @@ input[type="date"]::-webkit-date-and-time-value {
   color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   font-weight: 600;
-}
-
-.home-att.has-label .home-att-title {
-  margin-top: -4px;
-  font-size: 26px;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
 }
 
 .home-att-line {
@@ -11590,11 +11734,8 @@ input[type="date"]::-webkit-date-and-time-value {
 /* The status in the tone's colour, a dot before the words */
 .home-att-status {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 7px;
-  padding: 4px 11px 4px 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--c2) 20%, transparent);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -11602,8 +11743,10 @@ input[type="date"]::-webkit-date-and-time-value {
 
 .home-att-status::before {
   content: "";
+  flex: none;
   width: 7px;
   height: 7px;
+  transform: translateY(-1px);
   border-radius: 50%;
   background: var(--c2);
 }
@@ -11654,176 +11797,8 @@ input[type="date"]::-webkit-date-and-time-value {
 
 /* Upcoming Events on staff Home: a small month beside the list. Tapping
    the month (or its arrows) opens the full Calendar. */
-.home-events-cal {
-  display: grid;
-  grid-template-columns: 236px 1fr;
-  gap: 14px;
-  align-items: start;
-}
-
-.home-events-side {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-}
-
 /* Next holiday and next exam: soft cards in the kind's colour */
-.home-next {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.home-next-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--k) 22%, transparent);
-  border-radius: 18px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--k) 10%, var(--surface)), var(--surface) 80%);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.home-next-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--k) 16%, transparent);
-  color: var(--k);
-}
-
-.home-next-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.home-next-label {
-  color: var(--k);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.home-next-body strong {
-  overflow: hidden;
-  font-size: 15px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home-next-when {
-  margin-top: 4px;
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.home-events-none {
-  margin: 0;
-  padding: 12px 4px;
-}
-
-.home-cal {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-  padding: 12px 12px 10px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.home-cal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 4px;
-}
-
-.home-cal-head strong {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.home-cal-nav {
-  display: flex;
-  gap: 2px;
-}
-
-.home-cal-week,
-.home-cal-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-}
-
-.home-cal-week span {
-  color: var(--text-3);
-  font-size: 10.5px;
-  font-weight: 600;
-  text-align: center;
-}
-
 /* Each date is a fixed circle, so today stays round at any width */
-.home-cal-day {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: 30px;
-  color: var(--text-2);
-  font-size: 12px;
-}
-
-.home-cal-day > span {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-}
-
-.home-cal-day.is-out {
-  color: var(--text-3);
-  opacity: 0.4;
-}
-
-.home-cal-day.is-today > span {
-  background: var(--brand);
-  color: #fff;
-  font-weight: 700;
-}
-
-.home-cal-day.is-busy::after {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--brand);
-  transform: translateX(-50%);
-  content: "";
-}
-
 /* The noticeboard, as a banner, and News & Achievements, as a row of
    cards: both share the same little header (an icon, a title and
    subtitle, a "View all" link). The noticeboard sits in its own cream
@@ -12195,17 +12170,8 @@ button.achv-tag {
     padding: 22px 26px;
   }
 
-  .home-roomy .home-att-icon {
-    width: 48px;
-    height: 48px;
-  }
-
   .home-roomy .home-att-title {
     font-size: 22px;
-  }
-
-  .home-roomy .home-att.has-label .home-att-title {
-    font-size: 32px;
   }
 
   .home-roomy .home-att-sub {
@@ -12220,11 +12186,6 @@ button.achv-tag {
   .home-roomy .hw-grid {
     grid-template-columns: repeat(var(--half), 1fr);
     gap: 18px;
-  }
-
-  .home-roomy .hw-tile {
-    min-height: 168px;
-    padding: 20px 20px 18px;
   }
 
   .home-roomy .hw-value {
@@ -12253,47 +12214,6 @@ button.achv-tag {
 
   .home-roomy .home-notice-text strong {
     font-size: 17px;
-  }
-
-  .home-roomy .home-events-cal {
-    grid-template-columns: 300px 1fr;
-    gap: 18px;
-  }
-
-  .home-roomy .home-cal {
-    gap: 8px;
-    padding: 14px 14px 12px;
-  }
-
-  .home-roomy .home-cal-head strong {
-    font-size: 15px;
-  }
-
-  .home-roomy .home-cal-week span {
-    font-size: 12px;
-  }
-
-  .home-roomy .home-cal-day {
-    height: 36px;
-    font-size: 13.5px;
-  }
-
-  .home-roomy .home-cal-day > span {
-    width: 30px;
-    height: 30px;
-  }
-
-  .home-roomy .home-event-card {
-    padding: 14px;
-  }
-
-  .home-roomy .home-event-date {
-    width: 50px;
-    height: 50px;
-  }
-
-  .home-roomy .home-event-body strong {
-    font-size: 15px;
   }
 
   /* Quick actions: a 2 by 2 grid filling the card */
@@ -12342,17 +12262,261 @@ button.achv-tag {
 
 /* Beside the month (and beside Quick Actions), events stack so their
    titles have room */
-.home-events-cal .home-events-row,
-.home-bottom-row:not(.is-solo) .home-events-row {
-  flex-direction: column;
-  overflow: visible;
-}
-
 .home-events {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+
+/* The road ahead: a countdown, the next two weeks as a metro line with a
+   station on each day something's on, then what follows. */
+.road {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  container-type: inline-size;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 761px) {
+  .home-roomy .road {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+}
+
+.road-main,
+.road-then,
+.road-count,
+.road-next,
+.road-line {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.road-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.road-count strong {
+  color: var(--brand-edge);
+  font-size: clamp(30px, 11cqw, 44px);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.road-count strong.is-word {
+  font-size: 28px;
+}
+
+.road-count span {
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.road-next {
+  gap: 3px;
+}
+
+.road-next strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.road-next span {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@container (min-width: 280px) {
+  .road-hero {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+    align-items: center;
+  }
+
+  .road-hero::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: var(--border);
+    content: "";
+  }
+}
+
+/* The line runs from the first station's centre to the last's */
+.road-line {
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.road-ends {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.road-stops {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+}
+
+.road-stops::before {
+  position: absolute;
+  top: 6px;
+  right: calc(100% / 28);
+  left: calc(100% / 28);
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--brand), color-mix(in srgb, var(--brand) 16%, transparent));
+  content: "";
+  transform-origin: left;
+  animation: road-draw 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes road-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.road-stop {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.road-stop i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: 4px 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--brand) 30%, var(--surface));
+}
+
+.road-stop em {
+  min-height: 13px;
+  color: var(--text-3);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 13px;
+}
+
+.road-stop.is-today i {
+  width: 12px;
+  height: 12px;
+  margin: 1px 0;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.road-stop.is-today em {
+  color: var(--brand);
+}
+
+.road-stop.is-on i {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 2px solid var(--surface);
+  background: var(--k);
+  box-shadow: 0 0 0 1.5px var(--k);
+  animation: road-stop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(0.1s + var(--i) * 40ms);
+}
+
+.road-stop.is-on em {
+  color: var(--k);
+}
+
+@keyframes road-stop {
+  from {
+    transform: scale(0);
+  }
+}
+
+.road-then {
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.road-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 5px 0;
+  font-size: 13px;
+}
+
+.road-row i {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--k);
+}
+
+.road-row strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.road-row span {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .road-stops::before,
+  .road-stop.is-on i {
+    animation: none;
+  }
 }
 
 .home-events-icon,
@@ -12365,96 +12529,6 @@ button.achv-tag {
   border-radius: 12px;
   background: linear-gradient(145deg, #8b97e6, #5b68c4);
   color: #fff;
-}
-
-.home-events-row {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.home-events-row::-webkit-scrollbar {
-  display: none;
-}
-
-.home-event-card {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 10px;
-  min-width: 210px;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: var(--d, 0ms);
-}
-
-.home-event-date {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #8b97e6, #5b68c4);
-  color: #fff;
-}
-
-.home-event-month {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.home-event-day {
-  font-size: 16px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.home-event-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.home-event-body strong {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.home-event-body .row-sub {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-}
-
-.home-event-kind {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--k) 16%, transparent);
-  color: var(--k);
 }
 
 .home-quick {
@@ -12521,17 +12595,8 @@ button.achv-tag {
 }
 
 @media (max-width: 760px) {
-  .home-row1,
-  .home-events-cal {
+  .home-row1 {
     grid-template-columns: 1fr;
-  }
-
-  .home-row1.is-solo .home-att {
-    flex-wrap: wrap;
-  }
-
-  .home-row1.is-solo .home-att-cta {
-    flex-basis: 100%;
   }
 
   .home-notice-slide {
@@ -12667,26 +12732,8 @@ button.achv-tag {
     }
   }
 
-  .stat-ring-fg {
-    animation-duration: 0.01s !important;
-  }
 }
 
-/* Inbox: room for the cards above the list */
-.sw-row + .inbox,
-.sw-row + .notify + .inbox {
-  height: calc(100dvh - 64px - 56px - 170px);
-  min-height: 420px;
-}
-
-@media (max-width: 760px) {
-  .sw-row + .inbox,
-  .sw-row + .notify + .inbox {
-    height: auto;
-    min-height: 0;
-  }
-
-}
 
 /* The school's logo stands alone in the header now: a touch bigger */
 .logo .logo-partner {
@@ -14428,10 +14475,10 @@ button.achv-tag {
   align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  min-height: 128px;
-  padding: 14px 16px 14px;
+  justify-content: center;
+  padding: 14px 16px;
   border: 1px solid color-mix(in srgb, var(--c) 14%, transparent);
-  border-radius: 24px;
+  border-radius: 20px;
   background:
     radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--c2) 30%, transparent), transparent 60%),
     linear-gradient(160deg, var(--tint), #fff 85%);
@@ -14456,20 +14503,7 @@ button.achv-tag {
 }
 
 /* Big enough to know the tile by its icon alone */
-.hw-icon {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 54px;
-  margin-bottom: auto;
-  border-radius: 17px;
-  background: linear-gradient(145deg, var(--c2), var(--c));
-  color: #fff;
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--c) 28%, transparent);
-}
-
 .hw-value {
-  margin-top: 14px;
   color: var(--text);
   font-size: 28px;
   font-weight: 700;
@@ -14485,24 +14519,6 @@ button.achv-tag {
 }
 
 /* Something waiting: a red count in the corner, with a soft pulse */
-.hw-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  display: grid;
-  place-items: center;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: #d9466a; /* the urgent rose (.t-red) */
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 0 0 0 rgba(217, 70, 106, 0.5);
-  animation: hw-pulse 2.2s ease-in-out infinite;
-}
-
 @keyframes hw-pulse {
   50% {
     box-shadow: 0 0 0 7px rgba(217, 70, 106, 0);
@@ -14543,239 +14559,81 @@ button.achv-tag {
   container-type: inline-size;
 }
 
-.hw-visual {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  bottom: 18px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 10px;
-  max-width: 52%;
-  pointer-events: none;
-}
-
-/* Text keeps clear of the picture */
-@container (min-width: 301px) {
-  .hw-sub,
-  .hw-note {
-    max-width: 50%;
-  }
-}
-
-.tv-caption {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  color: var(--text-2);
-  font-size: 12.5px;
-  font-weight: 600;
-  text-align: right;
-}
-
-.tv-faces {
-  display: flex;
-  padding-left: 10px;
-}
-
-.tv-face {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-left: -10px;
-  overflow: hidden;
-  border: 2.5px solid var(--surface);
-  border-radius: 50%;
-  object-fit: cover;
-  box-shadow: 0 2px 6px rgba(29, 35, 102, 0.12);
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.tv-more {
-  background: var(--tint, var(--surface-2));
-  color: var(--c, var(--text-2));
-  font-size: 11.5px;
-}
-
-.tv-week {
-  display: flex;
-  gap: 6px;
-}
-
-.tv-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  width: 26px;
-  padding: 6px 0;
-  border-radius: 10px;
-  color: var(--text-2);
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
-.tv-day.is-past {
-  opacity: 0.45;
-}
-
-.tv-day.is-today {
-  background: color-mix(in srgb, var(--c) 14%, transparent);
-  color: var(--c);
-}
-
-.tv-day i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--c) 18%, transparent);
-}
-
-.tv-day i.is-on {
-  background: var(--c);
-}
-
-.tv-day i.is-many {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent);
-}
-
-.tv-ring {
-  width: 64px;
-  height: 64px;
-}
-
-.tv-ring-bg,
-.tv-ring-fg {
-  fill: none;
-  stroke-width: 6;
-}
-
-.tv-ring-bg {
-  stroke: color-mix(in srgb, var(--c) 16%, transparent);
-}
-
-.tv-ring-fg {
-  stroke: var(--c);
-  stroke-linecap: round;
-  transition: stroke-dasharray 0.6s ease;
-}
-
-.tv-ring text {
-  fill: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.tv-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  height: 70px;
-}
-
-.tv-bar {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  height: 100%;
-  color: var(--text-3);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.tv-bar i {
-  width: 14px;
-  border-radius: 6px 6px 3px 3px;
-  background: linear-gradient(180deg, var(--c2), var(--c));
-}
-
-.tv-thumb {
-  width: 120px;
-  height: 84px;
-  border-radius: 14px;
-  object-fit: cover;
-  box-shadow: 0 6px 16px rgba(29, 35, 102, 0.16);
-}
-
-/* Narrow tiles: a compact version up beside the icon, no caption. It never
-   reaches over the icon (54px + an 8px gap): faces drop off from the end
-   until they fit, and "+N" goes (the big number already says how many). */
-@container (max-width: 300px) {
-  .hw-visual {
-    top: 16px;
-    right: 16px;
-    bottom: auto;
-    gap: 0;
-    max-width: calc(100cqw - 62px);
-  }
-
-  .tv-caption,
-  .tv-bars,
-  .tv-more {
-    display: none;
-  }
-
-  .tv-faces {
-    padding-left: 9px;
-  }
-
-  .tv-face {
-    width: 32px;
-    height: 32px;
-    margin-left: -9px;
-    font-size: 10.5px;
-  }
-}
-
-/* Each face takes 23px more: 4 need 163px of tile, 3 need 140px */
-@container (max-width: 162px) {
-  .tv-face:nth-child(n + 4) {
-    display: none;
-  }
-}
-
-@container (max-width: 300px) {
-
-  .tv-ring {
-    width: 46px;
-    height: 46px;
-  }
-
-  .tv-thumb {
-    width: 64px;
-    height: 46px;
-    border-radius: 10px;
-  }
-}
-
-/* The week strip is 186px wide: it needs 248px of tile beside the icon */
-@container (max-width: 247px) {
-  .tv-week {
-    display: none;
-  }
-}
-
-@container (max-width: 150px) {
-  .hw-visual {
-    display: none;
-  }
-}
-
 /* A tile that needs attention is twice as wide, with its latest update */
 .hw-tile.is-big {
   grid-column: span 2;
 }
 
+/* Home's tiles, in the shape of the pages': the number and its label, then
+   the facts. Side by side with a thin line once the tile is wide enough, going
+   by the tile's own width. */
+.hw-split {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.hw-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Words or a long amount, not a count */
+.hw-tile .hw-value.is-long {
+  font-size: 22px;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+/* A long word has to fit half a phone's tile whole */
+.hw-tile .hw-value.is-wordy {
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.hw-facts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hw-facts .hw-sub {
+  margin: 0;
+  -webkit-line-clamp: 3;
+}
+
+@container (min-width: 280px) {
+  .hw-split:has(.hw-facts) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+    align-items: center;
+  }
+
+  .hw-split:has(.hw-facts)::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: color-mix(in srgb, var(--c) 18%, transparent);
+    content: "";
+  }
+
+  .hw-tile .hw-value:not(.is-long) {
+    font-size: clamp(30px, 11cqw, 44px);
+  }
+}
+
 /* A short fact that always shows under the label ("18 inactive") */
-.hw-note,
 .sw-note {
   margin-top: 2px;
   color: var(--text-3);
@@ -14800,14 +14658,6 @@ button.achv-tag {
 
 /* Numbers line up across the row: they sit under the icon, and a label
    that wraps or an update line only adds height below. */
-.home-roomy .hw-icon {
-  margin-bottom: 0;
-}
-
-.home-roomy .hw-value {
-  margin-top: 22px;
-}
-
 /* Two top cards side by side (the owner's access and fees) */
 .home-row1.is-pair {
   grid-template-columns: 1fr 1fr;
@@ -14837,11 +14687,6 @@ button.achv-tag {
     gap: 12px;
   }
 
-  .hw-tile {
-    min-height: 118px;
-    padding: 12px 14px;
-  }
-
   .hw-value {
     font-size: 26px;
   }
@@ -14850,7 +14695,6 @@ button.achv-tag {
 @media (prefers-reduced-motion: reduce) {
   .hw-tile,
   .hw-wide,
-  .hw-badge,
   .hw-wide-icon {
     animation: none !important;
   }
@@ -14870,8 +14714,6 @@ button.achv-tag {
 }
 
 .sw-tile {
-  /* The ring keeps its own --c (its length), so its colour comes here */
-  --ring: var(--c);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -14893,64 +14735,6 @@ button.achv-tag {
   -webkit-tap-highlight-color: transparent;
 }
 
-.sw-tile.is-link {
-  cursor: pointer;
-}
-
-.sw-tile.is-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--c) 12%, transparent);
-}
-
-.sw-tile.is-link:active {
-  transform: scale(0.97);
-}
-
-.sw-tile.is-hot {
-  border-color: color-mix(in srgb, var(--c) 32%, transparent);
-}
-
-.sw-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.sw-icon {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 11px;
-  background: linear-gradient(145deg, var(--c2), var(--c));
-  color: #fff;
-  box-shadow: 0 5px 12px color-mix(in srgb, var(--c) 30%, transparent);
-}
-
-.sw-tile .stat-ring {
-  width: 40px;
-  height: 40px;
-}
-
-.sw-tile .stat-ring-bg {
-  stroke: color-mix(in srgb, var(--ring) 18%, transparent);
-}
-
-.sw-tile .stat-ring-fg {
-  stroke: var(--ring);
-}
-
-.sw-tile .stat-ring text {
-  fill: var(--ring);
-  font-size: 15px;
-}
-
-.sw-badge {
-  position: static;
-}
-
 .sw-value {
   font-size: 24px;
   font-weight: 700;
@@ -14970,31 +14754,6 @@ button.achv-tag {
   line-height: 1.3;
 }
 
-.sw-bar {
-  display: block;
-  width: 100%;
-  height: 6px;
-  margin-top: 10px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--c) 15%, transparent);
-}
-
-.sw-bar > span {
-  display: block;
-  width: var(--to);
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--c2), var(--c));
-  animation: sw-bar-in 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-@keyframes sw-bar-in {
-  from {
-    width: 0;
-  }
-}
-
 /* Phones: three to a row, tighter */
 @media (max-width: 760px) {
   .sw-row {
@@ -15007,21 +14766,6 @@ button.achv-tag {
     border-radius: 18px;
   }
 
-  .sw-top {
-    margin-bottom: 8px;
-  }
-
-  .sw-icon {
-    width: 28px;
-    height: 28px;
-    border-radius: 10px;
-  }
-
-  .sw-tile .stat-ring {
-    width: 34px;
-    height: 34px;
-  }
-
   .sw-value {
     font-size: 20px;
   }
@@ -15030,17 +14774,10 @@ button.achv-tag {
     font-size: 12px;
   }
 
-  .sw-badge {
-    min-width: 20px;
-    height: 20px;
-    padding: 0 6px;
-    font-size: 11px;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sw-tile,
-  .sw-bar > span {
+  .sw-tile {
     animation: none !important;
   }
 }
@@ -15370,50 +15107,146 @@ button.achv-tag {
   text-transform: uppercase;
 }
 
-/* Home's top card on computers: the heading as a strip, then a few
-   numbers beside this period against the last one (white on the card's
-   colour; last period striped). Phones never get the chart. */
-.home-att-head {
+/* Home's top card, in the shape of the tiles: the number and its label on the
+   left; what it means and the button on the right, going by the card's own
+   width. On computers it can have a trend too: quieter, under it or beside
+   it. Phones never get the chart. */
+.home-att,
+.home-row1.is-solo .home-att,
+.home-roomy .home-row1.is-solo .home-att {
+  display: block;
+  container-type: inline-size;
+}
+
+.home-att-split {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.home-att-head .home-att-icon {
-  flex: none;
-  margin: 0;
-}
-
-.home-att-head .home-att-text {
-  flex: 1;
-  gap: 6px;
-}
-
-.home-att-head .home-att-cta {
-  flex: none;
-  margin: 0;
-}
-
-.home-att.has-trend,
-.home-row1.is-solo .home-att.has-trend,
-.home-roomy .home-row1.is-solo .home-att.has-trend {
   flex-direction: column;
-  align-items: stretch;
   gap: 18px;
 }
 
+/* Beside the taller card with a trend: centred, not stuck to the top */
+.home-att:not(.has-trend) .home-att-split {
+  justify-content: center;
+  height: 100%;
+}
+
+.home-att-head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.home-att-top {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-att-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.home-att.has-label .home-att-title {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(26px, 9.5cqw, 38px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.home-att-more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-att-more .home-att-bar {
+  width: 100%;
+  margin: 0;
+}
+
+.home-att-head .home-att-cta {
+  width: 100%;
+  margin: 0;
+}
+
+@container (min-width: 280px) {
+  .home-att-top:has(.home-att-more) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 32px;
+    align-items: center;
+  }
+
+  .home-att-top:has(.home-att-more)::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.16);
+    content: "";
+  }
+}
+
+/* Half a phone's card: long words smaller */
+@container (max-width: 719px) {
+  .home-att.has-label .home-att-title.is-long {
+    font-size: 22px;
+    line-height: 1.2;
+  }
+}
+
 .home-trend {
-  display: grid;
-  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr);
-  gap: 32px;
-  align-items: center;
-  padding-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+@container (min-width: 720px) {
+  .home-att.has-trend .home-att-split {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 32px;
+  }
+
+  .home-att.has-trend .home-att-top:has(.home-att-more) {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .home-att.has-trend .home-att-top::after {
+    display: none;
+  }
+
+  .home-att.has-trend .home-att-head {
+    justify-content: space-between;
+  }
+
+  .home-att.has-trend .home-att-head .home-att-cta {
+    align-self: flex-start;
+    width: auto;
+  }
+
+  .home-trend {
+    padding: 0 0 0 32px;
+    border-top: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+  }
+}
+
 .home-trend.is-loading {
-  min-height: 200px;
+  min-height: 170px;
   border-top: 0;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.1);
@@ -15421,9 +15254,9 @@ button.achv-tag {
 
 .trend-stat {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
 }
 
 .trend-label {
@@ -15433,10 +15266,10 @@ button.achv-tag {
 }
 
 .trend-value-big {
-  font-size: 34px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 
@@ -15444,8 +15277,10 @@ button.achv-tag {
 .trend-note {
   display: inline-flex;
   align-items: center;
+  align-self: center;
   gap: 5px;
-  font-size: 13px;
+  margin-left: auto;
+  font-size: 12.5px;
   font-weight: 600;
 }
 
@@ -15459,7 +15294,7 @@ button.achv-tag {
 
 .trend-extra {
   color: rgba(255, 255, 255, 0.65);
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .trend-chart {
@@ -16443,499 +16278,389 @@ button.ai-chip:hover {
   }
 }
 
-/* A short AI line next to a figure */
-.ai-hint {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 5px;
-  color: #6d3fd8;
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.ai-hint .icon {
-  flex: none;
-  margin-top: 2px;
-}
-
-.ai-hint-row {
-  order: 3;
-  flex-basis: 100%;
-}
-
-
-.ai-hint-block {
-  display: flex;
-  margin: 0 0 14px;
-}
-
-.ai-hint-card {
-  display: flex;
-  margin: -6px 28px 12px;
-}
-
-.bus-card .ai-hint {
-  margin-top: 4px;
-}
-
-/* On Home's coloured fee card */
-.home-att-hint {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 2px;
-  color: #c9cff7;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.home-att-hint .icon {
-  flex: none;
-  margin-top: 2px;
-}
-
-@media (max-width: 760px) {
-  .ai-hint-card {
-    margin-left: 16px;
-    margin-right: 16px;
-  }
-}
-
-.home-att-hint {
-  align-self: flex-start;
-}
-
-/* Lines inside the small figure cards: at most two lines */
-.sw-note .ai-hint {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.sw-note .ai-hint .icon {
-  display: none;
-}
-
-/* Phones: the figure cards are too narrow for a line; it would be cut off */
-@media (max-width: 760px) {
-  .sw-note:has(.ai-hint) {
-    display: none;
-  }
-}
-
-/* An AI line in a panel title gets a row of its own */
-.panel-title-row:has(.ai-hint-row) {
-  flex-wrap: wrap;
-  row-gap: 4px;
-}
-
-/* The AI card: "What AI thinks can help". Closed: one line per insight;
-   open: the full cards. */
+/* The AI card: the Goddess's thoughts, one glass card per insight, in the
+   warm glass of her panel (concierge.css), drawn with gradients since the
+   page itself has nothing to frost. The top message's tail points up at her
+   portrait in the top bar. A page
+   can put its own tile first in the row (lead). Closed: number and point;
+   open: each grows in place. */
 .ai-card {
-  margin-bottom: 24px;
-  border: 1px solid color-mix(in srgb, #8b5cf6 22%, transparent);
-  border-radius: 22px;
-  background:
-    radial-gradient(90% 120% at 100% 0%, rgba(139, 92, 246, 0.1), transparent 55%),
-    linear-gradient(135deg, #faf7ff, var(--surface));
-  box-shadow: 0 3px 14px rgba(109, 63, 216, 0.08);
-  overflow: hidden;
-  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  position: relative;
+  margin-bottom: 14px;
 }
 
-.ai-card-tap {
+.ai-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-cards.has-lead {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+/* Her messages, one under the other */
+.ai-msgs {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  padding: 16px 20px;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-lead,
+.ai-lead .sw-row,
+.ai-lead .sw-tile {
+  height: 100%;
+}
+
+.ai-lead .sw-row {
+  margin: 0;
+}
+
+/* Open, her messages grow tall; the tile keeps its own height */
+.ai-card.is-open .ai-lead,
+.ai-card.is-open .ai-lead .sw-row,
+.ai-card.is-open .ai-lead .sw-tile {
+  height: auto;
+}
+
+.ai-card.is-open .ai-lead {
+  align-self: start;
+}
+
+.ai-thought {
+  --ai-figure: #c9e4ff;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 11px 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 60%),
+    radial-gradient(70% 120% at 85% 110%, rgba(214, 160, 120, 0.16), transparent 70%),
+    linear-gradient(120deg, #5f5448, #54483e 55%, #443a31);
+  box-shadow:
+    0 12px 26px -12px rgba(50, 35, 22, 0.5),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
+  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.3);
+  animation: home-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+  transition: transform 0.15s;
+}
+
+.ai-card:not(.is-open) .ai-thought {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.ai-card-head {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
+@media (hover: hover) {
+  .ai-card:not(.is-open) .ai-thought:hover {
+    transform: translateY(-2px);
+  }
 }
 
-.ai-card-badge {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+
+.ai-thought.is-high {
+  --ai-figure: #ffcfc4;
+}
+
+.ai-thought.is-medium {
+  --ai-figure: #ffe6b3;
+}
+
+.ai-card > .ai-key-error {
+  margin: 0 0 14px;
+}
+
+/* The tail of her top message, curving up to her portrait in the top bar */
+.ai-tail {
+  position: absolute;
+  bottom: calc(100% - 1px);
+  z-index: 1;
+  display: block;
+  overflow: visible;
+}
+
+.ai-tail path:first-child {
+  fill: #4b4037;
+}
+
+.ai-tail path:last-child {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.26);
+}
+
+/* The insights */
+/* A message from her, the number highlighted inside the sentence */
+.ai-message {
+  margin: 0;
   color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
-.ai-card-titles {
+.ai-kpi {
+  background: none;
+  color: var(--ai-figure);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A wide tile: the number on the left half, the rest on the right. Each tile
+   goes by its own width, so the same tile can be either, page by page. */
+.sw-row {
+  container-type: inline-size;
+}
+
+@container (min-width: 300px) {
+  /* Left half: the number, its label under it. Right half: the facts, one
+     to a line. */
+  .sw-tile:has(.sw-note) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+    column-gap: 32px;
+    align-content: center;
+    align-items: center;
+  }
+
+  .sw-tile:has(.sw-note)::after {
+    position: absolute;
+    top: 14px;
+    bottom: 14px;
+    left: 50%;
+    width: 1px;
+    background: color-mix(in srgb, var(--c) 18%, transparent);
+    content: "";
+  }
+
+  .sw-tile .sw-value {
+    grid-area: 1 / 1;
+    font-size: clamp(30px, 11cqw, 44px);
+    line-height: 1.1;
+  }
+
+  .sw-tile .sw-label {
+    grid-area: 2 / 1;
+  }
+
+  .sw-tile .sw-note,
+  .ai-lead .sw-tile .sw-note {
+    grid-area: 1 / 2 / span 2 / 2;
+    margin: 0;
+  }
+
+  .sw-tile .sw-facts {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+}
+
+@keyframes ai-word {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+/* Grows in place when the card opens */
+.ai-col-more {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0.45s;
+}
+
+.ai-card.is-open .ai-col-more {
+  grid-template-rows: 1fr;
+  visibility: visible;
+}
+
+.ai-col-more-in {
   display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
-  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.3s;
 }
 
-.ai-card-titles strong {
-  font-size: 16px;
+.ai-card.is-open .ai-col-more-in {
+  opacity: 1;
+  transition: opacity 0.5s 0.12s;
+}
+
+.ai-col-why {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 13px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* Like the chips on her page */
+.ai-col-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--r);
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.ai-col-action:hover {
+  background: rgba(0, 0, 0, 0.34);
+}
+
+.ai-col-action .icon {
+  flex: none;
+}
+
+.ai-col-action.is-text {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: default;
+}
+
+.ai-col-people {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12.5px;
+}
+
+.ai-col-people .link-btn {
+  padding: 0;
+  color: #fff;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.ai-col-people .link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ai-card-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 14px;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+/* Time and open or close: a slim line under her messages */
+.ai-card-toggle {
+  display: flex;
+  flex: none;
+  align-self: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin: -2px 0 -4px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ai-card-toggle .ai-key-when {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.ai-card-toggle .ai-pulse {
+  width: 8px;
+  height: 8px;
+  background: #8fa0ff;
+}
+
+/* A tap shouldn't leave a box round the chevron; keyboards still get one */
+@media (hover: none) {
+  .ai-card-toggle:focus-visible {
+    outline: none;
+  }
 }
 
 .ai-card-chev {
-  flex: none;
-  color: var(--text-3);
-  transition: transform 0.2s;
+  transition: transform 0.3s;
 }
 
 .ai-card.is-open .ai-card-chev {
   transform: rotate(180deg);
 }
 
-.ai-mini {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 20px;
-}
-
-.ai-mini-row {
+.sw-facts {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 13.5px;
-  --accent: var(--brand);
+  flex-wrap: wrap;
+  gap: 0 12px;
 }
 
-.ai-mini-row.is-high {
-  --accent: var(--danger);
-}
-
-.ai-mini-row.is-medium {
-  --accent: var(--warning);
-}
-
-.ai-mini-icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-}
-
-.ai-mini-row strong {
-  flex: none;
-  color: var(--accent);
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.ai-mini-text {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-2);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-mini-wait {
-  color: var(--text-3);
-  font-size: 13.5px;
-}
-
-.ai-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 0 20px 18px;
-}
-
-.ai-card .ai-big {
-  box-shadow: 0 1px 6px rgba(20, 24, 60, 0.07);
-}
-
-.ai-refresh {
-  display: inline-flex;
-  align-self: flex-end;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-}
-
-@media (max-width: 760px) {
-  .ai-card-tap {
-    padding: 14px 16px;
-  }
-
-  .ai-mini {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .ai-card-body {
-    padding: 0 0 16px;
-  }
-
-  .ai-card-body .ai-key-grid {
-    margin: 0;
-  }
-
-  .ai-card-body .ai-refresh,
-  .ai-card-body .ai-empty,
-  .ai-card-body .notice {
-    margin-right: 16px;
-    margin-left: 16px;
-  }
-}
-
-/* The open AI card: a plain list, thin lines between, three lines each */
-.ai-card-top {
-  display: flex;
-  align-items: center;
-}
-
-.ai-card-top .ai-card-tap {
-  flex: 1;
-  min-width: 0;
-}
-
-.ai-card.is-open .ai-card-top {
-  border-bottom: 1px solid color-mix(in srgb, #8b5cf6 14%, transparent);
-}
-
-.ai-card > .ai-key-error {
-  margin: 12px 20px 0;
-}
-
-.ai-rows {
-  margin: 0;
-  padding: 0 20px;
-  list-style: none;
-}
-
-.ai-row-item {
-  display: flex;
-  gap: 12px;
-  padding: 14px 0;
-  --accent: var(--brand);
-}
-
-.ai-row-item + .ai-row-item {
-  border-top: 1px solid var(--border);
-}
-
-.ai-row-item.is-high {
-  --accent: var(--danger);
-}
-
-.ai-row-item.is-medium {
-  --accent: var(--warning);
-}
-
-.ai-row-item.is-skeleton {
-  height: 72px;
-  margin: 8px 0;
-  border-radius: 12px;
-  background: var(--surface-2);
-}
-
-.ai-row-item .ai-mini-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-}
-
-.ai-row-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.ai-row-stat {
-  margin: 0;
-  color: var(--text-3);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.ai-row-stat strong {
-  margin-right: 2px;
-  color: var(--accent);
-  font-size: 18px;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.ai-row-title {
-  margin: 0;
-  font-size: 14.5px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.ai-row-action {
-  display: inline-flex;
-  align-items: center;
-  align-self: flex-start;
-  gap: 4px;
-  margin: 2px 0 0;
+.sw-facts .link-btn {
   padding: 0;
-  border: 0;
-  background: none;
-  color: var(--brand);
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
   text-align: left;
-  cursor: pointer;
 }
 
-.ai-row-action.is-text {
-  color: var(--text-2);
-  cursor: default;
+.ai-lead .sw-note {
+  margin-bottom: 10px;
 }
 
-.ai-row-people {
-  margin: 0;
-  color: var(--text-3);
-  font-size: 12.5px;
-}
+/* Tablets and phones: one column, her messages first, right under the top bar */
+@media (max-width: 1100px) {
+  .ai-cards.has-lead {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-.ai-row-people .link-btn {
-  padding: 0;
-  font-size: inherit;
-}
-
-.ai-card-empty {
-  padding: 14px 20px;
-}
-
-@media (max-width: 760px) {
-  .ai-rows {
-    padding: 0 16px;
+  .ai-msgs {
+    order: -1;
   }
 }
 
-/* The arrow stays right after the action's last word when it wraps */
-.ai-row-action {
-  display: inline;
+@media (max-width: 760px) {
+  .ai-cards {
+    gap: 10px;
+  }
+
+  .ai-thought {
+    padding: 10px 14px;
+  }
+
 }
 
-.ai-row-action .icon {
-  margin-left: 4px;
-  vertical-align: -2px;
-}
-
-/* AI card, softer: fewer bold weights, gentler ink and colour. Colour is
-   kept for the number and the arrow only. */
-.ai-card {
-  --ai-ink: color-mix(in srgb, var(--text) 82%, var(--surface));
-  --ai-soft: color-mix(in srgb, var(--text-3) 90%, var(--surface));
-}
-
-.ai-card-titles strong {
-  font-weight: 600;
-  color: var(--ai-ink);
-}
-
-.ai-row-item,
-.ai-mini-row {
-  --tone: color-mix(in srgb, var(--accent) 78%, var(--text-3));
-}
-
-.ai-row-item {
-  gap: 14px;
-  padding: 16px 0;
-}
-
-.ai-row-body {
-  gap: 4px;
-}
-
-.ai-row-item .ai-mini-icon,
-.ai-mini-icon {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
-  color: var(--tone);
-}
-
-.ai-row-stat {
-  color: var(--ai-soft);
-  font-weight: 500;
-  line-height: 1.4;
-}
-
-.ai-row-stat strong {
-  margin-right: 4px;
-  color: var(--tone);
-  font-size: 17px;
-  font-weight: 600;
-}
-
-.ai-row-title {
-  color: var(--ai-ink);
-  font-size: 14.5px;
-  font-weight: 500;
-  line-height: 1.45;
-}
-
-.ai-row-action {
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-.ai-row-action:hover {
-  color: var(--ai-ink);
-}
-
-.ai-row-action .icon {
-  color: var(--brand);
-}
-
-.ai-row-people {
-  color: var(--ai-soft);
-  font-weight: 400;
-}
-
-/* Names open the student's page, so they look like links */
-.ai-row-people .link-btn {
-  color: var(--brand);
-  font-weight: 600;
-}
-
-.ai-row-people .link-btn:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.ai-row-item + .ai-row-item {
-  border-top-color: color-mix(in srgb, var(--border) 70%, transparent);
-}
-
-/* Closed card rows to match */
-.ai-mini-row strong {
-  color: var(--tone);
-  font-weight: 600;
-}
-
-.ai-mini-text {
-  color: var(--ai-soft);
+@media (prefers-reduced-motion: reduce) {
+  .ai-thought,
+  .ai-thought,
+  .ai-col-more,
+  .ai-col-more-in,
+  .ai-card-chev {
+    transition: none;
+  }
 }
 
 /* A student's class (staff student page, parents' Home): the class
@@ -17331,10 +17056,6 @@ button.class-face:hover {
   }
 
   /* Half-width sections: events stack beside their neighbour */
-  .hw-block.is-section.size-wide .home-events-row {
-    flex-direction: column;
-    overflow: visible;
-  }
 }
 
 /* Mid-size screens: sections take the whole row */
@@ -17430,6 +17151,11 @@ button.class-face:hover {
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Room under the facts for the size button */
+.hw-board.is-editing .hw-tile {
+  padding-bottom: 44px;
 }
 
 .hw-resize {
@@ -17722,120 +17448,6 @@ button.class-face:hover {
 
   .ticker-track > [aria-hidden="true"] {
     display: none;
-  }
-}
-
-/* Students page sort: one pill. The icon and the choice, then (once a
-   sort is picked) a joined toggle for which end comes first. */
-.sort-pill {
-  display: inline-flex;
-  align-items: stretch;
-  height: var(--control-h);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: var(--btn-shadow);
-  overflow: hidden;
-}
-
-.sort-pill.is-on {
-  border-color: color-mix(in srgb, var(--brand) 35%, var(--border));
-}
-
-.sort-pick {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px 0 12px;
-  color: var(--text-2);
-  cursor: pointer;
-}
-
-.sort-pill.is-on .sort-pick > .icon:first-child {
-  color: var(--brand);
-}
-
-.sort-current {
-  color: var(--text);
-  font-size: 13.5px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* The real dropdown, invisible, covering the choice and the caret */
-.sort-pick select {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.sort-pick select:focus {
-  outline: none;
-}
-
-.sort-caret {
-  pointer-events: none;
-  color: var(--text-3);
-}
-
-/* No grey box on tap (phones) or while the picker is open; keyboard
-   focus rings the whole pill instead */
-.sort-pick,
-.sort-pick select,
-.sort-dir {
-  -webkit-tap-highlight-color: transparent;
-}
-
-.sort-pill.is-kbd:focus-within {
-  box-shadow: 0 0 0 3px var(--brand-ring);
-}
-
-.sort-dir:focus {
-  outline: none;
-}
-
-.sort-dir {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 14px 0 12px;
-  border: 0;
-  border-left: 1px solid var(--border);
-  background: var(--brand-soft);
-  color: var(--brand);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.sort-dir:hover {
-  background: color-mix(in srgb, var(--brand) 16%, var(--surface));
-}
-
-.sort-dir .icon {
-  transition: transform 0.2s;
-}
-
-/* Phones: the direction is just its icon */
-@media (max-width: 760px) {
-  .sort-dir-label {
-    display: none;
-  }
-
-  .sort-dir {
-    padding: 0 12px;
   }
 }
 

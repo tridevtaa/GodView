@@ -9,7 +9,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
-import { AiCard, Hint, InsightsButton, hintFor, useInsights } from "./AiInsights.jsx";
+import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -39,7 +39,6 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   const [showAll, setShowAll] = useState(false);
   // Premium: the AI card above the charts, and short lines by the figures
   const ins = useInsights(school, "fees", (role === "owner" || role === "admin") && !pastSession);
-  const hint = (slot) => (hintFor(ins, slot) ? <Hint ins={ins} slot={slot} /> : undefined);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -157,12 +156,49 @@ export default function FeesPage({ school, role, session, pastSession = false, s
 
   const billed = Number(summary?.billed) || 0;
   const collected = Number(summary?.collected) || 0;
-  const rate = billed > 0 ? Math.round((collected / billed) * 100) : 0;
   const notSetUp = summary && billed === 0;
   const list = showAll ? owing : defaulters;
+  // One tile: what's due now, with what's collected and what's still to come
+  const tile = (
+    <StatCards
+      items={[
+        {
+          label: "Due now",
+          value: summary ? Number(summary.due_now) : undefined,
+          format: rupeesShort,
+          tone: "due",
+          note: summary && (
+            <span className="sw-facts">
+              <span>{rupeesShort(collected)} collected</span>
+              <span>{rupeesShort(Number(summary.outstanding) - Number(summary.due_now))} due later</span>
+            </span>
+          ),
+        },
+      ]}
+    />
+  );
 
   return (
     <>
+      {ins.on ? (
+        <AiCard
+          ins={ins}
+          lead={tile}
+          opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
+          // A name opens that student's page (their fees are a tab there)
+          onPerson={onOpenStudent}
+          onOpen={(kind) => {
+            if (kind === "structure") setTab("structure");
+            else {
+              setShowAll(true);
+              setTimeout(() => document.getElementById("fees-owing")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+            }
+          }}
+        />
+      ) : (
+        tile
+      )}
+
       {header}
 
       {error && <p className="notice notice-error">{error}</p>}
@@ -184,54 +220,6 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         </div>
       )}
 
-      <StatCards
-        items={[
-          {
-            icon: "rupee",
-            label: "Collected",
-            value: summary ? Number(summary.collected) : undefined,
-            format: rupeesShort,
-            tone: "paid",
-            note: hint("collected"),
-            bar: billed ? { value: collected, max: billed, label: `${rate}% of ${rupees(billed)}` } : undefined,
-          },
-          {
-            icon: "rupee",
-            label: "Due now",
-            value: summary ? Number(summary.due_now) : undefined,
-            format: rupeesShort,
-            tone: "due",
-            note: hint("due_now"),
-            badge: summary ? Number(summary.students_due) : 0,
-            badgeLabel: `${summary?.students_due ?? 0} students owe`,
-          },
-          {
-            icon: "calendar",
-            color: "indigo",
-            label: "Due later",
-            value: summary ? Number(summary.outstanding) - Number(summary.due_now) : undefined,
-            format: rupeesShort,
-            note: hint("due_later"),
-          },
-        ]}
-      />
-
-      {ins.on && (
-        <AiCard
-          ins={ins}
-          opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
-          // A name opens that student's page (their fees are a tab there)
-          onPerson={onOpenStudent}
-          onOpen={(kind) => {
-            if (kind === "structure") setTab("structure");
-            else {
-              setShowAll(true);
-              setTimeout(() => document.getElementById("fees-owing")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-            }
-          }}
-        />
-      )}
-
       <div className="fees-charts">
         <section className="panel chart-panel">
           <ColumnChart title="Collected by month" data={months} />
@@ -246,7 +234,6 @@ export default function FeesPage({ school, role, session, pastSession = false, s
           <h2>
             {showAll ? "Everyone who owes" : "Paid nothing yet"} <span className="badge badge-danger">{list.length}</span>
           </h2>
-          <Hint ins={ins} slot="owing" className="ai-hint-row" />
           <button className="link-btn" onClick={() => setShowAll((v) => !v)}>
             {showAll ? "Paid nothing yet" : `Everyone who owes (${owing.length})`}
           </button>

@@ -37,7 +37,6 @@ import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
 import { SchoolContactCard } from "./SchoolContact.jsx";
-import { Caption, MiniRing, SubjectBars, WeekStrip } from "./TileVisuals.jsx";
 import "./parent.css";
 import { useSchoolBranding } from "../pwa/branding.js";
 import UpdatePrompt from "./UpdatePrompt.jsx";
@@ -370,7 +369,6 @@ function ParentHome({ child, news, onGo }) {
       pct: max ? Math.round((got / max) * 1000) / 10 : null,
       best: sorted[0],
       low: sorted.length > 1 ? sorted[sorted.length - 1] : null,
-      rows: scored.map((x) => ({ label: x.subject, pct: x.pct })),
     };
   }, [results]);
 
@@ -418,7 +416,6 @@ function ParentHome({ child, news, onGo }) {
       ? {
           tone: overdue.length ? "red" : "amber",
           urgent: overdue.length > 0,
-          icon: "rupee",
           label: overdue.length ? "Fees overdue" : "Fees due",
           title: overdue.length ? rupees(overdueTotal) : rupees(dueTotal),
           sub: next ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}` : plural(dueNow.length, "fee"),
@@ -429,7 +426,6 @@ function ParentHome({ child, news, onGo }) {
       : prio === "homework"
       ? {
           tone: "teal",
-          icon: "book",
           label: "Homework",
           title: hwToday ? `${hwToday} due today` : `${hwTomorrow} due tomorrow`,
           sub: hwToday && hwTomorrow ? `${hwTomorrow} more due tomorrow` : `${hwUpcoming} still to hand in`,
@@ -438,7 +434,7 @@ function ParentHome({ child, news, onGo }) {
         }
       : null;
 
-  // One tile each, with a red badge for anything new or waiting, and the
+  // One tile each, written out for anything new or waiting, and the
   // latest update under the ones that need a look (arranged like staff Home).
   const lastResult = (results || []).reduce((t, r) => (!t || r.updated_at > t ? r.updated_at : t), null);
   const lastHomework = hw.reduce((t, h) => (!t || h.created_at > t.created_at ? h : t), null);
@@ -448,14 +444,10 @@ function ParentHome({ child, news, onGo }) {
       icon: "rupee",
       tone: fees === null ? "indigo" : feeTone,
       label: dueTotal ? "Fees Due" : "Fees",
-      value: fees === null ? undefined : dueTotal ? rupees(dueTotal) : "All paid",
+      // All paid only when nothing is left; later instalments may still be to come
+      value: fees === null ? undefined : dueTotal ? rupees(dueTotal) : openTotal ? "Nothing due now" : "All paid",
       sub: next ? `Next: ${rupees(next.balance)} on ${dateText(next.due_date, { day: "numeric", month: "short" })}` : null,
-      visual: paidPct !== null && (
-        <>
-          <MiniRing pct={paidPct} />
-          <Caption>of the year paid</Caption>
-        </>
-      ),
+      facts: [paidPct !== null && `${paidPct}% of the year paid`],
       onClick: go("fees"),
     },
     results !== false && {
@@ -466,10 +458,9 @@ function ParentHome({ child, news, onGo }) {
       // Text, not a counting number: counting rounds to whole numbers.
       value: results === null ? undefined : exam?.pct != null ? `${exam.pct}%` : "–",
       badge: news("results"),
-      badgeLabel: `${plural(news("results"), "new result")}`,
       sub: exam?.best && `Best in ${exam.best.subject}${exam.low ? `, most to work on in ${exam.low.subject}` : ""}`,
       fresh: lastResult,
-      visual: exam?.rows?.length > 0 && <SubjectBars rows={exam.rows} />,
+      facts: [news("results") > 0 && plural(news("results"), "new result")],
       onClick: go("results"),
     },
     homework !== false && prio !== "homework" && {
@@ -479,10 +470,9 @@ function ParentHome({ child, news, onGo }) {
       label: "Homework",
       value: homework === null ? undefined : hwUpcoming,
       badge: hwToday + hwTomorrow,
-      badgeLabel: `${hwToday} due today, ${hwTomorrow} due tomorrow`,
       sub: lastHomework && `${lastHomework.subject || "Homework"}${lastHomework.due_date ? ` · due ${dateText(lastHomework.due_date, { weekday: "short", day: "numeric", month: "short" })}` : ""}`,
       fresh: lastHomework?.created_at,
-      visual: homework !== null && hw.length > 0 && <WeekStrip dates={hw.map((h) => h.due_date).filter(Boolean)} />,
+      facts: [hwToday > 0 && `${hwToday} due today`, hwTomorrow > 0 && `${hwTomorrow} due tomorrow`],
       onClick: go("homework"),
     },
     {
@@ -502,12 +492,7 @@ function ParentHome({ child, news, onGo }) {
       label: "Attendance",
       value: attDays === null ? undefined : attPct === null ? "–" : `${attPct}%`,
       sub: todayMark ? `Today: ${MARK_TEXT[todayMark.status]}` : attDays?.length ? "Today: not marked yet" : null,
-      visual: attPct !== null && (
-        <>
-          <MiniRing pct={attPct} />
-          <Caption>this month</Caption>
-        </>
-      ),
+      facts: [attPct !== null && "This month"],
       onClick: go("attendance"),
     },
     nextExam && {
@@ -517,7 +502,7 @@ function ParentHome({ child, news, onGo }) {
       label: nextExam.exam_name,
       value: nextExam.subject,
       badge: news("datesheet"),
-      badgeLabel: "New on the datesheet",
+      facts: [news("datesheet") > 0 && "New on the datesheet"],
       sub: `${dateText(nextExam.exam_date, { weekday: "short", day: "numeric", month: "short" })}${nextExam.start_time ? ` · ${nextExam.start_time}` : ""} · ${daysTo === 0 ? "today" : daysTo === 1 ? "tomorrow" : `in ${daysTo} days`}`,
       hot: daysTo <= 2,
       onClick: go("datesheet"),
@@ -540,7 +525,7 @@ function ParentHome({ child, news, onGo }) {
       wide: true,
       value: notices === null ? undefined : notices.length,
       badge: news("notices"),
-      badgeLabel: `${plural(news("notices"), "new notice")}`,
+      facts: [news("notices") > 0 && plural(news("notices"), "new notice")],
       sub: latestNotice?.title,
       fresh: latestNotice?.created_at,
       onClick: go("notices"),
@@ -594,7 +579,7 @@ function ParentHome({ child, news, onGo }) {
     icon: "calendar",
     tone: "violet",
     size: "full",
-    node: <ComingUp schoolId={child.school_id} calendar withNotices={false} onOpenCalendar={() => onGo("calendar")} onOpenNotices={() => onGo("notices")} />,
+    node: <ComingUp schoolId={child.school_id} onOpenCalendar={() => onGo("calendar")} />,
   };
 
   return (
@@ -677,10 +662,11 @@ function ChildHero({ child, onTab }) {
   const dueNow = fees ? fees.dues.filter((d) => Number(d.balance) > 0.009 && (!d.due_date || d.due_date <= now)) : [];
   const dueTotal = dueNow.reduce((t, d) => t + Number(d.balance), 0);
   const overdue = dueNow.some((d) => d.due_date && d.due_date < now);
+  const anyLeft = fees ? fees.dues.some((d) => Number(d.balance) > 0.009) : false;
   const stats = [
     ["Attendance", att === null ? "–" : `${att}%`, "green", "attendance"],
     ["Result", result ? `${result.pct}%` : "–", "violet", "results"],
-    fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
+    fees !== false && ["Fees due", fees === null ? "–" : dueTotal > 0 ? rupees(dueTotal) : anyLeft ? "None" : "Paid", fees === null ? "indigo" : overdue ? "red" : dueTotal > 0 ? "amber" : "green", "fees"],
   ].filter(Boolean);
   const schoolPhone = child.school?.phone;
   const teachers = useClassTeachers(child.id, child.session?.id);

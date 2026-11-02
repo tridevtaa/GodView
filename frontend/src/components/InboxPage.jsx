@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { staffInbox } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Chat, { useBackToClose } from "./Chat.jsx";
-import StatCards from "./StatCards.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import { onFresh } from "../pwa/fresh.js";
@@ -89,29 +88,8 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     setQuery("");
   }
 
-  const all = threads ?? [];
   return (
     <>
-    {threads && (
-      <StatCards
-        items={(() => {
-          const unread = all.filter((t) => Number(t.unread) > 0);
-          const reqs = all.filter((t) => Number(t.open_requests) > 0);
-          return [
-            { icon: "inbox", label: "Unread", value: unread.length, color: unread.length ? "violet" : "green", onClick: () => setFilter("unread") },
-            {
-              icon: "file",
-              label: "Requests",
-              value: reqs.length,
-              tone: reqs.length ? "overdue" : undefined,
-              color: reqs.length ? undefined : "teal",
-              onClick: () => setFilter("requests"),
-            },
-            { icon: "plane", color: "indigo", label: "Chats", value: all.length, onClick: () => setFilter("all") },
-          ];
-        })()}
-      />
-    )}
     <div className={`inbox${open ? " has-open" : ""}`}>
       <section className="inbox-list">
         <div className="inbox-head">
