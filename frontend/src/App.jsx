@@ -4,7 +4,8 @@ import TopBar from "./components/TopBar.jsx";
 import PersonCard from "./components/PersonCard.jsx";
 import Grid from "./components/Grid.jsx";
 import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
-import GradeFilter, { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
+import { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
+import FilterSheet, { SortArrow } from "./components/FilterSheet.jsx";
 import Icon from "./components/Icon.jsx";
 import { setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
@@ -17,7 +18,6 @@ import NoticeBoard from "./components/NoticeBoard.jsx";
 import CalendarPage from "./components/CalendarPage.jsx";
 import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
-import { rupeesShort } from "./data/money.js";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
 import { useSessions } from "./data/useSessions.js";
@@ -27,7 +27,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
-import { AiCard, Hint, InsightsButton, hintFor, useInsights } from "./components/AiInsights.jsx";
+import { AiCard, InsightsButton, useInsights } from "./components/AiInsights.jsx";
 import { primeVoice } from "./components/voicePlayer.js";
 
 const SEARCH_KEYS = {
@@ -67,6 +67,9 @@ const Concierge = lazy(() => import("./components/Concierge.jsx"));
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
+  // Academics' switch: homework, syllabus or attendance. Kept here so coming
+  // back from a student's profile returns to the same one.
+  const [academicsView, setAcademicsView] = useState("homework");
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -221,8 +224,8 @@ export default function App() {
   const canWrite = source === "supabase" && !viewOnly && !isPrincipal;
   // AI insights (Premium): Transport on its page, Results on Students
   const insT = useInsights(school, "transport", isAdmin && mode === "transport");
+  const insS = useInsights(school, "staff", isAdmin && !viewOnly && source === "supabase" && mode === "employees" && staffTab === "people");
   const insR = useInsights(school, "results", (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && mode === "students");
-  const aiNote = (ins, slot) => (hintFor(ins, slot) ? <Hint ins={ins} slot={slot} /> : undefined);
 
   // Students who left stay in the database (history) but aren't shown.
   // Ordered by grade (Nursery → 12), then section, then name.
@@ -397,6 +400,10 @@ export default function App() {
   useLayoutEffect(() => {
     window.scrollTo(0, studentPage ? 0 : listScroll.current);
   }, [studentPage, openId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A new page opens at its top
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [mode]);
 
   function switchMode(next) {
     // A + action opens its form once; moving between pages clears it.
@@ -406,9 +413,15 @@ export default function App() {
       return;
     }
     setMode(next);
+    setAcademicsView("homework");
     setQuery("");
     setPickedGrades([]);
     setOpenId(null);
+  }
+  // Attendance lives under Academics (Students' Academics for those who lead)
+  function openAttendance() {
+    switchMode("homework");
+    setAcademicsView("attendance");
   }
 
   const selectedSession = sessions.find((s) => s.id === sessionId);
@@ -467,63 +480,53 @@ export default function App() {
     }
   }, [mode, currentSession, viewOnly, leads, todayIso, current]);
 
+  const insHere = isStudents ? insR : insS;
+  const showInsights = insHere.on && !query && (!isStudents || pickedGrades.length === 0);
+
   // Tiles at the top of Students and Staff: one number and a word each.
   const overview = (() => {
-    if (loading) return null;
+    // Shown while loading too, so the toolbar under the tiles stays put
     if (isStudents) {
-      const owing = current.filter((p) => Number(p.fee_due) > 0);
-      const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
-      const paid = current.reduce((t, p) => t + (Number(p.fee_paid) || 0), 0);
-      const billed = current.reduce((t, p) => t + (Number(p.fee_billed) || 0), 0);
-      const overdue = current.filter((p) => p.fee_status === "overdue").length;
-      const pct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+      // One tile: how many students, with who's inactive and today's attendance
+      const inactive = current.filter((p) => p.status === "inactive").length;
+      const present = today?.marked ? `${today.present.toLocaleString("en-IN")} present today` : null;
       return [
         {
-          icon: "scholar",
           color: "indigo",
           label: leads ? "Students" : "My students",
-          value: current.length,
-          note: (() => {
-            const inactive = current.filter((p) => p.status === "inactive").length;
-            return inactive ? `${inactive.toLocaleString("en-IN")} inactive` : null;
-          })(),
-        },
-        isAdmin && {
-          icon: "rupee",
-          label: "Due now",
-          value: due,
-          format: rupeesShort,
-          tone: due > 0 ? "due" : "paid",
-          bar: billed ? { value: paid, max: billed, label: `${Math.round((paid / billed) * 100)}% of the year collected` } : undefined,
-          badge: overdue,
-          badgeLabel: `${overdue.toLocaleString("en-IN")} students overdue`,
-          onClick: () => switchMode("fees"),
-        },
-        {
-          icon: "register",
-          label: "Present today",
-          value: today === null ? undefined : today.marked ? today.present : "–",
-          tone: pct === null ? undefined : pct >= 90 ? "paid" : pct >= 75 ? "due" : "overdue",
-          color: pct === null ? "teal" : undefined,
-          ring: pct ?? undefined,
-          badge: today?.notMarked ?? 0,
-          badgeLabel: `${today?.notMarked ?? 0} classes not marked`,
-          onClick: seesAttendance ? () => (switchMode("calendar"), setQuick({ kind: "attendance", at: Date.now() })) : undefined,
+          value: loading ? undefined : current.length,
+          note: (inactive > 0 || present || today?.notMarked > 0) && (
+            <span className="sw-facts">
+              {inactive > 0 && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
+              {present &&
+                (seesAttendance ? (
+                  <button type="button" className="link-btn" onClick={openAttendance}>
+                    {present}
+                  </button>
+                ) : (
+                  <span>{present}</span>
+                ))}
+              {today?.notMarked > 0 && <span>{today.notMarked.toLocaleString("en-IN")} {today.notMarked === 1 ? "class" : "classes"} not marked</span>}
+            </span>
+          ),
         },
       ];
     }
+    // One tile: how many staff, with who teaches and who's inactive
     const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
+    const inactive = current.filter((p) => p.status === "inactive").length;
     return [
-      { icon: "users", color: "pink", label: "Staff", value: current.length },
-      { icon: "teacher", color: "violet", label: "Teaching", value: teaching, bar: current.length ? { value: teaching, max: current.length, label: "Teaching share" } : undefined },
-      isOwner && {
-        icon: "idcard",
-        color: pendingCount ? "amber" : "teal",
-        label: "Waiting",
-        value: pendingCount,
-        badge: pendingCount,
-        badgeLabel: `${pendingCount} waiting for access`,
-        onClick: () => setStaffTab("access"),
+      {
+        color: "pink",
+        label: "Staff",
+        value: loading ? undefined : current.length,
+        note: !loading && current.length > 0 && (
+          <span className="sw-facts">
+            <span>{teaching.toLocaleString("en-IN")} teaching</span>
+            <span>{(current.length - teaching).toLocaleString("en-IN")} other staff</span>
+            {inactive > 0 && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
+          </span>
+        ),
       },
     ];
   })();
@@ -532,12 +535,12 @@ export default function App() {
   // top; each role sees the parts it can use. School settings are in the
   // account menu (owner only). Attendance and the exam datesheet live in
   // the Calendar instead, since they're both dated, day-by-day information.
-  // Teachers: their daily work gets its own tab (Homework). Leads find it
+  // Teachers: their daily work gets its own tab (Academics). Leads find it
   // inside Students instead.
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
-    ...(!leads ? [["homework", "Homework"]] : []),
+    ...(!leads ? [["homework", "Academics"]] : []),
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
@@ -555,8 +558,8 @@ export default function App() {
   const studentParts = leads
     ? [
         ["students", "Students"],
-        ["homework", "Homework"],
         ...(isAdmin ? [["fees", "Fees"]] : []),
+        ["homework", "Academics"],
       ]
     : [["students", "Students"]];
   const studentsSwitch = (
@@ -640,6 +643,7 @@ export default function App() {
       setCollect({});
       return;
     }
+    if (kind === "attendance") return openAttendance();
     if (kind === "event") {
       switchMode("calendar");
       setCalAdding(true);
@@ -650,7 +654,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", attendance: "calendar", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -685,10 +689,7 @@ export default function App() {
       switchMode("transport");
       return setView("map");
     }
-    if (target === "attendance") {
-      switchMode("calendar");
-      return setQuick({ kind: "attendance", at: Date.now() });
-    }
+    if (target === "attendance") return openAttendance();
     switchMode(target);
   };
   const onAskAct = useCallback((a) => askAct.current(a), []);
@@ -699,7 +700,7 @@ export default function App() {
       ...sections,
       ...studentParts,
       ...(seesAttendance ? [["attendance", "Attendance"]] : []),
-      ["calendar", "Calendar"],
+      ["calendar", "Planner"],
       ["notices", "Noticeboard"],
       ...(canWrite ? [["marks", "Results"]] : []),
       ["me", "My profile"],
@@ -828,10 +829,8 @@ export default function App() {
               if (go === "access") {
                 switchMode("employees");
                 setStaffTab("access");
-              } else if (go === "attendance") {
-                switchMode("calendar");
-                setQuick({ kind: "attendance", at: Date.now() });
-              } else switchMode(go);
+              } else if (go === "attendance") openAttendance();
+              else switchMode(go);
             }}
           />
         ) : mode === "calendar" ? (
@@ -842,7 +841,7 @@ export default function App() {
                   <Icon name="chevronLeft" size={22} />
                 </button>
                 <h1 className="nb-page-title">
-                  <Icon name="calendar" /> Calendar
+                  <Icon name="calendar" /> Planner
                 </h1>
               </div>
             </div>
@@ -859,13 +858,8 @@ export default function App() {
               dsIsAdmin={isAdmin}
               dsReadOnly={isPrincipal || viewOnly}
               dsCreateAt={quick.kind === "datesheet" ? quick.at : 0}
-              seesAttendance={seesAttendance}
-              attIsAdmin={leads}
-              attReadOnly={isPrincipal}
-              attOpenAt={quick.kind === "attendance" ? quick.at : 0}
               ttIsAdmin={isAdmin}
               ttReadOnly={isPrincipal || viewOnly}
-              onOpenStudent={(id) => openStudent(id)}
             />
           </>
         ) : mode === "notices" ? (
@@ -924,49 +918,47 @@ export default function App() {
               </div>
             )}
             {(() => {
+              // One tile: who's on the bus, with the routes and pinned homes
               const onBus = current.filter((s) => s.uses_bus).length;
               const pinned = current.filter((s) => s.home_lat != null).length;
-              return (
+              const tile = (
                 <StatCards
                   items={[
-                    { icon: "bus", color: "orange", label: "Routes", value: routes.length, note: aiNote(insT, "routes") },
                     {
-                      icon: "scholar",
-                      color: "indigo",
+                      color: "orange",
                       label: "On the bus",
                       value: onBus,
-                      bar: current.length ? { value: onBus, max: current.length, label: "Students on the bus" } : undefined,
-                      note: aiNote(insT, "on_bus"),
-                    },
-                    {
-                      icon: "pin",
-                      color: "teal",
-                      label: "Homes pinned",
-                      value: pinned,
-                      bar: current.length ? { value: pinned, max: current.length, label: "Homes pinned" } : undefined,
-                      onClick: () => setView("map"),
-                      note: aiNote(insT, "homes"),
+                      note: (
+                        <span className="sw-facts">
+                          <span>
+                            {routes.length.toLocaleString("en-IN")} {routes.length === 1 ? "route" : "routes"}
+                          </span>
+                          <span>{pinned.toLocaleString("en-IN")} homes pinned</span>
+                        </span>
+                      ),
                     },
                   ]}
                 />
               );
+              if (!insT.on) return tile;
+              return (
+                <AiCard
+                  ins={insT}
+                  lead={tile}
+                  opens={["routes", "buses", "map"]}
+                  onOpen={(kind) => {
+                    if (kind === "map") setView("map");
+                    else document.querySelector(kind === "buses" ? ".bus-section" : ".tr-add")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                />
+              );
             })()}
-            {insT.on && (
-              <AiCard
-                ins={insT}
-                opens={["routes", "buses", "map"]}
-                onOpen={(kind) => {
-                  if (kind === "map") setView("map");
-                  else document.querySelector(kind === "buses" ? ".bus-section" : ".tr-add")?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
-              />
-            )}
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
               <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes school={school} routes={routes} students={current} ins={insT} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
+            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
@@ -985,7 +977,7 @@ export default function App() {
             )}
           </>
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView} onView={setAcademicsView} seesAttendance={seesAttendance} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "requests" ? (
           <InboxPage
             openThread={openThread}
@@ -1011,6 +1003,19 @@ export default function App() {
           </p>
         )}
 
+        {/* The numbers and her insights first; the toolbar under them stays
+            pinned while scrolling. */}
+        {!viewOnly && !showInsights && <StatCards items={overview} />}
+        {showInsights && (
+          <AiCard
+            ins={insHere}
+            lead={<StatCards items={overview} />}
+            opens={isStudents ? (canWrite ? ["marks"] : []) : isOwner ? ["access"] : []}
+            onOpen={(kind) => (kind === "marks" ? switchMode("marks") : setStaffTab("access"))}
+            onPerson={(id) => openStudent(id)}
+          />
+        )}
+
         {/* Students: search, grades and the actions on one line; the count
             lives in the search box. */}
         {/* One row, pinned under the header while scrolling: the page switch,
@@ -1031,19 +1036,22 @@ export default function App() {
               ))}
             </nav>
           )}
-          {isStudents && <GradeFilter options={gradeChoices} value={pickedGrades} onChange={setPickedGrades} />}
-          {mode === "students" && <SortControl value={sort} onChange={chooseSort} withFee={isAdmin} />}
-          {isStudents && isAdmin && (
-            <button
-              type="button"
-              className={`chip-btn${slcPendingOnly ? " is-on" : ""}`}
-              onClick={() => setSlcPendingOnly((v) => !v)}
-              title="Students still owing a transfer certificate"
-            >
-              <Icon name="file" size={14} /> SLC pending
-            </button>
+          {isStudents && (
+            <FilterSheet
+              grades={gradeChoices}
+              picked={pickedGrades}
+              onPick={setPickedGrades}
+              sort={sort}
+              onSort={chooseSort}
+              withSort={mode === "students"}
+              withFee={isAdmin}
+              slc={slcPendingOnly}
+              onSlc={isAdmin ? setSlcPendingOnly : null}
+              shown={visible.length}
+            />
           )}
-          {!loading && (query || pickedGrades.length > 0) && (
+          {mode === "students" && <SortArrow sort={sort} onSort={chooseSort} withFee={isAdmin} />}
+          {!loading && (query || pickedGrades.length > 0 || slcPendingOnly) && (
             <span className="toolbar-count">
               {visible.length} of {current.length}
             </span>
@@ -1084,21 +1092,6 @@ export default function App() {
             </div>
           )}
         </div>
-
-        {overview && !viewOnly && <StatCards items={overview} />}
-
-        {insR.on && !query && pickedGrades.length === 0 && (
-          <>
-            <AiCard
-              ins={insR}
-              max={2}
-              opens={canWrite ? ["marks"] : []}
-              onOpen={(kind) => kind === "marks" && switchMode("marks")}
-              onPerson={(id) => openStudent(id)}
-            />
-            <Hint ins={insR} slot="students" className="ai-hint-block" />
-          </>
-        )}
 
         {loading ? (
           <div className="grid" aria-busy="true">
@@ -1217,63 +1210,6 @@ export default function App() {
         />
       )}
       </Suspense>
-    </div>
-  );
-}
-
-// Students page sort: one pill with the sort icon, the choice (Default,
-// Grade, Fee due for the office, Results) and, once one is picked, a
-// direction toggle saying what comes first in words that fit the choice.
-const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
-const SORT_FIRST = {
-  grade: { asc: "Junior first", desc: "Senior first" },
-  fee: { asc: "Least due", desc: "Most due" },
-  perf: { asc: "Lowest first", desc: "Highest first" },
-};
-const SORT_LABEL = { "": "Default", grade: "Grade", fee: "Fee due", perf: "Results" };
-function SortControl({ value, onChange, withFee }) {
-  const asc = value?.dir !== "desc";
-  // A focus ring only for keyboard users (Tab), never on a tap or click
-  const [kbd, setKbd] = useState(false);
-  const words = value && SORT_FIRST[value.by];
-  const next = words && (asc ? words.desc : words.asc);
-  return (
-    <div
-      className={`sort-pill${value ? " is-on" : ""}${kbd ? " is-kbd" : ""}`}
-      onKeyUp={(e) => e.key === "Tab" && setKbd(true)}
-      onPointerDown={() => setKbd(false)}
-      onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setKbd(false)}
-    >
-      {/* The label shows the choice at the buttons' size; the real
-          dropdown lies on top, invisible (phones force dropdown text to
-          16px, which made the pill bigger than the buttons beside it). */}
-      <label className="sort-pick" title="Sort students">
-        <Icon name="sort" size={16} />
-        <span className="sort-current">{SORT_LABEL[value?.by ?? ""]}</span>
-        <select
-          value={value?.by ?? ""}
-          onChange={(e) => onChange(e.target.value ? { by: e.target.value, dir: value?.by === e.target.value ? value.dir : SORT_START[e.target.value] } : null)}
-          aria-label="Sort students"
-        >
-          <option value="">Default</option>
-          <option value="grade">Grade</option>
-          {withFee && <option value="fee">Fee due</option>}
-          <option value="perf">Results</option>
-        </select>
-        <Icon name="chevronDown" size={14} className="sort-caret" />
-      </label>
-      {value && (
-        <button
-          type="button"
-          className="sort-dir"
-          onClick={() => onChange({ ...value, dir: asc ? "desc" : "asc" })}
-          aria-label={`${asc ? words.asc : words.desc}. Switch to ${next.toLowerCase()}`}
-          title={`Switch to ${next.toLowerCase()}`}
-        >
-          <Icon name={asc ? "sortUp" : "sortDown"} size={17} />
-          <span className="sort-dir-label">{asc ? words.asc : words.desc}</span>
-        </button>
-      )}
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { gradeLabel } from "./PersonCard.jsx";
 import { haptic } from "../pwa/haptics.js";
 
 const DatesheetPage = lazy(() => import("./DatesheetPage.jsx"));
-const AttendancePage = lazy(() => import("./AttendancePage.jsx"));
 const TimetablePage = lazy(() => import("./TimetablePage.jsx"));
 
 // What goes on the calendar, each with its icon (and colour, in CSS).
@@ -69,17 +68,12 @@ export function useUpcoming(schoolId, staff = false, days = 14) {
   return items.filter((it) => (it.end ?? it.start) >= today && it.start <= until);
 }
 
-// The calendar page: a month at a glance and what's on, plus attendance and
-// the exam datesheet as two more tabs (they're both dated, day-by-day
-// information too, just kept per class rather than school-wide). Owners and
+// The Planner: a month at a glance and what's on, plus the exam datesheet and
+// the timetable as two more tabs (kept per class rather than school-wide, with
+// their own permissions; see DatesheetPage and TimetablePage). Owners and
 // admins add, change and remove calendar entries; everyone else reads.
-// Attendance and the datesheet keep their own per-class permissions (see
-// AttendancePage and DatesheetPage), unrelated to canEdit here.
 // adding: open the calendar "add" form (from the +). dsCreateAt: open the
 // datesheet's add-exam form (from the + on the exam quick action).
-// attOpenAt: switch to the attendance tab (from Home or the + on Mark
-// attendance). seesAttendance: hide the tab for teachers who aren't a class
-// in-charge this session.
 export default function CalendarPage({
   schoolId,
   canEdit = false,
@@ -93,13 +87,8 @@ export default function CalendarPage({
   dsIsAdmin = false,
   dsReadOnly = false,
   dsCreateAt = 0,
-  seesAttendance = true,
-  attIsAdmin = false,
-  attReadOnly = false,
-  attOpenAt = 0,
   ttIsAdmin = false,
   ttReadOnly = false,
-  onOpenStudent,
 }) {
   const { items, loading, setEvents } = useItems(schoolId, staff);
   const [month, setMonth] = useState(() => {
@@ -108,7 +97,7 @@ export default function CalendarPage({
   });
   const [picked, setPicked] = useState(null); // a day, "YYYY-MM-DD"
   const [editing, setEditing] = useState(null); // an entry's row, or {} for new
-  const [view, setView] = useState("calendar"); // "calendar" | "attendance" | "datesheet" | "timetable"
+  const [view, setView] = useState("calendar"); // "calendar" | "datesheet" | "timetable"
 
   useEffect(() => {
     if (adding) setEditing({ starts_on: picked ?? todayIso() });
@@ -116,9 +105,6 @@ export default function CalendarPage({
   useEffect(() => {
     if (dsCreateAt) setView("datesheet");
   }, [dsCreateAt]);
-  useEffect(() => {
-    if (attOpenAt) setView("attendance");
-  }, [attOpenAt]);
 
   const today = todayIso();
   const first = iso(month);
@@ -151,15 +137,10 @@ export default function CalendarPage({
   return (
     <div className="cal">
       {session && (
-        <nav className="segmented segmented-sm ds-tabs" aria-label="Calendar, attendance, datesheet or timetable">
+        <nav className="segmented segmented-sm ds-tabs page-switch" aria-label="Calendar, datesheet or timetable">
           <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>
             <Icon name="calendar" size={15} /> Calendar
           </button>
-          {seesAttendance && (
-            <button className={view === "attendance" ? "active" : ""} onClick={() => setView("attendance")}>
-              <Icon name="register" size={15} /> Attendance
-            </button>
-          )}
           <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
             <Icon name="exam" size={15} /> Datesheet
           </button>
@@ -172,20 +153,6 @@ export default function CalendarPage({
         <div className="cal-datesheet">
           <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
             <TimetablePage school={{ id: schoolId }} session={session} students={students} me={me} isAdmin={ttIsAdmin} readOnly={ttReadOnly} />
-          </Suspense>
-        </div>
-      ) : view === "attendance" ? (
-        <div className="cal-datesheet">
-          <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
-            <AttendancePage
-              school={{ id: schoolId }}
-              session={session}
-              students={students}
-              me={me}
-              isAdmin={attIsAdmin}
-              readOnly={attReadOnly}
-              onOpenStudent={onOpenStudent}
-            />
           </Suspense>
         </div>
       ) : view === "datesheet" ? (
@@ -456,81 +423,93 @@ function EventEditor({ schoolId, entry, onClose, onSaved }) {
 // shows them in its banner). limit: at most this many. calendar: a small
 // month beside the list (staff Home), its dates dotted where something's on,
 // and the next holiday and exam under the list (session: for the datesheet).
-export function ComingUp({ schoolId, session = null, staff = false, withNotices = true, limit = 9, calendar = false, onOpenCalendar, onOpenNotices }) {
+export function ComingUp({ schoolId, session = null, staff = false, onOpenCalendar }) {
   const { items, loading } = useItems(schoolId, staff);
-  const [notices] = useNotices(schoolId, staff);
-  const today = todayIso();
-  const soon = iso(new Date(Date.now() + 60 * 864e5));
-  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-  const next = useNextUp(schoolId, calendar ? session : null, items);
-  const featured = new Set(next.map((c) => c.id).filter(Boolean));
-  const cards = [
-    ...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon && !featured.has(it.id)).slice(0, 6),
-    ...(withNotices ? notices ?? [] : [])
-      .filter((n) => !n.event_on && (n.pinned || n.created_at >= weekAgo))
-      .slice(0, 3)
-      .map((n) => ({ id: `new-${n.id}`, source: "notice", title: n.title, kind: "notice", start: n.created_at.slice(0, 10), fresh: true })),
-  ].slice(0, limit);
-  if (loading || (!cards.length && !calendar)) return null;
-  const nothing = !cards.length && !next.length;
-  const list = (
-    <div className="home-events-row">
-      {nothing && <p className="row-sub home-events-none">Nothing planned yet.</p>}
-      {cards.map((it, i) => {
-        const d = parse(it.fresh || it.start >= today ? it.start : today);
-        return (
-          <button key={it.id} className="home-event-card" style={{ "--d": `${i * 50}ms` }} onClick={it.source === "notice" ? onOpenNotices : onOpenCalendar}>
-            <span className="home-event-date">
-              <span className="home-event-month">{d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase()}</span>
-              <span className="home-event-day">{d.getDate()}</span>
-            </span>
-            <span className="home-event-body">
-              <strong>{it.title}</strong>
-              {it.note && <span className="row-sub">{it.note}</span>}
-            </span>
-            <span className={`home-event-kind k-${it.kind}`} title={KIND_LABEL[it.kind]}>
-              <Icon name={KIND_ICON[it.kind]} size={15} />
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
+  const next = useNextUp(schoolId, session, items);
+  if (loading) return null;
   return (
     <section className="home-events">
-      <header className="home-notice-head">
-        <span className="home-events-icon">
-          <Icon name="calendar" size={18} weight="fill" />
-        </span>
-        <span className="home-notice-text">
-          <strong>Upcoming Events</strong>
-        </span>
-        <button type="button" className="home-section-all" onClick={onOpenCalendar}>
-          View calendar <Icon name="arrowRight" size={13} />
-        </button>
-      </header>
-      {calendar ? (
-        <div className="home-events-cal">
-          <MiniCalendar items={items} onOpen={onOpenCalendar} />
-          <div className="home-events-side">
-            {list}
-            <NextUp cards={next} onOpen={onOpenCalendar} />
-          </div>
-        </div>
-      ) : (
-        list
-      )}
+      <RoadAhead items={staff ? items : items.filter((it) => it.forParents !== false)} next={next} onOpen={onOpenCalendar} />
     </section>
   );
 }
 
+// The road ahead: a countdown to what's next and what it is, the next two
+// weeks as a metro line with a station on each day something's on, then what
+// follows. The next holiday and exam show however far off they are. Tapping
+// anywhere opens the full Calendar.
+const LINE_DAYS = 14;
+function RoadAhead({ items, next, onOpen }) {
+  const today = todayIso();
+  const soon = iso(new Date(Date.now() + 60 * 864e5));
+  const featured = new Set(next.map((c) => c.id).filter(Boolean));
+  const ahead = [...items.filter((it) => (it.end ?? it.start) >= today && it.start <= soon && !featured.has(it.id)), ...next].sort((a, b) => a.start.localeCompare(b.start));
+  const first = ahead[0];
+  const short = (s) => parse(s).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+
+  const days = Array.from({ length: LINE_DAYS }, (_, i) => {
+    const d = parse(today);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+  const onDay = (day) => ahead.find((it) => it.start <= day && (it.end && it.end > it.start ? it.end : it.start) >= day);
+
+  const n = first ? daysTo(first.start) : null;
+  const count = !first
+    ? [LINE_DAYS, "clear days"]
+    : n < 0
+    ? ["Now", `until ${short(first.end)}`]
+    : n === 0
+    ? ["Today", KIND_LABEL[first.kind]]
+    : [n, n === 1 ? "day to go" : "days to go"];
+
+  return (
+    <button type="button" className="road" onClick={onOpen} title="Open the planner">
+      <span className="road-main">
+        <span className="road-hero">
+          <span className="road-count">
+            <strong className={String(count[0]).length > 3 ? "is-word" : ""}>{count[0]}</strong>
+            <span>{count[1]}</span>
+          </span>
+          <span className="road-next">
+            <strong>{first ? first.title : "Nothing planned yet"}</strong>
+            <span>{first ? `${short(first.start < today ? today : first.start)} · ${KIND_LABEL[first.kind]}` : "The next two weeks are free"}</span>
+          </span>
+        </span>
+        <span className="road-line" aria-hidden="true">
+          <span className="road-ends">
+            <span>Today</span>
+            <span>{days[LINE_DAYS - 1].toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+          </span>
+          <span className="road-stops">
+            {days.map((d, i) => {
+              const it = onDay(iso(d));
+              return (
+                <span key={i} className={`road-stop${i === 0 ? " is-today" : ""}${it ? ` is-on k-${it.kind}` : ""}`} style={{ "--i": i }}>
+                  <i />
+                  <em>{it || i === 0 ? d.getDate() : ""}</em>
+                </span>
+              );
+            })}
+          </span>
+        </span>
+      </span>
+      {ahead.length > 1 && (
+        <span className="road-then">
+          {ahead.slice(1, 4).map((it) => (
+            <span key={it.id ?? it.kind} className={`road-row k-${it.kind}`}>
+              <i />
+              <strong>{it.title}</strong>
+              <span>{short(it.start < today ? today : it.start)}</span>
+            </span>
+          ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
 const daysTo = (day) => Math.round((parse(day) - parse(todayIso())) / 864e5);
-const whenText = (day, end) => {
-  const n = daysTo(day);
-  if (n < 0) return `On now, until ${parse(end).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`;
-  const date = parse(day).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-  return n === 0 ? `Today, ${date}` : n === 1 ? `Tomorrow, ${date}` : `${date} · in ${n} days`;
-};
 
 // The next holiday and the next exam, however far off (they leave the list
 // above so nothing shows twice). Exams come from the calendar or the
@@ -560,91 +539,5 @@ function useNextUp(schoolId, session, items) {
     holiday && { id: holiday.id, kind: "holiday", label: "Next holiday", title: holiday.title, sub: holiday.note, start: holiday.start, end: holiday.end },
     exam && { kind: "exam", label: "Next exam", ...exam },
   ].filter(Boolean);
-}
-
-function NextUp({ cards, onOpen }) {
-  if (!cards.length) return null;
-  return (
-    <div className="home-next">
-      {cards.map((c) => (
-        <button key={c.kind} type="button" className={`home-next-card k-${c.kind}`} onClick={onOpen}>
-          <span className="home-next-icon">
-            <Icon name={KIND_ICON[c.kind]} size={18} />
-          </span>
-          <span className="home-next-body">
-            <span className="home-next-label">{c.label}</span>
-            <strong>{c.title}</strong>
-            {c.sub && <span className="row-sub">{c.sub}</span>}
-            <span className="home-next-when">{whenText(c.start, c.end)}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Staff Home: a small month beside Upcoming Events, Monday first like the
-// full Calendar, a dot under each date with something on. Tapping it opens
-// the full page; the arrows change the month.
-function MiniCalendar({ items, onOpen }) {
-  const [month, setMonth] = useState(() => {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1);
-  });
-  const today = todayIso();
-  const cells = useMemo(() => {
-    const lead = (month.getDay() + 6) % 7;
-    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-    const start = new Date(month);
-    start.setDate(1 - lead);
-    return Array.from({ length: Math.ceil((lead + days) / 7) * 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      return d;
-    });
-  }, [month]);
-  const busy = useMemo(() => {
-    const on = new Set();
-    for (const it of items) {
-      const end = it.end && it.end > it.start ? it.end : it.start;
-      for (let d = parse(it.start); iso(d) <= end; d.setDate(d.getDate() + 1)) on.add(iso(d));
-    }
-    return on;
-  }, [items]);
-  const go = (step, e) => {
-    e.stopPropagation();
-    setMonth((m) => new Date(m.getFullYear(), m.getMonth() + step, 1));
-  };
-
-  return (
-    <div className="home-cal" onClick={onOpen} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpen()} role="button" tabIndex={0} aria-label="Open the calendar">
-      <header className="home-cal-head">
-        <strong>{month.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</strong>
-        <span className="home-cal-nav">
-          <button type="button" className="icon-btn-sm" onClick={(e) => go(-1, e)} aria-label="Previous month">
-            <Icon name="chevronLeft" size={16} />
-          </button>
-          <button type="button" className="icon-btn-sm" onClick={(e) => go(1, e)} aria-label="Next month">
-            <Icon name="chevronRight" size={16} />
-          </button>
-        </span>
-      </header>
-      <div className="home-cal-week" aria-hidden="true">
-        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <span key={i}>{d}</span>
-        ))}
-      </div>
-      <div className="home-cal-grid">
-        {cells.map((d) => {
-          const day = iso(d);
-          return (
-            <span key={day} className={["home-cal-day", d.getMonth() !== month.getMonth() && "is-out", day === today && "is-today", busy.has(day) && "is-busy"].filter(Boolean).join(" ")}>
-              <span>{d.getDate()}</span>
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 

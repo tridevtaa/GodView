@@ -1,4 +1,5 @@
 import {
+  SlidersHorizontal,
   DownloadSimple,
   ArrowsDownUp,
   SortAscending,
@@ -77,6 +78,7 @@ import {
 // "regular" for controls; "duotone" where an icon carries meaning on its
 // own (navigation, the student's facts).
 const PHOSPHOR = {
+  filter: SlidersHorizontal,
   sort: ArrowsDownUp,
   download: DownloadSimple,
   // Low to high points up, high to low down (Phosphor's "Descending" icon

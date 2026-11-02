@@ -4,8 +4,8 @@ import { attendanceOverview, loadAttendance, paymentsSince } from "../data/api.j
 import { peek, swr } from "../data/cache.js";
 import { rupees, rupeesShort } from "../data/money.js";
 
-// The bigger top card on Home (computers): one number with a plain
-// sentence comparing it to last time, and one simple chart beside it.
+// The bigger top card on Home (computers): under the main number, a smaller
+// one with a plain phrase comparing it to last time, and one simple chart.
 // Owners and admins: fees collected so far this month (a running total,
 // last month as a dashed line). Principal and class teachers: attendance
 // each day this week. Other teachers: homework set each day this week.
@@ -68,15 +68,11 @@ export function useFeeTrend(schoolId, enabled) {
   const today = now.getDate();
   const daily = Array(length).fill(0);
   const lastDaily = Array(lastLength).fill(0);
-  let payments = 0;
   const thisMonth = iso(now).slice(0, 7);
   for (const r of rows) {
     const day = Number(r.paid_on.slice(8, 10)) - 1;
     if (r.paid_on.slice(0, 7) === thisMonth) {
-      if (day < today) {
-        daily[day] += Number(r.amount);
-        payments++;
-      }
+      if (day < today) daily[day] += Number(r.amount);
     } else lastDaily[day] += Number(r.amount);
   }
   const running = (list) => {
@@ -94,14 +90,14 @@ export function useFeeTrend(schoolId, enabled) {
     label: "Collected this month",
     value: rupees(collected),
     note: compare(collected, lastByNow, { fmt: rupeesShort, than: "this time last month" }),
-    extra: payments ? `From ${n(payments)} payment${payments === 1 ? "" : "s"}` : "No payments yet this month",
     chart: {
       kind: "line",
       cur,
       prev,
       days: Math.max(length, lastLength),
-      curName: month(0, { month: "long" }),
-      prevName: month(-1, { month: "long" }),
+      curDays: length,
+      curName: month(0),
+      prevName: month(-1),
       dayName: (i, k) => `${i + 1} ${month(k)}`,
       fmt: rupees,
       axis: rupeesShort,
@@ -204,11 +200,11 @@ const pathOf = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},
 
 // Running total: this month solid with a soft fill, last month dashed.
 // Each line is named at its end, so there's no legend to decode.
-function LineChart({ cur, prev, days, curName, prevName, dayName, fmt, axis }) {
+function LineChart({ cur, prev, days, curDays, curName, prevName, dayName, fmt, axis }) {
   const [ref, W] = useWidth();
   const [hover, setHover] = useState(null);
-  const H = 180;
-  const pad = { t: 14, r: 120, b: 24, l: 50 };
+  const H = 150;
+  const pad = { t: 14, r: 84, b: 24, l: 50 };
   const top = niceTop(Math.max(1, ...cur, ...prev));
   const x = (i) => pad.l + ((W - pad.l - pad.r) * i) / Math.max(1, days - 1);
   const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - v / top);
@@ -216,7 +212,9 @@ function LineChart({ cur, prev, days, curName, prevName, dayName, fmt, axis }) {
   const prevPts = prev.map((v, i) => [x(i), y(v)]);
   const last = curPts[curPts.length - 1];
   const prevEnd = prevPts[prevPts.length - 1];
-  const ticks = [0, Math.floor(days / 2) - 1, days - 1];
+  // Dates of this month, which can be shorter than the axis (last month's line)
+  const end = curDays - 1;
+  const ticks = [0, Math.floor(curDays / 2) - 1, end];
 
   const onMove = (e) => {
     const box = e.currentTarget.getBoundingClientRect();
@@ -245,7 +243,7 @@ function LineChart({ cur, prev, days, curName, prevName, dayName, fmt, axis }) {
           ))}
           <line x1={pad.l} x2={W - pad.r} y1={y(0)} y2={y(0)} className="trend-base" />
           {ticks.map((i) => (
-            <text key={i} x={x(i)} y={H - 6} className="trend-axis" textAnchor={i === 0 ? "start" : i === days - 1 ? "end" : "middle"}>
+            <text key={i} x={x(i)} y={H - 6} className="trend-axis" textAnchor={i === 0 ? "start" : i === end ? "end" : "middle"}>
               {dayName(i, 0)}
             </text>
           ))}
@@ -262,7 +260,8 @@ function LineChart({ cur, prev, days, curName, prevName, dayName, fmt, axis }) {
           {last && (
             <>
               <circle cx={last[0]} cy={last[1]} r="5" className="trend-dot" />
-              <text x={last[0] + 10} y={last[1] - 8} className="trend-end">
+              {/* Away from last month's name when the two ends meet, clear of the axis */}
+              <text x={last[0] + 10} y={last[1] + (prevEnd && last[1] >= prevEnd[1] && y(0) - last[1] > 24 ? 18 : -8)} className="trend-end">
                 {curName} so far
               </text>
             </>
@@ -293,7 +292,7 @@ function LineChart({ cur, prev, days, curName, prevName, dayName, fmt, axis }) {
 // empty outline; a day with nothing marked shows a dash.
 function BarChart({ values, labels, todayIdx, max, fmt }) {
   const [ref, W] = useWidth();
-  const H = 180;
+  const H = 150;
   const pad = { t: 24, b: 26 };
   const top = max ?? niceTop(Math.max(1, ...values.map((v) => v ?? 0)));
   const band = W / values.length;

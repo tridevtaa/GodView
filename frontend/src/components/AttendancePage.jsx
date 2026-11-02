@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { attendanceOverview, leaveOn, listAssignments, loadAttendance, saveAttendance } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -28,7 +29,8 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // The morning register. Teachers open their class, everyone starts Present
 // (or Leave, if a leave request was approved), they tap the exceptions and
 // save. Owners and admins also get an overview of every class for the day.
-export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, onOpenStudent }) {
+// tilesAt: where the overview's tiles go, above the page's switch.
+export default function AttendancePage({ school, session, students, isAdmin, me, readOnly = false, onOpenStudent, tilesAt = null }) {
   const [day, setDay] = useState(todayIso());
   // Classes this person is class teacher of (only they mark attendance;
   // owners and admins can mark any class).
@@ -122,7 +124,7 @@ export default function AttendancePage({ school, session, students, isAdmin, me,
       {group ? (
         <Register key={`${group.key}|${day}`} school={school} session={session} day={day} group={group} canMark={canMark(group)} viewer={readOnly} onOpenStudent={onOpenStudent} />
       ) : isAdmin && groups.length > 0 ? (
-        <Overview session={session} day={day} onOpen={setOpen} />
+        <Overview session={session} day={day} onOpen={setOpen} tilesAt={tilesAt} />
       ) : null}
     </>
   );
@@ -268,7 +270,7 @@ function Register({ school, session, day, group, canMark, viewer, onOpenStudent 
   );
 }
 
-function Overview({ session, day, onOpen }) {
+function Overview({ session, day, onOpen, tilesAt }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -282,33 +284,45 @@ function Overview({ session, day, onOpen }) {
   }, [session.id, day]);
 
   if (error) return <p className="notice notice-error">{error}</p>;
-  if (!rows) return <div className="card card-skeleton att-skeleton" />;
 
-  const present = rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0);
-  const marked = rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0);
-  const notMarked = rows.filter((r) => Number(r.unmarked) === Number(r.students));
-  const noTeacher = rows.filter((r) => !r.class_teacher).length;
-
-  return (
-    <>
+  const list = rows ?? [];
+  const present = list.reduce((t, r) => t + Number(r.present) + Number(r.late), 0);
+  const marked = list.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0);
+  const absent = list.reduce((t, r) => t + Number(r.absent), 0);
+  const notMarked = list.filter((r) => Number(r.unmarked) === Number(r.students));
+  const noTeacher = list.filter((r) => !r.class_teacher).length;
+  const tiles =
+    tilesAt &&
+    createPortal(
       <StatCards
         items={[
           {
-            icon: "register",
-            label: "Present",
-            value: marked ? present : "–",
             color: "green",
-            ring: marked ? Math.round((present / marked) * 100) : undefined,
-          },
-          { icon: "users", label: "Absent", value: rows.reduce((t, r) => t + Number(r.absent), 0), color: "red" },
-          {
-            icon: "flag",
-            label: "Not marked",
-            value: notMarked.length ? notMarked.length : "All done",
-            color: notMarked.length ? "amber" : "teal",
+            label: "Present",
+            value: !rows ? undefined : marked ? present : "–",
+            note: rows && (
+              <span className="sw-facts">
+                {marked > 0 && <span>{Math.round((present / marked) * 100)}% attendance</span>}
+                {marked > 0 && <span>{absent} absent</span>}
+                <span>{notMarked.length ? `${notMarked.length} class${notMarked.length === 1 ? "" : "es"} not marked` : "All classes marked"}</span>
+              </span>
+            ),
           },
         ]}
-      />
+      />,
+      tilesAt
+    );
+  if (!rows)
+    return (
+      <>
+        {tiles}
+        <div className="card card-skeleton att-skeleton" />
+      </>
+    );
+
+  return (
+    <>
+      {tiles}
       <section className="panel">
         <h2 className="panel-title">Classes</h2>
         {noTeacher > 0 && <p className="row-sub att-ov-hint">{noTeacher} without a class teacher. Star one in Staff, App access.</p>}

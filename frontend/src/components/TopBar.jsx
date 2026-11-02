@@ -1,6 +1,7 @@
 import Logo from "./Logo.jsx";
 import GlassPill from "./GlassPill.jsx";
 import AccountMenu from "./AccountMenu.jsx";
+import GoddessFace from "./GoddessFace.jsx";
 import Icon from "./Icon.jsx";
 
 const ICONS = { home: "home", students: "scholar", academics: "academics", attendance: "register", homework: "book", fees: "rupee", requests: "plane", employees: "teacher", transport: "bus" };
@@ -10,7 +11,7 @@ const ICONS = { home: "home", students: "scholar", academics: "academics", atten
 // onSettings: School settings (owners and admins), from the account menu.
 // session: the session picker, shown beside the logo.
 // search: the common search (header on computers; above the tab bar on phones).
-// onAsk: opens the assistant (Premium leads), a sparkle beside the account.
+// onAsk: opens the assistant (Premium leads), her portrait beside the account.
 export default function TopBar({ mode, onMode, sections, onSettings, onProfile, session, search, onAsk }) {
   const at = sections.findIndex(([v]) => v === mode);
   const tabs = (className) => (
@@ -43,7 +44,7 @@ export default function TopBar({ mode, onMode, sections, onSettings, onProfile, 
           <span className="topbar-right">
             {onAsk && (
               <button type="button" className="ask-btn" onClick={onAsk} aria-label="Ask Goddess" title="Ask Goddess">
-                <Icon name="sparkle" size={18} weight="fill" />
+                <GoddessFace />
               </button>
             )}
             <AccountMenu onSettings={onSettings} onProfile={onProfile} />

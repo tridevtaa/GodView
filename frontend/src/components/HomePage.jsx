@@ -3,7 +3,7 @@ import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
-import { Caption, FacePile, MiniRing, Thumb, WeekStrip, birthdaysSoon } from "./TileVisuals.jsx";
+import { birthdaysSoon } from "./TileVisuals.jsx";
 import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
 import { ComingUp, useUpcoming } from "./CalendarPage.jsx";
 import Ticker from "./Ticker.jsx";
@@ -11,7 +11,6 @@ import { AchievementsStrip, isWin, showsImage, useImageUrls, useNotices } from "
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
-import { hintFor, useInsights } from "./AiInsights.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const greeting = () => {
@@ -75,7 +74,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // homework for other teachers.
   const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
   // Premium: the AI's one line for today, on the fees card
-  const insF = useInsights(school, "fees", isAdmin);
 
   // On computers the top card is bigger: a few numbers and this period
   // against the last one.
@@ -125,15 +123,15 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const requests = (threads ?? []).filter((t) => Number(t.open_requests) > 0).length;
   const lastThread = (threads ?? []).find((t) => t.last_from_parent);
   const byId = new Map(students.map((p) => [p.id, p]));
-  const chatPeople = (threads ?? []).map((t) => byId.get(t.student_id)).filter(Boolean);
   const inactive = students.filter((p) => p.status === "inactive").length;
+  const teachingStaff = (staff ?? []).filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
   const birthdays = birthdaysSoon(students);
   const firstNames = (list) => list.slice(0, 2).map((p) => p.name.split(" ")[0]).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "");
   const nextDue = (homework ?? []).map((h) => h.due_date).filter((d) => d && d >= new Date().toISOString().slice(0, 10)).sort()[0];
   const dayShort = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
 
-  // Each tile: a number and a word. badge: what's waiting on this person;
-  // hot: something new, the tile glows.
+  // Each tile: a number and a word, then its facts. badge: what's waiting on
+  // this person; hot: something new, the tile glows.
   const tileList = [
     isAdmin && {
       key: "attendance",
@@ -142,14 +140,11 @@ export default function HomePage({ school, me, name, role, students, loading, se
       label: "Present Today",
       value: today === null ? undefined : today?.marked ? today.present : "–",
       badge: left,
-      badgeLabel: `${left} class${left === 1 ? "" : "es"} left to mark`,
-      sub: today === null ? null : left ? `${left} class${left === 1 ? "" : "es"} not marked yet` : today?.marked ? `${attPct}% of the school in` : null,
-      visual: today?.classes > 0 && (
-        <>
-          <MiniRing pct={((today.classes - left) / today.classes) * 100} />
-          <Caption>classes marked</Caption>
-        </>
-      ),
+      facts: [
+        today?.marked > 0 && `${attPct}% of the school in`,
+        today?.marked > 0 && `${n(today.absent)} absent`,
+        left > 0 && `${left} class${left === 1 ? "" : "es"} not marked`,
+      ],
       onClick: go("attendance"),
     },
     isAdmin && {
@@ -158,9 +153,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
       tone: "orange",
       label: "Notices",
       value: notices === null ? undefined : notices.length,
-      sub: lastNotice && `${lastNotice.title} · ${ago(lastNotice.created_at)}`,
+      sub: lastNotice?.title,
       fresh: lastNotice?.created_at,
-      visual: lastNotice && showsImage(lastNotice) && <Thumb src={urls.get(lastNotice.image_path)} />,
+      facts: [lastNotice && ago(lastNotice.created_at)],
       onClick: go("notices"),
     },
     {
@@ -169,13 +164,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       tone: "indigo",
       label: leads ? "Students" : "My students",
       value: loading ? undefined : students.length,
-      note: inactive ? `${n(inactive)} inactive` : null,
-      visual: !loading && students.length > 0 && (
-        <>
-          <FacePile people={students} />
-          {birthdays.length > 0 && <Caption>🎂 {firstNames(birthdays)}, birthday this week</Caption>}
-        </>
-      ),
+      facts: [inactive > 0 && `${n(inactive)} inactive`, birthdays.length > 0 && `🎂 ${firstNames(birthdays)}`],
       onClick: go("students"),
     },
     {
@@ -185,10 +174,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
       label: "Unread Messages",
       value: threads === null ? undefined : unread,
       badge: requests,
-      badgeLabel: `${requests} request${requests === 1 ? "" : "s"} waiting`,
       hot: unread > 0,
       sub: lastThread && `${byId.get(lastThread.student_id)?.name?.split(" ")[0] ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
-      visual: threads !== null && <FacePile people={chatPeople} total={chatPeople.length} max={4} />,
+      facts: [requests > 0 && `${requests} request${requests === 1 ? "" : "s"} waiting`],
       onClick: go("requests"),
     },
     prio !== "homework" && {
@@ -198,13 +186,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       label: "New Homework",
       value: homework === null ? undefined : thisWeek,
       badge: leads ? 0 : dueTomorrow,
-      badgeLabel: `${dueTomorrow} due tomorrow`,
-      visual: homework !== null && (
-        <>
-          <WeekStrip dates={(homework ?? []).map((h) => h.due_date).filter(Boolean)} />
-          <Caption>{nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"}</Caption>
-        </>
-      ),
+      facts: homework === null ? [] : [!leads && dueTomorrow > 0 && `${dueTomorrow} due tomorrow`, nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"],
       onClick: go("homework"),
     },
     leads && {
@@ -213,7 +195,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       tone: "pink",
       label: "Staff Members",
       value: staff === null ? undefined : staff.length,
-      visual: staff?.length > 0 && <FacePile people={staff} />,
+      facts: staff?.length > 0 ? [`${n(teachingStaff)} teaching`, `${n(staff.length - teachingStaff)} other staff`] : [],
       onClick: go("employees"),
     },
   ].filter(Boolean);
@@ -248,7 +230,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
     icon: "calendar",
     tone: "violet",
     size: quickActions.length ? "wide" : "full",
-    node: <ComingUp schoolId={school.id} session={session} staff calendar withNotices={false} limit={4} onOpenCalendar={go("calendar")} onOpenNotices={go("notices")} />,
+    node: <ComingUp schoolId={school.id} session={session} staff onOpenCalendar={go("calendar")} />,
   };
   items.quick = { kind: "section", label: "Quick actions", icon: "lightning", tone: "amber", size: "wide", phoneHidden: true, node: <QuickActionsPanel actions={quickActions} onAction={onAction} /> };
 
@@ -258,7 +240,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
       ? {
           tone: "violet",
           urgent: true,
-          icon: "idcard",
           label: "App access",
           title: `${pendingCount} waiting`,
           sub: "Approve them and pick their classes",
@@ -271,19 +252,16 @@ export default function HomePage({ school, me, name, role, students, loading, se
       ? {
           tone: overdue ? "red" : due > 0 ? "amber" : "green",
           urgent: overdue > 0,
-          icon: "rupee",
           label: due > 0 || loading ? "Fees pending" : "Fees",
           title: loading ? "…" : due > 0 ? rupeesShort(due) : "All collected",
           status: loading ? "" : overdue ? `${n(overdue)} students overdue` : due > 0 ? `${n(owing.length)} students owe fees` : "Nothing pending",
           cta: "View fees",
-          hint: hintFor(insF, "home"),
           onClick: go("fees"),
         }
       : prio === "attendance"
       ? {
           tone: attTone,
           urgent: needsMarking,
-          icon: "register",
           label: "Today’s attendance",
           title: today === null ? "…" : today?.marked ? `${n(today.present)} present` : "Not marked yet",
           status: today === null ? "" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : today?.marked ? "All classes marked" : "",
@@ -293,7 +271,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
         }
       : {
           tone: dueTomorrow ? "amber" : "teal",
-          icon: "book",
           label: "Homework",
           title: homework === null ? "…" : dueTomorrow ? `${dueTomorrow} due tomorrow` : thisWeek ? `${thisWeek} set this week` : "None set this week",
           status: homework !== null && dueTomorrow && thisWeek ? `${thisWeek} set this week` : "",

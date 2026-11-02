@@ -12,7 +12,6 @@ import { Photo, gradeLabel, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
 import { stopLabel } from "./TransportPicker.jsx";
-import { Hint, useInsights } from "./AiInsights.jsx";
 import Icon, { WhatsAppLogo } from "./Icon.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
 
@@ -401,7 +400,6 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
             <Icon name="bus" size={14} /> {bus}
           </p>
         )}
-        {mode === "students" && <StudentHint school={school} isAdmin={isAdmin} id={person.id} />}
       </div>
 
       {!editing && (
@@ -774,8 +772,3 @@ function StudentClass({ person, sessionId, students, onOpenStudent }) {
   );
 }
 
-// Premium: the AI's line on this student's results, if it wrote one.
-function StudentHint({ school, isAdmin, id }) {
-  const ins = useInsights(school, "results", isAdmin && Boolean(school));
-  return <Hint ins={ins} slot="student" target={id} className="ai-hint-block" />;
-}
