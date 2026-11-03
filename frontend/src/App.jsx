@@ -435,7 +435,7 @@ export default function App() {
   // mistaken for the whole school.
   const countLabel = (() => {
     const inactive = isStudents ? current.filter((p) => p.status === "inactive").length : 0;
-    const n = `${(current.length - inactive).toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}${inactive ? ` · ${inactive.toLocaleString("en-IN")} inactive` : ""}`;
+    const n = `${(current.length - inactive).toLocaleString("en-IN")} ${isStudents ? (current.length - inactive === 1 ? "student" : "students") : "staff"}${inactive ? ` · ${inactive.toLocaleString("en-IN")} inactive` : ""}`;
     if (!isStudents || isAdmin || isPrincipal) return n;
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;

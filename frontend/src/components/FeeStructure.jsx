@@ -484,7 +484,7 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
                 ) : (
                   <input className="fc-grade-input" placeholder="Grade name" value={r.label} onChange={(e) => setRow(r.key, "label", e.target.value)} maxLength={40} aria-label="Grade name" />
                 )}
-                {!byStream && students !== null && <span className="fc-count">{students} students</span>}
+                {!byStream && students !== null && <span className="fc-count">{students} student{students === 1 ? "" : "s"}</span>}
                 {canSplit && (
                   <button type="button" className="link-btn fc-split" onClick={() => split(r)}>
                     Split by stream

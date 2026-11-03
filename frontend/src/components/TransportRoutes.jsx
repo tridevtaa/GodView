@@ -105,7 +105,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       });
     });
     const noStop = riderList.filter((st) => st.uses_bus && !stopById.has(st.bus_stop_id)).length;
-    if (noStop) out.push({ level: "amber", text: `${noStop} student${noStop === 1 ? "" : "s"} take the bus but have no stop. Use Add students on a stop.` });
+    if (noStop) out.push({ level: "amber", text: `${noStop} student${noStop === 1 ? " takes the bus but has" : "s take the bus but have"} no stop. Use Add students on a stop.` });
     return out.sort((a, b) => (a.level === b.level ? 0 : a.level === "red" ? -1 : 1));
   })();
 
@@ -240,7 +240,7 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
             </button>
           )}
           <span className={`freq-btn fc-mini-freq${full ? " is-full" : ""}`}>
-            {route.stops.length} stop{route.stops.length === 1 ? "" : "s"} · {bus?.seats ? `${total} of ${bus.seats} seats` : `${total} students`}
+            {route.stops.length} stop{route.stops.length === 1 ? "" : "s"} · {bus?.seats ? `${total} of ${bus.seats} seats` : `${total} student${total === 1 ? "" : "s"}`}
           </span>
         </div>
         <div className="fc-head-end">

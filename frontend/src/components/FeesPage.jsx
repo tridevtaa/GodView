@@ -90,7 +90,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
           key: c.class,
           label: gradeLabel(c.class),
           value: Number(c.due_now),
-          note: `${c.students_due} of ${c.students} students owe · collected ${rupees(c.collected)} of ${rupees(c.billed)}`,
+          note: `${c.students_due} of ${c.students} student${Number(c.students) === 1 ? "" : "s"} ${Number(c.students_due) === 1 ? "owes" : "owe"} · collected ${rupees(c.collected)} of ${rupees(c.billed)}`,
         })),
     [byClass]
   );
