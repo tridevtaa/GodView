@@ -12,6 +12,7 @@ import SessionSelect from "./components/SessionSelect.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
 import QuickActions from "./components/QuickActions.jsx";
+import { useWide } from "./components/HomeTrend.jsx";
 import HomePage from "./components/HomePage.jsx";
 import ClassAllocationGate from "./components/ClassAllocationGate.jsx";
 import NoticeBoard from "./components/NoticeBoard.jsx";
@@ -118,6 +119,10 @@ export default function App() {
   const isPrincipal = role === "principal";
   // Owners, admins and the principal: they see the whole school.
   const leads = isAdmin || isPrincipal;
+  // Owners and admins on a phone: Excel uploads and exports, reports and the
+  // fee structure stay on computers. Parents and teachers keep everything.
+  const wideScreen = useWide();
+  const computerOnly = isAdmin && !wideScreen;
   // The assistant is Premium, for the people who see the whole school.
   const canAsk = leads && school.plan === "premium";
   const [pendingCount, setPendingCount] = useState(0);
@@ -540,7 +545,7 @@ export default function App() {
   ];
   // Phones have room for these; More lists everything else directly.
   const barKeys = ["home", "students", isAdmin ? "fees" : "academics", "requests"];
-  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, pendingCount });
+  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly, pendingCount });
   const litMode = SECTION_OF[mode] ?? mode;
   // Phones: swipe sideways to the next or previous tab (not on a profile).
   useSwipeTabs(barKeys, litMode, switchMode, !studentPage);
@@ -876,6 +881,7 @@ export default function App() {
           />
         ) : mode === "fees" ? (
           <FeesPage
+            computerOnly={computerOnly}
             view={feesView}
             onView={setFeesView}
             onCollect={(student) => setCollect({ student })}
@@ -959,7 +965,7 @@ export default function App() {
             )}
           </>
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} onOpenStudent={(id) => openStudent(id)} /> : null} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} noUpload={computerOnly} onOpenStudent={(id) => openStudent(id)} /> : null} />
         ) : mode === "requests" ? (
           <InboxPage
             filter={inboxView}
@@ -1044,8 +1050,8 @@ export default function App() {
               {mode === "students" && (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && school.plan !== "premium" && (
                 <InsightsButton section="results" label="Results insights" />
               )}
-              {isAdmin && !loading && <ExportButton school={school} role={role} people={current} preselect={visible} label={`students-${currentLabel}`} />}
-              {canEdit && (
+              {isAdmin && !computerOnly && !loading && <ExportButton school={school} role={role} people={current} preselect={visible} label={`students-${currentLabel}`} />}
+              {canEdit && !computerOnly && (
                 <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
                   <Icon name="upload" />
                   <span className="btn-label">Import</span>

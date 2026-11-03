@@ -124,7 +124,7 @@ const SIZE_WORD = { small: "Wider", wide: "Smaller", full: "Half width" };
 const SECTION_WORD = { wide: "Full width", full: "Half width" };
 
 // items: { [key]: { label, icon, tone, kind: "tile" | "section", size,
-// tile (Tile's props) or node (the section), phoneHidden } }
+// tile (Tile's props) or node (the section) } }
 const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export default function EditableHome({ layout, items }) {
@@ -381,7 +381,7 @@ export default function EditableHome({ layout, items }) {
             <div
               key={key}
               data-wkey={key}
-              className={`hw-block is-${it.kind} size-${size}${it.phoneHidden ? " hide-phone" : ""}${dragKey === key ? " is-dragging" : ""}`}
+              className={`hw-block is-${it.kind} size-${size}${dragKey === key ? " is-dragging" : ""}`}
               style={{ "--j": `${(i % 3) * -0.11}s` }}
               onPointerDown={onPointerDown(key)}
               onPointerMove={onPointerMove}
