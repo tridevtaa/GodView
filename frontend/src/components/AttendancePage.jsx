@@ -345,7 +345,7 @@ function Overview({ session, day, onOpen, tilesAt }) {
                     </span>
                   )}
                   <span className="att-ov-nums">
-                    {m === 0 ? `${r.students} students` : `${Number(r.present) + Number(r.late)}/${m}${Number(r.absent) ? ` · ${r.absent} absent` : ""}`}
+                    {m === 0 ? `${r.students} student${Number(r.students) === 1 ? "" : "s"}` : `${Number(r.present) + Number(r.late)}/${m}${Number(r.absent) ? ` · ${r.absent} absent` : ""}`}
                   </span>
                 </button>
               </li>

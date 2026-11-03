@@ -174,6 +174,7 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
 
   const firstRun = areas !== null && areas.length === 0;
   const suggestions = useMemo(() => (firstRun ? buildAreas(allStudents) : []), [firstRun, allStudents]);
+  const named = suggestions.reduce((n, a) => n + a.count, 0);
 
   return (
     <div className={`smap${compact ? " is-compact" : ""}`} ref={wrap} style={{ height: compact ? undefined : height }}>
@@ -251,7 +252,7 @@ export default function StudentMap({ school, students, allStudents, canEdit, onO
             </span>
             <h2>See where students come from</h2>
             <p className="row-sub">
-              {suggestions.reduce((n, a) => n + a.count, 0)} students name {suggestions.length} villages and towns in their
+              {named} student{named === 1 ? " names" : "s name"} {suggestions.length} {suggestions.length === 1 ? "village or town" : "villages and towns"} in their
               address or pick-up point. GodView will put them on the map, merging spellings like Hemamajra and Hema Majra.
             </p>
             <ol className="smap-setup-list">
@@ -334,7 +335,7 @@ function Overview({ groups, onMap, total, unpinnedAreas, unplaced, newPlaces, ha
         </div>
       </div>
       {total > 0 && (
-        <div className="smap-pad smap-bar" title={`${onMap} of ${total} students placed`}>
+        <div className="smap-pad smap-bar" title={`${onMap} of ${total} student${total === 1 ? "" : "s"} placed`}>
           <span style={{ width: `${(onMap / total) * 100}%` }} />
         </div>
       )}
@@ -466,7 +467,7 @@ function Selection({ groups, students, canEdit, areas, onClose, onOpenStudent, o
             <h2>{title}</h2>
           )}
           <p className="row-sub">
-            {students.length} students · {onBus} by bus
+            {students.length} student{students.length === 1 ? "" : "s"} · {onBus} by bus
             {groups.length > 1 && ` · ${groups.map((g) => g.name).slice(0, 3).join(", ")}${groups.length > 3 ? "…" : ""}`}
           </p>
         </div>
