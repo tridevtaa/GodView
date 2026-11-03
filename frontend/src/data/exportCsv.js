@@ -1,4 +1,4 @@
-// Builds a CSV of students and hands it to the browser as a download.
+// Builds a CSV and hands it to the browser as a download.
 
 const COLUMNS = [
   ["Admission no.", "admission_no"], ["Name", "name"], ["Gender", "gender"], ["Date of birth", "dob"],
@@ -17,15 +17,25 @@ const cell = (v) => {
   return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 
-export function downloadStudentsCsv(people, filename) {
-  const lines = [COLUMNS.map(([h]) => h).join(",")];
-  for (const p of people) lines.push(COLUMNS.map(([, k]) => cell(p[k])).join(","));
+export function downloadCsv(headers, rows, filename) {
+  const lines = [headers.map(cell).join(","), ...rows.map((r) => r.map(cell).join(","))];
   // BOM so Excel opens UTF-8 names correctly.
-  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement("a"), { href: url, download: filename });
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Written out, which the student import reads back too
+const GENDER_WORD = { M: "Male", F: "Female" };
+
+export function downloadStudentsCsv(people, filename) {
+  downloadCsv(
+    COLUMNS.map(([h]) => h),
+    people.map((p) => COLUMNS.map(([, k]) => (k === "gender" ? GENDER_WORD[p.gender] : p[k]))),
+    filename
+  );
 }

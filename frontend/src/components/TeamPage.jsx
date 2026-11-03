@@ -174,7 +174,7 @@ export default function TeamPage({ view = "access", school, session, me, isOwner
               <div className="row-main">
                 <div className="row-title">{x.requested_by}</div>
                 <div className="row-sub">
-                  Wants to export {x.scope} · {fmtDate(x.created_at)}
+                  Wants to export {x.selection ? `${x.selection} (${x.student_ids?.length.toLocaleString("en-IN")})` : x.scope} · {fmtDate(x.created_at)}
                   {x.reason ? ` · “${x.reason}”` : ""}
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 
 // Students page: one button in place of the row of filters. It opens a panel
-// with the grades, the sort and "show only"; changes apply straight away, and
+// with the grades, the sort, active or inactive and "show only"; changes apply straight away, and
 // the button counts what's on (the direction is SortArrow, beside it). grades: gradeOptions(); sort: { by, dir } or
 // null; withSort, withFee and onSlc depend on what this person can use.
 const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
@@ -32,7 +32,7 @@ export function SortArrow({ sort, onSort, withFee }) {
   );
 }
 
-export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, slc, onSlc, shown }) {
+export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, slc, onSlc, status, onStatus, shown }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -41,12 +41,13 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (sort ? 1 : 0) + (slc ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (sort ? 1 : 0) + (slc ? 1 : 0) + (status !== "all" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
     onSort(null);
     onSlc?.(false);
+    onStatus("all");
   };
   const sorts = [["", "Default"], ["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
   const sortChip = ([by, label]) => (
@@ -98,6 +99,14 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
                     </div>
                   </>
                 )}
+                <h3>Status</h3>
+                <div className="filter-chips">
+                  {[["all", "All"], ["active", "Active"], ["inactive", "Inactive"]].map(([v, label]) => (
+                    <button key={v} type="button" className={`chip-btn${status === v ? " is-on" : ""}`} onClick={() => onStatus(v)}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 {onSlc && (
                   <>
                     <h3>Show only</h3>

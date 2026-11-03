@@ -52,7 +52,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
   const groups = useMemo(() => {
     const m = new Map();
     for (const s of students) {
-      if (!s.class) continue;
+      if (!s.class || s.status === "left" || s.status === "inactive") continue;
       const key = `${s.class}|${s.section ?? ""}`;
       m.set(key, [...(m.get(key) ?? []), s]);
     }
@@ -158,7 +158,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
   return (
     <>
       <div ref={setTilesAt} />
-      {!writing && !onAttendance && (ins.on ? <AiCard ins={ins} lead={tile} opens={["homework", "syllabus"]} onOpen={setView} /> : tile)}
+      {!writing && !onAttendance && (ins.on ? <AiCard key={view} ins={ins} lead={tile} opens={["homework", "syllabus"]} onOpen={setView} /> : tile)}
       <div className="page-header">
         <div>
           <h1 className="sr-only">Academics</h1>

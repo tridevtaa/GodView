@@ -27,6 +27,7 @@ import InstallPrompt from "./InstallPrompt.jsx";
 import { HapticsMenuItem, NotifyMenuItem, NotifyPrompt } from "./Notify.jsx";
 import { onNotificationOpen, syncPush } from "../pwa/push.js";
 import { onFresh } from "../pwa/fresh.js";
+import PaymentHistory from "./PaymentHistory.jsx";
 import Icon from "./Icon.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import GlassPill from "./GlassPill.jsx";
@@ -878,8 +879,8 @@ function NotLinked({ phone }) {
       </span>
       <h1>We couldn’t find your child</h1>
       <p className="row-sub">
-        {showPhone(phone)} isn’t linked to a student yet. Ask the school office to add this number as a parent in your
-        child’s profile, then log in again.
+        {showPhone(phone)} isn’t linked to a current student. If your child is at the school, ask the office to add this
+        number as a parent in their profile, then log in again.
       </p>
       <button className="btn btn-secondary" onClick={logOut}>
         Use a different number
@@ -915,17 +916,13 @@ function FeesTab({ child, since }) {
     const open = data.dues.filter((d) => Number(d.balance) > 0.009);
     const dueNow = open.filter((d) => !d.due_date || d.due_date <= now);
     const upcoming = open.filter((d) => d.due_date && d.due_date > now);
-    const paid = data.payments.filter((p) => p.status === "success");
-    const session = child.session;
-    const inSession = (d) => !session || ((!session.starts_on || d >= session.starts_on) && (!session.ends_on || d <= session.ends_on));
     return {
       dueNow,
       upcoming,
       payments: data.payments,
       dueTotal: dueNow.reduce((t, d) => t + Number(d.balance), 0),
-      paidTotal: paid.filter((p) => inSession(p.paid_on)).reduce((t, p) => t + Number(p.amount), 0),
     };
-  }, [data, child.session]);
+  }, [data]);
 
   if (error) return <p className="notice notice-error">{error}</p>;
   if (!view) return <div className="pa-card pa-skeleton" aria-busy="true" />;
@@ -973,13 +970,13 @@ function FeesTab({ child, since }) {
       )}
 
       {view.payments.length > 0 && (
-      <section className="pa-card">
-        <h2 className="pa-h2 pa-h2-total">
-          Paid {view.paidTotal > 0 && <strong className="is-paid">{rupees(view.paidTotal)}</strong>}
-        </h2>
-        {view.payments.length ? (
-          <ul className="pa-list">
-            {view.payments.map((p) => (
+        <section className="pa-card">
+          <h2 className="pa-h2">Paid</h2>
+          <PaymentHistory
+            schoolId={child.school_id}
+            payments={view.payments}
+            listClass="pa-list"
+            row={(p) => (
               <li key={p.id} className="pa-row">
                 <span className="pa-row-icon is-paid">
                   <Icon name="check" size={14} />
@@ -997,10 +994,9 @@ function FeesTab({ child, since }) {
                   <Icon name="file" /> Receipt
                 </button>
               </li>
-            ))}
-          </ul>
-        ) : null}
-      </section>
+            )}
+          />
+        </section>
       )}
 
       {receipt && <Receipt school={child.school} person={child} payment={receipt} dues={data.dues} onClose={() => setReceipt(null)} />}

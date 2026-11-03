@@ -1,7 +1,8 @@
 // Notifications for a new message or notice: the app calls this right
-// after sending one ({ message } or { notice }). message_push() or
-// notice_push() in the database decides who hears about it (once, only
-// while it is new), and each of their devices gets a push.
+// after sending one ({ message }, { notice } or { batch }, a bulk message).
+// message_push(), notice_push() or bulk_push() in the database decides who
+// hears about it (once, only while it is new), and each of their devices
+// gets a push.
 // The everyday ones ({ slot }: attendance reminders, morning to-do…) come
 // from pg_cron; daily_push() decides those (see its migration).
 // Devices the push service says are gone are forgotten. Deploy with:
@@ -27,8 +28,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ sent: 0 }, 405);
 
-  const { message, notice, slot } = await req.json().catch(() => ({}));
-  const id = message ?? notice;
+  const { message, notice, batch, slot } = await req.json().catch(() => ({}));
+  const id = message ?? notice ?? batch;
   const daily = typeof slot === "string" && /^[a-z-]{2,30}$/.test(slot);
   if (!daily && (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id))) return reply({ sent: 0 }, 400);
 
@@ -39,6 +40,8 @@ Deno.serve(async (req) => {
     ? await admin.rpc("daily_push", { p_slot: slot })
     : message
     ? await admin.rpc("message_push", { p_message: id })
+    : batch
+    ? await admin.rpc("bulk_push", { p_batch: id })
     : await admin.rpc("notice_push", { p_notice: id });
   if (error) return reply({ sent: 0 }, 500);
 

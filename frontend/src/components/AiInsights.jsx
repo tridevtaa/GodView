@@ -198,27 +198,12 @@ function Message({ it, play, from }) {
 // glass of her panel, stacked like messages, the top one's tail pointing up at
 // her portrait in the top bar. Closed, one short sentence; open, each grows in
 // place to show why and what to do. lead: the page's own tile, first in the
-// row. Open or closed is remembered on this device.
+// row. Starts closed each time its page opens.
 // opens: screens this page can go to; onPerson(id): a named student.
 export function AiCard({ ins, lead, opens = [], onOpen, onPerson, max = 3 }) {
   const copy = COPY[ins.section];
-  const memo = `gv-ai-open:${ins.section}`;
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(memo) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const toggle = () =>
-    setOpen((v) => {
-      try {
-        localStorage.setItem(memo, v ? "0" : "1");
-      } catch {
-        // Private mode: just not remembered
-      }
-      return !v;
-    });
+  const [open, setOpen] = useState(false);
+  const toggle = () => setOpen((v) => !v);
 
   const insight = ins.insight;
   // The most important few (the sort keeps the AI's own order within a priority)
@@ -234,6 +219,8 @@ export function AiCard({ ins, lead, opens = [], onOpen, onPerson, max = 3 }) {
     const place = () => {
       const face = document.querySelector(".ask-btn")?.getBoundingClientRect();
       const box = card.current?.getBoundingClientRect();
+      // Hidden behind a student's page: nothing to measure
+      if (box && !box.width) return;
       setTailRight(face && box ? box.right - (face.left + face.width / 2) : null);
     };
     place();

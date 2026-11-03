@@ -11,7 +11,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 
 // Collect a fee without leaving the page: pick the student (skipped when
 // one is given), take the payment, then the receipt. Owners and admins.
-export default function CollectFee({ school, students, student: given = null, onClose, onPaid }) {
+export default function CollectFee({ school, students, student: given = null, onClose, onPaid, onOpenStudent }) {
   const [student, setStudent] = useState(given);
   const [ledger, setLedger] = useState(null);
   const [error, setError] = useState("");
@@ -83,13 +83,15 @@ export default function CollectFee({ school, students, student: given = null, on
           ) : (
             <>
               <div className="collect-who navy-card">
-                <Photo person={student} className="inbox-photo" />
-                <span className="collect-name">
-                  <strong>{student.name}</strong>
-                  <span className="row-sub">
-                    {[gradeLabel(student.class), student.section, student.admission_no].filter(Boolean).join(" · ")}
+                <button type="button" className="collect-open" onClick={() => onOpenStudent?.(student.id)} title="Open student">
+                  <Photo person={student} className="inbox-photo" />
+                  <span className="collect-name">
+                    <strong>{student.name}</strong>
+                    <span className="row-sub">
+                      {[gradeLabel(student.class), student.section, student.admission_no].filter(Boolean).join(" · ")}
+                    </span>
                   </span>
-                </span>
+                </button>
                 {ledger && (
                   <span className="collect-due">
                     <strong className={dueNow > 0 ? "is-due" : "is-paid"}>{dueNow > 0 ? rupees(dueNow) : "Nothing due"}</strong>

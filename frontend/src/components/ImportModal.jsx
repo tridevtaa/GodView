@@ -22,7 +22,7 @@ async function readRows(file) {
 
 // `students` are the people in the session being viewed; anyone among them who
 // isn't in the file can be marked as left.
-export default function ImportModal({ schoolId, students, onClose, onDone }) {
+export default function ImportModal({ schoolId, students, viewedSession, onClose, onDone }) {
   const [file, setFile] = useState(null);
   const [rows, setRows] = useState(null);
   const [session, setSession] = useState(currentSession);
@@ -55,7 +55,13 @@ export default function ImportModal({ schoolId, students, onClose, onDone }) {
 
   // planImport matches by registration number, so key existing students the
   // same way and keep their database ids to mark leavers.
-  const existing = students.map((p) => ({ id: studentId(p.admission_no), uuid: p.id, status: p.status }));
+  // Class 12 stays out of next year's file by nature; they aren't leavers.
+  const existing = students.map((p) => ({
+    id: studentId(p.admission_no),
+    uuid: p.id,
+    status: p.status,
+    graduating: p.class === "12" && (p.status === "inactive" || (viewedSession && session > viewedSession)),
+  }));
   const uuidOf = new Map(existing.map((e) => [e.id, e.uuid]));
   const plan = rows ? planImport(rows, existing, { session, today: today() }) : null;
   const leaving = plan && markLeft ? plan.leaving.map((l) => ({ id: uuidOf.get(l.id) })) : [];

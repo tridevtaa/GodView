@@ -3,6 +3,7 @@ import { staffInbox } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
+import BulkMessage from "./BulkMessage.jsx";
 import Icon from "./Icon.jsx";
 import { onFresh } from "../pwa/fresh.js";
 
@@ -25,7 +26,12 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // on phones the conversation opens full screen.
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
-export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, onOpenStudent, onCount, openThread }) {
+// canBulk: may message many parents at once; bulkAt: open that (from the +).
+export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, canBulk = false, bulkAt = 0, onOpenStudent, onCount, openThread }) {
+  const [bulk, setBulk] = useState(false);
+  useEffect(() => {
+    if (bulkAt && canBulk) setBulk(true);
+  }, [bulkAt, canBulk]);
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
@@ -102,6 +108,11 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
               </button>
             ))}
           </nav>
+          {canBulk && (
+            <button className="btn btn-secondary btn-sm bulk-open" onClick={() => setBulk(true)}>
+              <Icon name="users" /> Message parents
+            </button>
+          )}
           {!readOnly && (
             <button className="btn btn-primary btn-sm" onClick={() => setPicking((p) => !p)}>
               <Icon name="plus" /> New
@@ -197,6 +208,7 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
         )}
       </section>
     </div>
+    {bulk && <BulkMessage school={school} students={students} onSent={load} onClose={() => setBulk(false)} />}
     </>
   );
 }
