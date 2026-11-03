@@ -76,15 +76,17 @@ export function useNotices(schoolId, staff = false) {
 // own, or any for owners/admins, can be pinned or removed); parents read.
 // me: the signed-in staff email (none for parents). since: last visit, to
 // mark notices New.
-export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, onCompose, since }) {
+// only: which show, for staff, whose top bar chooses. Parents switch here.
+export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, onCompose, since, only: chosen }) {
   const [notices, setNotices] = useNotices(schoolId, Boolean(me));
   const [error, setError] = useState("");
   const [viewing, setViewing] = useState(null); // picture shown full size
   const urls = useImageUrls(notices);
   // All, or only the students' wins (notices tagged with a category).
-  const [only, setOnly] = useState("all");
+  const [ownOnly, setOnly] = useState("all");
+  const only = chosen ?? ownOnly;
   const hasWins = (notices ?? []).some((n) => n.category);
-  const shown = only === "wins" && hasWins ? notices.filter((n) => n.category) : notices;
+  const shown = only === "wins" ? notices?.filter((n) => n.category) : notices;
   const canPost = Boolean(me);
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
 
@@ -125,7 +127,8 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
           )}
         </div>
       )}
-      {hasWins && (
+      {notices?.length > 0 && shown?.length === 0 && <p className="row-sub">No news or achievements yet.</p>}
+      {hasWins && !chosen && (
         <nav className="segmented segmented-sm nb-filter" aria-label="Show">
           {[
             ["all", "All"],

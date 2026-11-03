@@ -3,15 +3,18 @@ import { loadEmployees, staffInbox } from "../data/api.js";
 import { useDismiss } from "./useDismiss.js";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
+import { SECTION_LABEL } from "../data/screens.js";
 
 const norm = (v) => String(v ?? "").toLowerCase();
 const digits = (v) => String(v ?? "").replace(/\D/g, "");
 
-// One search for the whole app: students, staff and conversations, grouped.
+// One search for the whole app: screens, students, staff and conversations,
+// grouped. Typing "class" goes straight to the Class-wise report.
 // In the header on computers; a bar above the tab bar on phones. Staff and
 // conversations load the first time it's used.
 // students: the session's students. seesStaff: owners, admins, principal.
-export default function GlobalSearch({ school, students, seesStaff, onStudent, onStaff, onThread }) {
+// screens: data/screens.js.
+export default function GlobalSearch({ school, students, seesStaff, screens, onScreen, onStudent, onStaff, onThread }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [staff, setStaff] = useState(null);
@@ -48,7 +51,15 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
     const num = digits(term);
     const byId = new Map(students.map((s) => [s.id, s]));
     const hit = (fields) => fields.some((f) => norm(f).includes(term)) || (num.length >= 4 && fields.some((f) => digits(f).includes(num)));
+    const startsWord = (text) => ` ${norm(text).replace(/-/g, " ")}`.includes(` ${term.replace(/-/g, " ")}`);
     return {
+      screens:
+        term.length < 2
+          ? []
+          : screens
+              .filter((s) => startsWord(`${s.label} ${SECTION_LABEL[s.section] ?? ""} ${s.words ?? ""}`))
+              .sort((a, b) => startsWord(b.label) - startsWord(a.label))
+              .slice(0, 4),
       students: students
         .filter((s) => s.status !== "left" && hit([s.name, s.parent_name, s.mother_name, s.admission_no, s.parent_phone, s.srn]))
         .slice(0, 8),
@@ -61,8 +72,8 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
         .slice(0, 5)
         .map((t) => ({ ...t, student: byId.get(t.student_id) })),
     };
-  }, [term, students, staff, threads]);
-  const none = results && !results.students.length && !results.staff.length && !results.threads.length;
+  }, [term, screens, students, staff, threads]);
+  const none = results && !results.screens.length && !results.students.length && !results.staff.length && !results.threads.length;
 
   const pick = (fn) => () => {
     fn();
@@ -78,8 +89,8 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
         <input
           ref={input}
           type="search"
-          placeholder="Search students, staff, messages"
-          aria-label="Search students, staff and messages"
+          placeholder="Search anything"
+          aria-label="Search students, staff, messages and screens"
           value={q}
           onFocus={() => (warm(), typing(true))}
           // A short wait so tapping a result still lands before the bar returns.
@@ -92,6 +103,23 @@ export default function GlobalSearch({ school, students, seesStaff, onStudent, o
       {open && results && (
         <div className="gsearch-panel" role="listbox">
           {none && <p className="row-sub gsearch-empty">Nothing matches “{q}”.</p>}
+
+          {results.screens.length > 0 && (
+            <section>
+              <h4>Go to</h4>
+              {results.screens.map((s) => (
+                <button key={s.key} className="gsearch-row" onClick={pick(() => onScreen(s.key))}>
+                  <span className="gsearch-icon">
+                    <Icon name={s.icon} size={18} />
+                  </span>
+                  <span className="inbox-main">
+                    <strong>{s.label}</strong>
+                    {s.section && s.label !== SECTION_LABEL[s.section] && <span className="row-sub">{SECTION_LABEL[s.section]}</span>}
+                  </span>
+                </button>
+              ))}
+            </section>
+          )}
 
           {results.students.length > 0 && (
             <section>

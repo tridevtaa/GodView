@@ -857,9 +857,20 @@ export async function recordPayment(studentId, { amount, method, reference, paid
 // Owners/admins: payments received since a day (for Home's chart).
 // Owners and admins: every due in a session, for the class-wise report.
 export async function sessionFeeLines(sessionId) {
-  return all(() =>
-    supabase.from("fee_invoice_balances").select("student_id, amount, concession, paid, balance, due_date").eq("session_id", sessionId).order("id")
-  );
+  // The fast totals, as the Overview uses; the fee lines' view takes many slow
+  // requests for a whole session. Totals leave out concessions, so those come
+  // on their own (few students have any).
+  const [totals, concessions] = await Promise.all([
+    all(() => supabase.rpc("session_fee_totals", { session: sessionId }).order("student_id")),
+    all(() => supabase.from("fee_invoices").select("id, student_id, concession").eq("session_id", sessionId).gt("concession", 0).order("id")),
+  ]);
+  const off = new Map();
+  for (const c of concessions) off.set(c.student_id, (off.get(c.student_id) ?? 0) + Number(c.concession));
+  return totals.map((t) => {
+    const concession = off.get(t.student_id) ?? 0;
+    const dueNow = Number(t.due_now ?? 0);
+    return { student_id: t.student_id, fees: Number(t.billed) + concession, concession, collected: Number(t.paid), dueNow, dueLater: Number(t.balance) - dueNow };
+  });
 }
 
 // Owners and admins: payments received between two days, newest first.

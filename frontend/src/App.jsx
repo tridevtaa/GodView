@@ -7,7 +7,7 @@ import PhotoUpgrade from "./components/PhotoUpgrade.jsx";
 import { gradeOptions, gradeRank, gradesText } from "./components/GradeFilter.jsx";
 import FilterSheet, { SortArrow } from "./components/FilterSheet.jsx";
 import Icon from "./components/Icon.jsx";
-import { setGradeLabels } from "./components/PersonCard.jsx";
+import { gradeLabel, setGradeLabels } from "./components/PersonCard.jsx";
 import SessionSelect from "./components/SessionSelect.jsx";
 import ExportButton from "./components/ExportButton.jsx";
 import GlobalSearch from "./components/GlobalSearch.jsx";
@@ -27,6 +27,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
+import { SCREEN_AT, SECTION_OF, listScreens } from "./data/screens.js";
 import { AiCard, InsightsButton, useInsights } from "./components/AiInsights.jsx";
 import { primeVoice } from "./components/voicePlayer.js";
 
@@ -77,9 +78,11 @@ const attendanceTotals = (rows) => ({
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
-  // Academics' switch: homework, syllabus or attendance. Kept here so coming
-  // back from a student's profile returns to the same one.
+  // Each page's tab, kept here so anything can open a screen directly.
   const [academicsView, setAcademicsView] = useState("homework");
+  const [feesView, setFeesView] = useState("overview");
+  const [plannerView, setPlannerView] = useState("calendar");
+  const [inboxView, setInboxView] = useState("all");
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -417,24 +420,26 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [mode]);
 
+  // Opens a section or any screen in it (data/screens.js).
   function switchMode(next) {
+    const [page, tab] = SCREEN_AT[next] ?? [next];
     // A + action opens its form once; moving between pages clears it.
     setQuick({ kind: "", at: 0 });
-    if (next === mode) {
+    if (next === "people" || next === "org-chart") chooseStaffView(next === "people" ? "list" : "chart");
+    const setTab = { homework: setAcademicsView, fees: setFeesView, calendar: setPlannerView, employees: setStaffTab, requests: setInboxView }[page];
+    const first = { homework: seesAttendance ? "attendance" : "homework", fees: "overview", calendar: "calendar", employees: "people", requests: "all" }[page];
+    if (page === mode) {
+      // The lit section again: out of a profile, or back to its first tab
       if (openId !== null) closeProfile();
+      if (tab || openId === null) setTab?.(tab ?? first);
       return;
     }
-    setMode(next);
-    setAcademicsView("homework");
+    setMode(page);
+    setTab?.(tab ?? first);
     setQuery("");
     setPickedGrades([]);
     setStatusPick("all");
     setOpenId(null);
-  }
-  // Attendance lives under Academics (Students' Academics for those who lead)
-  function openAttendance() {
-    switchMode("homework");
-    setAcademicsView("attendance");
   }
 
   const selectedSession = sessions.find((s) => s.id === sessionId);
@@ -522,7 +527,7 @@ export default function App() {
               {inactive > 0 && statusPick !== "inactive" && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
               {present &&
                 (seesAttendance ? (
-                  <button type="button" className="link-btn" onClick={openAttendance}>
+                  <button type="button" className="link-btn" onClick={() => switchMode("attendance")}>
                     {present}
                   </button>
                 ) : (
@@ -552,47 +557,24 @@ export default function App() {
       },
     ];
   })();
-  // Header: Students, Inbox, Staff and Transport. Everything about the
-  // students (homework, fees) lives inside Students, behind a switch at the
-  // top; each role sees the parts it can use. School settings are in the
-  // account menu (owner only). Attendance and the exam datesheet live in
-  // the Calendar instead, since they're both dated, day-by-day information.
-  // Teachers: their daily work gets its own tab (Academics). Leads find it
-  // inside Students instead.
+  // The top bar has every section, so nothing is more than one row of tabs
+  // away (data/screens.js). School settings are in the account menu.
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
-    ...(!leads ? [["homework", "Academics"]] : []),
+    ...(isAdmin ? [["fees", "Fees"]] : []),
+    ["academics", "Academics"],
+    ["planner", "Planner"],
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
     ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
     ...(isAdmin ? [["transport", "Transport"]] : []),
   ];
-  const STUDENT_PARTS = ["students", "homework", "fees", "marks"];
-  // The bottom tab that's lit: pages inside a tab light that tab.
-  const litMode = leads && STUDENT_PARTS.includes(mode) ? "students" : mode === "marks" ? "students" : mode === "notices" || mode === "calendar" ? "home" : mode;
+  // Phones have room for these; More lists everything else directly.
+  const barKeys = ["home", "students", isAdmin ? "fees" : "academics", "requests"];
+  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, pendingCount });
+  const litMode = SECTION_OF[mode] ?? mode;
   // Phones: swipe sideways to the next or previous tab (not on a profile).
-  useSwipeTabs(
-    sections.map(([key]) => key),
-    litMode,
-    switchMode,
-    !studentPage
-  );
-  const studentParts = leads
-    ? [
-        ["students", "Students"],
-        ...(isAdmin ? [["fees", "Fees"]] : []),
-        ["homework", "Academics"],
-      ]
-    : [["students", "Students"]];
-  const studentsSwitch = (
-    <nav className="segmented segmented-sm students-switch page-switch" aria-label="Students">
-      {studentParts.map(([v, l]) => (
-        <button key={v} className={mode === v ? "active" : ""} onClick={() => switchMode(v)}>
-          {l}
-        </button>
-      ))}
-    </nav>
-  );
+  useSwipeTabs(barKeys, litMode, switchMode, !studentPage);
   // The + in the middle of the phone tab bar: everything this person can
   // create, wherever they are. Pages open their form when `quick` changes.
   const [quick, setQuick] = useState({ kind: "", at: 0 });
@@ -615,10 +597,6 @@ export default function App() {
   const showTarget = useRef(null);
   showTarget.current = ({ thread, notice, go }) => {
     if (notice) return switchMode("notices");
-    if (go === "access") {
-      switchMode("employees");
-      return setStaffTab("access");
-    }
     if (go) return switchMode(go);
     switchMode("requests");
     setOpenThread({ id: thread, at: Date.now() });
@@ -632,6 +610,8 @@ export default function App() {
       school={school}
       students={searchStudents}
       seesStaff={leads}
+      screens={screens}
+      onScreen={switchMode}
       onStudent={(id) => {
         switchMode("students");
         openStudent(id);
@@ -666,7 +646,7 @@ export default function App() {
       setCollect({});
       return;
     }
-    if (kind === "attendance") return openAttendance();
+    if (kind === "attendance") return switchMode("attendance");
     if (kind === "event") {
       switchMode("calendar");
       setCalAdding(true);
@@ -677,7 +657,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", bulk: "requests", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "datesheet", staff: "employees", bulk: "requests", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -712,25 +692,67 @@ export default function App() {
       switchMode("transport");
       return setView("map");
     }
-    if (target === "attendance") return openAttendance();
     switchMode(target);
   };
   const onAskAct = useCallback((a) => askAct.current(a), []);
   // Pages it can open, each once; the chips are the most used of them.
-  const askPages = (() => {
-    const seen = new Set();
-    return [
-      ...sections,
-      ...studentParts,
-      ...(seesAttendance ? [["attendance", "Attendance"]] : []),
-      ["calendar", "Planner"],
-      ["notices", "Noticeboard"],
-      ...(canWrite ? [["marks", "Results"]] : []),
-      ["me", "My profile"],
-    ]
-      .filter(([k]) => !seen.has(k) && seen.add(k))
-      .map(([k, l]) => [k, l]);
-  })();
+  // What each section's panel in the top bar offers (computers): big links to
+  // its screens, then columns of smaller ones. Everything is one click away.
+  const openStudents = (status = "all", grade = null) => {
+    switchMode("students");
+    setStatusPick(status);
+    setPickedGrades(grade ? [grade] : []);
+    setSlcPendingOnly(false);
+    setQuery("");
+  };
+  const actions = (...kinds) => ({
+    title: "Quick actions",
+    links: plusActions.filter(([k]) => kinds.includes(k)).map(([k, l]) => [l, () => runAction(k)]),
+  });
+  const screenNow = {
+    homework: { attendance: "attendance", homework: "homework", syllabus: "syllabus", results: "marks" }[academicsView],
+    fees: { overview: "fees", collection: "collection", class: "class-report", structure: "structure" }[feesView],
+    calendar: { calendar: "calendar", datesheet: "datesheet", timetable: "timetable", notices: "notices", wins: "achievements" }[plannerView],
+  }[mode];
+  const bigLinks = (section, names = {}) => screens.filter((s) => s.section === section).map((s) => [names[s.key] ?? s.label, () => switchMode(s.key), { current: s.key === screenNow }]);
+  const menus = {
+    home: {
+      big: [["Home", () => switchMode("home")], ["My profile", () => switchMode("me")], ...(isAdmin ? [["School settings", () => openOwner("profile")]] : [])],
+      columns: [actions(...plusActions.map(([k]) => k))],
+    },
+    students: {
+      big: [
+        [leads ? "All students" : "My students", () => openStudents(), { current: isStudents && statusPick === "all" && !pickedGrades.length }],
+        ["Active", () => openStudents("active"), { current: isStudents && statusPick === "active" }],
+        ["Inactive", () => openStudents("inactive"), { current: isStudents && statusPick === "inactive" }],
+      ],
+      columns: [actions("student", "result"), { title: "Classes", wide: true, links: gradeOptions(searchStudents).map((g) => [gradeLabel(g.value), () => openStudents("all", g.value)]) }],
+    },
+    fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure" }), columns: [actions("fee", "bulk")] },
+    academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
+    planner: { big: bigLinks("planner"), columns: [actions("event", "datesheet", "notice")] },
+    requests: {
+      big: [
+        ["All messages", () => switchMode("requests"), { current: mode === "requests" && inboxView === "all" }],
+        ["Unread", () => switchMode("unread"), { current: mode === "requests" && inboxView === "unread" }],
+        ["Requests", () => switchMode("open-requests"), { current: mode === "requests" && inboxView === "requests" }],
+      ],
+      columns: [actions("bulk")],
+    },
+    employees: {
+      big: [
+        ["People", () => switchMode("people"), { current: mode === "employees" && staffTab === "people" && staffView === "list" }],
+        ["Org chart", () => switchMode("org-chart"), { current: mode === "employees" && staffTab === "people" && staffView === "chart" }],
+        ...(isOwner ? [["App access", () => switchMode("access"), { current: mode === "employees" && staffTab === "access", count: pendingCount }]] : []),
+      ],
+      columns: isAdmin ? [{ title: "Quick actions", links: [["Add staff", () => runAction("staff")]] }] : [],
+    },
+    transport: {
+      big: [["Routes and buses", () => switchMode("transport")], ["Bus map", () => (switchMode("transport"), setView("map"))]],
+      columns: [],
+    },
+  };
+  const askPages = [...screens.map((s) => [s.key, s.label]), ["me", "My profile"]];
   const askChips = ["attendance", "fees", "students", "requests", "employees", "transport", "calendar", "homework", "notices"]
     .map((k) => askPages.find(([x]) => x === k))
     .filter(Boolean);
@@ -755,20 +777,6 @@ export default function App() {
     if (isOwner) f.staff_waiting_for_app_access = pendingCount;
     return f;
   }, [asking, currentSession, searchStudents, isAdmin, isOwner, routes, today, inboxCount, pendingCount]);
-  const staffTabs = isOwner && (
-    <nav className="segmented segmented-sm page-switch" aria-label="Staff">
-      {[
-        ["people", "People"],
-        ["access", "App access", pendingCount],
-      ].map(([v, l, n]) => (
-        <button key={v} className={staffTab === v ? "active" : ""} onClick={() => setStaffTab(v)}>
-          {l}
-          {n > 0 && <span className="seg-count">{n}</span>}
-        </button>
-      ))}
-    </nav>
-  );
-
   if (needsClasses) {
     return <ClassAllocationGate school={school} session={currentSession} />;
   }
@@ -776,10 +784,12 @@ export default function App() {
   return (
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
-        // The noticeboard is reached from Home, so Home stays lit there.
         mode={litMode}
         onMode={switchMode}
         sections={sections}
+        barKeys={barKeys}
+        screens={screens}
+        menus={menus}
         // Owners: the whole school profile. Admins: its contact details for parents.
         onSettings={isAdmin ? () => openOwner("profile") : null}
         onProfile={() => switchMode("me")}
@@ -835,8 +845,7 @@ export default function App() {
           <>
             <div className="page-header">
               <div className="page-meta">
-                <h1 className="sr-only">Staff</h1>
-                {staffTabs}
+                <h1 className="page-title">App access</h1>
               </div>
             </div>
             <TeamPage view="access" school={school} session={currentSession} me={user.email} onCount={setPendingCount} />
@@ -855,33 +864,28 @@ export default function App() {
             routes={routes}
             actions={plusActions}
             onAction={runAction}
-            onGo={(go) => {
-              if (go === "access") {
-                switchMode("employees");
-                setStaffTab("access");
-              } else if (go === "attendance") openAttendance();
-              else switchMode(go);
-            }}
+            onGo={switchMode}
           />
         ) : mode === "calendar" ? (
           <>
-            <div className="page-header">
-              <div className="page-meta">
-                <button className="back-btn" onClick={() => switchMode("home")} aria-label="Back to Home" title="Back">
-                  <Icon name="chevronLeft" size={22} />
-                </button>
-                <h1 className="nb-page-title">
-                  <Icon name="calendar" /> Planner
-                </h1>
-              </div>
-            </div>
+            <h1 className="sr-only">Planner</h1>
             <CalendarPage
               schoolId={school.id}
               canEdit={isAdmin}
               staff
               adding={calAdding}
               onAdding={setCalAdding}
-              onOpenNotices={() => switchMode("notices")}
+              onOpenNotices={() => setPlannerView("notices")}
+              view={plannerView}
+              onView={setPlannerView}
+              notices={<NoticeBoard only={plannerView === "wins" ? "wins" : "all"} schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
+              noticeAction={
+                !viewOnly && (
+                  <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
+                    <Icon name="plus" /> Post notice
+                  </button>
+                )
+              }
               session={currentSession}
               students={current}
               me={user.email}
@@ -891,27 +895,6 @@ export default function App() {
               ttIsAdmin={isAdmin}
               ttReadOnly={isPrincipal || viewOnly}
             />
-          </>
-        ) : mode === "notices" ? (
-          <>
-            <div className="page-header nb-header">
-              <div className="page-meta">
-                <button className="back-btn" onClick={() => switchMode("home")} aria-label="Back to Home" title="Back">
-                  <Icon name="chevronLeft" size={22} />
-                </button>
-                <h1 className="nb-page-title">
-                  <Icon name="notice" /> Noticeboard
-                </h1>
-              </div>
-              {!viewOnly && (
-                <div className="page-actions">
-                  <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
-                    <Icon name="plus" /> Post notice
-                  </button>
-                </div>
-              )}
-            </div>
-            <NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />
           </>
         ) : mode === "team" && isAdmin ? (
           <TeamPage
@@ -924,7 +907,8 @@ export default function App() {
           />
         ) : mode === "fees" ? (
           <FeesPage
-            heading={studentsSwitch}
+            view={feesView}
+            onView={setFeesView}
             onCollect={(student) => setCollect({ student })}
             onOpenStudent={(id, tab) => openStudent(id, tab)}
             onOpened={revalidate}
@@ -938,8 +922,6 @@ export default function App() {
             students={current}
             onChanged={reload}
           />
-        ) : mode === "marks" && canWrite ? (
-          <MarksPage school={school} session={currentSession} students={current} onClose={() => switchMode("students")} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
@@ -1008,9 +990,10 @@ export default function App() {
             )}
           </>
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} heading={leads ? studentsSwitch : null} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView} onView={setAcademicsView} seesAttendance={seesAttendance} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} />
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} onOpenStudent={(id) => openStudent(id)} /> : null} />
         ) : mode === "requests" ? (
           <InboxPage
+            filter={inboxView}
             openThread={openThread}
             readOnly={isPrincipal}
             canBulk={isAdmin && !viewOnly}
@@ -1052,24 +1035,9 @@ export default function App() {
 
         {/* Students: search, grades and the actions on one line; the count
             lives in the search box. */}
-        {/* One row, pinned under the header while scrolling: the page switch,
-            search, filters and actions (Students and Staff alike). */}
+        {/* One row, pinned under the header while scrolling: search, filters
+            and actions (Students and Staff alike). */}
         <div className="toolbar toolbar-students toolbar-sticky">
-          {isStudents && studentParts.length > 1 && studentsSwitch}
-          {!isStudents && staffTabs}
-          {!isStudents && (
-            <nav className="segmented segmented-sm staff-view" aria-label="View">
-              {[
-                ["list", "grid", "Cards"],
-                ["chart", "users", "Chart"],
-              ].map(([v, icon, label]) => (
-                <button key={v} className={staffView === v ? "active" : ""} onClick={() => chooseStaffView(v)} aria-label={label} title={label}>
-                  <Icon name={icon} size={15} />
-                  <span className="staff-view-label">{label}</span>
-                </button>
-              ))}
-            </nav>
-          )}
           {isStudents && (
             <FilterSheet
               grades={gradeChoices}

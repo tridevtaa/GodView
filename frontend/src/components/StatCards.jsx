@@ -29,7 +29,7 @@ function Card({ label, value, format, tone, color, note, index }) {
   const c = color ?? TONE_COLOR[tone] ?? PALETTE[index % PALETTE.length];
   return (
     <div className={`sw-tile t-${c}`} style={{ "--d": `${index * 60}ms` }}>
-      <strong className="sw-value">{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
+      <strong className={`sw-value${typeof value === "string" && value.length > 8 ? " is-long" : ""}`}>{value === undefined ? "…" : typeof value === "number" ? <CountUp to={value} format={format} /> : value}</strong>
       <span className="sw-label">{label}</span>
       {note && <span className="sw-note">{note}</span>}
     </div>

@@ -7,44 +7,39 @@ import { gradeLabel } from "./PersonCard.jsx";
 import StatCards from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
 
-// Fees > Reports > Class-wise: this session's fees for each grade, and its
+// Fees > Class-wise: this session's fees for each grade, and its
 // sections on a tap. Fees less concessions is what's collected plus what's
 // still due, now or later. Students no longer in a class keep a row of their
 // own, so the totals match the Overview.
 const NO_CLASS = "No class";
 const blank = () => ({ students: new Set(), fees: 0, concession: 0, collected: 0, dueNow: 0, dueLater: 0 });
-function add(t, line, today) {
-  const balance = Number(line.balance);
+function add(t, line) {
   t.students.add(line.student_id);
-  t.fees += Number(line.amount);
-  t.concession += Number(line.concession);
-  t.collected += Number(line.paid);
-  if (!line.due_date || line.due_date <= today) t.dueNow += balance;
-  else t.dueLater += balance;
+  t.fees += line.fees;
+  t.concession += line.concession;
+  t.collected += line.collected;
+  t.dueNow += line.dueNow;
+  t.dueLater += line.dueLater;
 }
-const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
 
-export default function FeeClassReport({ school, session, students, header, tabs }) {
+export default function FeeClassReport({ school, session, students, header }) {
   const [lines, setLines] = useState(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let stale = false;
     setLines(null);
-    setError("");
+    setError(false);
     sessionFeeLines(session.id).then(
       (r) => !stale && setLines(r),
-      () => !stale && (setLines([]), setError("Couldn’t load the report. Try again."))
+      () => !stale && setError(true)
     );
     return () => {
       stale = true;
     };
-  }, [session.id]);
+  }, [session.id, attempt]);
 
   const { grades, total } = useMemo(() => {
-    const day = today();
     const byId = new Map(students.map((s) => [s.id, s]));
     const map = new Map();
     const sum = blank();
@@ -55,9 +50,9 @@ export default function FeeClassReport({ school, session, students, header, tabs
       const g = map.get(klass);
       const sec = s?.section || "";
       if (!g.sections.has(sec)) g.sections.set(sec, { section: sec, ...blank() });
-      add(g, line, day);
-      add(g.sections.get(sec), line, day);
-      add(sum, line, day);
+      add(g, line);
+      add(g.sections.get(sec), line);
+      add(sum, line);
     }
     const order = [...map.values()].sort((a, b) => (a.klass === NO_CLASS) - (b.klass === NO_CLASS) || gradeRank(a.klass) - gradeRank(b.klass) || a.klass.localeCompare(b.klass));
     return { grades: order, total: sum };
@@ -109,6 +104,20 @@ export default function FeeClassReport({ school, session, students, header, tabs
     </>
   );
 
+  // Not zeroes or "no fees": we just don't know yet
+  if (error)
+    return (
+      <>
+        {header()}
+        <div className="notice notice-error report-retry">
+          <span>Couldn’t load the report.</span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAttempt((n) => n + 1)}>
+            Try again
+          </button>
+        </div>
+      </>
+    );
+
   return (
     <>
       <StatCards
@@ -127,10 +136,8 @@ export default function FeeClassReport({ school, session, students, header, tabs
           },
         ]}
       />
-      {header}
-      <div className="report-filters">{tabs}</div>
+      {header()}
 
-      {error && <p className="notice notice-error">{error}</p>}
       {lines === null ? (
         <div className="card card-skeleton att-skeleton" aria-busy="true" />
       ) : !grades.length ? (

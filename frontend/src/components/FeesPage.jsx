@@ -24,14 +24,11 @@ function sessionMonths(session) {
   });
 }
 
-// Owners/admins: how fee collection is going. Setting fees up lives on the
-// Owner page (Fee structure).
-// Owners get two tabs: Overview (collection) and Structure (what each grade
-// pays). Admins see the overview only.
+// Owners/admins: how fee collection is going, and the two reports. Owners also
+// get Structure (what each grade pays).
 // pastSession: a past session is open (picked on Students); say which.
-// heading: the Students section switch, shown first in the header.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
-  const [tab, setTab] = useState("overview");
+// view, onView: which tab shows.
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
   const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
@@ -108,23 +105,20 @@ export default function FeesPage({ school, role, session, pastSession = false, s
   if (!session) return <p className="notice">Import your students first; fees are tracked per session.</p>;
 
   const isOwner = role === "owner";
-  const header = (
+  // The page's name, and its buttons on the right
+  const headerWith = (actions) => (
     <div className="page-header">
       <div>
-        <h1 className="sr-only">Fees</h1>
         <div className="page-meta">
-          {heading}
-          <nav className="segmented segmented-sm" aria-label="Fee sections">
-            {[["overview", "Overview"], ...(isOwner ? [["structure", "Fee structure"]] : []), ["reports", "Reports"]].map(([v, l]) => (
-              <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
-                {l}
-              </button>
-            ))}
-          </nav>
+          <h1 className="page-title">{{ overview: "Overview", collection: "Collection", class: "Class-wise", structure: "Fee structure" }[tab]}</h1>
           {pastSession && <span className="badge badge-neutral">Session {session.name}</span>}
         </div>
       </div>
-      {tab === "overview" && (
+      {actions}
+    </div>
+  );
+  const header = headerWith(
+    tab === "overview" && (
         <div className="page-actions">
           {(role === "owner" || role === "admin") && !pastSession && school.plan !== "premium" && <InsightsButton section="fees" />}
           <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
@@ -136,11 +130,10 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             Collect fee
           </button>
         </div>
-      )}
-    </div>
+    )
   );
 
-  if (tab === "reports") return <FeeReport school={school} session={session} students={students} header={header} onOpenStudent={onOpenStudent} />;
+  if (tab === "collection" || tab === "class") return <FeeReport view={tab} school={school} session={session} students={students} header={headerWith} onOpenStudent={onOpenStudent} />;
 
   if (isOwner && tab === "structure")
     return (
