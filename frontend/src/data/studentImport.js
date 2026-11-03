@@ -140,7 +140,8 @@ export function planImport(rows, existing, { session, today }) {
   const created = upserts.filter((u) => !byId.has(u.id));
   const updated = upserts.filter((u) => byId.has(u.id));
   const leaving = existing
-    .filter((s) => !seen.has(s.id) && s.status !== "left" && !String(s.id).startsWith("sample-"))
+    // graduating: Class 12 finishing, kept as inactive, not "left"
+    .filter((s) => !seen.has(s.id) && s.status !== "left" && !s.graduating && !String(s.id).startsWith("sample-"))
     .map((s) => ({ id: s.id, data: { status: "left", left_as_of: today } }));
   return {
     upserts,

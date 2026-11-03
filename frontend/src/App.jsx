@@ -64,6 +64,16 @@ const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
 const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
 const Concierge = lazy(() => import("./components/Concierge.jsx"));
+// Today's attendance added up, from the per-class overview
+const attendanceTotals = (rows) => ({
+  present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
+  absent: rows.reduce((t, r) => t + Number(r.absent), 0),
+  leave: rows.reduce((t, r) => t + Number(r.on_leave), 0),
+  marked: rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0),
+  notMarked: rows.filter((r) => Number(r.unmarked) === Number(r.students)).length,
+  classes: rows.length,
+});
+
 export default function App() {
   // Everyone lands on Home.
   const [mode, setMode] = useState("home");
@@ -91,6 +101,7 @@ export default function App() {
   const [asking, setAsking] = useState(false);
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   const [slcPendingOnly, setSlcPendingOnly] = useState(false);
+  const [statusPick, setStatusPick] = useState("all"); // all | active | inactive
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
@@ -215,7 +226,7 @@ export default function App() {
   const sessionId = pickedSession ?? currentSession?.id;
   // Fees, Requests and Team work on the session's students.
   const dataMode = mode === "employees" ? "employees" : "students";
-  const { people, loading, source, add, patch, drop, reload } = usePeople(dataMode, school.id, sessionId);
+  const { people, loading, source, add, patch, drop, reload, revalidate } = usePeople(dataMode, school.id, sessionId);
 
   // Past sessions are history: shown, not edited.
   const viewOnly = mode !== "employees" && Boolean(currentSession) && sessionId !== currentSession.id;
@@ -246,8 +257,9 @@ export default function App() {
     let rows = current;
     if (mode === "students" && pickedGrades.length) rows = rows.filter((p) => pickedGrades.includes(p.class));
     if (mode === "students" && slcPendingOnly) rows = rows.filter((p) => p.transfer_cert_pending);
+    if (mode === "students" && statusPick !== "all") rows = rows.filter((p) => (p.status || "active") === statusPick);
     return rows;
-  }, [current, mode, pickedGrades, slcPendingOnly]);
+  }, [current, mode, pickedGrades, slcPendingOnly, statusPick]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -416,6 +428,7 @@ export default function App() {
     setAcademicsView("homework");
     setQuery("");
     setPickedGrades([]);
+    setStatusPick("all");
     setOpenId(null);
   }
   // Attendance lives under Academics (Students' Academics for those who lead)
@@ -438,7 +451,7 @@ export default function App() {
   // mistaken for the whole school.
   const countLabel = (() => {
     const inactive = isStudents ? current.filter((p) => p.status === "inactive").length : 0;
-    const n = `${current.length.toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}${inactive ? ` · ${inactive.toLocaleString("en-IN")} inactive` : ""}`;
+    const n = `${(current.length - inactive).toLocaleString("en-IN")} ${isStudents ? "students" : "staff"}${inactive ? ` · ${inactive.toLocaleString("en-IN")} inactive` : ""}`;
     if (!isStudents || isAdmin || isPrincipal) return n;
     const classes = new Set(current.map((p) => `${p.class}|${p.section ?? ""}`)).size;
     return classes ? `${n} in your ${classes} class${classes === 1 ? "" : "es"}` : n;
@@ -457,14 +470,7 @@ export default function App() {
     if ((mode !== "students" && mode !== "home") || !currentSession || viewOnly) return;
     if (leads) {
       swr(`att-overview:${currentSession.id}:${todayIso}`, () => attendanceOverview(currentSession.id, todayIso), (rows) =>
-        setToday({
-          present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
-          absent: rows.reduce((t, r) => t + Number(r.absent), 0),
-          leave: rows.reduce((t, r) => t + Number(r.on_leave), 0),
-          marked: rows.reduce((t, r) => t + Number(r.students) - Number(r.unmarked), 0),
-          notMarked: rows.filter((r) => Number(r.unmarked) === Number(r.students)).length,
-          classes: rows.length,
-        })
+        setToday({ ...attendanceTotals(rows), rows })
       ).catch(() => {});
     } else {
       swr(`att-day:${currentSession.id}:${todayIso}`, () => loadAttendance(currentSession.id, todayIso), (rows) => {
@@ -475,29 +481,45 @@ export default function App() {
           absent: own.filter((r) => r.status === "absent").length,
           leave: own.filter((r) => r.status === "leave").length,
           marked: own.length,
+          own,
         });
       }).catch(() => {});
     }
   }, [mode, currentSession, viewOnly, leads, todayIso, current]);
 
   const insHere = isStudents ? insR : insS;
-  const showInsights = insHere.on && !query && (!isStudents || pickedGrades.length === 0);
+  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || slcPendingOnly || statusPick !== "all"));
+  const showInsights = insHere.on && !filtered;
+  // Today's attendance for who's showing. The school's numbers are per class,
+  // so they narrow by grade but not by a search; a teacher's are per student.
+  const todayShown = (() => {
+    if (!filtered) return today;
+    if (today?.own) {
+      const ids = new Set(visible.map((p) => p.id));
+      const own = today.own.filter((r) => ids.has(r.student_id));
+      return { present: own.filter((r) => r.status === "present" || r.status === "late").length, marked: own.length };
+    }
+    if (today?.rows && !query.trim() && !slcPendingOnly && statusPick === "all") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
+    return null;
+  })();
 
   // Tiles at the top of Students and Staff: one number and a word each.
   const overview = (() => {
     // Shown while loading too, so the toolbar under the tiles stays put
     if (isStudents) {
       // One tile: how many students, with who's inactive and today's attendance
-      const inactive = current.filter((p) => p.status === "inactive").length;
-      const present = today?.marked ? `${today.present.toLocaleString("en-IN")} present today` : null;
+      const inactive = visible.filter((p) => p.status === "inactive").length;
+      const present = todayShown?.marked ? `${todayShown.present.toLocaleString("en-IN")} present today` : null;
+      const who = query.trim() ? "Matching students" : slcPendingOnly ? "SLC pending" : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
       return [
         {
           color: "indigo",
-          label: leads ? "Students" : "My students",
-          value: loading ? undefined : current.length,
-          note: (inactive > 0 || present || today?.notMarked > 0) && (
+          label: pickedGrades.length && !query.trim() && !slcPendingOnly ? `${who} in ${gradesText(pickedGrades)}` : who,
+          // Active students only, unless the filter asks for inactive ones
+          value: loading ? undefined : statusPick === "inactive" ? visible.length : visible.length - inactive,
+          note: ((inactive > 0 && statusPick !== "inactive") || present || todayShown?.notMarked > 0) && (
             <span className="sw-facts">
-              {inactive > 0 && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
+              {inactive > 0 && statusPick !== "inactive" && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
               {present &&
                 (seesAttendance ? (
                   <button type="button" className="link-btn" onClick={openAttendance}>
@@ -506,24 +528,24 @@ export default function App() {
                 ) : (
                   <span>{present}</span>
                 ))}
-              {today?.notMarked > 0 && <span>{today.notMarked.toLocaleString("en-IN")} {today.notMarked === 1 ? "class" : "classes"} not marked</span>}
+              {todayShown?.notMarked > 0 && <span>{todayShown.notMarked.toLocaleString("en-IN")} {todayShown.notMarked === 1 ? "class" : "classes"} not marked</span>}
             </span>
           ),
         },
       ];
     }
     // One tile: how many staff, with who teaches and who's inactive
-    const teaching = current.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
-    const inactive = current.filter((p) => p.status === "inactive").length;
+    const teaching = visible.filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
+    const inactive = visible.filter((p) => p.status === "inactive").length;
     return [
       {
         color: "pink",
-        label: "Staff",
-        value: loading ? undefined : current.length,
-        note: !loading && current.length > 0 && (
+        label: query.trim() ? "Matching staff" : "Staff",
+        value: loading ? undefined : visible.length,
+        note: !loading && visible.length > 0 && (
           <span className="sw-facts">
             <span>{teaching.toLocaleString("en-IN")} teaching</span>
-            <span>{(current.length - teaching).toLocaleString("en-IN")} other staff</span>
+            <span>{(visible.length - teaching).toLocaleString("en-IN")} other staff</span>
             {inactive > 0 && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
           </span>
         ),
@@ -636,6 +658,7 @@ export default function App() {
     // Exams: teachers for their classes, the office for any class
     ...(role === "teacher" || (isAdmin && !viewOnly) ? [["datesheet", "Add exam", "exam"]] : []),
     ["notice", "Post notice", "notice"],
+    ...(isAdmin && !viewOnly ? [["bulk", "Message parents", "users"]] : []),
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
   function runAction(kind) {
@@ -654,7 +677,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", result: "marks" }[kind];
+    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "calendar", staff: "employees", bulk: "requests", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -714,7 +737,7 @@ export default function App() {
   // Figures the app already shows this person, for answers without a lookup.
   const askFacts = useMemo(() => {
     if (!asking) return {};
-    const f = { session: currentSession?.name ?? "", students: searchStudents.length };
+    const f = { session: currentSession?.name ?? "", students: searchStudents.filter((p) => p.status !== "inactive").length };
     if (isAdmin) {
       const owing = searchStudents.filter((p) => Number(p.fee_due) > 0);
       f.fees = {
@@ -769,9 +792,11 @@ export default function App() {
       <InstallPrompt />
       <UpdatePrompt />
 
-      <main className="page">
+      {/* A student's page sits in front of the page it opened from, which stays
+          as it was (filters, typed marks, scroll) for coming Back. */}
+      {studentPage && (
+        <main className="page">
         <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>
-        {studentPage ? (
           <ProfileModal
             asPage
             key={`${openId}-${openTab}`}
@@ -799,7 +824,12 @@ export default function App() {
             onOpenStudent={dataMode === "students" ? (id) => openStudent(id) : undefined}
             routes={routes}
           />
-        ) : mode === "me" ? (
+        </Suspense>
+        </main>
+      )}
+      <main className="page" hidden={studentPage}>
+        <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>
+        {mode === "me" ? (
           <MyProfile school={school} session={currentSession} email={user.email} googleName={user.displayName} onBack={() => switchMode("home")} />
         ) : mode === "employees" && isOwner && staffTab === "access" ? (
           <>
@@ -896,7 +926,8 @@ export default function App() {
           <FeesPage
             heading={studentsSwitch}
             onCollect={(student) => setCollect({ student })}
-            onOpenStudent={(id) => openStudent(id)}
+            onOpenStudent={(id, tab) => openStudent(id, tab)}
+            onOpened={revalidate}
             refreshAt={feesAt}
             school={school}
             role={role}
@@ -908,7 +939,7 @@ export default function App() {
             onChanged={reload}
           />
         ) : mode === "marks" && canWrite ? (
-          <MarksPage school={school} session={currentSession} students={current} onClose={() => switchMode("students")} />
+          <MarksPage school={school} session={currentSession} students={current} onClose={() => switchMode("students")} onOpenStudent={(id) => openStudent(id)} />
         ) : mode === "transport" && isAdmin ? (
           <>
             <h1 className="sr-only">Transport</h1>
@@ -982,6 +1013,8 @@ export default function App() {
           <InboxPage
             openThread={openThread}
             readOnly={isPrincipal}
+            canBulk={isAdmin && !viewOnly}
+            bulkAt={quick.kind === "bulk" ? quick.at : 0}
             school={school}
             students={current}
             me={user.email}
@@ -1008,6 +1041,7 @@ export default function App() {
         {!viewOnly && !showInsights && <StatCards items={overview} />}
         {showInsights && (
           <AiCard
+            key={insHere.section}
             ins={insHere}
             lead={<StatCards items={overview} />}
             opens={isStudents ? (canWrite ? ["marks"] : []) : isOwner ? ["access"] : []}
@@ -1047,11 +1081,14 @@ export default function App() {
               withFee={isAdmin}
               slc={slcPendingOnly}
               onSlc={isAdmin ? setSlcPendingOnly : null}
+              status={statusPick}
+              onStatus={setStatusPick}
               shown={visible.length}
             />
           )}
           {mode === "students" && <SortArrow sort={sort} onSort={chooseSort} withFee={isAdmin} />}
-          {!loading && (query || pickedGrades.length > 0 || slcPendingOnly) && (
+          {/* Past sessions have no tile to show the filtered total */}
+          {!loading && viewOnly && filtered && (
             <span className="toolbar-count">
               {visible.length} of {current.length}
             </span>
@@ -1070,7 +1107,7 @@ export default function App() {
               {mode === "students" && (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && school.plan !== "premium" && (
                 <InsightsButton section="results" label="Results insights" />
               )}
-              {isAdmin && !loading && <ExportButton school={school} role={role} people={visible} label={`students-${currentLabel}`} />}
+              {isAdmin && !loading && <ExportButton school={school} role={role} people={current} preselect={visible} label={`students-${currentLabel}`} />}
               {canEdit && (
                 <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
                   <Icon name="upload" />
@@ -1112,14 +1149,14 @@ export default function App() {
           <div className="empty">
             <p className="empty-title">No {mode} found</p>
             <p>
-              {query ? `Nothing matches “${query}”` : "Nothing here yet"}
+              {query ? `Nothing matches “${query}”` : statusPick !== "all" ? `No ${statusPick} students` : "Nothing here yet"}
               {pickedGrades.length ? ` in ${gradesText(pickedGrades)}` : ""}.
             </p>
           </div>
         ) : (
           <Grid
             items={ordered}
-            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${slcPendingOnly}`}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${slcPendingOnly}|${statusPick}`}
             render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
           />
         )}
@@ -1154,6 +1191,11 @@ export default function App() {
             students={dataMode === "students" ? current : searchStudents}
             student={collect.student}
             onClose={() => setCollect(null)}
+            onOpenStudent={(id) => {
+              setCollect(null);
+              if (dataMode !== "students") switchMode("students");
+              openStudent(id, "fees");
+            }}
             onPaid={() => {
               forget("fees:");
               setFeesAt(Date.now());
@@ -1193,6 +1235,7 @@ export default function App() {
         <ImportModal
           schoolId={school.id}
           students={people}
+          viewedSession={selectedSession?.name}
           onClose={() => setImporting(false)}
           onDone={reload}
         />

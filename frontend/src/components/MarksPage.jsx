@@ -14,7 +14,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // then every student in the class with a marks box. Marks already entered
 // for that test are filled in, so this also corrects them. Blank = not
 // entered (e.g. absent), and is left alone.
-export default function MarksPage({ school, session, students, onClose }) {
+export default function MarksPage({ school, session, students, onClose, onOpenStudent }) {
   const [step, setStep] = useState(0);
   const [test, setTest] = useState({ key: "", exam: "", subject: "", max: "100" });
   const [known, setKnown] = useState({ exams: [], subjects: [] });
@@ -45,7 +45,7 @@ export default function MarksPage({ school, session, students, onClose }) {
   const groups = useMemo(() => {
     const m = new Map();
     for (const s of students) {
-      if (!s.class || s.status === "left") continue;
+      if (!s.class || s.status === "left" || s.status === "inactive") continue;
       const key = `${s.class}|${s.section ?? ""}`;
       m.set(key, [...(m.get(key) ?? []), s]);
     }
@@ -244,11 +244,13 @@ export default function MarksPage({ school, session, students, onClose }) {
               const v = marks[k.id] ?? "";
               return (
                 <li key={k.id} className={over(v) ? "is-bad" : ""}>
-                  <Photo person={k} className="att-photo" />
-                  <span className="att-name">
-                    <strong>{k.name}</strong>
-                    {k.roll_no && <span className="row-sub">Roll {k.roll_no}</span>}
-                  </span>
+                  <button type="button" className="att-who" onClick={() => onOpenStudent?.(k.id)}>
+                    <Photo person={k} className="att-photo" />
+                    <span className="att-name">
+                      <strong>{k.name}</strong>
+                      {k.roll_no && <span className="row-sub">Roll {k.roll_no}</span>}
+                    </span>
+                  </button>
                   <input
                     ref={(el) => (inputs.current[i] = el)}
                     className="input marks-input"

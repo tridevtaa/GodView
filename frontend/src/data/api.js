@@ -1,6 +1,6 @@
 import { supabase } from "../supabase.js";
 import { clean, splitFields, toPerson } from "./personMapping.js";
-import { announceMessage, announceNotice } from "../pwa/push.js";
+import { announceBatch, announceMessage, announceNotice } from "../pwa/push.js";
 
 // Supabase access for the app. Screens work with "person" objects whose field
 // names predate the database (parent_name, aadhaar, fee_due…); this module maps
@@ -649,8 +649,8 @@ export async function listExportRequests(schoolId) {
   );
 }
 
-export async function requestExport(schoolId, reason) {
-  return must(await supabase.from("export_requests").insert({ school_id: schoolId, reason }).select().single());
+export async function requestExport(schoolId, reason, studentIds, selection) {
+  return must(await supabase.from("export_requests").insert({ school_id: schoolId, reason, student_ids: studentIds, selection }).select().single());
 }
 
 export async function decideExport(id, approve, decidedBy) {
@@ -855,6 +855,28 @@ export async function recordPayment(studentId, { amount, method, reference, paid
 }
 
 // Owners/admins: payments received since a day (for Home's chart).
+// Owners and admins: every due in a session, for the class-wise report.
+export async function sessionFeeLines(sessionId) {
+  return all(() =>
+    supabase.from("fee_invoice_balances").select("student_id, amount, concession, paid, balance, due_date").eq("session_id", sessionId).order("id")
+  );
+}
+
+// Owners and admins: payments received between two days, newest first.
+export async function feeCollection(schoolId, from, to) {
+  return all(() =>
+    supabase
+      .from("fee_payments")
+      .select("id, student_id, amount, method, reference, paid_on, receipt_no, received_by, student:students(name, admission_no)")
+      .eq("school_id", schoolId)
+      .eq("status", "success")
+      .gte("paid_on", from)
+      .lte("paid_on", to)
+      .order("paid_on", { ascending: false })
+      .order("receipt_no", { ascending: false })
+  );
+}
+
 export async function paymentsSince(schoolId, day) {
   return all(() => supabase.from("fee_payments").select("amount, paid_on").eq("school_id", schoolId).eq("status", "success").gte("paid_on", day));
 }
@@ -922,6 +944,14 @@ export async function loadThread(studentId) {
   return [...must(m).map((x) => ({ ...x, type: "message" })), ...must(r).map((x) => ({ ...x, type: "request" }))].sort((a, b) =>
     a.created_at.localeCompare(b.created_at)
   );
+}
+
+// Owners and admins: one message to many students' conversations. The parents
+// are told once, by the server, so closing the page can't cut it short.
+export async function sendBulkMessage(schoolId, studentIds, body) {
+  const batch = must(await supabase.rpc("send_bulk_message", { p_school: schoolId, p_students: studentIds, p_body: body }));
+  announceBatch(batch);
+  return batch;
 }
 
 export async function sendMessage(studentId, body) {

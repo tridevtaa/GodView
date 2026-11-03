@@ -163,7 +163,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       icon: "scholar",
       tone: "indigo",
       label: leads ? "Students" : "My students",
-      value: loading ? undefined : students.length,
+      value: loading ? undefined : students.length - inactive,
       facts: [inactive > 0 && `${n(inactive)} inactive`, birthdays.length > 0 && `🎂 ${firstNames(birthdays)}`],
       onClick: go("students"),
     },
@@ -389,7 +389,7 @@ function NoticeBanner({ notices, urls, onOpenNotices }) {
 // Everyday shortcuts, next to Upcoming Events: the + menu's actions, as
 // [key, label, icon]. Hidden when there's nothing this person can do, and
 // on phones, where the + beside the search does the same job.
-const ACTION_TONE = { student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
+const ACTION_TONE = { bulk: "violet", student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
 
 function QuickActionsPanel({ actions, onAction }) {
   if (!actions.length) return null;

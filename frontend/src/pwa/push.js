@@ -104,6 +104,10 @@ export function announceMessage(id) {
   supabase.functions.invoke("push-message", { body: { message: id } }).catch(() => {});
 }
 
+export function announceBatch(id) {
+  supabase.functions.invoke("push-message", { body: { batch: id } }).catch(() => {});
+}
+
 export function announceNotice(id) {
   supabase.functions.invoke("push-message", { body: { notice: id } }).catch(() => {});
 }

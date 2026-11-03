@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { cancelPayment, listFeeHeads, recordPayment, setConcession, studentLedger } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
+import PaymentHistory from "./PaymentHistory.jsx";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
 import { haptic } from "../pwa/haptics.js";
@@ -8,13 +9,15 @@ import { haptic } from "../pwa/haptics.js";
 const today = () => new Date().toISOString().slice(0, 10);
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
 
-// A student's dues, payments and receipts (owners/admins), with recording.
+// A student's dues, and every payment by session with its receipt (owners and
+// admins), with recording.
 export default function FeeLedger({ school, person, canEdit, onChanged }) {
   const [ledger, setLedger] = useState(null);
   const [error, setError] = useState("");
   const [paying, setPaying] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [showPaid, setShowPaid] = useState(false);
+  const [view, setView] = useState(null); // "dues" | "collected"; null until picked
 
   const load = useCallback(async () => {
     try {
@@ -44,8 +47,9 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
   const open = dues.filter((d) => Number(d.balance) > 0);
   const dueNow = open.filter((d) => !d.due_date || d.due_date <= todayStr).reduce((s, d) => s + Number(d.balance), 0);
   const upcoming = open.filter((d) => d.due_date && d.due_date > todayStr).reduce((s, d) => s + Number(d.balance), 0);
-  const paidTotal = payments.filter((p) => p.status === "success").reduce((s, p) => s + Number(p.amount), 0);
   const shown = showPaid ? dues : open;
+  // Opens on what's owed; with nothing owed, on what's been collected
+  const tab = view ?? (open.length === 0 && payments.length > 0 ? "collected" : "dues");
 
   if (!dues.length && !payments.length) {
     return (
@@ -56,7 +60,7 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
   }
 
   const paidDues = dues.length - open.length;
-  const extra = [upcoming > 0 && `${rupees(upcoming)} later`, paidTotal > 0 && `${rupees(paidTotal)} paid`].filter(Boolean).join(" · ");
+  const extra = upcoming > 0 ? `${rupees(upcoming)} later` : "";
 
   return (
     <div className="ledger-view">
@@ -88,51 +92,63 @@ export default function FeeLedger({ school, person, canEdit, onChanged }) {
         />
       )}
 
-      {shown.length === 0 ? (
-        <p className="row-sub ledger-empty">Nothing outstanding.</p>
-      ) : (
-        <ul className="due-list">
-          {shown.map((d) => (
-            <DueRow key={d.id} due={d} todayStr={todayStr} canEdit={canEdit} onChanged={changed} />
-          ))}
-        </ul>
-      )}
-      {paidDues > 0 && (
-        <button className="link-btn ledger-toggle" onClick={() => setShowPaid((v) => !v)}>
-          {showPaid ? "Hide paid" : `Show ${paidDues} paid`}
-        </button>
-      )}
+      <nav className="segmented segmented-sm fee-switch" aria-label="Dues or collected">
+        {[["dues", "Dues"], ["collected", "Collected"]].map(([v, l]) => (
+          <button key={v} className={tab === v ? "active" : ""} onClick={() => setView(v)}>
+            {l}
+          </button>
+        ))}
+      </nav>
 
-      {payments.length > 0 && (
+      {tab === "dues" ? (
         <>
-          <h3 className="ledger-h">Payments</h3>
-          <ul className="payment-list">
-            {payments.map((p) => (
-              <li key={p.id} className={p.status !== "success" ? "is-void" : ""}>
-                <div>
-                  <strong>{rupees(p.amount)}</strong>
-                  <span className="row-sub">
-                    {[shortDate(p.paid_on), METHODS[p.method], p.reference, p.receipt_no].filter(Boolean).join(" · ")}
-                  </span>
-                </div>
-                <div className="payment-actions">
-                  {p.status !== "success" && <span className="badge badge-danger">Cancelled</span>}
-                  <button className="icon-btn-sm" onClick={() => setReceipt(p.receipt_no)} aria-label="Receipt" title="Receipt">
-                    <Icon name="file" size={16} />
-                  </button>
-                  {canEdit && p.status === "success" && (
-                    <CancelPayment
-                      onConfirm={async () => {
-                        await cancelPayment(p.id);
-                        await changed();
-                      }}
-                    />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+          {shown.length === 0 ? (
+            <p className="row-sub ledger-empty">Nothing outstanding.</p>
+          ) : (
+            <ul className="due-list">
+              {shown.map((d) => (
+                <DueRow key={d.id} due={d} todayStr={todayStr} canEdit={canEdit} onChanged={changed} />
+              ))}
+            </ul>
+          )}
+          {paidDues > 0 && (
+            <button className="link-btn ledger-toggle" onClick={() => setShowPaid((v) => !v)}>
+              {showPaid ? "Hide paid" : `Show ${paidDues} paid`}
+            </button>
+          )}
         </>
+      ) : payments.length === 0 ? (
+        <p className="row-sub ledger-empty">No payments recorded yet.</p>
+      ) : (
+        <PaymentHistory
+          schoolId={school.id}
+          payments={payments}
+          listClass="payment-list"
+          row={(p) => (
+            <li key={p.id} className={p.status !== "success" ? "is-void" : ""}>
+              <div>
+                <strong>{rupees(p.amount)}</strong>
+                <span className="row-sub">
+                  {[shortDate(p.paid_on), METHODS[p.method], p.reference, p.receipt_no].filter(Boolean).join(" · ")}
+                </span>
+              </div>
+              <div className="payment-actions">
+                {p.status !== "success" && <span className="badge badge-danger">Cancelled</span>}
+                <button className="icon-btn-sm" onClick={() => setReceipt(p.receipt_no)} aria-label="Receipt" title="Receipt">
+                  <Icon name="file" size={16} />
+                </button>
+                {canEdit && p.status === "success" && (
+                  <CancelPayment
+                    onConfirm={async () => {
+                      await cancelPayment(p.id);
+                      await changed();
+                    }}
+                  />
+                )}
+              </div>
+            </li>
+          )}
+        />
       )}
 
       {receipt && ledger.payments.find((p) => p.receipt_no === receipt) && (

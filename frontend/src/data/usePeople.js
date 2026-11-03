@@ -22,6 +22,9 @@ export function usePeople(kind, schoolId, sessionId) {
   const [source, setSource] = useState("supabase");
   const [version, setVersion] = useState(0);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  // Check again, unless it was fetched in the last 2 minutes
+  const [check, setCheck] = useState(0);
+  const revalidate = useCallback(() => setCheck((c) => c + 1), []);
   const ready = kind === "employees" || Boolean(sessionId);
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function usePeople(kind, schoolId, sessionId) {
     return () => {
       cancelled = true;
     };
-  }, [key, kind, schoolId, sessionId, ready, version]);
+  }, [key, kind, schoolId, sessionId, ready, version, check]);
 
   const add = useCallback(
     async (record) => {
@@ -74,5 +77,5 @@ export function usePeople(kind, schoolId, sessionId) {
     setPeople((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  return { people, loading: loading || !ready, source, add, patch, drop, reload };
+  return { people, loading: loading || !ready, source, add, patch, drop, reload, revalidate };
 }

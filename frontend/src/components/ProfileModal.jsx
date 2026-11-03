@@ -310,6 +310,38 @@ const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: 
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
+// Owners and admins: one tap between active and inactive. Dues already raised
+// stay as they are.
+function StudentStatus({ person, sessionId, onUpdate }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const now = person.status === "inactive" ? "inactive" : "active";
+  async function set(status) {
+    if (status === now || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      onUpdate(person.id, await updateStudent(person, sessionId, { status }));
+    } catch {
+      setError("Couldn’t change that. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="ig-status">
+      <nav className="segmented segmented-sm" aria-label="Student status">
+        {[["active", "Active"], ["inactive", "Inactive"]].map(([v, label]) => (
+          <button key={v} type="button" className={now === v ? "active" : ""} disabled={busy} aria-pressed={now === v} onClick={() => set(v)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      {error && <span className="field-error">{error}</span>}
+    </div>
+  );
+}
+
 function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmin, canEdit, canWrite, editing, callNo, onEdit, onDelete, onUpdate, onTab }) {
   const [att, setAtt] = useState(null);
   const [result, setResult] = useState(null);
@@ -394,7 +426,9 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
             </span>
           </span>
           {person.status === "left" && <span className="badge badge-danger">Left</span>}
+          {person.status === "inactive" && !canEdit && <span className="badge badge-neutral">Inactive</span>}
         </p>
+        {canEdit && person.status !== "left" && <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />}
         {bus && (
           <p className="ig-bus">
             <Icon name="bus" size={14} /> {bus}
@@ -760,7 +794,7 @@ function StudentClass({ person, sessionId, students, onOpenStudent }) {
 
   if (!person.class) return null;
   const mates = students
-    .filter((p) => p.id !== person.id && p.class === person.class && (p.section ?? "") === (person.section ?? "") && p.status !== "left")
+    .filter((p) => p.id !== person.id && p.class === person.class && (p.section ?? "") === (person.section ?? "") && p.status !== "left" && p.status !== "inactive")
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <ClassCard

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { feeClassSummary, feeMonthlyCollection, feeSessionSummary } from "../data/api.js";
-import { peek, remember, swr } from "../data/cache.js";
+import { peek, swr } from "../data/cache.js";
 import { rupees, rupeesShort } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import { BarChart, ColumnChart } from "./charts.jsx";
 import OpeningBalances from "./OpeningBalances.jsx";
+import FeeReport from "./FeeReport.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
@@ -29,7 +30,7 @@ function sessionMonths(session) {
 // pays). Admins see the overview only.
 // pastSession: a past session is open (picked on Students); say which.
 // heading: the Students section switch, shown first in the header.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, onOpenStudent, refreshAt = 0 }) {
+export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, heading, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
   const [tab, setTab] = useState("overview");
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
@@ -63,6 +64,11 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             : `Couldn’t load some fee figures (${err.code || err.message || "network"}). Reload to try again.`
     );
   }, [session]);
+
+  // The student list may have sat open for a while (another device took a fee)
+  useEffect(() => {
+    onOpened?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Again after a payment (refreshAt), so the figures move at once.
   useEffect(() => {
@@ -108,15 +114,13 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         <h1 className="sr-only">Fees</h1>
         <div className="page-meta">
           {heading}
-          {isOwner && (
-            <nav className="segmented segmented-sm" aria-label="Fee sections">
-              {[["overview", "Overview"], ["structure", "Fee structure"]].map(([v, l]) => (
-                <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
-                  {l}
-                </button>
-              ))}
-            </nav>
-          )}
+          <nav className="segmented segmented-sm" aria-label="Fee sections">
+            {[["overview", "Overview"], ...(isOwner ? [["structure", "Fee structure"]] : []), ["reports", "Reports"]].map(([v, l]) => (
+              <button key={v} className={tab === v ? "active" : ""} onClick={() => setTab(v)}>
+                {l}
+              </button>
+            ))}
+          </nav>
           {pastSession && <span className="badge badge-neutral">Session {session.name}</span>}
         </div>
       </div>
@@ -135,6 +139,8 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       )}
     </div>
   );
+
+  if (tab === "reports") return <FeeReport school={school} session={session} students={students} header={header} onOpenStudent={onOpenStudent} />;
 
   if (isOwner && tab === "structure")
     return (
@@ -245,14 +251,14 @@ export default function FeesPage({ school, role, session, pastSession = false, s
             {list.slice(0, 300).map((s) => (
               <li key={s.id}>
                 <div className="dues-row">
-                  <span>
+                  <button type="button" className="dues-open" onClick={() => onOpenStudent?.(s.id, "fees")}>
                     <strong>{s.name}</strong>
                     <span className="row-sub">
                       {s.admission_no} · {gradeLabel(s.class)}
                       {s.section ? ` · ${s.section}` : ""}
                       {s.fee_paid > 0 ? ` · paid ${rupees(s.fee_paid)}` : " · nothing paid"}
                     </span>
-                  </span>
+                  </button>
                   <span className={`badge ${s.fee_status === "overdue" ? "badge-danger" : "badge-warning"}`}>{rupees(s.fee_due)}</span>
                   <button className="btn btn-secondary btn-sm" onClick={() => onCollect(s)}>
                     Collect
