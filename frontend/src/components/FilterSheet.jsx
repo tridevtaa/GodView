@@ -5,8 +5,8 @@ import Icon from "./Icon.jsx";
 
 // Students page: one button in place of the row of filters. It opens a panel
 // with the grades, the sort, active or inactive and "show only"; changes apply straight away, and
-// the button counts what's on (the direction is SortArrow, beside it). grades: gradeOptions(); sort: { by, dir } or
-// null; withSort, withFee and onSlc depend on what this person can use.
+// the button counts what's on (the direction is SortArrow, beside it). grades: gradeOptions(); sort is
+// always one of grade, fee or results — withSort, withFee and onSlc depend on what this person can use.
 const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
 const SORT_FIRST = {
   grade: { asc: "Junior first", desc: "Senior first" },
@@ -14,20 +14,18 @@ const SORT_FIRST = {
   perf: { asc: "Lowest first", desc: "Highest first" },
 };
 
-// The sort's direction, in the toolbar. On the default order it flips that:
-// the biggest dues first for the office, the lowest results first for others.
-export function SortArrow({ sort, onSort, withFee }) {
-  const now = sort ?? (withFee ? { by: "fee", dir: "desc" } : { by: "perf", dir: "asc" });
-  const flip = now.dir === "asc" ? "desc" : "asc";
+// The sort's direction, in the toolbar.
+export function SortArrow({ sort, onSort }) {
+  const nextDir = sort.dir === "asc" ? "desc" : "asc";
   return (
     <button
       type="button"
-      className={`btn btn-secondary sort-arrow${sort ? " is-active" : ""}`}
-      onClick={() => onSort({ by: now.by, dir: flip })}
-      aria-label={`${SORT_FIRST[now.by][now.dir]}. Switch to ${SORT_FIRST[now.by][flip].toLowerCase()}`}
-      title={SORT_FIRST[now.by][now.dir]}
+      className="btn btn-secondary sort-arrow is-active"
+      onClick={() => onSort({ by: sort.by, dir: nextDir })}
+      aria-label={`${SORT_FIRST[sort.by][sort.dir]}. Switch to ${SORT_FIRST[sort.by][nextDir].toLowerCase()}`}
+      title={SORT_FIRST[sort.by][sort.dir]}
     >
-      <Icon name={now.dir === "desc" ? "arrowDown" : "arrowUp"} />
+      <Icon name={sort.dir === "desc" ? "arrowDown" : "arrowUp"} />
     </button>
   );
 }
@@ -41,22 +39,21 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (sort ? 1 : 0) + (slc ? 1 : 0) + (status !== "all" ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (slc ? 1 : 0) + (status !== "all" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
-    onSort(null);
     onSlc?.(false);
     onStatus("all");
   };
-  const sorts = [["", "Default"], ["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
+  const sorts = [["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
   const sortChip = ([by, label]) => (
     <button
       key={by}
       type="button"
-      className={`chip-btn${(sort?.by ?? "") === by ? " is-on" : ""}`}
+      className={`chip-btn${sort.by === by ? " is-on" : ""}`}
       // The direction carries over from one sort to the next
-      onClick={() => onSort(by ? { by, dir: sort?.dir ?? SORT_START[by] } : null)}
+      onClick={() => onSort({ by, dir: sort.by === by ? sort.dir : SORT_START[by] })}
     >
       {label}
     </button>

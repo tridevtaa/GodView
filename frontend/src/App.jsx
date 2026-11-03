@@ -272,32 +272,9 @@ export default function App() {
     );
   }, [inGrade, query, mode]);
 
-  // Students page order: the last three profiles this person opened, then
-  // owners and admins see the biggest dues first; teachers (and the
-  // principal) see the lowest results first, students without marks last.
-  const recentKey = `godview.recent.${school.id}.${user.email}`;
-  const [recent, setRecent] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(recentKey) || "[]");
-    } catch {
-      return [];
-    }
-  });
-  const rememberOpened = useCallback(
-    (id) =>
-      setRecent((r) => {
-        const next = [id, ...r.filter((x) => x !== id)].slice(0, 3);
-        try {
-          localStorage.setItem(recentKey, JSON.stringify(next));
-        } catch {
-          /* private mode: fine */
-        }
-        return next;
-      }),
-    [recentKey]
-  );
   // Sort picked on the Students page: { by: grade | fee | perf, dir: asc |
-  // desc }, kept on this device. None picked: the order above.
+  // desc }, kept on this device. Owners and admins start on the biggest dues
+  // first; teachers (and the principal) start on the lowest results first.
   const sortKey = `godview.sort.${school.id}.${user.email}`;
   const [sortPick, setSortPick] = useState(() => {
     try {
@@ -309,46 +286,39 @@ export default function App() {
   const chooseSort = (next) => {
     setSortPick(next);
     try {
-      if (next) localStorage.setItem(sortKey, JSON.stringify(next));
-      else localStorage.removeItem(sortKey);
+      localStorage.setItem(sortKey, JSON.stringify(next));
     } catch {
       /* private mode: fine */
     }
   };
   // Fee sorting is for those who see fees
-  const sort = sortPick && (sortPick.by !== "fee" || isAdmin) ? sortPick : null;
+  const sort =
+    sortPick && (sortPick.by !== "fee" || isAdmin)
+      ? sortPick
+      : isAdmin
+      ? { by: "fee", dir: "desc" }
+      : { by: "perf", dir: "asc" };
   const [perf, setPerf] = useState(new Map());
-  const needPerf = !isAdmin || sort?.by === "perf";
+  const needPerf = sort.by === "perf";
   useEffect(() => {
     if (!needPerf || !sessionId || source !== "supabase") return;
     sessionResultPercents(sessionId).then(setPerf, () => setPerf(new Map()));
   }, [needPerf, sessionId, source]);
   const ordered = useMemo(() => {
     if (mode !== "students") return visible;
-    if (sort) {
-      const dir = sort.dir === "desc" ? -1 : 1;
-      const byGrade = (a, b) => gradeRank(a.class ?? "") - gradeRank(b.class ?? "") || String(a.section ?? "").localeCompare(String(b.section ?? ""));
-      const byName = (a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""));
-      return [...visible].sort((a, b) => {
-        if (sort.by === "grade") return dir * byGrade(a, b) || byName(a, b);
-        if (sort.by === "fee") return dir * ((Number(a.fee_due) || 0) - (Number(b.fee_due) || 0)) || byGrade(a, b) || byName(a, b);
-        // Performance: students without marks go last either way
-        const pa = perf.get(a.id) ?? null;
-        const pb = perf.get(b.id) ?? null;
-        if (pa === null || pb === null) return pa === null ? (pb === null ? byGrade(a, b) || byName(a, b) : 1) : -1;
-        return dir * (pa - pb) || byGrade(a, b) || byName(a, b);
-      });
-    }
-    const rest = [...visible].sort((a, b) => {
-      if (isAdmin) return (Number(b.fee_due) || 0) - (Number(a.fee_due) || 0);
+    const dir = sort.dir === "desc" ? -1 : 1;
+    const byGrade = (a, b) => gradeRank(a.class ?? "") - gradeRank(b.class ?? "") || String(a.section ?? "").localeCompare(String(b.section ?? ""));
+    const byName = (a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""));
+    return [...visible].sort((a, b) => {
+      if (sort.by === "grade") return dir * byGrade(a, b) || byName(a, b);
+      if (sort.by === "fee") return dir * ((Number(a.fee_due) || 0) - (Number(b.fee_due) || 0)) || byGrade(a, b) || byName(a, b);
+      // Performance: students without marks go last either way
       const pa = perf.get(a.id) ?? null;
       const pb = perf.get(b.id) ?? null;
-      if (pa === null || pb === null) return pa === null ? (pb === null ? 0 : 1) : -1;
-      return pa - pb;
+      if (pa === null || pb === null) return pa === null ? (pb === null ? byGrade(a, b) || byName(a, b) : 1) : -1;
+      return dir * (pa - pb) || byGrade(a, b) || byName(a, b);
     });
-    const first = recent.map((id) => rest.find((p) => p.id === id)).filter(Boolean);
-    return [...first, ...rest.filter((p) => !recent.includes(p.id))];
-  }, [visible, mode, isAdmin, perf, recent, sort]);
+  }, [visible, mode, perf, sort]);
 
   // On the Students page the profile follows the filtered grid; elsewhere
   // (Fees, Requests) any student in the session can be opened.
@@ -369,7 +339,6 @@ export default function App() {
     (id, tab = "details") => {
       setOpenTab(tab);
       if (dataMode === "students") {
-        rememberOpened(id);
         if (!window.history.state?.student) listScroll.current = window.scrollY;
         const url = `/students/${id}`;
         if (window.history.state?.student) window.history.replaceState({ student: id }, "", url);
@@ -377,7 +346,7 @@ export default function App() {
       }
       setOpenId(id);
     },
-    [dataMode, rememberOpened]
+    [dataMode]
   );
   useEffect(() => {
     const onPop = (e) => {
@@ -1054,7 +1023,7 @@ export default function App() {
               shown={visible.length}
             />
           )}
-          {mode === "students" && <SortArrow sort={sort} onSort={chooseSort} withFee={isAdmin} />}
+          {mode === "students" && <SortArrow sort={sort} onSort={chooseSort} />}
           {/* Past sessions have no tile to show the filtered total */}
           {!loading && viewOnly && filtered && (
             <span className="toolbar-count">
