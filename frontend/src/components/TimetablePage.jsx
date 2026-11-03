@@ -3,7 +3,6 @@ import { deleteTimetableSlot, listAssignments, listTimetable, saveTimetableSlot 
 import { usePeople } from "../data/usePeople.js";
 import { peek, remember, swr } from "../data/cache.js";
 import { gradeRank } from "./GradeFilter.jsx";
-import { gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import ClassSwitcher from "./ClassSwitcher.jsx";
 
@@ -16,14 +15,13 @@ const DAYS = [
   [6, "Sat"],
 ];
 const MIN_PERIODS = 8;
-const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 const slotKey = (day, period) => `${day}|${period}`;
 
 // The weekly timetable for a class: owners/admins set any class, a class's
 // own class teacher sets just that class (same split as attendance);
 // everyone who teaches the class sees it read-only. Period numbers only —
 // no fixed clock times yet.
-export default function TimetablePage({ school, session, students, me, isAdmin, readOnly = false, heading }) {
+export default function TimetablePage({ school, session, students, me, isAdmin, readOnly = false }) {
   const [slots, setSlots] = useState(() => (session ? peek(`timetable:${session.id}`) ?? null : null));
   useEffect(() => {
     if (session && slots) remember(`timetable:${session.id}`, slots);
@@ -140,13 +138,6 @@ export default function TimetablePage({ school, session, students, me, isAdmin, 
 
   return (
     <>
-      <div className="page-header">
-        <div>
-          <h1 className="sr-only">Timetable</h1>
-          <div className="page-meta">{heading}</div>
-        </div>
-      </div>
-
       {error && <p className="notice notice-error">{error}</p>}
       {!groups.length && <p className="notice">You don’t have any classes this session yet. Ask the school’s owner to assign your classes.</p>}
 
@@ -154,10 +145,9 @@ export default function TimetablePage({ school, session, students, me, isAdmin, 
 
       {group && (
         <section className="tt-wrap">
-          <div className="tt-head">
-            <h2 className="tt-title">{classText(group.klass, group.section)}</h2>
-            {!canEdit(group) && <span className="row-sub">{readOnly ? "View only." : "Only this class’s class teacher sets its timetable. You can see it here."}</span>}
-          </div>
+          {!canEdit(group) && (
+            <p className="row-sub">{readOnly ? "View only." : "Only this class’s class teacher sets its timetable. You can see it here."}</p>
+          )}
           <div className="tt-scroll">
             <table className="tt-grid">
               <thead>

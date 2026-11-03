@@ -17368,19 +17368,6 @@ button.class-face:hover {
   gap: 10px;
 }
 
-.tt-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.tt-title {
-  font-size: 16px;
-  font-weight: 700;
-}
-
 .tt-scroll {
   overflow-x: auto;
   border: 1px solid var(--border);
