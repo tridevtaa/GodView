@@ -28,6 +28,16 @@
   }
 }
 
+/* Came down with the finger: already in place. Starts above the screen. */
+.cg.is-pulled {
+  animation: none;
+  transition: border-radius 0.2s ease;
+}
+
+.cg.is-dormant {
+  transform: translate3d(0, -100%, 0);
+}
+
 .cg-open,
 .cg-open body {
   overflow: hidden;
@@ -306,6 +316,25 @@
   line-height: 1.3;
   letter-spacing: -0.01em;
   text-wrap: pretty;
+}
+
+/* The question she's answering, as a sent message */
+.cg-asked {
+  display: -webkit-box;
+  overflow: hidden;
+  align-self: flex-end;
+  max-width: 85%;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--cg-ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .cg-error {
@@ -681,6 +710,7 @@
   /* A card open: keep her face in view. The card stands in for the
      answer (still spoken), no class rows, a shorter chart, and "Open"
      without the page name. */
+  .cg.has-card .cg-asked,
   .cg.has-card .cg-say,
   .cg.has-card .cg-status,
   .cg-card .cg-rows,
@@ -811,4 +841,18 @@
   .cg-icon.is-on {
     animation: none !important;
   }
+}
+
+/* Moving with the finger: its bottom edge shows, and the glass stops blurring
+   (too much work for a phone every frame) for a solid tint. */
+.cg.is-dragging {
+  border-radius: 0 0 28px 28px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  will-change: transform;
+}
+
+.cg.is-dragging .cg-panel {
+  background: rgba(96, 84, 72, 0.92);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }

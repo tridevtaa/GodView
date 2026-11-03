@@ -203,7 +203,7 @@ const pathOf = (pts) => pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(1)},
 function LineChart({ cur, prev, days, curDays, curName, prevName, dayName, fmt, axis }) {
   const [ref, W] = useWidth();
   const [hover, setHover] = useState(null);
-  const H = 150;
+  const H = 168;
   const pad = { t: 14, r: 84, b: 24, l: 50 };
   const top = niceTop(Math.max(1, ...cur, ...prev));
   const x = (i) => pad.l + ((W - pad.l - pad.r) * i) / Math.max(1, days - 1);
@@ -292,7 +292,7 @@ function LineChart({ cur, prev, days, curDays, curName, prevName, dayName, fmt, 
 // empty outline; a day with nothing marked shows a dash.
 function BarChart({ values, labels, todayIdx, max, fmt }) {
   const [ref, W] = useWidth();
-  const H = 150;
+  const H = 168;
   const pad = { t: 24, b: 26 };
   const top = max ?? niceTop(Math.max(1, ...values.map((v) => v ?? 0)));
   const band = W / values.length;
@@ -333,24 +333,30 @@ function BarChart({ values, labels, todayIdx, max, fmt }) {
   );
 }
 
+// How it's going, beside the card's main number.
+export function TrendStat({ trend }) {
+  if (!trend) return null;
+  if (trend.loading) return <span className="trend-stat is-loading" aria-busy="true" />;
+  const { label, value, note, extra } = trend;
+  return (
+    <span className="trend-stat">
+      <span className="trend-label">{label}</span>
+      <strong className="trend-value-big">{value}</strong>
+      {note && (
+        <span className={`trend-note is-${note.dir}`}>
+          {note.dir !== "flat" && <Icon name={note.dir === "up" ? "arrowUp" : "arrowDown"} size={13} />}
+          {note.text}
+        </span>
+      )}
+      {extra && <span className="trend-extra">{extra}</span>}
+    </span>
+  );
+}
+
+// The chart, on its own.
 export function TrendPanel({ trend }) {
   if (!trend) return null;
   if (trend.loading) return <div className="home-trend is-loading" aria-busy="true" />;
-  const { label, value, note, extra, chart } = trend;
-  return (
-    <div className="home-trend">
-      <div className="trend-stat">
-        <span className="trend-label">{label}</span>
-        <strong className="trend-value-big">{value}</strong>
-        {note && (
-          <span className={`trend-note is-${note.dir}`}>
-            {note.dir !== "flat" && <Icon name={note.dir === "up" ? "arrowUp" : "arrowDown"} size={13} />}
-            {note.text}
-          </span>
-        )}
-        {extra && <span className="trend-extra">{extra}</span>}
-      </div>
-      {chart.kind === "line" ? <LineChart {...chart} /> : <BarChart {...chart} />}
-    </div>
-  );
+  const { chart } = trend;
+  return <div className="home-trend">{chart.kind === "line" ? <LineChart {...chart} /> : <BarChart {...chart} />}</div>;
 }

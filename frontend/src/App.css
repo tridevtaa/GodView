@@ -10802,6 +10802,11 @@ h1.page-title {
   margin: 12px 10px;
 }
 
+.gsearch-hit {
+  background: none;
+  color: inherit;
+}
+
 @media (max-width: 760px) {
   .app {
     --dock-h: 58px;
@@ -15709,35 +15714,52 @@ button.achv-tag {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+/* With a trend: the main number and how it's going side by side */
+.home-att.has-trend .home-att-top:has(.trend-stat) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 32px;
+  align-items: start;
+}
+
+.home-att.has-trend .home-att-top:has(.trend-stat) > .home-att-main,
+.home-att.has-trend .home-att-top:has(.trend-stat) > .home-att-more {
+  grid-column: 1;
+}
+
+.home-att.has-trend .home-att-top > .trend-stat {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+
+.home-att.has-trend .home-att-top:has(.trend-stat)::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  content: "";
+}
+
+/* Wide: the chart alone in the left half, all that in the right half with
+   the button under it */
 @container (min-width: 720px) {
   .home-att.has-trend .home-att-split {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
-    gap: 32px;
-  }
-
-  .home-att.has-trend .home-att-top:has(.home-att-more) {
-    display: flex;
-    align-items: flex-start;
-  }
-
-  .home-att.has-trend .home-att-top::after {
-    display: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 36px;
   }
 
   .home-att.has-trend .home-att-head {
+    order: 2;
     justify-content: space-between;
   }
 
-  .home-att.has-trend .home-att-head .home-att-cta {
-    align-self: flex-start;
-    width: auto;
-  }
-
   .home-trend {
-    padding: 0 0 0 32px;
+    align-self: center;
+    padding: 0;
     border-top: 0;
-    border-left: 1px solid rgba(255, 255, 255, 0.12);
   }
 }
 
@@ -15750,9 +15772,16 @@ button.achv-tag {
 
 .trend-stat {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trend-stat.is-loading {
+  min-height: 72px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .trend-label {
@@ -15762,7 +15791,7 @@ button.achv-tag {
 }
 
 .trend-value-big {
-  font-size: 20px;
+  font-size: clamp(20px, 3cqw, 28px);
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.2;
@@ -15772,12 +15801,17 @@ button.achv-tag {
 /* Against last time: green up, coral down, an arrow before the words */
 .trend-note {
   display: inline-flex;
-  align-items: center;
-  align-self: center;
+  align-items: flex-start;
   gap: 5px;
-  margin-left: auto;
+  margin-top: 3px;
   font-size: 12.5px;
   font-weight: 600;
+  line-height: 1.35;
+}
+
+.trend-note .icon {
+  flex: none;
+  margin-top: 2px;
 }
 
 .trend-note.is-up {
@@ -15853,9 +15887,15 @@ button.achv-tag {
   fill: #fff;
   font-size: 12px;
   font-weight: 700;
+  /* Stays readable where it crosses last month's line */
+  paint-order: stroke;
+  stroke: var(--brand-edge);
+  stroke-linejoin: round;
+  stroke-width: 4px;
 }
 
 .trend-end.is-prev {
+  stroke: none;
   fill: #a9b2ee;
   font-weight: 600;
 }
@@ -18763,30 +18803,37 @@ button.class-face:hover {
 }
 
 .more-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   width: 100%;
-  max-height: 80dvh;
+  max-height: 84dvh;
   overflow-y: auto;
-  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
-  border-radius: 24px 24px 0 0;
-  background: var(--surface);
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: var(--bg);
   animation: install-up 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
-.more-group + .more-group {
-  margin-top: 18px;
+.more-group {
+  padding: 14px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 
 .more-group h3 {
-  margin: 0 0 8px;
-  color: var(--text-3);
+  margin: 0 8px 8px;
+  color: var(--text-2);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .more-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 2px;
 }
 
 .more-item {
@@ -18794,15 +18841,16 @@ button.class-face:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
-  padding: 8px 2px;
+  padding: 6px 2px 8px;
   border: none;
-  border-radius: 14px;
+  border-radius: 16px;
   background: none;
   color: var(--text);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.25;
   text-align: center;
 }
 
@@ -18813,11 +18861,16 @@ button.class-face:hover {
 .more-icon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: var(--brand-soft);
-  color: var(--brand);
+  width: 52px;
+  height: 52px;
+  border-radius: 17px;
+  background: var(--tint);
+  color: var(--c);
+  transition: transform 0.15s;
+}
+
+.more-item:active .more-icon {
+  transform: scale(0.92);
 }
 
 .more-item .seg-count {
@@ -18974,9 +19027,214 @@ button.class-face:hover {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow: none;
+    /* The last results can be scrolled up above the keyboard */
+    padding-bottom: calc(24px + var(--kb, 0px) + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
   }
 
-  .search-sheet-quick {
-    margin-top: 18px;
+  .search-sheet .gsearch .search input {
+    padding-right: 40px;
+  }
+
+  .search-sheet .gsearch .search input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+  }
+
+  .gsearch-clear {
+    position: absolute;
+    top: 50%;
+    right: 9px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text-3);
+    color: var(--surface);
+    transform: translateY(-50%);
+  }
+
+  .search-sheet .gsearch .gsearch-clear .icon {
+    position: static;
+    margin: 0;
+    color: inherit;
+    transform: none;
+  }
+
+  .search-sheet .gsearch-panel section,
+  .search-sheet .gsearch-panel section + section {
+    margin-top: 0;
+    margin-bottom: 18px;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .search-sheet .gsearch-panel h4 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 24px;
+    margin: 0 0 6px;
+    color: var(--text-2);
+    font-size: 13px;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .search-sheet .gsearch-row {
+    gap: 12px;
+    min-height: 60px;
+    padding: 8px;
+    margin: 0 -8px;
+    width: calc(100% + 16px);
+    border-radius: 14px;
+  }
+
+  .search-sheet .gsearch-row:hover {
+    background: none;
+  }
+
+  .search-sheet .gsearch-row:active {
+    background: var(--brand-soft);
+  }
+
+  .search-sheet .gsearch-row .gsearch-photo,
+  .search-sheet .gsearch-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .search-sheet .gsearch-row strong {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .search-sheet .gsearch-hit {
+    color: var(--brand);
+    font-weight: 700;
+  }
+
+  /* Filters by kind, staying in view */
+  .gsearch-filters {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    gap: 8px;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 2px var(--gutter) 14px;
+    overflow-x: auto;
+    background: var(--surface);
+    scrollbar-width: none;
+  }
+
+  .gsearch-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gsearch-filter {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--text-2);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .gsearch-filter span {
+    opacity: 0.65;
+    font-weight: 500;
+  }
+
+  .gsearch-filter.is-on {
+    background: var(--brand);
+    color: #fff;
+  }
+
+  /* Screens in the results: one row of pills, so people stay near the top */
+  .search-sheet .gsearch-screens-row {
+    display: flex;
+    gap: 8px;
+    margin: 0 calc(var(--gutter) * -1);
+    padding: 2px var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .search-sheet .gsearch-screens-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-sheet .gsearch-screens-row .gsearch-row {
+    flex: none;
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 5px 14px 5px 5px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+  }
+
+  .search-sheet .gsearch-screens-row .gsearch-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .search-sheet .gsearch-screens-row .row-sub {
+    display: none;
+  }
+
+  .search-sheet .gsearch-screens-row strong {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  /* Before typing: the everyday screens as tiles */
+  .gsearch-tiles {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .search-sheet .gsearch-tile {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+
+/* Goddess coming down over Home with the finger (pwa/goddessSwipe.js) */
+.cg-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 149;
+  background: #0e0b09;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+@media (max-width: 760px) {
+  .cg-pull,
+  .cg-pull body {
+    overscroll-behavior-y: none;
   }
 }

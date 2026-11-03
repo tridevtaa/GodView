@@ -28,6 +28,7 @@ import { onFresh } from "./pwa/fresh.js";
 import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
+import { useGoddessSwipe } from "./pwa/goddessSwipe.js";
 import { SCREEN_AT, SECTION_OF, listScreens } from "./data/screens.js";
 import { AiCard, InsightsButton, useInsights } from "./components/AiInsights.jsx";
 import { primeVoice } from "./components/voicePlayer.js";
@@ -65,7 +66,8 @@ const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
 const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
-const Concierge = lazy(() => import("./components/Concierge.jsx"));
+const loadConcierge = () => import("./components/Concierge.jsx");
+const Concierge = lazy(loadConcierge);
 // Today's attendance added up, from the per-class overview
 const attendanceTotals = (rows) => ({
   present: rows.reduce((t, r) => t + Number(r.present) + Number(r.late), 0),
@@ -103,6 +105,9 @@ export default function App() {
   const [openTab, setOpenTab] = useState("details");
   // The assistant, full screen at /avatar.
   const [asking, setAsking] = useState(false);
+  // Goddess being pulled down over Home on a phone, and came that way
+  const [askPeek, setAskPeek] = useState(false);
+  const [askPulled, setAskPulled] = useState(false);
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   const [slcPendingOnly, setSlcPendingOnly] = useState(false);
   const [statusPick, setStatusPick] = useState("all"); // all | active | inactive
@@ -644,6 +649,7 @@ export default function App() {
   const openAsk = useCallback(() => {
     // This tap unlocks sound on phones, so her greeting can be heard.
     primeVoice();
+    setAskPulled(false);
     if (!window.history.state?.avatar) window.history.pushState({ avatar: true }, "", "/avatar");
     setAsking(true);
   }, []);
@@ -669,6 +675,28 @@ export default function App() {
     switchMode(target);
   };
   const onAskAct = useCallback((a) => askAct.current(a), []);
+  useGoddessSwipe({
+    enabled: canAsk,
+    atHome: mode === "home" && openId === null,
+    open: asking,
+    onPeek: (on) => {
+      setAskPeek(on);
+      if (on) setAskPulled(true);
+    },
+    onOpen: () => {
+      if (!window.history.state?.avatar) window.history.pushState({ avatar: true }, "", "/avatar");
+      setAsking(true);
+      setAskPeek(false);
+    },
+    onLeaveStart: () => mode !== "home" && switchMode("home"),
+    onLeave: () => onAskAct({ type: "go", target: "home" }),
+  });
+  // Ready for the first pull: her code, the list of clips and her still.
+  useEffect(() => {
+    if (!canAsk || !window.matchMedia("(max-width: 760px)").matches) return;
+    const t = setTimeout(() => loadConcierge().then((m) => m.preloadConcierge()).catch(() => {}), 2000);
+    return () => clearTimeout(t);
+  }, [canAsk]);
   // Pages it can open, each once; the chips are the most used of them.
   // What each section's panel in the top bar offers (computers): big links to
   // its screens, then columns of smaller ones. Everything is one click away.
@@ -686,7 +714,7 @@ export default function App() {
   const screenNow = {
     homework: { attendance: "attendance", homework: "homework", syllabus: "syllabus", results: "marks" }[academicsView],
     fees: { overview: "fees", collection: "collection", class: "class-report", structure: "structure" }[feesView],
-    calendar: { calendar: "calendar", datesheet: "datesheet", timetable: "timetable", notices: "notices", wins: "achievements" }[plannerView],
+    calendar: { calendar: "calendar", datesheet: "datesheet", timetable: "timetable", notices: "notices" }[plannerView],
   }[mode];
   const bigLinks = (section, names = {}) => screens.filter((s) => s.section === section).map((s) => [names[s.key] ?? s.label, () => switchMode(s.key), { current: s.key === screenNow }]);
   const menus = {
@@ -852,7 +880,7 @@ export default function App() {
               onOpenNotices={() => setPlannerView("notices")}
               view={plannerView}
               onView={setPlannerView}
-              notices={<NoticeBoard only={plannerView === "wins" ? "wins" : "all"} schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
+              notices={<NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
               noticeAction={
                 !viewOnly && (
                   <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
@@ -1112,8 +1140,10 @@ export default function App() {
       <QuickActions actions={plusActions} onAction={runAction} resetKey={`${mode}|${openId}`} />
 
       <Suspense fallback={null}>
-        {asking && canAsk && (
+        {(asking || askPeek) && canAsk && (
           <Concierge
+            dormant={!asking}
+            pulled={askPulled}
             school={school}
             sessionId={currentSession?.id}
             seesFees={isAdmin}

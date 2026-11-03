@@ -1,6 +1,6 @@
 import { CountUp } from "./StatCards.jsx";
 import Icon from "./Icon.jsx";
-import { TrendPanel } from "./HomeTrend.jsx";
+import { TrendPanel, TrendStat } from "./HomeTrend.jsx";
 
 // Home widgets, for the staff and parent Homes (styles: .hw in App.css).
 // Each has its own colour (tone: indigo, violet, teal, pink, orange,
@@ -88,6 +88,7 @@ export function PriorityCard({ tone, urgent = false, label = "", title, status =
             )}
           </span>
         )}
+        <TrendStat trend={trend} />
       </span>
       {cta && (
         <button type="button" className="home-att-cta" onClick={onClick}>
@@ -98,7 +99,8 @@ export function PriorityCard({ tone, urgent = false, label = "", title, status =
     </>
   );
   // The number on the left, what it means on the right, the button wide under
-  // both. With a trend (computers only): how it's going, smaller, under or beside.
+  // both. With a trend (computers only): the chart in one half; the number and how
+  // it's going side by side in the other, with the button under them.
   return (
     <div className={`home-att${label ? " has-label" : ""}${urgent ? " is-urgent" : ""}${trend ? " has-trend" : ""}`}>
       <div className="home-att-split">
