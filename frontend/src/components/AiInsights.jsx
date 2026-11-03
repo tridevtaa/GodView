@@ -173,12 +173,22 @@ function Words({ text, play, from = 0 }) {
 // AI's own wording ("{stat}" marks the number) if it fits on a line, or built
 // from its parts. A plain count needs its label to say what it counts.
 const MESSAGE_MAX = 46;
+// The number already shows its unit, but the AI sometimes writes it too
+// ("{stat}%"), in new answers and ones already saved.
+const REPEATED_UNIT = {
+  rupees: /(?:₹|\brs\.?|\binr)\s*\{stat\}|\{stat\}\s*(?:rupees\b|rs\b\.?)/i,
+  percent: /\{stat\}\s*(?:%|percent\b|per cent\b)/i,
+  days: /\{stat\}\s*days?\b/i,
+  km: /\{stat\}\s*(?:kms?\b|kilomet(?:er|re)s?\b)/i,
+};
 function Message({ it, play, from }) {
   const stat = statText(it);
   const title = String(it.title ?? "").replace(/[.:\s]+$/, "");
   if (!stat) return <Words text={`${title}.`} play={play} from={from} />;
-  const own = it.message?.includes("{stat}") && it.message.replace("{stat}", stat).length <= MESSAGE_MAX;
-  const text = own ? it.message : it.stat_unit === "count" ? `{stat} ${it.stat_label}.` : `${title} at {stat}.`;
+  const repeated = REPEATED_UNIT[it.stat_unit];
+  const message = repeated ? it.message?.replace(repeated, "{stat}") : it.message;
+  const own = message?.includes("{stat}") && message.replace("{stat}", stat).length <= MESSAGE_MAX;
+  const text = own ? message : it.stat_unit === "count" ? `{stat} ${it.stat_label}.` : `${title} at {stat}.`;
   const at = text.indexOf("{stat}");
   const before = text.slice(0, at);
   const after = text.slice(at + "{stat}".length);

@@ -27,8 +27,8 @@ const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric"
 // Home, like phone widgets: a greeting, today's attendance next to the
 // noticeboard as a banner to swipe through, colourful tiles for what
 // has no tab of its own (one number and one word), students' wins
-// (News & Achievements), then what's coming up beside a small calendar,
-// and quick actions. Anything waiting on this
+// (News & Achievements), and what's coming up beside a small calendar. Quick
+// actions sit right under the top card. Anything waiting on this
 // person shows as a red badge on its tile or tab (overdue fees, open
 // requests, staff waiting for access…). Uses the same remembered data as the pages,
 // so it's quick and the pages open already filled.
@@ -89,8 +89,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
 
   // Home is laid out by each person (HomeWidgets.jsx). Shown at first:
   // only what has no tab of its own (the office's attendance and notices),
-  // the students' wins for teachers, Coming up and Quick actions. Students,
-  // Inbox, Homework and Staff can be added back from + Add widget.
+  // the students' wins for teachers and Coming up. Students, Inbox, Homework
+  // and Staff can be added back from + Add widget.
   const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
   const meta = [
     isAdmin && { key: "attendance" },
@@ -101,7 +101,6 @@ export default function HomePage({ school, me, name, role, students, loading, se
     leads && { key: "staff", defaultOn: false },
     showWins && wins.length > 0 && { key: "news" },
     { key: "upcoming" },
-    quickActions.length > 0 && { key: "quick" },
   ].filter(Boolean);
   const layout = useHomeLayout(`home:staff:${school.id}:${role}`, meta);
   const on = new Set(layout.visible);
@@ -229,10 +228,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
     label: "Coming up",
     icon: "calendar",
     tone: "violet",
-    size: quickActions.length ? "wide" : "full",
+    size: "full",
     node: <ComingUp schoolId={school.id} session={session} staff onOpenCalendar={go("calendar")} />,
   };
-  items.quick = { kind: "section", label: "Quick actions", icon: "lightning", tone: "amber", size: "wide", phoneHidden: true, node: <QuickActionsPanel actions={quickActions} onAction={onAction} /> };
 
   // Owners: anyone waiting for app access comes first, beside the fees
   const access =
@@ -301,6 +299,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
         <PriorityCard {...priority} trend={trend} />
         {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
       </div>
+
+      {wide && <QuickActionsRow actions={quickActions} onAction={onAction} />}
 
       <EditableHome layout={layout} items={items} />
     </div>
@@ -386,33 +386,23 @@ function NoticeBanner({ notices, urls, onOpenNotices }) {
   );
 }
 
-// Everyday shortcuts, next to Upcoming Events: the + menu's actions, as
-// [key, label, icon]. Hidden when there's nothing this person can do, and
-// on phones, where the + beside the search does the same job.
+// Everyday shortcuts under the top card, one button each: the + menu's
+// actions, as [key, label, icon]. Computers only; on phones the + beside the
+// search does the same job.
 const ACTION_TONE = { bulk: "violet", student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
 
-function QuickActionsPanel({ actions, onAction }) {
+function QuickActionsRow({ actions, onAction }) {
   if (!actions.length) return null;
   return (
-    <section className="home-quick">
-      <header className="home-notice-head">
-        <span className="home-quick-icon">
-          <Icon name="lightning" size={18} weight="fill" />
-        </span>
-        <span className="home-notice-text">
-          <strong>Quick Actions</strong>
-        </span>
-      </header>
-      <div className="home-quick-row">
-        {actions.map(([key, label, icon]) => (
-          <button type="button" key={key} className="home-quick-btn" onClick={() => onAction(key)}>
-            <span className={`home-quick-badge t-${ACTION_TONE[key] ?? "indigo"}`}>
-              <Icon name={icon} size={22} weight="fill" />
-            </span>
-            <span>{label}</span>
-          </button>
-        ))}
-      </div>
-    </section>
+    <div className="home-quick-row">
+      {actions.map(([key, label, icon]) => (
+        <button type="button" key={key} className="home-quick-btn" onClick={() => onAction(key)}>
+          <span className={`home-quick-badge t-${ACTION_TONE[key] ?? "indigo"}`}>
+            <Icon name={icon} size={18} weight="fill" />
+          </span>
+          <span>{label}</span>
+        </button>
+      ))}
+    </div>
   );
 }

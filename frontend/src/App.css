@@ -12635,8 +12635,8 @@ button.achv-tag {
   gap: 8px;
 }
 
-/* Home on computers (staff and parents): room between sections, bigger
-   numbers, and Upcoming Events and Quick Actions as two matching cards. */
+/* Home on computers (staff and parents): room between sections and bigger
+   numbers. */
 @media (min-width: 761px) {
   .home-roomy {
     gap: 28px;
@@ -12687,8 +12687,7 @@ button.achv-tag {
     align-items: stretch;
   }
 
-  .home-roomy .home-events,
-  .home-roomy .home-quick {
+  .home-roomy .home-events {
     gap: 18px;
     padding: 22px;
     border: 1px solid var(--border);
@@ -12701,35 +12700,12 @@ button.achv-tag {
     font-size: 17px;
   }
 
-  /* Quick actions: a 2 by 2 grid filling the card */
-  .home-roomy .home-quick-row {
-    flex: 1;
-    grid-template-columns: 1fr 1fr;
-    grid-auto-rows: 1fr;
-    gap: 14px;
-  }
-
-  .home-roomy .home-quick-btn {
-    justify-content: center;
-    gap: 10px;
-    padding: 18px 10px;
-    font-size: 14px;
-  }
-
-  .home-roomy .home-quick-badge {
-    width: 46px;
-    height: 46px;
-  }
 }
 
-/* Mid-size screens: events and actions stack, actions four across */
+/* Mid-size screens: events and actions stack */
 @media (min-width: 761px) and (max-width: 1199px) {
   .home-roomy .home-bottom-row {
     grid-template-columns: 1fr;
-  }
-
-  .home-roomy .home-quick-row {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 }
 
@@ -13004,8 +12980,7 @@ button.achv-tag {
   }
 }
 
-.home-events-icon,
-.home-quick-icon {
+.home-events-icon {
   display: grid;
   flex: none;
   place-items: center;
@@ -13016,36 +12991,31 @@ button.achv-tag {
   color: #fff;
 }
 
-.home-quick {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
+/* Quick actions: separate buttons right under Home's top card, one row on
+   computers and three across on smaller ones. */
 .home-quick-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  margin-top: -12px;
 }
 
 .home-quick-btn {
   display: flex;
-  flex: 1;
-  flex-direction: column;
+  flex: 1 1 30%;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-  padding: 14px 8px;
+  padding: 10px 14px 10px 10px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   color: var(--text);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 600;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   transition: transform 0.15s;
 }
@@ -13060,6 +13030,7 @@ button.achv-tag {
 
 .home-quick-badge {
   display: grid;
+  flex: none;
   place-items: center;
   width: 36px;
   height: 36px;
@@ -13068,14 +13039,16 @@ button.achv-tag {
   color: var(--c);
 }
 
-/* Phones have the + beside the search for these */
+@media (min-width: 1200px) {
+  .home-quick-btn {
+    flex-basis: auto;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 760px) {
   .home-bottom-row {
     grid-template-columns: 1fr;
-  }
-
-  .home-quick {
-    display: none;
   }
 }
 
@@ -13829,6 +13802,19 @@ button.achv-tag {
   inset: 0;
   width: 100%;
   opacity: 0;
+  cursor: pointer;
+}
+
+/* Computers only open the picker from its small icon, so stretch the icon
+   over the whole date input. */
+.nb-chip input[type="date"]::-webkit-calendar-picker-indicator,
+.att-day-pick input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
   cursor: pointer;
 }
 
@@ -17566,12 +17552,6 @@ button.class-face:hover {
    by side, so the pill only shows there */
 @media (max-width: 1099px) {
   .hw-resize.is-section-size {
-    display: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .hw-block.hide-phone {
     display: none;
   }
 }

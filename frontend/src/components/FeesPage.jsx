@@ -28,7 +28,7 @@ function sessionMonths(session) {
 // get Structure (what each grade pays).
 // pastSession: a past session is open (picked on Students); say which.
 // view, onView: which tab shows.
-export default function FeesPage({ school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
+export default function FeesPage({ computerOnly = false, school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
   const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
@@ -121,10 +121,12 @@ export default function FeesPage({ school, role, session, pastSession = false, s
     tab === "overview" && (
         <div className="page-actions">
           {(role === "owner" || role === "admin") && !pastSession && school.plan !== "premium" && <InsightsButton section="fees" />}
-          <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
-            <Icon name="upload" />
-            Old balances
-          </button>
+          {!computerOnly && (
+            <button className="btn btn-secondary" onClick={() => setDialog("balances")}>
+              <Icon name="upload" />
+              Old balances
+            </button>
+          )}
           <button className="btn btn-primary" onClick={() => onCollect()}>
             <Icon name="plus" />
             Collect fee
@@ -132,6 +134,15 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         </div>
     )
   );
+
+  // Reached with a link from elsewhere, or a window made narrow
+  if (computerOnly && tab !== "overview")
+    return (
+      <>
+        {headerWith(null)}
+        <p className="notice">Open Godview on a computer to use this.</p>
+      </>
+    );
 
   if (tab === "collection" || tab === "class") return <FeeReport view={tab} school={school} session={session} students={students} header={headerWith} onOpenStudent={onOpenStudent} />;
 
@@ -183,7 +194,7 @@ export default function FeesPage({ school, role, session, pastSession = false, s
         <AiCard
           ins={ins}
           lead={tile}
-          opens={isOwner ? ["overdue", "class", "structure"] : ["overdue", "class"]}
+          opens={isOwner && !computerOnly ? ["overdue", "class", "structure"] : ["overdue", "class"]}
           // A name opens that student's page (their fees are a tab there)
           onPerson={onOpenStudent}
           onOpen={(kind) => {
@@ -205,7 +216,9 @@ export default function FeesPage({ school, role, session, pastSession = false, s
       {notSetUp && (
         <div className="callout fees-empty">
           <strong>No dues yet for {session.name}.</strong>{" "}
-          {role === "owner" ? (
+          {computerOnly && role === "owner" ? (
+            "Set the fee for each grade in Fee structure on a computer. Collection figures appear here after that."
+          ) : role === "owner" ? (
             <>
               Set the fee for each grade in{" "}
               <button className="link-btn" onClick={() => setTab("structure")}>

@@ -30,7 +30,9 @@ export const SCREEN_AT = {
 export const SECTION_OF = { homework: "academics", calendar: "planner" };
 
 // section: which top bar section it's under, for the More sheet's groups
-export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, pendingCount = 0 }) {
+// computerOnly: an owner or admin on a phone, without the reports and fee
+// structure (App.jsx)
+export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0 }) {
   return [
     { key: "home", label: "Home", icon: "home", words: "dashboard" },
     { key: "students", label: "Students", icon: "scholar", words: "admissions" },
@@ -38,11 +40,15 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
     ...(isAdmin
       ? [
           { key: "fees", label: "Fees", icon: "rupee", section: "fees", words: "dues overdue pending overview" },
-          { key: "collection", label: "Collection report", icon: "chart", section: "fees", words: "fee collected payments modes cash" },
-          { key: "class-report", label: "Class-wise report", icon: "table", section: "fees", words: "fee dues concession collected" },
+          ...(computerOnly
+            ? []
+            : [
+                { key: "collection", label: "Collection report", icon: "chart", section: "fees", words: "fee collected payments modes cash" },
+                { key: "class-report", label: "Class-wise report", icon: "table", section: "fees", words: "fee dues concession collected" },
+              ]),
         ]
       : []),
-    ...(isOwner ? [{ key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans" }] : []),
+    ...(isOwner && !computerOnly ? [{ key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans" }] : []),
     ...(seesAttendance ? [{ key: "attendance", label: "Attendance", icon: "register", section: "academics", words: "register present absent" }] : []),
     { key: "homework", label: "Homework", icon: "book", section: "academics" },
     { key: "syllabus", label: "Syllabus", icon: "academics", section: "academics" },

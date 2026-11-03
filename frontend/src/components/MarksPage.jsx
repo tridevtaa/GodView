@@ -14,7 +14,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // then every student in the class with a marks box. Marks already entered
 // for that test are filled in, so this also corrects them. Blank = not
 // entered (e.g. absent), and is left alone.
-export default function MarksPage({ school, session, students, onOpenStudent }) {
+export default function MarksPage({ school, session, students, noUpload = false, onOpenStudent }) {
   const [step, setStep] = useState(0);
   const [test, setTest] = useState({ key: "", exam: "", subject: "", max: "100" });
   const [known, setKnown] = useState({ exams: [], subjects: [] });
@@ -218,11 +218,13 @@ export default function MarksPage({ school, session, students, onOpenStudent }) 
                 {test.exam} · {test.subject} · out of {max}
               </span>
             </div>
-            <label className="btn btn-secondary btn-sm marks-upload-btn">
-              <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" onChange={importFile} disabled={importing} />
-              <Icon name="upload" size={16} />
-              {importing ? "Reading…" : "Upload a sheet"}
-            </label>
+            {!noUpload && (
+              <label className="btn btn-secondary btn-sm marks-upload-btn">
+                <input ref={fileInput} type="file" accept=".xlsx,.xls,.csv" onChange={importFile} disabled={importing} />
+                <Icon name="upload" size={16} />
+                {importing ? "Reading…" : "Upload a sheet"}
+              </label>
+            )}
           </header>
           {importNote && (
             <p className="marks-import-note row-sub">
