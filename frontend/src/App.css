@@ -15718,6 +15718,7 @@ button.achv-tag {
 .home-att.has-trend .home-att-top:has(.trend-stat) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
   gap: 8px 32px;
   align-items: start;
 }
@@ -15740,6 +15741,44 @@ button.achv-tag {
   width: 1px;
   background: rgba(255, 255, 255, 0.16);
   content: "";
+}
+
+/* Both figures read the same way: its name, the number, what it means. Same
+   sizes on the same lines, so the eye can go straight across. */
+.home-att.has-trend .home-att-top:has(.trend-stat) > .home-att-main {
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+
+.home-att.has-trend .home-att-top:has(.trend-stat) .home-att-label,
+.trend-label {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.home-att.has-trend.has-label .home-att-top:has(.trend-stat) .home-att-title,
+.trend-value-big {
+  font-size: clamp(24px, 3.2cqw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-att.has-trend .home-att-top:has(.trend-stat) .home-att-status,
+.trend-note {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+@container (max-width: 719px) {
+  .home-att.has-trend.has-label .home-att-top:has(.trend-stat) .home-att-title.is-long {
+    font-size: 22px;
+    line-height: 1.2;
+  }
 }
 
 /* Wide: the chart alone in the left half, all that in the right half with
@@ -15774,7 +15813,7 @@ button.achv-tag {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -15784,29 +15823,13 @@ button.achv-tag {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.trend-label {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.trend-value-big {
-  font-size: clamp(20px, 3cqw, 28px);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Against last time: green up, coral down, an arrow before the words */
 .trend-note {
   display: inline-flex;
   align-items: flex-start;
   gap: 5px;
-  margin-top: 3px;
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.35;
+  margin-top: 6px;
+  text-wrap: balance;
 }
 
 .trend-note .icon {

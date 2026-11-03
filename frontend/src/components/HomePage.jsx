@@ -13,6 +13,7 @@ import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
+const studentCount = (count) => `${n(count)} student${count === 1 ? "" : "s"}`;
 const greeting = () => {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
@@ -211,10 +212,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
       key: "att",
       icon: "register",
       tone: "red",
-      text: today?.marked ? `${left} class${left === 1 ? "" : "es"} haven’t marked attendance yet` : "Attendance isn’t marked yet today",
+      text: today?.marked ? `${left} class${left === 1 ? " hasn’t" : "es haven’t"} marked attendance yet` : "Attendance isn’t marked yet today",
       onClick: go("attendance"),
     },
-    isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${n(overdue)} students have overdue fees`, onClick: go("fees") },
+    isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${studentCount(overdue)} ${overdue === 1 ? "has" : "have"} overdue fees`, onClick: go("fees") },
     !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
     ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
     ...(upcoming ?? []).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
@@ -252,7 +253,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
           urgent: overdue > 0,
           label: due > 0 || loading ? "Fees pending" : "Fees",
           title: loading ? "…" : due > 0 ? rupeesShort(due) : "All collected",
-          status: loading ? "" : overdue ? `${n(overdue)} students overdue` : due > 0 ? `${n(owing.length)} students owe fees` : "Nothing pending",
+          status: loading ? "" : overdue ? `${studentCount(overdue)} overdue` : due > 0 ? `${studentCount(owing.length)} ${owing.length === 1 ? "owes" : "owe"} fees` : "Nothing pending",
           cta: "View fees",
           onClick: go("fees"),
         }
