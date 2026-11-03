@@ -24,9 +24,10 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // readOnly: the principal sees every class's homework and syllabus but can't
 // give, post or remove any.
 // giveAt: when set (a time), open the homework form (the + button).
-// view, onView: which of homework, syllabus or attendance shows. Attendance
-// is for leads and class teachers, with its own rights (attIsAdmin, attReadOnly).
-export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, heading, giveAt = 0, view, onView: setView, seesAttendance = false, attIsAdmin = false, attReadOnly = false, onOpenStudent }) {
+// view, onView: which of attendance, homework, syllabus or results shows.
+// Attendance is for leads and class teachers, with its own rights (attIsAdmin,
+// attReadOnly). results: the Results screen, for those who can enter marks.
+export default function HomeworkPage({ school, session, students, me, isAdmin, readOnly = false, results = null, giveAt = 0, view, onView: setView, attIsAdmin = false, attReadOnly = false, onOpenStudent }) {
   const [tilesAt, setTilesAt] = useState(null);
   // Premium: for the owner, admins and the principal
   const seesInsights = isAdmin || readOnly;
@@ -46,6 +47,7 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
     if (giveAt && !readOnly) (setView("homework"), setWriting(true));
   }, [giveAt, readOnly]); // eslint-disable-line react-hooks/exhaustive-deps
   const onAttendance = view === "attendance";
+  const onResults = view === "results";
   const [filter, setFilter] = useState(""); // "class|section" or ""
 
   // The classes this person can set work for, from the students they see.
@@ -158,31 +160,14 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
   return (
     <>
       <div ref={setTilesAt} />
-      {!writing && !onAttendance && (ins.on ? <AiCard key={view} ins={ins} lead={tile} opens={["homework", "syllabus"]} onOpen={setView} /> : tile)}
+      {!writing && !onAttendance && !onResults && (ins.on ? <AiCard key={view} ins={ins} lead={tile} opens={["homework", "syllabus"]} onOpen={setView} /> : tile)}
       <div className="page-header">
         <div>
-          <h1 className="sr-only">Academics</h1>
-          {/* The page's own switch sits on the same row as the Students one */}
           <div className="page-meta">
-            {heading}
-            {!writing && (
-              <nav className="segmented segmented-sm page-switch" aria-label="Homework, syllabus or attendance">
-                <button className={view === "homework" ? "active" : ""} onClick={() => setView("homework")}>
-                  <Icon name="book" size={15} /> Homework
-                </button>
-                <button className={view === "syllabus" ? "active" : ""} onClick={() => setView("syllabus")}>
-                  <Icon name="academics" size={15} /> Syllabus
-                </button>
-                {(seesAttendance || onAttendance) && (
-                  <button className={onAttendance ? "active" : ""} onClick={() => setView("attendance")}>
-                    <Icon name="register" size={15} /> Attendance
-                  </button>
-                )}
-              </nav>
-            )}
+            <h1 className="page-title">{{ attendance: "Attendance", homework: "Homework", syllabus: "Syllabus", results: "Results" }[view]}</h1>
           </div>
         </div>
-        {!writing && !onAttendance && (
+        {!writing && !onAttendance && !onResults && (
           <div className="page-actions">
             {seesInsights && school.plan !== "premium" && <InsightsButton section="homework" label="Homework insights" />}
             {groups.length > 0 && !readOnly && (
@@ -199,6 +184,8 @@ export default function HomeworkPage({ school, session, students, me, isAdmin, r
         <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
           <AttendancePage school={school} session={session} students={students} me={me} isAdmin={attIsAdmin} readOnly={attReadOnly} onOpenStudent={onOpenStudent} tilesAt={tilesAt} />
         </Suspense>
+      ) : onResults ? (
+        results
       ) : (
       <>
       {error && <p className="notice notice-error">{error}</p>}

@@ -14,7 +14,7 @@ const classText = (c, s) => `${gradeLabel(c)}${s ? ` · ${s}` : ""}`;
 // then every student in the class with a marks box. Marks already entered
 // for that test are filled in, so this also corrects them. Blank = not
 // entered (e.g. absent), and is left alone.
-export default function MarksPage({ school, session, students, onClose, onOpenStudent }) {
+export default function MarksPage({ school, session, students, onOpenStudent }) {
   const [step, setStep] = useState(0);
   const [test, setTest] = useState({ key: "", exam: "", subject: "", max: "100" });
   const [known, setKnown] = useState({ exams: [], subjects: [] });
@@ -156,9 +156,6 @@ export default function MarksPage({ school, session, students, onClose, onOpenSt
   return (
     <div className="marks">
       <div className="marks-top">
-        <button className="back-btn" onClick={onClose} aria-label="Back" title="Back">
-          <Icon name="chevronLeft" size={22} />
-        </button>
         <StepBar steps={["Test", "Marks"]} step={step} onPick={(i) => (i === 0 ? setStep(0) : toMarks())} canPick={(i) => i === 0 || testOk} />
       </div>
 

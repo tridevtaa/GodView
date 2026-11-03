@@ -7,11 +7,7 @@ import BulkMessage from "./BulkMessage.jsx";
 import Icon from "./Icon.jsx";
 import { onFresh } from "../pwa/fresh.js";
 
-const FILTERS = [
-  ["all", "All"],
-  ["unread", "Unread"],
-  ["requests", "Requests"],
-];
+const TITLES = { all: "All messages", unread: "Unread", requests: "Requests" };
 
 function when(iso) {
   const d = new Date(iso);
@@ -27,14 +23,14 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
 // canBulk: may message many parents at once; bulkAt: open that (from the +).
-export default function InboxPage({ school, students, me, readOnly = false, canAnswer = true, canBulk = false, bulkAt = 0, onOpenStudent, onCount, openThread }) {
+// filter: which conversations show (all, unread or requests), from the top bar.
+export default function InboxPage({ filter, school, students, me, readOnly = false, canAnswer = true, canBulk = false, bulkAt = 0, onOpenStudent, onCount, openThread }) {
   const [bulk, setBulk] = useState(false);
   useEffect(() => {
     if (bulkAt && canBulk) setBulk(true);
   }, [bulkAt, canBulk]);
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState("all");
   const [open, setOpen] = useState(null);
   // Phones: the conversation is a screen of its own; Back closes it.
   const close = useBackToClose(open !== null, () => setOpen(null));
@@ -77,10 +73,6 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     const s = byId.get(t.student_id);
     return `${s?.name ?? ""} ${s?.parent_name ?? ""} ${s?.mother_name ?? ""} ${t.last_body ?? ""}`.toLowerCase().includes(q);
   });
-  const counts = {
-    unread: (threads ?? []).filter((t) => Number(t.unread) > 0).length,
-    requests: (threads ?? []).filter((t) => Number(t.open_requests) > 0).length,
-  };
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
@@ -99,15 +91,7 @@ export default function InboxPage({ school, students, me, readOnly = false, canA
     <div className={`inbox${open ? " has-open" : ""}`}>
       <section className="inbox-list">
         <div className="inbox-head">
-          <h1 className="sr-only">Inbox</h1>
-          <nav className="segmented segmented-sm inbox-filter page-switch" aria-label="Show">
-            {FILTERS.map(([v, l]) => (
-              <button key={v} className={filter === v ? "active" : ""} onClick={() => setFilter(v)}>
-                {l}
-                {counts[v] > 0 && <span className="seg-count">{counts[v]}</span>}
-              </button>
-            ))}
-          </nav>
+          <h1 className="page-title">{TITLES[filter]}</h1>
           {canBulk && (
             <button className="btn btn-secondary btn-sm bulk-open" onClick={() => setBulk(true)}>
               <Icon name="users" /> Message parents

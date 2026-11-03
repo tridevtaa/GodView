@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { savePhoto } from "../data/photos.js";
 import { attendanceMonth, listAssignments, listResults, staffDocumentsFor, staffDocumentUrl, studentDocumentUrl, updateStudent, uploadStudentDocument } from "../data/api.js";
 import { idText } from "./Designation.jsx";
@@ -310,18 +311,32 @@ const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: 
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
-// Owners and admins: one tap between active and inactive. Dues already raised
-// stay as they are.
+// Owners and admins: active or inactive, changed through a sheet that says what
+// will happen, so a stray tap can't stop a student's billing. Cancel starts
+// focused. Dues already raised stay as they are.
 function StudentStatus({ person, sessionId, onUpdate }) {
+  const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const now = person.status === "inactive" ? "inactive" : "active";
-  async function set(status) {
-    if (status === now || busy) return;
+  const active = person.status !== "inactive";
+  const first = person.name?.split(" ")[0] ?? "this student";
+  useEffect(() => {
+    if (!asking) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      // Just this sheet, not the profile behind it
+      e.stopPropagation();
+      setAsking(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [asking]);
+  async function change() {
     setBusy(true);
     setError("");
     try {
-      onUpdate(person.id, await updateStudent(person, sessionId, { status }));
+      onUpdate(person.id, await updateStudent(person, sessionId, { status: active ? "inactive" : "active" }));
+      setAsking(false);
     } catch {
       setError("Couldn’t change that. Try again.");
     } finally {
@@ -330,14 +345,38 @@ function StudentStatus({ person, sessionId, onUpdate }) {
   }
   return (
     <div className="ig-status">
-      <nav className="segmented segmented-sm" aria-label="Student status">
-        {[["active", "Active"], ["inactive", "Inactive"]].map(([v, label]) => (
-          <button key={v} type="button" className={now === v ? "active" : ""} disabled={busy} aria-pressed={now === v} onClick={() => set(v)}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      {error && <span className="field-error">{error}</span>}
+      <span className={`badge ${active ? "badge-success" : "badge-neutral"}`}>{active ? "Active" : "Inactive"}</span>
+      <button type="button" className="link-btn" aria-haspopup="dialog" onClick={() => (setError(""), setAsking(true))}>
+        Change
+      </button>
+      {asking &&
+        createPortal(
+          <div className="filter-back" onMouseDown={(e) => e.target === e.currentTarget && !busy && setAsking(false)}>
+            <section className="filter-sheet status-sheet" role="dialog" aria-modal="true" aria-label="Change student status">
+              <header className="filter-head">
+                <h2>{active ? `Make ${first} inactive?` : `Make ${first} active again?`}</h2>
+              </header>
+              <div className="filter-body">
+                <p>
+                  {active
+                    ? "No new dues, and they leave attendance, results and message lists. Dues already raised stay."
+                    : "They return to attendance, results and message lists. Create dues will bill them again, including any months missed."}
+                </p>
+                {person.class === "12" && <p>{active ? "If they finished school last session, their parents also lose the app." : "If they finished school last session, their parents get the app back."}</p>}
+                {error && <p className="field-error">{error}</p>}
+              </div>
+              <footer className="filter-foot">
+                <button type="button" className="link-btn" autoFocus disabled={busy} onClick={() => setAsking(false)}>
+                  Cancel
+                </button>
+                <button type="button" className={`btn ${active ? "btn-danger" : "btn-primary"}`} disabled={busy} onClick={change}>
+                  {active ? "Make inactive" : "Make active"}
+                </button>
+              </footer>
+            </section>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

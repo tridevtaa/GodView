@@ -81,6 +81,10 @@ export default function CalendarPage({
   adding = false,
   onAdding = () => {},
   onOpenNotices,
+  view: viewProp,
+  onView,
+  notices = null,
+  noticeAction = null,
   session,
   students = [],
   me,
@@ -97,7 +101,11 @@ export default function CalendarPage({
   });
   const [picked, setPicked] = useState(null); // a day, "YYYY-MM-DD"
   const [editing, setEditing] = useState(null); // an entry's row, or {} for new
-  const [view, setView] = useState("calendar"); // "calendar" | "datesheet" | "timetable"
+  // "calendar" | "datesheet" | "timetable" | "notices" | "wins". Parents' copy keeps its own.
+  const [ownView, setOwnView] = useState("calendar");
+  const view = viewProp ?? ownView;
+  const setView = onView ?? setOwnView;
+  const showingNotices = view === "notices" || view === "wins";
 
   useEffect(() => {
     if (adding) setEditing({ starts_on: picked ?? todayIso() });
@@ -137,19 +145,14 @@ export default function CalendarPage({
   return (
     <div className="cal">
       {session && (
-        <nav className="segmented segmented-sm ds-tabs page-switch" aria-label="Calendar, datesheet or timetable">
-          <button className={view === "calendar" ? "active" : ""} onClick={() => setView("calendar")}>
-            <Icon name="calendar" size={15} /> Calendar
-          </button>
-          <button className={view === "datesheet" ? "active" : ""} onClick={() => setView("datesheet")}>
-            <Icon name="exam" size={15} /> Datesheet
-          </button>
-          <button className={view === "timetable" ? "active" : ""} onClick={() => setView("timetable")}>
-            <Icon name="table" size={15} /> Timetable
-          </button>
-        </nav>
+        <div className="page-header">
+        <h1 className="page-title">{{ calendar: "Calendar", datesheet: "Datesheet", timetable: "Timetable", notices: "Notices", wins: "News & Achievements" }[view]}</h1>
+        {showingNotices && noticeAction && <div className="page-actions">{noticeAction}</div>}
+        </div>
       )}
-      {view === "timetable" ? (
+      {showingNotices ? (
+        notices
+      ) : view === "timetable" ? (
         <div className="cal-datesheet">
           <Suspense fallback={<div className="card card-skeleton" aria-busy="true" />}>
             <TimetablePage school={{ id: schoolId }} session={session} students={students} me={me} isAdmin={ttIsAdmin} readOnly={ttReadOnly} />
