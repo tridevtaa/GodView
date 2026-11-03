@@ -13,7 +13,7 @@ const MAX_TILT = 0.6; // up/down at most 60% of across
 const MAX_TIME = 600; // ms
 
 const SKIP =
-  'input, textarea, select, [contenteditable="true"], .leaflet-container, .no-swipe, .chat, .menu, .modal, [role="dialog"], [role="menu"], .fab.is-open';
+  'input, textarea, select, [contenteditable="true"], .leaflet-container, .no-swipe, .cg, .chat, .menu, .modal, [role="dialog"], [role="menu"], .fab.is-open';
 
 // Started on something that scrolls sideways by itself?
 function scrollsSideways(el) {

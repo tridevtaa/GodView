@@ -101,11 +101,11 @@ export default function CalendarPage({
   });
   const [picked, setPicked] = useState(null); // a day, "YYYY-MM-DD"
   const [editing, setEditing] = useState(null); // an entry's row, or {} for new
-  // "calendar" | "datesheet" | "timetable" | "notices" | "wins". Parents' copy keeps its own.
+  // "calendar" | "datesheet" | "timetable" | "notices". Parents' copy keeps its own.
   const [ownView, setOwnView] = useState("calendar");
   const view = viewProp ?? ownView;
   const setView = onView ?? setOwnView;
-  const showingNotices = view === "notices" || view === "wins";
+  const showingNotices = view === "notices";
 
   useEffect(() => {
     if (adding) setEditing({ starts_on: picked ?? todayIso() });
@@ -146,7 +146,7 @@ export default function CalendarPage({
     <div className="cal">
       {session && (
         <div className="page-header">
-        <h1 className="page-title">{{ calendar: "Calendar", datesheet: "Datesheet", timetable: "Timetable", notices: "Notices", wins: "News & Achievements" }[view]}</h1>
+        <h1 className="page-title">{{ calendar: "Calendar", datesheet: "Datesheet", timetable: "Timetable", notices: "Notices" }[view]}</h1>
         {showingNotices && noticeAction && <div className="page-actions">{noticeAction}</div>}
         </div>
       )}

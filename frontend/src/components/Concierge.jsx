@@ -93,14 +93,30 @@ function findStudents(all, name) {
   });
 }
 
+// Kept once fetched, so a page that comes down with the finger has her ready.
+let manifestLoad = null;
+const loadManifest = () =>
+  (manifestLoad ??= fetch(`${BASE}clips.json`, { cache: "no-cache" })
+    // Unknown paths come back as the app's page, so a bad answer just means none yet.
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => (j && typeof j === "object" ? j : null))
+    .catch(() => null));
+
+// Before the first pull: the list of clips and her still.
+export function preloadConcierge() {
+  return loadManifest().then((m) => {
+    if (m?.poster) new Image().src = BASE + m.poster;
+  });
+}
+
 function useClips() {
   const [m, setM] = useState(null);
   useEffect(() => {
-    // Unknown paths come back as the app's page, so a bad answer just means none yet.
-    fetch(`${BASE}clips.json`, { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j && typeof j === "object" && setM(j))
-      .catch(() => {});
+    let live = true;
+    loadManifest().then((j) => live && j && setM(j));
+    return () => {
+      live = false;
+    };
   }, []);
   return m;
 }
@@ -232,7 +248,9 @@ function ClipStage({ clips, focus, want, after, onShotEnd }) {
 // the most used first. facts: figures the app already shows them.
 // onAct({ type: "go" | "student" | "start" | "map", target | id }).
 // sessionId: for the report cards; seesFees: may this person see the fee card.
-export default function Concierge({ school, sessionId, seesFees, name, students, facts, page, pages, forms, chips, onAct, onClose }) {
+// dormant: being pulled down, not open yet: silent until it is.
+// pulled: came down with the finger, so no fade in.
+export default function Concierge({ school, sessionId, seesFees, name, students, facts, page, pages, forms, chips, onAct, onClose, dormant = false, pulled = false }) {
   const manifest = useClips();
   const clips = manifest?.clips && Object.values(manifest.clips).some((l) => l?.length) ? manifest.clips : null;
   const poster = manifest?.poster ? BASE + manifest.poster : null;
@@ -244,6 +262,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const [mood, setMood] = useState(""); // how she says it: pleased | concerned | sorry | show
   const [card, setCard] = useState(null); // fees | attendance
   const [draft, setDraft] = useState("");
+  const [asked, setAsked] = useState(""); // the question she's answering
   const [reply, setReply] = useState("");
   const [choices, setChoices] = useState([]);
   const [error, setError] = useState("");
@@ -435,6 +454,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     const line = cardLine(kind, reports);
     if (!line) return false;
     setError("");
+    setAsked("");
     setCard(kind);
     setChoices([]);
     setReply(line.say);
@@ -449,6 +469,8 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     busy.current = true;
     hush();
     setDraft("");
+    setAsked(q);
+    setReply("");
     setChoices([]);
     setError("");
     setPhase("think");
@@ -534,6 +556,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   // (after the first time it comes from the voice cache). Browsers only let
   // a page make sound after a tap, so not on a fresh load of /avatar.
   useEffect(() => {
+    if (dormant) return;
     window.speechSynthesis?.getVoices?.();
     const clip = Boolean(clips?.greet?.length);
     if (clip) setShot("greet");
@@ -546,18 +569,22 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     // really is still locked.
     const t = setTimeout(() => {
       greeted.current = true;
-      speak(`${greeting()}${first ? `, ${first}` : ""}. I'm Goddess — how can I help?`, "pleased", { overClip: clip });
+      speak(`${greeting()}${first ? `, ${first}` : ""}. I'm Goddess. How can I help?`, "pleased", { overClip: clip });
     }, 500);
     return () => clearTimeout(t);
-  }, [Boolean(clips)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [Boolean(clips), dormant]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (dormant) return;
+    document.documentElement.classList.add("cg-open");
+    return () => document.documentElement.classList.remove("cg-open");
+  }, [dormant]);
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
-    document.documentElement.classList.add("cg-open");
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.documentElement.classList.remove("cg-open");
       clearTimeout(talkTimer.current);
       clearTimeout(leaveTimer.current);
       rec.current?.abort();
@@ -567,10 +594,11 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   }, [onClose, hush]);
 
   const shown = more ? chips : chips.slice(0, 4);
+  const say = reply || (asked ? "" : `${greeting()}${first ? `, ${first}` : ""}. I'm Goddess. How can I help?`);
 
   return (
     <div
-      className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}`}
+      className={`cg${clips ? " has-clips" : poster ? " has-still" : ""}${card ? " has-card" : ""}${dormant ? " is-dormant" : ""}${pulled ? " is-pulled" : ""}`}
       // Phones only play sound a tap started: opened from a link, the
       // first tap here unlocks her voice (opening from the app already did).
       onPointerDownCapture={primeVoice}
@@ -610,7 +638,8 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
           </span>
           {STATUS[wantBase] ?? ""}
         </div>
-        <h1 className="cg-say">{reply || `${greeting()}${first ? `, ${first}` : ""}. I'm Goddess — how can I help?`}</h1>
+        {asked && <p className="cg-asked">{asked}</p>}
+        {say && <h1 className="cg-say">{say}</h1>}
         {choices.length > 0 && (
           <div className="cg-choices">
             {choices.map((p) => (
@@ -620,6 +649,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
                 className="cg-chip"
                 onClick={() => {
                   setChoices([]);
+                  setAsked("");
                   setReply(`Opening ${p.name}.`);
                   go({ type: "student", id: p.id });
                   speak(`Opening ${p.name}.`, "", { onStart: onVoiceStart });
@@ -638,6 +668,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
             reports={reports}
             onOpen={() => {
               const label = pages.find(([k]) => k === card)?.[1] ?? "it";
+              setAsked("");
               respond(`Opening ${label}.`, { type: "go", target: card });
             }}
             onClose={() => setCard(null)}
@@ -671,7 +702,12 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
             className={`cg-chip${card === key ? " is-on" : ""}`}
             aria-pressed={cards.some(([k]) => k === key) ? card === key : undefined}
             // Fees and Attendance open their card here; the rest go to the page.
-            onClick={() => (card === key ? setCard(null) : showCard(key) || respond(`Opening ${label}.`, { type: "go", target: key }))}
+            onClick={() => {
+              if (card === key) return setCard(null);
+              if (showCard(key)) return;
+              setAsked("");
+              respond(`Opening ${label}.`, { type: "go", target: key });
+            }}
           >
             {label}
           </button>

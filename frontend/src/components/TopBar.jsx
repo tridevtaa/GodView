@@ -192,11 +192,6 @@ export default function TopBar({ mode, onMode, sections, barKeys, screens, menus
       {finding && !wide && (
         <SearchSheet
           search={search}
-          quick={quick}
-          onPick={(key) => {
-            setFinding(false);
-            onMode(key);
-          }}
           onClose={() => setFinding(false)}
         />
       )}
@@ -269,7 +264,7 @@ function SubNav({ links }) {
 }
 
 // Phones: search as a page of its own, with the keyboard up straight away.
-function SearchSheet({ search, quick, onPick, onClose }) {
+function SearchSheet({ search, onClose }) {
   const sheet = useRef(null);
   useBackToClose(true, onClose);
   useLayoutEffect(() => {
@@ -283,22 +278,30 @@ function SearchSheet({ search, quick, onPick, onClose }) {
           Cancel
         </button>
       </div>
-      <div className="more-grid search-sheet-quick">
-        {quick.map((s) => (
-          <button key={s.key} type="button" className="more-item" onClick={() => onPick(s.key)}>
-            <span className="more-icon">
-              <Icon name={s.icon} size={20} />
-            </span>
-            <span>{s.label}</span>
-          </button>
-        ))}
-      </div>
     </section>,
     document.body
   );
 }
 
 // Phones: every screen that isn't in the bottom bar, one tap away.
+const MORE_TONE = {
+  attendance: "green",
+  homework: "teal",
+  syllabus: "indigo",
+  marks: "violet",
+  calendar: "pink",
+  datesheet: "amber",
+  timetable: "violet",
+  notices: "orange",
+  employees: "indigo",
+  "org-chart": "teal",
+  access: "amber",
+  transport: "orange",
+  collection: "green",
+  "class-report": "teal",
+  structure: "amber",
+};
+
 function MoreSheet({ screens, onPick, onClose }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -317,8 +320,8 @@ function MoreSheet({ screens, onPick, onClose }) {
                 .filter((s) => s.section === g)
                 .map((s) => (
                   <button key={s.key} type="button" className="more-item" onClick={() => onPick(s.key)}>
-                    <span className="more-icon">
-                      <Icon name={s.icon} size={20} />
+                    <span className={`more-icon t-${MORE_TONE[s.key] ?? "indigo"}`}>
+                      <Icon name={s.icon} size={24} weight="fill" />
                     </span>
                     <span>{s.label}</span>
                     {s.count > 0 && <span className="seg-count">{s.count}</span>}

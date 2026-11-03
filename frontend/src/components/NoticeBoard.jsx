@@ -77,15 +77,15 @@ export function useNotices(schoolId, staff = false) {
 // me: the signed-in staff email (none for parents). since: last visit, to
 // mark notices New.
 // only: which show, for staff, whose top bar chooses. Parents switch here.
-export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, onCompose, since, only: chosen }) {
+export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, onCompose, since }) {
   const [notices, setNotices] = useNotices(schoolId, Boolean(me));
   const [error, setError] = useState("");
   const [viewing, setViewing] = useState(null); // picture shown full size
   const urls = useImageUrls(notices);
   // All, or only the students' wins (notices tagged with a category).
-  const [ownOnly, setOnly] = useState("all");
-  const only = chosen ?? ownOnly;
+  const [picked, setOnly] = useState("all");
   const hasWins = (notices ?? []).some((n) => n.category);
+  const only = hasWins ? picked : "all";
   const shown = only === "wins" ? notices?.filter((n) => n.category) : notices;
   const canPost = Boolean(me);
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
@@ -127,8 +127,7 @@ export default function NoticeBoard({ schoolId, me, isAdmin = false, compose, on
           )}
         </div>
       )}
-      {notices?.length > 0 && shown?.length === 0 && <p className="row-sub">No news or achievements yet.</p>}
-      {hasWins && !chosen && (
+      {hasWins && (
         <nav className="segmented segmented-sm nb-filter" aria-label="Show">
           {[
             ["all", "All"],
