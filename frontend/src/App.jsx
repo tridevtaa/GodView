@@ -739,7 +739,7 @@ export default function App() {
         ["Unread", () => switchMode("unread"), { current: mode === "requests" && inboxView === "unread" }],
         ["Requests", () => switchMode("open-requests"), { current: mode === "requests" && inboxView === "requests" }],
       ],
-      columns: [actions("bulk")],
+      columns: [],
     },
     employees: {
       big: [
@@ -750,7 +750,19 @@ export default function App() {
       columns: isAdmin ? [{ title: "Quick actions", links: [["Add staff", () => runAction("staff")]] }] : [],
     },
     transport: {
-      big: [["Routes and buses", () => switchMode("transport")], ["Bus map", () => (switchMode("transport"), setView("map"))]],
+      big: [
+        [
+          "Routes and buses",
+          () => {
+            switchMode("transport");
+            setView("routes");
+            // They're under the map: go to them, once the page has drawn if coming from elsewhere
+            setTimeout(() => document.querySelector(".bus-section")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+          },
+          { current: mode === "transport" && view !== "map" },
+        ],
+        ["Bus map", () => (switchMode("transport"), setView("map")), { current: mode === "transport" && view === "map" }],
+      ],
       columns: [],
     },
   };
@@ -997,6 +1009,7 @@ export default function App() {
         ) : mode === "requests" ? (
           <InboxPage
             filter={inboxView}
+            onFilter={setInboxView}
             openThread={openThread}
             readOnly={isPrincipal}
             canBulk={isAdmin && !viewOnly}

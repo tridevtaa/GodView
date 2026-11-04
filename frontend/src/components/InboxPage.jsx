@@ -23,8 +23,9 @@ const classLine = (s) => (s ? `${gradeLabel(s.class)}${s.section ? ` · ${s.sect
 // students: the session's students (names, photos, classes).
 // readOnly: the principal reads but doesn't write.
 // canBulk: may message many parents at once; bulkAt: open that (from the +).
-// filter: which conversations show (all, unread or requests), from the top bar.
-export default function InboxPage({ filter, school, students, me, readOnly = false, canAnswer = true, canBulk = false, bulkAt = 0, onOpenStudent, onCount, openThread }) {
+// filter: which conversations show (all, unread or requests). Computers pick
+// it here; phones from the row above the tab bar (TopBar's SubNav).
+export default function InboxPage({ filter, onFilter, school, students, me, readOnly = false, canAnswer = true, canBulk = false, bulkAt = 0, onOpenStudent, onCount, openThread }) {
   const [bulk, setBulk] = useState(false);
   useEffect(() => {
     if (bulkAt && canBulk) setBulk(true);
@@ -102,6 +103,13 @@ export default function InboxPage({ filter, school, students, me, readOnly = fal
               <Icon name="plus" /> New
             </button>
           )}
+          <div className="segmented segmented-sm inbox-filter" role="group" aria-label="Show">
+            {Object.entries({ all: "All", unread: "Unread", requests: "Requests" }).map(([key, label]) => (
+              <button key={key} type="button" className={filter === key ? "active" : ""} aria-pressed={filter === key} onClick={() => onFilter(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {picking && (

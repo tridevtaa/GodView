@@ -16,7 +16,8 @@ const compact = (n) => {
 
 // Clean axis maximum and ticks (0, 1/4, 1/2, 3/4, max).
 function niceMax(max) {
-  if (max <= 0) return 1;
+  // Nothing yet: a plain scale, not four ticks all rounding to ₹0 or ₹1
+  if (max <= 0) return 4000;
   const pow = 10 ** Math.floor(Math.log10(max));
   const steps = [1, 2, 2.5, 5, 10];
   const unit = steps.find((s) => s * pow * 4 >= max) * pow;
@@ -48,12 +49,15 @@ function TableToggle({ showTable, setShowTable }) {
   );
 }
 
-// Columns over time. data: [{ key, label, value, note }]
-export function ColumnChart({ title, subtitle, data, valueLabel = "Collected" }) {
+// Columns over time. data: [{ key, label, value, note, current }]
+// current: the one to read first (today); the rest step back in a lighter tint.
+// width, height: its drawing size. It scales to fit, so a phone's narrow chart
+// needs a smaller width or its labels shrink with it.
+export function ColumnChart({ title, subtitle, data, valueLabel = "Collected", rowLabel = "Month", width = 640, height = 220 }) {
   const [hover, setHover] = useState(null);
   const [showTable, setShowTable] = useState(false);
-  const W = 640;
-  const H = 220;
+  const W = width;
+  const H = height;
   const pad = { t: 12, r: 8, b: 26, l: 52 };
   const max = niceMax(Math.max(0, ...data.map((d) => d.value)));
   const band = (W - pad.l - pad.r) / data.length;
@@ -75,7 +79,7 @@ export function ColumnChart({ title, subtitle, data, valueLabel = "Collected" })
         <table className="chart-table">
           <thead>
             <tr>
-              <th>Month</th>
+              <th>{rowLabel}</th>
               <th className="num">{valueLabel}</th>
             </tr>
           </thead>
@@ -105,8 +109,8 @@ export function ColumnChart({ title, subtitle, data, valueLabel = "Collected" })
               return (
                 <g key={d.key} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} tabIndex={0}>
                   <rect className="chart-hit" x={cx - band / 2} y={pad.t} width={band} height={H - pad.t - pad.b} />
-                  <path className={`chart-mark${hover === i ? " is-hover" : ""}`} d={columnPath(cx - bw / 2, yy, bw, H - pad.b - yy)} />
-                  <text className="chart-axis" x={cx} y={H - 8} textAnchor="middle">
+                  <path className={`chart-mark${hover === i ? " is-hover" : ""}${data.some((x) => x.current) && !d.current ? " is-back" : ""}`} d={columnPath(cx - bw / 2, yy, bw, H - pad.b - yy)} />
+                  <text className={`chart-axis${d.current ? " is-current" : ""}`} x={cx} y={H - 8} textAnchor="middle">
                     {d.short ?? d.label}
                   </text>
                 </g>

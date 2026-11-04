@@ -96,10 +96,10 @@ export default function TopBar({ mode, onMode, sections, barKeys, screens, menus
       {count > 0 && <span className="seg-count">{count > 99 ? "99+" : count}</span>}
     </button>
   );
-  const title = ([value, label, count], extra = "") => (
+  const title = ([value, label, count]) => (
     <button
       key={value}
-      className={`${extra}${mode === value ? " active" : ""}${open === value ? " is-open" : ""}`}
+      className={`${mode === value ? "active" : ""}${open === value ? " is-open" : ""}`}
       aria-current={mode === value ? "page" : undefined}
       aria-label={label}
       aria-expanded={open === value}
@@ -113,6 +113,21 @@ export default function TopBar({ mode, onMode, sections, barKeys, screens, menus
       }}
       // No hover (touch tablets): a tap opens the panel, the only way to its screens
       onClick={() => (canHover ? (close(), onMode(value)) : setOpen(open === value ? null : value))}
+    >
+      <Icon name={ICONS[value] ?? "file"} size={20} className="tab-icon" weight={mode === value ? "fill" : "regular"} />
+      <span className="tab-label">{label}</span>
+      {count > 0 && <span className="seg-count">{count > 99 ? "99+" : count}</span>}
+    </button>
+  );
+  // Inbox has no panel: it opens straight away, its filters are on its page.
+  const inboxIcon = ([value, label, count]) => (
+    <button
+      key={value}
+      className={`nav-icon-btn${mode === value ? " active" : ""}`}
+      aria-current={mode === value ? "page" : undefined}
+      aria-label={label}
+      onMouseEnter={() => open && open !== "search" && later(close, 70)}
+      onClick={() => (close(), onMode(value))}
     >
       <Icon name={ICONS[value] ?? "file"} size={20} className="tab-icon" weight={mode === value ? "fill" : "regular"} />
       <span className="tab-label">{label}</span>
@@ -143,8 +158,8 @@ export default function TopBar({ mode, onMode, sections, barKeys, screens, menus
                 <Icon name="search" size={18} />
               </button>
             )}
-            {/* Messages sit with search; the panel opens from here like the titles' */}
-            {wide && sections.some(([v]) => v === "requests") && title(sections.find(([v]) => v === "requests"), "nav-icon-btn")}
+            {/* Messages sit with search */}
+            {wide && sections.some(([v]) => v === "requests") && inboxIcon(sections.find(([v]) => v === "requests"))}
             {onAsk && (
               <button type="button" className="ask-btn" onClick={onAsk} aria-label="Ask Goddess" title="Ask Goddess">
                 <GoddessFace />
