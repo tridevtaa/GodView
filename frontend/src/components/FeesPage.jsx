@@ -5,6 +5,7 @@ import { rupees, rupeesShort } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import { BarChart, ColumnChart } from "./charts.jsx";
+import FeesToday from "./FeesToday.jsx";
 import OpeningBalances from "./OpeningBalances.jsx";
 import FeeReport from "./FeeReport.jsx";
 import FeeStructure from "./FeeStructure.jsx";
@@ -42,14 +43,15 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
     if (!session) return;
     // Each part loads on its own, so one slow chart doesn't blank the page.
     // Last numbers show at once; fresh ones replace them when they arrive.
+    // A past session's charts only: the current one shows today and this week.
     const [s, m, c] = await Promise.allSettled([
       swr(`fees:summary:${session.id}`, () => feeSessionSummary(session.id), setSummary),
-      swr(`fees:monthly:${session.id}`, () => feeMonthlyCollection(session.id), setMonthly),
-      swr(`fees:class:${session.id}`, () => feeClassSummary(session.id), setByClass),
+      pastSession ? swr(`fees:monthly:${session.id}`, () => feeMonthlyCollection(session.id), setMonthly) : [],
+      pastSession ? swr(`fees:class:${session.id}`, () => feeClassSummary(session.id), setByClass) : [],
     ]);
     if (s.status === "fulfilled") setSummary(s.value);
-    if (m.status === "fulfilled") setMonthly(m.value);
-    if (c.status === "fulfilled") setByClass(c.value);
+    if (pastSession && m.status === "fulfilled") setMonthly(m.value);
+    if (pastSession && c.status === "fulfilled") setByClass(c.value);
     const err = [s, m, c].find((r) => r.status === "rejected")?.reason;
     setError(
       !err
@@ -60,7 +62,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
             ? "Some fee figures took too long to work out. Reload to try again."
             : `Couldn’t load some fee figures (${err.code || err.message || "network"}). Reload to try again.`
     );
-  }, [session]);
+  }, [session, pastSession]);
 
   // The student list may have sat open for a while (another device took a fee)
   useEffect(() => {
@@ -232,14 +234,18 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
         </div>
       )}
 
-      <div className="fees-charts">
-        <section className="panel chart-panel">
-          <ColumnChart title="Collected by month" data={months} />
-        </section>
-        <section className="panel chart-panel">
-          <BarChart title="Due by class" data={classes} valueLabel="Due now" />
-        </section>
-      </div>
+      {pastSession ? (
+        <div className="fees-charts">
+          <section className="panel chart-panel">
+            <ColumnChart title="Collected by month" data={months} />
+          </section>
+          <section className="panel chart-panel">
+            <BarChart title="Due by class" data={classes} valueLabel="Due now" />
+          </section>
+        </div>
+      ) : (
+        <FeesToday school={school} students={students} refreshAt={refreshAt} onOpenStudent={onOpenStudent} />
+      )}
 
       <section className="panel" id="fees-owing">
         <div className="panel-title panel-title-row">

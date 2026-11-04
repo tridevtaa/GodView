@@ -3488,8 +3488,103 @@ a:hover {
   gap: 20px;
 }
 
+.fees-charts.is-today {
+  grid-template-columns: 1fr 1.2fr;
+}
+
 .chart-panel {
   padding: 18px 22px;
+}
+
+/* Fees: what came in today */
+.fees-today h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.fees-today-total {
+  margin: 10px 0 2px;
+  color: var(--text);
+  font-size: 34px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.fees-today-line {
+  margin: 0;
+}
+
+.fees-today-wait {
+  height: 120px;
+  margin-top: 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.fees-today-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fees-today-modes li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.fees-today-modes strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.fees-today-list {
+  margin: 12px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+  list-style: none;
+}
+
+.fees-today-list.is-all {
+  max-height: 340px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.fees-today-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.fees-today-list button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fees-today-amount {
+  flex: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fees-today-all {
+  margin-top: 6px;
 }
 
 .panel-help {
@@ -3559,8 +3654,17 @@ a:hover {
   transition: fill 0.12s;
 }
 
+.chart-mark.is-back {
+  fill: color-mix(in srgb, var(--brand) 38%, var(--surface));
+}
+
 .chart-mark.is-hover {
   fill: var(--brand-edge);
+}
+
+.chart-axis.is-current {
+  fill: var(--text);
+  font-weight: 700;
 }
 
 .chart-hit {
@@ -3609,7 +3713,8 @@ a:hover {
 }
 
 @media (max-width: 960px) {
-  .fees-charts {
+  .fees-charts,
+  .fees-charts.is-today {
     grid-template-columns: 1fr;
   }
 }
@@ -11220,6 +11325,27 @@ input[type="date"]::-webkit-date-and-time-value {
   white-space: nowrap;
 }
 
+/* Computers: All, Unread, Requests. Phones have them above the tab bar. */
+.inbox-head {
+  flex-wrap: wrap;
+}
+
+.inbox-filter {
+  display: flex;
+  flex: 1 0 100%;
+  order: 2;
+}
+
+.inbox-filter button {
+  flex: 1;
+}
+
+@media (max-width: 760px) {
+  .inbox-filter {
+    display: none;
+  }
+}
+
 .inbox-head:has(.bulk-open) > .btn-primary {
   order: 2;
 }
@@ -11825,6 +11951,11 @@ button.report-row:hover {
 }
 
 /* Full-screen map, over everything (header and tab bar too) */
+/* Clear of the top bar when a link scrolls to them */
+.bus-section {
+  scroll-margin-top: 80px;
+}
+
 .map-full {
   position: fixed;
   inset: 0;
@@ -18522,10 +18653,18 @@ button.class-face:hover {
     display: flex;
     flex: 1;
     align-items: stretch;
-    justify-content: space-between;
+    justify-content: center;
     align-self: stretch;
     min-width: 0;
-    margin: 0 12px;
+  }
+
+  /* Search and messages, then the people: her portrait and the account */
+  .topbar-right {
+    gap: 6px;
+  }
+
+  .topbar-right .ask-btn {
+    margin-left: 6px;
   }
 
   .topbar-tabs button {
@@ -18779,18 +18918,48 @@ button.class-face:hover {
   }
 }
 
+/* Room for three parts: the school on the left, the titles truly centred with
+   even gaps, the actions on the right. */
+@media (min-width: 1200px) {
+  .topbar-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .topbar-left {
+    max-width: none;
+  }
+
+  .topbar-tabs {
+    flex: none;
+    gap: clamp(4px, 0.9vw, 14px);
+  }
+
+  .topbar-tabs button {
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .topbar-tabs button.active::after {
+    right: 10px;
+    left: 10px;
+  }
+
+  .topbar-right {
+    grid-column: 3;
+    justify-self: end;
+  }
+}
+
 /* Tablets: icons alone, or the titles wouldn't fit */
-@media (min-width: 761px) and (max-width: 859px) {
+@media (min-width: 761px) and (max-width: 979px) {
   .topbar-tabs .tab-icon {
     display: block;
   }
 
   .topbar-tabs .tab-label {
     display: none;
-  }
-
-  .topbar-inner {
-    padding: 0 20px;
   }
 }
 
