@@ -51,6 +51,8 @@ export default function DeletePerson({ person, kind, sessionId, onClose, onDelet
       setError(
         e?.hint === "has-payments"
           ? "This student has fee receipts, so the profile can’t be deleted."
+          : e?.code === "23503"
+            ? "This student has certificates on record, so the profile can’t be deleted."
           : e?.hint === "is-self"
             ? "You can’t delete your own profile."
             : e?.hint === "is-owner"

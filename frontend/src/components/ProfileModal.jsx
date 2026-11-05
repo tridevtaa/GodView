@@ -8,6 +8,7 @@ import DeletePerson from "./DeletePerson.jsx";
 import Chat, { useBackToClose } from "./Chat.jsx";
 import StudentResults from "./StudentResults.jsx";
 import FeeLedger from "./FeeLedger.jsx";
+import CertificatesTab from "./CertificatesTab.jsx";
 import StudentParents from "./StudentParents.jsx";
 import { Photo, gradeLabel, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
@@ -307,7 +308,7 @@ export function MonthAttendance({ studentId, title = "This month" }) {
   );
 }
 
-const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: "chart" };
+const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: "chart", certificates: "certificate" };
 
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
@@ -617,6 +618,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
     // On the full page, Messages is a button beside Call instead
     ...(asPage ? [] : [["messages", "Messages"]]),
     ["results", "Results"],
+    ...(isAdmin && isStudent ? [["certificates", "Certificates"]] : []),
   ];
 
   const card = (
@@ -705,6 +707,8 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
         <div className="modal-body profile-body">
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
+          ) : isStudent && isAdmin && !editing && tab === "certificates" ? (
+            <CertificatesTab school={school} person={person} sessionId={sessionId} onUpdate={onUpdate} />
           ) : isStudent && !editing && tab === "messages" ? (
             <Chat
               screen
