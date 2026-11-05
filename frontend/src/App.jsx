@@ -43,6 +43,7 @@ const SEARCH_KEYS = {
 // background once the app is up, so switching tabs never waits for it.
 const SCREENS = {
   HomeworkPage: () => import("./components/HomeworkPage.jsx"),
+  AdmissionsPage: () => import("./components/AdmissionsPage.jsx"),
   AddModal: () => import("./components/AddModal.jsx"),
   ProfileModal: () => import("./components/ProfileModal.jsx"),
   ImportModal: () => import("./components/ImportModal.jsx"),
@@ -54,6 +55,8 @@ const SCREENS = {
   CollectFee: () => import("./components/CollectFee.jsx"),
 };
 const HomeworkPage = lazy(SCREENS.HomeworkPage);
+const AdmissionsPage = lazy(SCREENS.AdmissionsPage);
+const CertificatesRegister = lazy(() => import("./components/CertificatesTab.jsx").then((m) => ({ default: m.CertificatesRegister })));
 const AddModal = lazy(SCREENS.AddModal);
 const ProfileModal = lazy(SCREENS.ProfileModal);
 const ImportModal = lazy(SCREENS.ImportModal);
@@ -86,6 +89,7 @@ export default function App() {
   const [feesView, setFeesView] = useState("overview");
   const [plannerView, setPlannerView] = useState("calendar");
   const [inboxView, setInboxView] = useState("all");
+  const [admissionsView, setAdmissionsView] = useState("enquiry");
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -152,7 +156,7 @@ export default function App() {
       stop();
     };
   }, [isOwner, school.id]);
-  const { sessions, current: currentSession } = useSessions(school.id);
+  const { sessions, current: currentSession, reload: reloadSessions } = useSessions(school.id);
 
   // Warm the other screens' code in the background.
   useEffect(() => {
@@ -608,6 +612,7 @@ export default function App() {
   );
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "scholar"]] : []),
+    ...(isAdmin && !viewOnly ? [["enquiry", "New enquiry", "newAdmission"]] : []),
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
     // Teachers' daily work: their class register (class in-charges), homework
     // and marks. Owners, admins and the principal see these, not give them.
@@ -636,7 +641,7 @@ export default function App() {
       setNoticeCompose(true);
       return;
     }
-    const go = { student: "students", fee: "fees", homework: "homework", datesheet: "datesheet", staff: "employees", bulk: "requests", result: "marks" }[kind];
+    const go = { student: "students", enquiry: "admissions", fee: "fees", homework: "homework", datesheet: "datesheet", staff: "employees", bulk: "requests", result: "marks" }[kind];
     switchMode(go);
     if (kind === "student" || kind === "staff") {
       if (kind === "staff") setStaffTab("people");
@@ -727,8 +732,10 @@ export default function App() {
         [leads ? "All students" : "My students", () => openStudents(), { current: isStudents && statusPick === "all" && !pickedGrades.length }],
         ["Active", () => openStudents("active"), { current: isStudents && statusPick === "active" }],
         ["Inactive", () => openStudents("inactive"), { current: isStudents && statusPick === "inactive" }],
+        ...(screens.some((s) => s.key === "admissions") ? [["Admissions", () => switchMode("admissions")]] : []),
+        ...(screens.some((s) => s.key === "certificates") ? [["Certificates", () => switchMode("certificates"), { current: mode === "certificates" }]] : []),
       ],
-      columns: [actions("student", "result"), { title: "Classes", wide: true, links: gradeOptions(searchStudents).map((g) => [gradeLabel(g.value), () => openStudents("all", g.value)]) }],
+      columns: [actions("student", "enquiry", "result"), { title: "Classes", wide: true, links: gradeOptions(searchStudents).map((g) => [gradeLabel(g.value), () => openStudents("all", g.value)]) }],
     },
     fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure" }), columns: [actions("fee", "bulk")] },
     academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
@@ -766,6 +773,16 @@ export default function App() {
       columns: [],
     },
   };
+  // On Admissions, phones get its stages in that row instead (one row at most)
+  if (mode === "admissions" && !wideScreen) {
+    menus.students = {
+      ...menus.students,
+      big: [
+        ["Students", () => openStudents()],
+        ...[["enquiry", "Enquiries"], ["registered", "Registered"], ["admitted", "Admitted"], ["lost", "Not joining"]].map(([k, l]) => [l, () => setAdmissionsView(k), { current: admissionsView === k }]),
+      ],
+    };
+  }
   const askPages = [...screens.map((s) => [s.key, s.label]), ["me", "My profile"]];
   const askChips = ["attendance", "fees", "students", "requests", "employees", "transport", "calendar", "homework", "notices"]
     .map((k) => askPages.find(([x]) => x === k))
@@ -892,7 +909,7 @@ export default function App() {
               onOpenNotices={() => setPlannerView("notices")}
               view={plannerView}
               onView={setPlannerView}
-              notices={<NoticeBoard schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
+              notices={<NoticeBoard school={school} schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
               noticeAction={
                 !viewOnly && (
                   <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
@@ -1006,6 +1023,30 @@ export default function App() {
           </>
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} noUpload={computerOnly} onOpenStudent={(id) => openStudent(id)} /> : null} />
+        ) : mode === "certificates" && isAdmin ? (
+          <CertificatesRegister school={school} />
+        ) : mode === "admissions" && leads ? (
+          <AdmissionsPage
+            school={school}
+            grades={schoolGrades}
+            sessions={sessions}
+            current={currentSession}
+            students={current}
+            routes={routes}
+            me={user.email}
+            readOnly={isPrincipal}
+            view={admissionsView}
+            onView={setAdmissionsView}
+            addAt={quick.kind === "enquiry" ? quick.at : 0}
+            onSchoolSaved={setSchool}
+            onGradesSaved={loadGrades}
+            onSessionsChanged={reloadSessions}
+            onAdmitted={reload}
+            onOpenStudent={(id) => {
+              switchMode("students");
+              openStudent(id);
+            }}
+          />
         ) : mode === "requests" ? (
           <InboxPage
             filter={inboxView}

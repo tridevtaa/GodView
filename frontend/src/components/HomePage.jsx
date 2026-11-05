@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
+import { admissionFollowUpsDue, listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
 import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
@@ -206,6 +206,13 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // The thin banner up top: reminders first, then notices and what's on
   const upcoming = useUpcoming(school.id, true, 14);
   const todayIso = new Date().toISOString().slice(0, 10);
+  const [admissionsDue, setAdmissionsDue] = useState(0);
+  useEffect(() => {
+    if (!leads) return;
+    const d = new Date();
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    admissionFollowUpsDue(school.id, local).then((c) => setAdmissionsDue(Number(c) || 0), () => {});
+  }, [school.id, leads]);
   const shortDay = (d) => (d === todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
   const tickerItems = [
     left > 0 && {
@@ -215,6 +222,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       text: today?.marked ? `${left} class${left === 1 ? " hasn’t" : "es haven’t"} marked attendance yet` : "Attendance isn’t marked yet today",
       onClick: go("attendance"),
     },
+    admissionsDue > 0 && { key: "adm", icon: "newAdmission", tone: "teal", text: `${n(admissionsDue)} admission follow-up${admissionsDue === 1 ? "" : "s"} due`, onClick: go("admissions") },
     isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${studentCount(overdue)} ${overdue === 1 ? "has" : "have"} overdue fees`, onClick: go("fees") },
     !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
     ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
@@ -390,7 +398,7 @@ function NoticeBanner({ notices, urls, onOpenNotices }) {
 // Everyday shortcuts under the top card, one button each: the + menu's
 // actions, as [key, label, icon]. Computers only; on phones the + beside the
 // search does the same job.
-const ACTION_TONE = { bulk: "violet", student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
+const ACTION_TONE = { bulk: "violet", enquiry: "teal", student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
 
 function QuickActionsRow({ actions, onAction }) {
   if (!actions.length) return null;

@@ -300,7 +300,7 @@ export default function ParentApp({ phone }) {
                     <Icon name="notice" /> Noticeboard
                   </h2>
                 </div>
-                <NoticeBoard schoolId={child.school_id} since={since} />
+                <NoticeBoard school={school} schoolId={child.school_id} since={since} />
               </>
             )}
             {tab === "home" && <NotifyPrompt text="Get notified about school messages and notices." />}

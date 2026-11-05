@@ -1566,11 +1566,11 @@ export async function listNotices(schoolId) {
   );
 }
 
-export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null, category = null }) {
+export async function postNotice(schoolId, { title, body, for_parents, event_on = null, image_path = null, category = null, letterhead = false, signed_by = null }) {
   const saved = must(
     await supabase
       .from("notices")
-      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, event_on: event_on || null, image_path, category: category || null })
+      .insert({ school_id: schoolId, title: title.trim(), body: body.trim(), for_parents, letterhead, signed_by: letterhead ? signed_by?.trim() || "Principal" : null, event_on: event_on || null, image_path, category: category || null })
       .select()
       .single()
   );
@@ -1694,8 +1694,9 @@ export async function deletePerson(kind, person) {
 }
 
 // A student who has left: kept with every record, off the lists.
-export async function markStudentLeft(id, sessionId) {
-  const today = new Date().toISOString().slice(0, 10);
+// onDate: the day they left, if it wasn't today.
+export async function markStudentLeft(id, sessionId, onDate = null) {
+  const today = onDate ?? new Date().toISOString().slice(0, 10);
   must(await supabase.from("students").update({ status: "left", left_on: today }).eq("id", id));
   if (sessionId) must(await supabase.from("student_enrolments").update({ status: "left" }).eq("student_id", id).eq("session_id", sessionId));
   return { status: "left", left_as_of: today };
@@ -1754,4 +1755,93 @@ export async function askConcierge(schoolId, body) {
     throw e;
   }
   return data;
+}
+
+// ------------------------------------------------------------- admissions ---
+// A child's way in: enquiry, registered, admitted (or lost). See AdmissionsPage.
+
+export async function listAdmissions(schoolId) {
+  return all(() => supabase.from("admissions").select("*").eq("school_id", schoolId).order("created_at", { ascending: false }).order("id"));
+}
+
+export async function addEnquiry(schoolId, fields) {
+  return must(await supabase.from("admissions").insert({ ...fields, school_id: schoolId }).select().single());
+}
+
+export async function updateAdmission(id, fields) {
+  return must(await supabase.from("admissions").update(fields).eq("id", id).select().single());
+}
+
+// Gives it a registration number and, with a fee, a receipt number.
+export async function registerAdmission(id, { fee = 0, method = null, reference = null, paid_on = null }) {
+  return must(await supabase.rpc("register_admission", { p_id: id, p_fee: fee, p_method: method, p_reference: reference, p_paid_on: paid_on }));
+}
+
+// Once the student exists (same id): marks it admitted, and turns a fee the
+// school counts towards fees into a payment.
+export async function finishAdmission(id) {
+  return must(await supabase.rpc("finish_admission", { p_id: id }));
+}
+
+export async function admissionStudentExists(id) {
+  return Boolean(must(await supabase.from("students").select("id").eq("id", id).maybeSingle()));
+}
+
+// Takes its documents too: nobody admitted, so nothing else needs them.
+export async function deleteAdmission(a) {
+  const paths = [a.aadhaar_doc_path, a.birth_cert_path, a.transfer_cert_path].filter(Boolean);
+  if (paths.length) await supabase.storage.from(STUDENT_DOCS_BUCKET).remove(paths);
+  must(await supabase.from("admissions").delete().eq("id", a.id));
+}
+
+export async function saveAdmissionSettings(schoolId, { mode, fee, test }) {
+  return must(await supabase.rpc("set_admission_settings", { p_school: schoolId, p_mode: mode, p_fee: fee, p_test: test }));
+}
+
+// seats: { grade code: number or "" }
+export async function saveGradeSeats(schoolId, seats) {
+  must(await supabase.rpc("set_grade_seats", { p_school: schoolId, p_seats: seats }));
+}
+
+// How many active students each class has in a session, for "seats left".
+export async function seatsTaken(sessionId) {
+  const rows = await all(() => supabase.from("student_enrolments").select("class, student_id, student:students!inner(status)").eq("session_id", sessionId).eq("student.status", "active").order("student_id"));
+  const taken = new Map();
+  for (const r of rows) taken.set(r.class, (taken.get(r.class) ?? 0) + 1);
+  return taken;
+}
+
+// Open enquiries and registrations with a follow-up due, for Home.
+export async function admissionFollowUpsDue(schoolId, today) {
+  const { count, error } = await supabase.from("admissions").select("id", { count: "exact", head: true }).eq("school_id", schoolId).in("stage", ["enquiry", "registered"]).lte("follow_up", today);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+// ------------------------------------------------------------ certificates ---
+// A student's certificates, newest first. See CertificatesTab.
+
+export async function listCertificates(studentId) {
+  return must(await supabase.from("student_certificates").select("*").eq("student_id", studentId).order("created_at", { ascending: false }));
+}
+
+// The whole school's register, newest first.
+export async function listSchoolCertificates(schoolId) {
+  return all(() => supabase.from("student_certificates").select("*").eq("school_id", schoolId).order("created_at", { ascending: false }).order("id"));
+}
+
+// Gives it the next serial number. A no dues certificate is refused while
+// anything is due.
+export async function issueCertificate(studentId, kind, details, issuedOn) {
+  return must(await supabase.rpc("issue_certificate", { p_student: studentId, p_kind: kind, p_details: details, p_issued_on: issuedOn }));
+}
+
+export async function cancelCertificate(id, reason) {
+  return must(await supabase.rpc("cancel_certificate", { p_id: id, p_reason: reason }));
+}
+
+// Days marked for a student in a session, and how many of them present.
+export async function attendanceTotals(studentId, sessionId) {
+  const rows = await all(() => supabase.from("attendance").select("status, day").eq("student_id", studentId).eq("session_id", sessionId).order("day"));
+  return { working: rows.length, present: rows.filter((r) => r.status === "present" || r.status === "late").length };
 }

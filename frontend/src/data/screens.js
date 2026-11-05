@@ -26,7 +26,7 @@ export const SCREEN_AT = {
 };
 
 // The top bar section a page lights up
-export const SECTION_OF = { homework: "academics", calendar: "planner" };
+export const SECTION_OF = { homework: "academics", calendar: "planner", admissions: "students", certificates: "students" };
 
 // section: which top bar section it's under, for the More sheet's groups
 // computerOnly: an owner or admin on a phone, without the reports and fee
@@ -36,6 +36,8 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
     { key: "home", label: "Home", icon: "home", words: "dashboard" },
     { key: "students", label: "Students", icon: "scholar", words: "admissions" },
     { key: "requests", label: "Inbox", icon: "plane", words: "messages parents chat" },
+    ...(leads ? [{ key: "admissions", label: "Admissions", icon: "newAdmission", section: "students", words: "enquiry enquiries registration register new applicant" }] : []),
+    ...(isAdmin ? [{ key: "certificates", label: "Certificates", icon: "certificate", section: "students", words: "bona fide slc tc transfer leaving no dues character fee paid date of birth register" }] : []),
     ...(isAdmin
       ? [
           { key: "fees", label: "Fees", icon: "rupee", section: "fees", words: "dues overdue pending overview" },
@@ -65,4 +67,4 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
   ];
 }
 
-export const SECTION_LABEL = { academics: "Academics", fees: "Fees", planner: "Planner", requests: "Inbox", school: "School" };
+export const SECTION_LABEL = { students: "Students", academics: "Academics", fees: "Fees", planner: "Planner", requests: "Inbox", school: "School" };

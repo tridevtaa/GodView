@@ -8,7 +8,7 @@ import Icon from "./Icon.jsx";
 const fmt = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
 
 // Printable fee receipt. `dues` are the student's dues (to name what was paid).
-export default function Receipt({ school, person, payment, dues, onClose }) {
+export default function Receipt({ school, person, payment, dues, onClose, idLabel = "Admission no." }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -64,7 +64,7 @@ export default function Receipt({ school, person, payment, dues, onClose }) {
               <dd>{person.name}</dd>
             </div>
             <div>
-              <dt>Admission no.</dt>
+              <dt>{idLabel}</dt>
               <dd>{person.admission_no}</dd>
             </div>
             <div>

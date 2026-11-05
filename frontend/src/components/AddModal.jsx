@@ -51,7 +51,8 @@ function suggestAdmissionNo(students, grade) {
   return prefix + String(next).padStart(width, "0");
 }
 
-export default function AddModal({ mode, schoolId, grades = [], routes = [], students = [], onClose, onSave, onManageRoutes }) {
+// initial: starts filled in, keeping this id (admitting from Admissions).
+export default function AddModal({ mode, schoolId, grades = [], routes = [], students = [], onClose, onSave, onManageRoutes, initial = null, saveLabel = null }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -61,7 +62,7 @@ export default function AddModal({ mode, schoolId, grades = [], routes = [], stu
   return (
     <div className="modal-backdrop" onClick={onClose}>
       {mode === "students" ? (
-        <AddStudent schoolId={schoolId} grades={grades} routes={routes} students={students} onClose={onClose} onSave={onSave} onManageRoutes={onManageRoutes} />
+        <AddStudent schoolId={schoolId} grades={grades} routes={routes} students={students} onClose={onClose} onSave={onSave} onManageRoutes={onManageRoutes} initial={initial} saveLabel={saveLabel} />
       ) : (
         <AddEmployee onClose={onClose} onSave={onSave} />
       )}
@@ -69,13 +70,13 @@ export default function AddModal({ mode, schoolId, grades = [], routes = [], stu
   );
 }
 
-function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onManageRoutes }) {
+function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onManageRoutes, initial, saveLabel }) {
   const [step, setStep] = useState(0);
   // Generated up front so documents can be uploaded to their final storage
   // path (keyed by this id) before the student row exists; save() passes
   // the same id to onSave so the insert lands at that path.
-  const [studentId] = useState(() => crypto.randomUUID());
-  const [docs, setDocs] = useState({});
+  const [studentId] = useState(() => initial?.id ?? crypto.randomUUID());
+  const [docs, setDocs] = useState(() => initial?.docs ?? {});
   // Checked when the parent doesn't have the transfer certificate on hand
   // yet: the admission isn't held up for it, but it's tracked as owed
   // (transfer_cert_pending) until someone uploads it.
@@ -97,8 +98,9 @@ function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onMan
     parent_phone: "",
     mother_phone: "",
     email: "",
+    ...initial?.form,
   });
-  const [home, setHome] = useState(null);
+  const [home, setHome] = useState(() => initial?.home ?? null);
   const [transport, setTransport] = useState({ uses_bus: false, bus_stop_id: null });
   const [suggested, setSuggested] = useState("");
   const [saving, setSaving] = useState(false);
@@ -145,6 +147,11 @@ function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onMan
     }));
     setSuggested(next);
   }
+
+  // Admitting: the class is already known, so suggest its next number.
+  useEffect(() => {
+    if (initial?.form?.class) pickGrade(initial.form.class);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const taken = form.admission_no.trim() && students.some((s) => s.admission_no?.toLowerCase() === form.admission_no.trim().toLowerCase());
   // The school's entry grade (Nursery, or whichever sorts lowest) is the one
@@ -395,7 +402,7 @@ function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onMan
             </button>
           )}
           <button type="submit" className="btn btn-primary" disabled={saving || !stepOk[step]}>
-            {last ? (saving ? "Adding…" : "Add student") : "Next"}
+            {last ? (saving ? "Saving…" : saveLabel ?? "Add student") : "Next"}
             {!last && <Icon name="arrowRight" />}
           </button>
         </span>
@@ -406,7 +413,7 @@ function AddStudent({ schoolId, grades, routes, students, onClose, onSave, onMan
 
 // One document upload slot (Aadhaar, birth certificate, transfer
 // certificate): a photo or PDF, uploaded as soon as it's picked.
-function DocPicker({ label, kind, doc, onPick }) {
+export function DocPicker({ label, kind, doc, onPick }) {
   const saved = Boolean(doc?.name) && !doc?.busy && !doc?.error;
   return (
     <label className="field-block doc-pick">
