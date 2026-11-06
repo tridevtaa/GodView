@@ -153,11 +153,8 @@ export default function NoticeBoard({ school, schoolId, me, isAdmin = false, com
   const [viewing, setViewing] = useState(null); // picture shown full size
   const [letter, setLetter] = useState(null); // notice opened as a letter
   const urls = useImageUrls(notices);
-  // All, or only the students' wins (notices tagged with a category).
-  const [picked, setOnly] = useState("all");
-  const hasWins = (notices ?? []).some((n) => n.category);
-  const only = hasWins ? picked : "all";
-  const shown = only === "wins" ? notices?.filter((n) => n.category) : notices;
+  // News and the students' wins in one list: a win carries its tag.
+  const shown = notices;
   const canPost = Boolean(me);
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
 
@@ -198,22 +195,10 @@ export default function NoticeBoard({ school, schoolId, me, isAdmin = false, com
           )}
         </div>
       )}
-      {hasWins && (
-        <nav className="segmented segmented-sm nb-filter" aria-label="Show">
-          {[
-            ["all", "All"],
-            ["wins", "News & Achievements"],
-          ].map(([v, l]) => (
-            <button key={v} className={only === v ? "active" : ""} onClick={() => setOnly(v)}>
-              {l}
-            </button>
-          ))}
-        </nav>
-      )}
       {shown?.length > 0 && (
         <ul className="nb-list">
           {shown.map((n, i) => (
-            <Notice key={n.id} n={n} image={urls.get(n.image_path)} onView={setViewing} onLetter={setLetter} index={i} fresh={Boolean(since && n.created_at > since)} staffView={canPost} manage={canManage(n)} onPin={() => pin(n)} onRemove={() => remove(n)} />
+            <Notice key={n.id} n={n} school={school} image={urls.get(n.image_path)} onView={setViewing} onLetter={setLetter} index={i} fresh={Boolean(since && n.created_at > since)} staffView={canPost} manage={canManage(n)} onPin={() => pin(n)} onRemove={() => remove(n)} />
           ))}
         </ul>
       )}
@@ -226,7 +211,7 @@ export default function NoticeBoard({ school, schoolId, me, isAdmin = false, com
 
 // One notice. Long text is cut to four lines with Read more, only when it
 // really is cut (measured, so wide screens don't offer it for nothing).
-function Notice({ n, image, onView, onLetter, index, fresh, staffView, manage, onPin, onRemove }) {
+function Notice({ n, school, image, onView, onLetter, index, fresh, staffView, manage, onPin, onRemove }) {
   const [expanded, setExpanded] = useState(false);
   const [cut, setCut] = useState(false);
   const body = useRef(null);
@@ -240,7 +225,7 @@ function Notice({ n, image, onView, onLetter, index, fresh, staffView, manage, o
     return () => ro.disconnect();
   }, [n.body, expanded]);
   return (
-    <li className={`nb-item${n.pinned ? " is-pinned" : ""}${showsImage(n) ? " has-image" : ""}`} style={{ "--d": `${Math.min(index, 8) * 45}ms` }}>
+    <li className={`nb-item${n.pinned ? " is-pinned" : ""}${showsImage(n) || n.letterhead ? " has-image" : ""}`} style={{ "--d": `${Math.min(index, 8) * 45}ms` }}>
       {/* The picture as a cover, the date leaf pinned on it */}
       {showsImage(n) && (
         <button className="nb-cover" onClick={() => image && onView(image)} aria-label="View picture">
@@ -248,8 +233,17 @@ function Notice({ n, image, onView, onLetter, index, fresh, staffView, manage, o
           {n.event_on && <DateLeaf date={n.event_on} />}
         </button>
       )}
+      {/* A letter: the page itself, small, as the cover; tap to read it whole */}
+      {n.letterhead && (
+        <button className="nb-cover nb-letter-cover" onClick={() => onLetter(n)} aria-label={`Open the letter: ${n.title}`}>
+          <span className="nb-letter-paper" aria-hidden="true">
+            <LetterPage school={school} title={n.title} body={n.body} forParents={n.for_parents} signedBy={n.signed_by} date={n.created_at} />
+          </span>
+          {n.event_on && <DateLeaf date={n.event_on} />}
+        </button>
+      )}
       <div className="nb-head">
-        {n.event_on && !showsImage(n) && <DateLeaf date={n.event_on} />}
+        {n.event_on && !showsImage(n) && !n.letterhead && <DateLeaf date={n.event_on} />}
         <h3>{n.title}</h3>
         {n.category && CATEGORY[n.category] && <span className={`achv-tag t-${CATEGORY[n.category].tone}`}>{CATEGORY[n.category].label}</span>}
         {n.pinned && !manage && (
@@ -259,21 +253,15 @@ function Notice({ n, image, onView, onLetter, index, fresh, staffView, manage, o
         )}
         {fresh && <span className="pa-new-tag">New</span>}
       </div>
-      {n.body && (
+      {n.body && !n.letterhead && (
         <p ref={body} className={`nb-body${expanded ? "" : " is-clamped"}`}>
           {n.body}
         </p>
       )}
-      {n.letterhead ? (
-        <button className="link-btn nb-more nb-letter-open" onClick={() => onLetter(n)}>
-          <Icon name="file" size={15} /> View letter
+      {!n.letterhead && (cut || expanded) && (
+        <button className="link-btn nb-more" onClick={() => setExpanded((e) => !e)}>
+          {expanded ? "Show less" : "Read more"}
         </button>
-      ) : (
-        (cut || expanded) && (
-          <button className="link-btn nb-more" onClick={() => setExpanded((e) => !e)}>
-            {expanded ? "Show less" : "Read more"}
-          </button>
-        )
       )}
       <div className="nb-foot">
         <span className="row-sub">
