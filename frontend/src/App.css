@@ -19908,10 +19908,73 @@ button.class-face:hover {
   margin: 24px 0 0;
 }
 
-.nb-letter-open {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* A letter on the noticeboard: the page, small, its top half showing */
+.nb-letter-cover {
+  aspect-ratio: auto;
+  height: 300px;
+  background: #eceae6;
+  cursor: pointer;
+}
+
+.nb-letter-paper {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: min(560px, 86%);
+  height: calc(100% - 18px);
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+  text-align: left;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+/* Drawn at full size and shrunk, so it looks like the printed page */
+.nb-letter-paper .letter {
+  width: 160%;
+  padding: 24px 30px;
+  overflow: visible;
+  transform: scale(0.625);
+  transform-origin: top left;
+}
+
+.nb-letter-paper::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 70px;
+  background: linear-gradient(transparent, #fff);
+  content: "";
+}
+
+/* Not a photo: no dark fade, and the logo shows as it is */
+.nb-letter-cover::after {
+  display: none;
+}
+
+.nb-letter-cover .letter-head img {
+  width: auto;
+  height: auto;
+  max-width: 180px;
+  max-height: 84px;
+  object-fit: contain;
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+.nb-letter-cover .date-leaf {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+}
+
+.nb-letter-cover:hover .nb-letter-paper {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
 }
 
 .nb-letter-hint {
