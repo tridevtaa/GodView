@@ -1,27 +1,63 @@
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "./Logo.jsx";
 import Icon from "./Icon.jsx";
-import { AttendanceMock, FeeMock, MapMock, ParentMock } from "./LandingMocks.jsx";
+import {
+  AdmissionsMock,
+  AttendanceMock,
+  CertificateMock,
+  FeeMock,
+  GoddessMock,
+  HomeMock,
+  LetterMock,
+  MapMock,
+  ParentMock,
+} from "./LandingMocks.jsx";
 import { parentLoginLive } from "../pwa/install.js";
 import "./landing.css";
 
 // Public page at godview.in for anyone not signed in. Claims are limited to
 // what Godview does today: no invented customers, numbers or certifications.
-//
-// Photos: drop files into frontend/public/landing/ with the names in PHOTOS;
-// until then each slot shows a drawn illustration instead.
+// Every picture is a drawn product preview (LandingMocks.jsx), not a photo.
 
-const PHOTOS = {
-  hero: { src: "/landing/hero.jpg", alt: "Students learning together in a classroom", art: "classroom" },
-  success: { src: "/landing/success.jpg", alt: "Students cheering together", art: "trophy" },
-};
-
-const ROTATING = ["student", "absence", "fee", "homework", "village", "result"];
+const ROTATING = ["student", "admission", "absence", "fee", "homework", "village", "result"];
 
 const MARQUEE = [
-  "Attendance", "Parent app", "Homework", "Datesheet and syllabus", "Calendar", "Noticeboard",
-  "Notifications", "Fee structure", "Printed receipts", "Student map", "Bus routes", "Exam results",
-  "Marks from a sheet", "Excel import", "Call and WhatsApp", "Owner · Admin · Principal · Teacher", "Data in India",
+  "Admissions", "Certificates", "Letterhead notices", "Attendance", "Parent app", "Homework",
+  "Datesheet and syllabus", "Timetable", "Calendar", "Noticeboard", "Fee structure", "Printed receipts",
+  "Fee reports", "Bulk messages", "Student map", "Buses and routes", "Exam results", "Student documents",
+  "Excel import", "Goddess AI assistant", "Owner · Admin · Principal · Teacher", "Data in India",
+];
+
+// What's new: pinned on computers, the picture changing as each one scrolls past.
+const NEW = [
+  {
+    mock: AdmissionsMock,
+    kicker: "Admissions",
+    title: "From first enquiry to first day.",
+    body: "Note every enquiry, register with a fee and a printed receipt, then admit in one step. Their details and documents carry over, so nothing is typed twice.",
+    points: ["An optional test or interview step", "Seats per class, with a warning when full", "Registration fee kept apart or counted towards fees"],
+  },
+  {
+    mock: CertificateMock,
+    kicker: "Certificates",
+    title: "Certificates in a few clicks.",
+    body: "Bona fide, leaving (SLC), no dues, character, fee paid and date of birth, filled in from the student’s record and printed on your letterhead.",
+    points: ["Serial numbers kept in a register", "No dues refused while fees are due", "A second SLC is marked duplicate"],
+  },
+  {
+    mock: LetterMock,
+    kicker: "Letters",
+    title: "Notices on your letterhead.",
+    body: "Write a notice and Godview sets it as a letter with your school’s name and logo, a greeting and a signature. Families see the letter itself, next to news and achievements.",
+    points: ["For parents, staff or both", "Ready to print", "Owners and admins only"],
+  },
+  {
+    mock: GoddessMock,
+    kicker: "Goddess · Premium",
+    title: "Ask your school anything.",
+    body: "An AI assistant for owners, admins and principals. Type or speak a question and she answers from your school’s own data.",
+    points: ["Answers by voice or text", "Fees and attendance cards on request", "Insights on fees, transport and results"],
+  },
 ];
 
 const BENEFITS = [
@@ -53,21 +89,21 @@ const SPOTLIGHTS = [
     kicker: "Fees",
     title: "Set your fees once. Dues follow.",
     body: "Add a fee, choose how often it falls due (monthly, bi-annually, one time or your own months) and fill in an amount for each grade, split by stream for 11th and 12th. One click creates every student’s dues.",
-    points: ["Collect a fee from the + on any page", "Print one-page receipts", "Parents get a weekly nudge for overdue fees"],
+    points: ["Collected today and the last 7 days at a glance", "Print one-page receipts", "Reminders to parents before and after the due date"],
   },
   {
     mock: MapMock,
     kicker: "Student map and transport",
     title: "See where your students come from.",
     body: "Every student is placed by their village, with rings at 5, 10 and 15 km around the school. Set up bus routes with their stops in order and see how many children board at each one.",
-    points: ["Click a village to see exactly who lives there", "Students per stop and per route", "Only owners and admins can see it"],
+    points: ["Click a village to see exactly who lives there", "Buses with their drivers and papers", "Only owners and admins can see it"],
   },
 ];
 
 const ROLES = [
   ["Owner", "Sets the fee structure, approves staff, assigns classes, edits the school profile and approves exports."],
-  ["Admin", "Runs the office: students, fees and receipts, bus routes, the calendar and the student map."],
-  ["Principal", "Sees the whole school, from attendance to results, and answers parents\u2019 messages. Looks, never edits."],
+  ["Admin", "Runs the office: admissions, students, fees and receipts, certificates, bus routes and the calendar."],
+  ["Principal", "Sees the whole school, from attendance to results, and answers parents’ messages. Looks, never edits."],
   ["Teacher", "Sees only their classes, without parents’ phone numbers. Takes attendance, sets homework and marks, and messages parents."],
 ];
 
@@ -81,6 +117,7 @@ const JOURNEY = [
 const NEXT = [
   ["bus", "Live bus tracking", "Parents and the school see where the bus is and when it will reach each stop."],
   ["whatsapp", "WhatsApp sign-in", "Parents sign in with a one-time code sent on WhatsApp, with no password to remember."],
+  ["newAdmission", "Online enquiries", "A link and QR code for your website and banners. Enquiries land straight in Admissions."],
 ];
 
 const TRUST = [
@@ -91,14 +128,18 @@ const TRUST = [
   "Each school’s data is walled off from every other",
 ];
 
-const PREVIEW = [
-  ["AS", "Aarav Sharma", "Grade 3", "#dbeafe", "paid"],
-  ["IK", "Ishita Kaur", "Grade 3", "#fce7f3", "due"],
-  ["RV", "Rohan Verma", "Grade 4", "#dcfce7", "paid"],
-  ["MJ", "Meera Joshi", "Grade 4", "#fef3c7", "paid"],
-  ["KS", "Kabir Singh", "Grade 5", "#ede9fe", "overdue"],
-  ["AN", "Anaya Negi", "Grade 5", "#e0f2fe", "paid"],
+const LINKS = [
+  ["benefits", "Why Godview"],
+  ["new", "What’s new"],
+  ["features", "Features"],
+  ["journey", "How it works"],
+  ["privacy", "Privacy"],
 ];
+const LINK_IDS = LINKS.map(([id]) => id);
+
+// Width the hero's dashboard is drawn at; it is scaled to fit the screen.
+// Phones show its left part, closer up, so it stays readable.
+const homeWidth = () => (window.innerWidth <= 640 ? 720 : 1120);
 
 // ------------------------------------------------------------- motion ---
 
@@ -127,17 +168,20 @@ function useReveal(root) {
   }, [root]);
 }
 
-// Page scroll as a CSS variable (for parallax) and a "scrolled" flag for the nav.
+// Page scroll as CSS variables (the hero, the progress bar) and a "scrolled"
+// flag for the nav.
 function useScrollVars(root) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    if (reducedMotion()) return;
     let frame = 0;
     const onScroll = () => {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        root.current?.style.setProperty("--scroll", String(window.scrollY));
-        setScrolled(window.scrollY > 12);
+        const y = window.scrollY;
+        const room = document.documentElement.scrollHeight - window.innerHeight;
+        if (!reducedMotion()) root.current?.style.setProperty("--scroll", String(y));
+        root.current?.style.setProperty("--progress", String(room <= 0 ? 0 : y >= room - 1 ? 1 : y / room));
+        setScrolled(y > 12);
       });
     };
     onScroll();
@@ -148,6 +192,69 @@ function useScrollVars(root) {
     };
   }, [root]);
   return scrolled;
+}
+
+// Scales a fixed-width drawing to the width of its box, as --k.
+function useFit(box, width) {
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const fit = () => el.style.setProperty("--k", String(Math.min(1, el.clientWidth / width())));
+    fit();
+    if (!("ResizeObserver" in window)) return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [box, width]);
+}
+
+// The nav link of the section in the middle of the screen.
+function useSpy(ids) {
+  const [on, setOn] = useState(null);
+  useEffect(() => {
+    if (!("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) =>
+          setOn((cur) => (e.isIntersecting ? e.target.id : cur === e.target.id ? null : cur))
+        ),
+      { rootMargin: "-50% 0px -50% 0px" }
+    );
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+    return () => io.disconnect();
+  }, [ids]);
+  return on;
+}
+
+// Which What's new step is in the middle of the screen.
+function useActiveStep(list) {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const steps = list.current?.querySelectorAll("[data-step]") ?? [];
+    if (!("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(Number(e.target.dataset.step))),
+      { rootMargin: "-45% 0px -45% 0px" }
+    );
+    steps.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [list]);
+  return active;
+}
+
+// A heading whose words rise into place one after another once it's in view.
+function Words({ text }) {
+  return text.split(" ").map((w, i) => (
+    <span key={i}>
+      {i > 0 && " "}
+      <span className="lp-w" style={{ "--w": i }}>
+        <span>{w}</span>
+      </span>
+    </span>
+  ));
 }
 
 function RotatingWord() {
@@ -166,47 +273,29 @@ function RotatingWord() {
   );
 }
 
-// ------------------------------------------------------------- photos ---
-
-// Drawn stand-ins shown until a real photo is added.
-function Art({ kind }) {
-  const common = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" };
-  const shapes = {
-    classroom: (
-      <>
-        <rect x="38" y="30" width="124" height="70" rx="6" {...common} />
-        <path d="M58 52h50M58 66h80M58 80h36" {...common} />
-        <circle cx="60" cy="128" r="12" {...common} />
-        <circle cx="100" cy="128" r="12" {...common} />
-        <circle cx="140" cy="128" r="12" {...common} />
-        <path d="M44 162c4-12 28-12 32 0M84 162c4-12 28-12 32 0M124 162c4-12 28-12 32 0" {...common} />
-      </>
-    ),
-    trophy: (
-      <>
-        <path d="M70 40h60v30c0 22-14 36-30 36S70 92 70 70V40Z" {...common} />
-        <path d="M70 52H52c0 20 10 30 22 30M130 52h18c0 20-10 30-22 30M100 106v24M78 154h44M86 130h28v24H86z" {...common} />
-        <path d="m40 34 4 8 8 2-8 3-4 8-3-8-8-3 8-2 3-8ZM160 120l3 6 6 2-6 2-3 6-2-6-6-2 6-2 2-6Z" {...common} />
-      </>
-    ),
-  };
+function Checks({ points }) {
   return (
-    <svg className="lp-art" viewBox="0 0 200 190" aria-hidden="true">
-      {shapes[kind]}
-    </svg>
+    <ul className="lp-checks">
+      {points.map((p, i) => (
+        <li key={p} style={{ "--i": i }}>
+          <Icon name="check" size={16} />
+          {p}
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function PhotoSlot({ name, className = "" }) {
-  const { src, alt, art } = PHOTOS[name];
-  const [state, setState] = useState("loading"); // loading | ok | missing
+// Section title: a hairline, the kicker, the heading and an optional line.
+function Head({ kicker, title, sub, light }) {
   return (
-    <figure className={`lp-photo lp-photo-${name} ${className} is-${state}`}>
-      {state !== "missing" && (
-        <img src={src} alt={alt} loading="lazy" onLoad={() => setState("ok")} onError={() => setState("missing")} />
-      )}
-      {state !== "ok" && <Art kind={art} />}
-    </figure>
+    <div className="lp-head" data-reveal>
+      <span className={`lp-kicker${light ? " lp-kicker-light" : ""}`}>{kicker}</span>
+      <h2 className="lp-h2">
+        <Words text={title} />
+      </h2>
+      {sub && <p className="lp-sub">{sub}</p>}
+    </div>
   );
 }
 
@@ -214,32 +303,36 @@ function PhotoSlot({ name, className = "" }) {
 
 export default function Landing({ onLogin, onParentLogin, error, busy }) {
   const root = useRef(null);
-  const preview = useRef(null);
+  const steps = useRef(null);
+  const screen = useRef(null);
   useReveal(root);
   const scrolled = useScrollVars(root);
+  const spied = useSpy(LINK_IDS);
+  const step = useActiveStep(steps);
+  useFit(screen, homeWidth);
+  const toStep = (i) =>
+    steps.current
+      ?.querySelector(`[data-step="${i}"]`)
+      ?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
 
-  // Preview leans toward the pointer.
-  function tilt(e) {
-    if (reducedMotion() || !preview.current) return;
-    const r = preview.current.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    preview.current.style.setProperty("--rx", `${(-y * 8).toFixed(2)}deg`);
-    preview.current.style.setProperty("--ry", `${(x * 10).toFixed(2)}deg`);
-  }
-  const untilt = () => {
-    preview.current?.style.setProperty("--rx", "0deg");
-    preview.current?.style.setProperty("--ry", "0deg");
-  };
+  const secondCta = parentLoginLive ? (
+    <button className="btn lp-btn-lg lp-ghost" onClick={onParentLogin}>
+      <Icon name="phone" />
+      I’m a parent
+    </button>
+  ) : (
+    <button className="btn lp-btn-lg lp-ghost" onClick={onLogin} disabled={busy}>
+      Join with a school code
+    </button>
+  );
 
   return (
     <div className="lp" ref={root}>
-      <div className="lp-bg" aria-hidden="true">
-        <span className="lp-blob lp-blob-1" />
-        <span className="lp-blob lp-blob-2" />
-        <span className="lp-blob lp-blob-3" />
-        <span className="lp-gridlines" />
-      </div>
+      <a className="lp-announce" href="#new">
+        <span className="lp-announce-tag">New</span>
+        Admissions, certificates and letters
+        <Icon name="arrowRight" size={14} />
+      </a>
 
       <header className={`lp-nav${scrolled ? " is-scrolled" : ""}`}>
         <div className="lp-wrap lp-nav-inner">
@@ -248,91 +341,72 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
             <span className="logo-word">Godview</span>
           </a>
           <nav className="lp-links" aria-label="Page">
-            <a href="#benefits">Why Godview</a>
-            <a href="#features">Features</a>
-            <a href="#journey">How it works</a>
-            <a href="#privacy">Privacy</a>
+            {LINKS.map(([id, label]) => (
+              <a key={id} href={`#${id}`} className={spied === id ? "is-on" : ""}>
+                {label}
+              </a>
+            ))}
           </nav>
           <div className="lp-nav-actions">
             {parentLoginLive && (
-              <button className="btn btn-secondary lp-parent" onClick={onParentLogin}>
+              <button className="btn lp-parent" onClick={onParentLogin}>
                 Parent login
               </button>
             )}
-            <button className="btn btn-primary lp-login" onClick={onLogin} disabled={busy}>
+            <button className="btn lp-login" onClick={onLogin} disabled={busy}>
               Log in
             </button>
           </div>
         </div>
+        <span className="lp-progress" aria-hidden="true" />
       </header>
 
       <main>
         {/* ------------------------------------------------------- hero */}
         <section className="lp-hero">
-          <div className="lp-wrap lp-hero-inner">
-            <div className="lp-hero-copy">
-              <span className="lp-eyebrow lp-enter" style={{ "--d": "0ms" }}>
-                <span className="lp-spark" /> School management for Indian schools
-              </span>
-              <h1 className="lp-enter" style={{ "--d": "80ms" }}>
-                See every
-                <br />
-                <RotatingWord />
-                <br />
-                at a glance.
-              </h1>
-              <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
-                Attendance, fees, homework and results in one beautiful place, with an app for parents, the right
-                access for every role and your data kept in India.
-              </p>
-              <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
-                <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
-                  Log in with Google
-                  <Icon name="chevronDown" className="lp-arrow" />
-                </button>
-                {parentLoginLive ? (
-                  <button className="btn btn-secondary lp-btn-lg" onClick={onParentLogin}>
-                    <Icon name="phone" />
-                    I’m a parent
-                  </button>
-                ) : (
-                  <button className="btn btn-secondary lp-btn-lg" onClick={onLogin} disabled={busy}>
-                    Join with a school code
-                  </button>
-                )}
-              </div>
-              {error && <p className="field-error">{error}</p>}
-              <p className="lp-note lp-enter" style={{ "--d": "320ms" }}>
-                Staff: sign in with Google, then enter the join code from your school office.
-                {parentLoginLive && " Parents: log in with the mobile number the school has on record."}
-              </p>
-            </div>
+          <div className="lp-sky" aria-hidden="true">
+            <span className="lp-aurora lp-aurora-1" />
+            <span className="lp-aurora lp-aurora-2" />
+            <span className="lp-aurora lp-aurora-3" />
+            <span className="lp-stars" />
+            <span className="lp-stars lp-stars-2" />
+            <span className="lp-horizon" />
+          </div>
 
-            <div className="lp-hero-visual" onMouseMove={tilt} onMouseLeave={untilt}>
-              <PhotoSlot name="hero" className="lp-hero-photo lp-enter" />
-              <div className="lp-preview lp-enter" style={{ "--d": "200ms" }} ref={preview} aria-hidden="true">
-                <div className="lp-preview-bar">
+          <div className="lp-wrap lp-hero-copy">
+            <h1 className="lp-enter" style={{ "--d": "80ms" }}>
+              See every
+              <br />
+              <RotatingWord />
+              <br />
+              at a glance.
+            </h1>
+            <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
+              One app for your whole school. Made for India.
+            </p>
+            <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
+              <button className="btn lp-btn-lg lp-solid lp-shine" onClick={onLogin} disabled={busy}>
+                Log in with Google
+                <Icon name="arrowRight" size={16} className="lp-arrow" />
+              </button>
+              {secondCta}
+            </div>
+            {error && <p className="field-error">{error}</p>}
+          </div>
+
+          <div className="lp-wrap lp-stage">
+            <div className="lp-enter lp-stage-in" style={{ "--d": "420ms" }}>
+              <div className="lp-window" aria-hidden="true">
+                <div className="lp-window-bar">
                   <span className="lp-dot" />
                   <span className="lp-dot" />
                   <span className="lp-dot" />
+                  <span className="lp-url">godview.in</span>
                 </div>
-                <div className="lp-preview-head">
-                  <strong>642 students</strong>
-                  <span className="lp-pill">Session 2026-27</span>
-                </div>
-                <div className="lp-preview-grid">
-                  {PREVIEW.map(([ini, name, grade, tint, fee], i) => (
-                    <div key={name} className="lp-tile" style={{ "--i": i }}>
-                      <div className="lp-tile-photo" style={{ background: tint }}>
-                        {ini}
-                        <i className={`lp-tile-fee is-${fee}`} />
-                      </div>
-                      <div className="lp-tile-body">
-                        <span className="lp-tile-tag">{grade}</span>
-                        <span className="lp-tile-name">{name}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="lp-screen" ref={screen}>
+                  <div className="lp-screen-inner">
+                    <HomeMock />
+                  </div>
                 </div>
               </div>
               <div className="lp-toast lp-toast-1" aria-hidden="true">
@@ -346,44 +420,42 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
               </div>
               <div className="lp-toast lp-toast-2" aria-hidden="true">
                 <span className="lp-toast-icon">
-                  <Icon name="check" size={14} />
+                  <Icon name="bell" size={14} />
                 </span>
                 <div>
                   <strong>Grade 3 · Attendance</strong>
                   <span>38 of 40 present today</span>
                 </div>
               </div>
-              <span className="lp-float-cap" aria-hidden="true">🎓</span>
-              <span className="lp-float-star" aria-hidden="true">⭐</span>
             </div>
           </div>
         </section>
 
         {/* ---------------------------------------------------- marquee */}
         <div className="lp-marquee" aria-label="What Godview covers">
-          <div className="lp-marquee-track">
-            {[...MARQUEE, ...MARQUEE].map((m, i) => (
-              <span key={i} aria-hidden={i >= MARQUEE.length}>
-                <i className="lp-marquee-dot" />
-                {m}
-              </span>
-            ))}
+          <p className="lp-marquee-cap">One app for the whole school</p>
+          <div className="lp-marquee-row">
+            <div className="lp-marquee-track">
+              {[...MARQUEE, ...MARQUEE].map((m, i) => (
+                <span key={i} aria-hidden={i >= MARQUEE.length}>
+                  <i className="lp-marquee-dot" />
+                  {m}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* --------------------------------------------------- benefits */}
         <section id="benefits" className="lp-section">
           <div className="lp-wrap">
-            <div className="lp-head" data-reveal>
-              <span className="lp-kicker">Why Godview</span>
-              <h2 className="lp-h2">Everything your school runs on, beautifully simple.</h2>
-            </div>
+            <Head kicker="Why Godview" title="Everything your school runs on, beautifully simple." />
             <div className="lp-grid">
               {BENEFITS.map(([icon, title, body], i) => (
                 <article
                   key={title}
                   className="lp-card"
-                  data-reveal
+                  data-reveal="blur"
                   style={{ "--d": `${i * 80}ms` }}
                   onMouseMove={(e) => {
                     const r = e.currentTarget.getBoundingClientRect();
@@ -402,26 +474,70 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
           </div>
         </section>
 
+        {/* -------------------------------------------------- what's new */}
+        <section id="new" className="lp-section lp-new lp-band-cool">
+          <div className="lp-wrap">
+            <Head kicker="What’s new" title="The whole office, now in Godview." />
+            <div className="lp-new-body">
+              <div className="lp-new-steps" ref={steps}>
+                {NEW.map((f, i) => (
+                  <article key={f.title} className={`lp-new-step${step === i ? " is-on" : ""}`} data-step={i}>
+                    <div className="lp-new-inline" data-reveal="zoom">
+                      <f.mock />
+                    </div>
+                    <div data-reveal>
+                      <span className="lp-kicker">{f.kicker}</span>
+                      <h3 className="lp-h2">{f.title}</h3>
+                      <p className="lp-sub">{f.body}</p>
+                      <Checks points={f.points} />
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="lp-new-stage" aria-hidden="true">
+                <div className="lp-new-sticky">
+                  {NEW.map((f, i) => (
+                    <div
+                      key={f.title}
+                      className={`lp-new-frame${i === step ? " is-on" : i < step ? " is-past" : ""}`}
+                    >
+                      <f.mock />
+                    </div>
+                  ))}
+                  <div className="lp-new-dots">
+                    {NEW.map((f, i) => (
+                      <button
+                        key={f.title}
+                        type="button"
+                        tabIndex={-1}
+                        className={i === step ? "is-on" : ""}
+                        onClick={() => toStep(i)}
+                        aria-label={f.kicker}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ------------------------------------------------- spotlights */}
         <section id="features" className="lp-section lp-spotlights">
           <div className="lp-wrap">
+            <Head kicker="Features" title="Built for the way schools really run." />
             {SPOTLIGHTS.map((s, i) => (
               <div key={s.title} className={`lp-spot${i % 2 ? " is-flipped" : ""}`}>
-                <div className="lp-spot-media" data-reveal>
+                <div className="lp-spot-media" data-reveal={i % 2 ? "right" : "left"}>
                   <s.mock />
                 </div>
                 <div className="lp-spot-copy" data-reveal style={{ "--d": "120ms" }}>
                   <span className="lp-kicker">{s.kicker}</span>
-                  <h2 className="lp-h2">{s.title}</h2>
+                  <h3 className="lp-h2">
+                    <Words text={s.title} />
+                  </h3>
                   <p className="lp-sub">{s.body}</p>
-                  <ul className="lp-checks">
-                    {s.points.map((p) => (
-                      <li key={p}>
-                        <Icon name="check" size={16} />
-                        {p}
-                      </li>
-                    ))}
-                  </ul>
+                  <Checks points={s.points} />
                 </div>
               </div>
             ))}
@@ -429,12 +545,9 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
         </section>
 
         {/* ---------------------------------------------------- journey */}
-        <section id="journey" className="lp-section lp-journey-section">
+        <section id="journey" className="lp-section lp-band-warm">
           <div className="lp-wrap">
-            <div className="lp-head" data-reveal>
-              <span className="lp-kicker">How it works</span>
-              <h2 className="lp-h2">From first import to a school that runs itself.</h2>
-            </div>
+            <Head kicker="How it works" title="From first import to a school that runs itself." />
             <div className="lp-journey" data-reveal>
               <svg className="lp-journey-path" viewBox="0 0 1000 120" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M10 100 C 180 100, 220 40, 340 60 S 560 110, 680 50 S 880 10, 990 20" />
@@ -457,14 +570,14 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
         {/* ------------------------------------------------------ roles */}
         <section id="roles" className="lp-section">
           <div className="lp-wrap">
-            <div className="lp-head" data-reveal>
-              <span className="lp-kicker">Roles</span>
-              <h2 className="lp-h2">The right access for every person.</h2>
-              <p className="lp-sub">Access rules are enforced by the database itself, not just hidden buttons.</p>
-            </div>
+            <Head
+              kicker="Roles"
+              title="The right access for every person."
+              sub="Access rules are enforced by the database itself, not just hidden buttons."
+            />
             <div className="lp-roles">
               {ROLES.map(([role, text], i) => (
-                <div key={role} className="lp-role" data-reveal style={{ "--d": `${i * 100}ms` }}>
+                <div key={role} className="lp-role" data-reveal="flip" style={{ "--d": `${i * 100}ms` }}>
                   <span className="tag">{role}</span>
                   <p>{text}</p>
                 </div>
@@ -474,13 +587,13 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
         </section>
 
         {/* ------------------------------------------------------- next */}
-        <section className="lp-section lp-next-section">
+        <section className="lp-section lp-band-cool">
           <div className="lp-wrap">
-            <div className="lp-head" data-reveal>
-              <span className="lp-kicker">On the way</span>
-              <h2 className="lp-h2">Coming next.</h2>
-              <p className="lp-sub">What we’re building now, on top of the routes and parent app your school already has.</p>
-            </div>
+            <Head
+              kicker="On the way"
+              title="Coming next."
+              sub="What we’re building now, on top of everything your school already has."
+            />
             <div className="lp-next">
               {NEXT.map(([icon, title, text], i) => (
                 <article key={title} className="lp-next-card" data-reveal style={{ "--d": `${i * 100}ms` }}>
@@ -496,61 +609,63 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
           </div>
         </section>
 
-        {/* ---------------------------------------------------- privacy */}
-        <section id="privacy" className="lp-section lp-privacy-section">
-          <div className="lp-wrap lp-privacy">
-            <div data-reveal>
-              <span className="lp-kicker lp-kicker-light">Privacy</span>
-              <h2 className="lp-h2">Built to protect children’s data.</h2>
-              <p className="lp-sub">
-                Student records belong to the school. Godview keeps them private, in India, and visible only to the
-                people who need them.
-              </p>
-            </div>
-            <ul className="lp-trust">
-              {TRUST.map((t, i) => (
-                <li key={t} data-reveal style={{ "--d": `${i * 90}ms` }}>
-                  <span className="lp-trust-icon">
-                    <Icon name="check" size={16} />
-                  </span>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* -------------------------------------------------------- CTA */}
-        <section className="lp-section lp-final">
-          <div className="lp-wrap">
-            <div className="lp-final-card" data-reveal>
-              <PhotoSlot name="success" className="lp-final-photo" />
-              <div className="lp-confetti" aria-hidden="true">
-                {Array.from({ length: 28 }, (_, i) => (
-                  <i key={i} style={{ "--i": i, left: `${(i * 37 + 11) % 100}%` }} />
+        {/* ------------------------------------------- privacy and end */}
+        <div className="lp-dark">
+          <section id="privacy" className="lp-section">
+            <div className="lp-wrap">
+              <Head
+                light
+                kicker="Privacy"
+                title="Built to protect children’s data."
+                sub="Student records belong to the school. Godview keeps them private, in India, and visible only to the people who need them."
+              />
+              <ul className="lp-trust">
+                {TRUST.map((t, i) => (
+                  <li key={t} data-reveal="right" style={{ "--d": `${i * 90}ms` }}>
+                    <span className="lp-trust-icon">
+                      <Icon name="check" size={16} />
+                    </span>
+                    {t}
+                  </li>
                 ))}
-              </div>
-              <div className="lp-final-copy">
-                <h2 className="lp-h2">Every school deserves to shine.</h2>
+              </ul>
+            </div>
+          </section>
+
+          <section className="lp-final">
+            <div className="lp-wrap">
+              <div className="lp-final-card" data-reveal="zoom">
+                <div className="lp-confetti" aria-hidden="true">
+                  {Array.from({ length: 28 }, (_, i) => (
+                    <i key={i} style={{ "--i": i, left: `${(i * 37 + 11) % 100}%` }} />
+                  ))}
+                </div>
+                <h2 className="lp-h2">
+                  <Words text="Every school deserves to shine." />
+                </h2>
                 <p className="lp-sub">Bring your staff, parents, fees and results together and see your school clearly.</p>
-                <button className="btn btn-primary lp-btn-lg lp-shine" onClick={onLogin} disabled={busy}>
-                  Log in with Google
-                </button>
+                <div className="lp-cta">
+                  <button className="btn lp-btn-lg lp-solid lp-shine" onClick={onLogin} disabled={busy}>
+                    Log in with Google
+                    <Icon name="arrowRight" size={16} className="lp-arrow" />
+                  </button>
+                  {secondCta}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
-      </main>
+          </section>
 
-      <footer className="lp-footer">
-        <div className="lp-wrap lp-footer-inner">
-          <span className="logo">
-            <LogoMark size={20} />
-            <span className="logo-word">Godview</span>
-          </span>
-          <span>© {new Date().getFullYear()} Godview</span>
+          <footer className="lp-footer">
+            <div className="lp-wrap lp-footer-inner">
+              <span className="logo">
+                <LogoMark size={20} />
+                <span className="logo-word">Godview</span>
+              </span>
+              <span>© {new Date().getFullYear()} Godview</span>
+            </div>
+          </footer>
         </div>
-      </footer>
+      </main>
     </div>
   );
 }
