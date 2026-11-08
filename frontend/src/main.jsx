@@ -19,6 +19,13 @@ import { installHaptics } from './pwa/haptics.js'
 
 installHaptics()
 
+// Tidy the address after an update (pwa/update.js adds ?release= to skip caches).
+if (new URLSearchParams(window.location.search).has('release')) {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('release')
+  window.history.replaceState(window.history.state, '', url.toString())
+}
+
 // A screen's code from the previous release is gone: load the new release.
 window.addEventListener('vite:preloadError', (e) => {
   if (reloadForNewRelease()) e.preventDefault()

@@ -83,13 +83,6 @@ export async function updateNow() {
   window.location.replace(url.toString());
 }
 
-// Tidy the address after an update.
-if (new URLSearchParams(window.location.search).has("release")) {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("release");
-  window.history.replaceState(window.history.state, "", url.toString());
-}
-
 if (running) {
   check();
   setInterval(check, CHECK_EVERY);
