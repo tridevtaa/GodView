@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import Icon from "./Icon.jsx";
 
 // Drawn product previews for the landing page. Names, villages and amounts
@@ -236,6 +237,302 @@ export function ParentMock() {
         <div>
           <strong>Annual day on 14 Nov</strong>
           <span>New notice from school</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// A made-up school's crest for the letterhead mock-ups.
+function Crest() {
+  return (
+    <span className="lpm-crest" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10 12 5 2 10l10 5 10-5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    </span>
+  );
+}
+
+function Letterhead() {
+  return (
+    <div className="lpm-lhead">
+      <Crest />
+      <strong>Green Valley Public School</strong>
+      <span>Station Road, Kurukshetra, Haryana</span>
+    </div>
+  );
+}
+
+// Stages as in the app: [stage, count, applicants as name, class, note].
+const PIPELINE = [
+  ["Enquiry", 24, [["Riya Malik", "Nursery", "Visit on Sat"], ["Ayan Rao", "Grade 1", "Call back"]]],
+  ["Registered", 9, [["Sana Gill", "KG 1", "Test 12 Nov"]]],
+  ["Admitted", 31, [["Dev Saini", "Grade 2", "Starts 1 Apr"]]],
+];
+
+export function AdmissionsMock() {
+  return (
+    <div className="lpm lpm-adm">
+      <div className="lpm-card">
+        <div className="lpm-adm-head">
+          <strong>Admissions</strong>
+          <span className="lpm-pill">Session 2027-28</span>
+        </div>
+        <div className="lpm-stages">
+          {PIPELINE.map(([stage, count, people], s) => (
+            <div key={stage} className={`lpm-stage lpm-stage-${s}`}>
+              <div className="lpm-stage-head">
+                <span>{stage}</span>
+                <b>{count}</b>
+              </div>
+              {people.map(([name, grade, note], i) => (
+                <div key={name} className="lpm-app" style={{ "--i": s * 2 + i }}>
+                  <strong>{name}</strong>
+                  <span>{grade}</span>
+                  <em>{note}</em>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="lpm-seats">
+          <span>Grade 1 seats</span>
+          <span className="lpm-meter">
+            <i style={{ "--w": "92%" }} />
+          </span>
+          <b>37 of 40</b>
+        </div>
+      </div>
+      <div className="lpm-float lpm-adm-float">
+        <span className="lpm-float-icon lpm-ok">
+          <Icon name="check" size={14} />
+        </span>
+        <div>
+          <strong>Sana is registered</strong>
+          <span>REG-000041 · {rupees(1500)} receipt printed</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const CERT_KINDS = ["Bona fide", "Leaving (SLC)", "No dues", "Character", "Fee paid", "Date of birth"];
+
+export function CertificateMock() {
+  return (
+    <div className="lpm lpm-cert">
+      <div className="lpm-paper">
+        <Letterhead />
+        <div className="lpm-cert-meta">
+          <span>No. BF-000124</span>
+          <span>2 November 2026</span>
+        </div>
+        <strong className="lpm-paper-title">Bona fide certificate</strong>
+        <p className="lpm-cert-text">
+          This is to certify that <b>Aarav Sharma</b>, son of Mr. Rakesh Sharma, is a bona fide student of{" "}
+          <b>Grade 3 A</b> in the session 2026-27. His date of birth as per our records is <b>14 March 2018</b>.
+        </p>
+        <div className="lpm-sign">
+          <span>Principal</span>
+        </div>
+      </div>
+      <div className="lpm-chips lpm-cert-kinds">
+        {CERT_KINDS.map((k, i) => (
+          <span key={k} className={i === 0 ? "is-on" : ""} style={{ "--i": i }}>
+            {k}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function LetterMock() {
+  return (
+    <div className="lpm lpm-letter">
+      <div className="lpm-paper">
+        <Letterhead />
+        <strong className="lpm-paper-title">Winter school timings</strong>
+        <span className="lpm-letter-date">Date: 6 November 2026</span>
+        <p>Dear Parents,</p>
+        <p>From Monday, 16 November:</p>
+        <ul>
+          {["Classes I to V: 8:30 AM to 1:30 PM", "Classes VI to XII: 8:30 AM to 2:30 PM", "Buses leave 30 minutes later"].map(
+            (t, i) => (
+              <li key={t} style={{ "--i": i }}>
+                {t}
+              </li>
+            )
+          )}
+        </ul>
+        <div className="lpm-sign">
+          <span>Mrs. Anita Rao, Principal</span>
+        </div>
+      </div>
+      <div className="lpm-float lpm-letter-float">
+        <span className="lpm-float-icon">
+          <Icon name="notice" size={14} />
+        </span>
+        <div>
+          <strong>On the noticeboard</strong>
+          <span>Sent to parents and staff</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function GoddessMock() {
+  return (
+    <div className="lpm lpm-goddess">
+      <div className="lpm-g-panel">
+        <div className="lpm-g-head">
+          <img src="/concierge/face.jpg" alt="" loading="lazy" />
+          <div>
+            <strong>Goddess</strong>
+            <span>Your school assistant</span>
+          </div>
+          <span className="lpm-g-tag">Premium</span>
+        </div>
+        <span className="lpm-g-ask">How much fee is pending in Grade 5?</span>
+        <div className="lpm-g-reply">
+          <p>
+            <b>{rupees(142800)}</b> is pending from 23 students in Grade 5. Six of them are more than two months behind.
+          </p>
+          <div className="lpm-g-card">
+            <span>Grade 5 fees collected</span>
+            <span className="lpm-meter">
+              <i style={{ "--w": "78%" }} />
+            </span>
+            <b>78%</b>
+          </div>
+        </div>
+        <div className="lpm-g-input">
+          <span>Ask Goddess anything</span>
+          <Icon name="mic" size={16} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Counts up to a rupee amount once, shortly after the page opens.
+function CountUp({ to, delay = 900, ms = 1600 }) {
+  const still = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [n, setN] = useState(still ? to : 0);
+  useEffect(() => {
+    if (still) return;
+    let frame = 0;
+    const start = performance.now() + delay;
+    const tick = (now) => {
+      const t = Math.min(1, Math.max(0, (now - start) / ms));
+      setN(Math.round(to * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [to, delay, ms, still]);
+  return rupees(n);
+}
+
+const HOME_TABS = ["Home", "Students", "Fees", "Academics", "Planner", "Staff", "Transport"];
+const HOME_QUICK = [
+  ["scholar", "Add student", "#eef0ff", "#5b68c4"],
+  ["newAdmission", "New enquiry", "#e0f2fe", "#0369a1"],
+  ["rupee", "Collect fee", "#fef3c7", "#b45309"],
+  ["notice", "Post notice", "#ffedd5", "#c2410c"],
+  ["users", "Message parents", "#ede9fe", "#6d28d9"],
+  ["calendar", "Add to calendar", "#f3e8ff", "#7e22ce"],
+];
+const HOME_TILES = [
+  ["pink", "96%", "Present today", "612 of 638 students"],
+  ["blue", "24", "Enquiries", "5 to call back today"],
+  ["amber", "2", "Notices", "Winter school timings"],
+  ["violet", "28 Nov", "Annual day", "In 19 days"],
+];
+
+// The staff Home screen, drawn at 1120px wide and scaled by the page.
+export function HomeMock() {
+  return (
+    <div className="lph">
+      <div className="lph-bar">
+        <strong className="lph-school">Green Valley School</strong>
+        <span className="lph-session">
+          26-27 <Icon name="chevronDown" size={12} />
+        </span>
+        <nav className="lph-tabs">
+          {HOME_TABS.map((t, i) => (
+            <span key={t} className={i === 0 ? "is-on" : ""}>
+              {t}
+            </span>
+          ))}
+        </nav>
+        <span className="lph-icons">
+          <Icon name="search" size={18} />
+          <span className="lph-send">
+            <Icon name="send" size={18} />
+            <i>3</i>
+          </span>
+          <span className="lph-avatar">A</span>
+        </span>
+      </div>
+      <div className="lph-body">
+        <span className="lph-date">Monday, 9 November</span>
+        <strong className="lph-hello">Good morning, Asha</strong>
+        <div className="lph-card">
+          <svg className="lph-chart" viewBox="0 0 460 190" aria-hidden="true">
+            <text x="0" y="24">₹10 L</text>
+            <text x="8" y="92">₹5 L</text>
+            <path className="lph-grid" d="M44 20H430M44 88H430" />
+            <path className="lph-axis" d="M44 156H430" />
+            <path className="lph-last" d="M48 154 C 140 140, 240 104, 420 34" />
+            <text className="lph-tag" x="428" y="38">Oct</text>
+            <path className="lph-area" d="M48 154 C 80 140, 110 126, 150 112 L150 156 L48 156 Z" />
+            <path className="lph-now" d="M48 154 C 80 140, 110 126, 150 112" />
+            <circle className="lph-pt" cx="150" cy="112" r="5" />
+            <text className="lph-tag lph-tag-now" x="162" y="108">Nov so far</text>
+            <text x="44" y="182">1 Nov</text>
+            <text x="214" y="182">15 Nov</text>
+            <text x="388" y="182">30 Nov</text>
+          </svg>
+          <div className="lph-figs">
+            <div>
+              <span>Fees pending</span>
+              <strong>₹4.8 L</strong>
+              <em className="lph-red">12 students overdue</em>
+            </div>
+            <div>
+              <span>Collected this month</span>
+              <strong>
+                <CountUp to={642000} />
+              </strong>
+              <em className="lph-green">↑ {rupees(120500)} more than this time last month</em>
+            </div>
+            <span className="lph-view">
+              View fees <Icon name="arrowRight" size={14} />
+            </span>
+          </div>
+        </div>
+        <div className="lph-quick">
+          {HOME_QUICK.map(([icon, label, bg, fg], i) => (
+            <span key={label} style={{ "--i": i }}>
+              <i style={{ background: bg, color: fg }}>
+                <Icon name={icon} size={15} />
+              </i>
+              {label}
+            </span>
+          ))}
+        </div>
+        <div className="lph-tiles">
+          {HOME_TILES.map(([tone, big, label, note], i) => (
+            <div key={label} className={`lph-tile lph-${tone}`} style={{ "--i": i }}>
+              <strong>{big}</strong>
+              <span>{label}</span>
+              <em>{note}</em>
+            </div>
+          ))}
         </div>
       </div>
     </div>
