@@ -20,3 +20,11 @@
 
 /concierge/*.jpg
   Cache-Control: public, max-age=86400
+
+# The landing page's recorded answers: voice.json says which text each file
+# holds and is checked each time; the files themselves keep a day.
+/landing/voice/voice.json
+  Cache-Control: no-cache
+
+/landing/voice/*.mp3
+  Cache-Control: public, max-age=86400

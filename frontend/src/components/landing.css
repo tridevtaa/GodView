@@ -4,11 +4,27 @@
    people who prefer reduced motion (bottom of file).
    ========================================================= */
 
+/* The villa Goddess sits in: warm stone, sand and a sunset, with the
+   app's own colours kept inside the product previews. */
 .lp {
   --gold: #f5b83d;
   --sky: #74bff2;
   --navy: #1d2366;
+  --ink: #2b2119;
+  --sunset: #e8a35f;
+  --bronze: #a8723f;
+  --dusk: #1c1612;
   --scroll: 0;
+  --page: #f6f1ea;
+  --surface: #fffcf8;
+  --surface-2: #f1e9df;
+  --border: rgba(110, 84, 60, 0.14);
+  --border-strong: rgba(110, 84, 60, 0.28);
+  --text: var(--ink);
+  --text-2: #5d5046;
+  --text-3: #8c7e72;
+  --brand: var(--bronze);
+  --brand-soft: #f3e7d8;
   position: relative;
   min-height: 100vh;
   overflow-x: clip;
@@ -20,6 +36,60 @@
   max-width: 1184px;
   margin: 0 auto;
   padding: 0 32px;
+}
+
+/* ----------------------------------------------- the hero */
+
+/* Goddess in her room (concierge.css), filling the first screen under
+   the nav instead of the whole window. */
+.lp-goddess.cg {
+  position: relative;
+  inset: auto;
+  z-index: 0;
+  height: calc(100svh - 40px);
+  min-height: 560px;
+  max-height: 1000px;
+  margin-top: -72px;
+  animation: none;
+}
+
+/* Under the nav, clear of it. */
+.lp-goddess .cg-panel {
+  max-height: calc(100% - 200px);
+  margin-top: 24px;
+}
+
+.lp-goddess .cg-say {
+  margin: 0;
+}
+
+/* The questions sit in the dialogue box, under what she says. */
+.lp-faq {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.lp-goddess .cg-chip {
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.lp-goddess .cg-chip:hover {
+  transform: translateY(-2px);
+}
+
+.lp-section.lp-product {
+  padding-bottom: 8px;
+}
+
+/* Phones: the box sits at the bottom, with nothing under it now. */
+@media (max-width: 760px) {
+  .lp-goddess .cg-panel {
+    bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .lp-faq {
+    padding-top: 14px;
+  }
 }
 
 /* ------------------------------------------------ announce */
@@ -75,7 +145,7 @@
 }
 
 .lp-nav.is-scrolled {
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(246, 241, 234, 0.86);
   box-shadow: 0 1px 0 var(--border);
   backdrop-filter: saturate(180%) blur(14px);
   color: var(--text);
@@ -166,11 +236,11 @@
 
 .lp-login {
   background: #fff;
-  color: var(--navy);
+  color: var(--ink);
 }
 
 .lp-login:hover:not(:disabled) {
-  background: #eef0ff;
+  background: var(--surface-2);
 }
 
 .lp-nav.is-scrolled .lp-parent {
@@ -183,193 +253,15 @@
 }
 
 .lp-nav.is-scrolled .lp-login {
-  background: var(--brand);
+  background: var(--ink);
   color: #fff;
 }
 
 .lp-nav.is-scrolled .lp-login:hover:not(:disabled) {
-  background: var(--navy);
+  background: #4a3a2e;
 }
 
 /* ---------------------------------------------------- hero */
-
-/* A night sky over a glowing horizon; the Home screen rises out of it and
-   lies flat as the page scrolls. */
-.lp-hero {
-  position: relative;
-  margin-top: -72px;
-  padding-top: 144px;
-  overflow: clip;
-  background: radial-gradient(120% 80% at 50% 0%, #2a3290 0%, #161b52 48%, #0c1036 100%);
-  color: #fff;
-  text-align: center;
-}
-
-.lp-sky {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.lp-aurora {
-  position: absolute;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  filter: blur(70px);
-  opacity: 0.5;
-  animation: lp-drift 16s ease-in-out infinite alternate;
-}
-
-.lp-aurora-1 {
-  top: -14%;
-  left: -10%;
-  width: 52%;
-  background: radial-gradient(circle, #6d5dfc 0%, transparent 65%);
-}
-
-.lp-aurora-2 {
-  top: -8%;
-  right: -12%;
-  width: 46%;
-  background: radial-gradient(circle, #74bff2 0%, transparent 65%);
-  animation-delay: -5s;
-}
-
-.lp-aurora-3 {
-  top: 34%;
-  left: 28%;
-  width: 44%;
-  background: radial-gradient(circle, #f5b83d 0%, transparent 62%);
-  opacity: 0.22;
-  animation-delay: -10s;
-}
-
-@keyframes lp-drift {
-  to {
-    translate: 40px 30px;
-    scale: 1.08;
-  }
-}
-
-.lp-stars {
-  position: absolute;
-  inset: 0 0 35%;
-  background-image:
-    radial-gradient(1px 1px at 20px 30px, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 130px 90px, #fff 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 210px 170px, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 270px 40px, #fff 50%, transparent 51%),
-    radial-gradient(1px 1px at 70px 210px, #fff 50%, transparent 51%);
-  background-size: 300px 240px;
-  mask-image: linear-gradient(180deg, #000 40%, transparent);
-  opacity: 0.55;
-  animation: lp-twinkle 5s ease-in-out infinite alternate;
-}
-
-.lp-stars-2 {
-  background-size: 430px 310px;
-  background-position: 120px 60px;
-  animation-delay: -2.5s;
-}
-
-@keyframes lp-twinkle {
-  to {
-    opacity: 0.15;
-  }
-}
-
-/* The page's white rises as a curved horizon behind the screen. */
-.lp-horizon {
-  position: absolute;
-  left: -30%;
-  right: -30%;
-  bottom: -2px;
-  height: calc(min(1120px, 100vw - 32px) * 0.27 + 48px);
-  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-  background: var(--page);
-  box-shadow:
-    0 -1px 0 rgba(255, 255, 255, 0.9),
-    0 -24px 80px rgba(116, 191, 242, 0.5),
-    0 -70px 170px rgba(245, 184, 61, 0.32);
-}
-
-.lp-hero-copy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.lp-enter {
-  animation: lp-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: var(--d, 0ms);
-}
-
-@keyframes lp-rise {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-}
-
-.lp-hero h1 {
-  margin: 0 0 24px;
-  color: #fff;
-  font-size: clamp(40px, 5vw, 64px);
-  font-weight: 600;
-  line-height: 1.04;
-  letter-spacing: -0.035em;
-}
-
-.lp-rotator {
-  display: inline-block;
-  white-space: nowrap;
-  height: 1.08em;
-  overflow: visible;
-}
-
-.lp-rotator-word {
-  display: inline-block;
-  background: linear-gradient(100deg, #a9b6ff 0%, #74bff2 40%, #f5b83d 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: lp-word 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) both, lp-sheen 3s linear infinite;
-}
-
-@keyframes lp-word {
-  0% {
-    opacity: 0;
-    transform: translateY(0.45em) rotateX(-60deg);
-    filter: blur(4px);
-  }
-  14%,
-  86% {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-0.4em);
-    filter: blur(4px);
-  }
-}
-
-@keyframes lp-sheen {
-  to {
-    background-position: 200% center;
-  }
-}
-
-.lp-lead {
-  max-width: 640px;
-  margin: 0 0 32px;
-  text-wrap: balance;
-  color: rgba(255, 255, 255, 0.74);
-  font-size: 19px;
-  line-height: 1.6;
-}
 
 .lp-cta {
   display: flex;
@@ -387,11 +279,11 @@
 
 .lp-solid {
   background: #fff;
-  color: var(--navy);
+  color: var(--ink);
 }
 
 .lp-solid:hover:not(:disabled) {
-  background: #eef0ff;
+  background: var(--surface-2);
 }
 
 .lp-ghost {
@@ -422,7 +314,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(110deg, transparent 30%, rgba(91, 104, 196, 0.22) 50%, transparent 70%);
+  background: linear-gradient(110deg, transparent 30%, rgba(232, 163, 95, 0.28) 50%, transparent 70%);
   transform: translateX(-120%);
   animation: lp-sweep 3.6s ease-in-out infinite;
 }
@@ -434,17 +326,10 @@
   }
 }
 
-/* the screen */
+/* the dashboard preview, under the hero */
 .lp-stage {
   position: relative;
   z-index: 1;
-  margin-top: 64px;
-  padding-bottom: 48px;
-  perspective: 1800px;
-}
-
-.lp-stage-in {
-  position: relative;
 }
 
 .lp-window {
@@ -452,11 +337,9 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 18px;
   background: #fff;
-  box-shadow: 0 50px 120px rgba(5, 8, 40, 0.5), 0 0 0 8px rgba(255, 255, 255, 0.07);
+  box-shadow: 0 40px 100px rgba(70, 48, 30, 0.22), 0 0 0 8px rgba(255, 255, 255, 0.6);
   color: var(--text);
   text-align: left;
-  transform-origin: 50% 0;
-  transform: rotateX(calc((1 - min(1, var(--scroll) / 520)) * 16deg)) scale(calc(0.93 + min(1, var(--scroll) / 520) * 0.07));
 }
 
 .lp-window-bar {
@@ -516,7 +399,7 @@
   padding: 10px 14px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 16px 40px rgba(29, 35, 102, 0.22);
+  box-shadow: 0 16px 40px rgba(70, 48, 30, 0.2);
   color: var(--text);
   font-size: 12px;
   text-align: left;
@@ -976,11 +859,11 @@
 }
 
 .lp-band-cool {
-  background: #f6f7fc;
+  background: #eee5d9;
 }
 
 .lp-band-warm {
-  background: #fbf8f3;
+  background: #f3ebe1;
 }
 
 .lp-head {
@@ -1004,7 +887,7 @@
 }
 
 .lp-kicker-light {
-  color: var(--gold);
+  color: var(--sunset);
 }
 
 .lp-h2 {
@@ -1048,21 +931,22 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 24px;
-  background: var(--surface);
+  background: rgba(255, 252, 248, 0.72);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 30px rgba(70, 48, 30, 0.06);
 }
 
 .lp-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 0%), rgba(91, 104, 196, 0.1), transparent 40%);
+  background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 0%), rgba(232, 163, 95, 0.16), transparent 40%);
   opacity: 0;
   transition: opacity 0.3s;
 }
 
 .lp-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(29, 35, 102, 0.14);
+  box-shadow: 0 20px 40px rgba(70, 48, 30, 0.14);
   transition-delay: 0ms;
 }
 
@@ -1089,9 +973,9 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--brand) 0%, #8b5cf6 100%);
+  background: linear-gradient(135deg, var(--sunset) 0%, var(--bronze) 100%);
   color: #fff;
-  box-shadow: 0 10px 20px rgba(91, 104, 196, 0.3);
+  box-shadow: 0 10px 20px rgba(168, 114, 63, 0.3);
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1138,8 +1022,8 @@
 .lp-checks .icon {
   padding: 3px;
   border-radius: 50%;
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--brand-soft);
+  color: var(--bronze);
   width: 22px;
   height: 22px;
 }
@@ -1212,7 +1096,7 @@
   border-radius: 50%;
   background: var(--brand);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(91, 104, 196, 0.35);
+  box-shadow: 0 10px 24px rgba(168, 114, 63, 0.35);
 }
 
 .lp-step-goal {
@@ -1249,7 +1133,7 @@
   padding: 28px;
   border: 1px solid var(--border);
   border-radius: 24px;
-  background: var(--surface);
+  background: rgba(255, 252, 248, 0.72);
 }
 
 .lp-role .tag {
@@ -1265,9 +1149,9 @@
   position: relative;
   overflow: clip;
   background:
-    radial-gradient(90% 60% at 85% 0%, #2a3290 0%, transparent 60%),
-    radial-gradient(70% 50% at 10% 100%, #33246e 0%, transparent 60%),
-    #10143f;
+    radial-gradient(90% 60% at 85% 0%, #4a3626 0%, transparent 60%),
+    radial-gradient(70% 50% at 10% 100%, #3a2a1f 0%, transparent 60%),
+    var(--dusk);
   color: #fff;
 }
 
@@ -1306,8 +1190,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #4ade80;
-  color: var(--navy);
+  background: var(--sunset);
+  color: var(--ink);
 }
 
 .lp-final {
@@ -1354,8 +1238,17 @@
   width: 8px;
   height: 14px;
   border-radius: 2px;
-  background: hsl(calc(var(--i) * 47), 85%, 62%);
+  background: var(--sunset);
   opacity: 0;
+}
+
+/* Sunset colours, from the villa. */
+.lp-confetti i:nth-child(3n + 1) {
+  background: #f5d2a8;
+}
+
+.lp-confetti i:nth-child(3n + 2) {
+  background: #c98a52;
 }
 
 .lp-final-card.is-in .lp-confetti i {
@@ -1397,12 +1290,27 @@
 
 /* ------------------------------------- product mock-ups (lpm) */
 
+/* The previews are the app itself: its own colours, not the villa's. */
+.lpm,
+.lph {
+  --page: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f3f4fa;
+  --border: #e4e4e8;
+  --border-strong: #cfcfcf;
+  --text: #111111;
+  --text-2: #444444;
+  --text-3: #6b6b6b;
+  --brand: #5b68c4;
+  --brand-soft: #eceefa;
+}
+
 .lpm {
   position: relative;
   padding: 28px;
   border-radius: 28px;
-  background: linear-gradient(135deg, #e3e8ff 0%, #f4ecff 55%, #fff1dc 100%);
-  box-shadow: 0 30px 60px rgba(29, 35, 102, 0.14);
+  background: linear-gradient(135deg, #efe2d2 0%, #f7efe6 55%, #f6e1c8 100%);
+  box-shadow: 0 30px 60px rgba(70, 48, 30, 0.14);
   font-size: 13px;
 }
 
@@ -2121,16 +2029,7 @@
     padding: 0 14px;
   }
 
-  .lp-hero {
-    padding-top: 108px;
-  }
-
-  .lp-lead {
-    font-size: 17px;
-  }
-
   .lp-stage {
-    margin-top: 48px;
     padding-bottom: 40px;
   }
 
@@ -2198,7 +2097,7 @@
   right: 0;
   bottom: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--brand), #8b5cf6 60%, var(--gold));
+  background: linear-gradient(90deg, var(--bronze), var(--sunset));
   transform: scaleX(var(--progress, 0));
   transform-origin: left;
   opacity: 0;
@@ -2241,6 +2140,11 @@
 [data-reveal="blur"] {
   filter: blur(10px);
   transform: translateY(40px) scale(0.97);
+}
+
+[data-reveal="tilt"] {
+  transform: perspective(1800px) rotateX(14deg) translateY(48px) scale(0.94);
+  transform-origin: 50% 0;
 }
 
 [data-reveal="flip"] {
@@ -2869,8 +2773,7 @@
     filter: none !important;
   }
 
-  .lp-new-frame,
-  .lp-window {
+  .lp-new-frame {
     transform: none !important;
   }
 

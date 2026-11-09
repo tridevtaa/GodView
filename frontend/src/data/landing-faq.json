@@ -1,0 +1,19 @@
+{
+  "faq": [
+    {
+      "id": "what",
+      "q": "What is Godview?",
+      "a": "Godview runs your whole school in one app. Attendance, fees, homework, results, and an app for parents."
+    },
+    {
+      "id": "safe",
+      "q": "Is our data safe?",
+      "a": "Yes. Your data stays in India, it's encrypted, and only the right people can see it."
+    },
+    {
+      "id": "start",
+      "q": "How do we start?",
+      "a": "Import your students from Excel, set your fees, and invite your staff. That's it."
+    }
+  ]
+}
