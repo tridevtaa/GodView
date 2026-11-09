@@ -66,14 +66,15 @@ const NEW = [
 const BENEFITS = [
   ["search", "Every student, one tap away", "Photo tiles for the whole school. Search by name, parent or phone, then call or WhatsApp a family straight from the profile."],
   ["upload", "Bring your data in minutes", "Import the student export and the pending dues list from your current system. Classes, parents, photos and balances come across in one go."],
-  ["book", "Homework and syllabus", "Teachers set homework for a class or a few students, and keep the syllabus covered for each subject. Parents see both."],
-  ["exam", "Exams and results", "Set the datesheet for each class, then enter marks or upload a sheet. Totals and percentages are worked out for you."],
+  ["book", "Homework and syllabus", "Teachers set homework for a class or a few students, and keep the syllabus covered for each subject. Parents see both.", "homework"],
+  ["exam", "Exams and results", "Set the datesheet for each class, then enter marks or upload a sheet. Totals and percentages are worked out for you.", "results"],
   ["calendar", "Calendar and notices", "Holidays, exams, events and meetings on one calendar, and a noticeboard with pictures for news and achievements."],
   ["bell", "On every phone", "Add Godview to the home screen like an app. Notifications bring messages, absences, homework and fee reminders."],
 ];
 
 const SPOTLIGHTS = [
   {
+    id: "attendance",
     mock: AttendanceMock,
     kicker: "Attendance",
     title: "The register, done in a minute.",
@@ -81,6 +82,7 @@ const SPOTLIGHTS = [
     points: ["All present in one tap, then change the few", "Reminders for classes still unmarked", "Parents see the month at a glance"],
   },
   {
+    id: "parents",
     mock: ParentMock,
     kicker: "Parent app",
     title: "Parents in the loop, without the calls.",
@@ -88,6 +90,7 @@ const SPOTLIGHTS = [
     points: ["One conversation per child with the school", "Notices and the school calendar", "Nothing new for parents to download"],
   },
   {
+    id: "fees",
     mock: FeeMock,
     kicker: "Fees",
     title: "Set your fees once. Dues follow.",
@@ -95,6 +98,7 @@ const SPOTLIGHTS = [
     points: ["Collected today and the last 7 days at a glance", "Print one-page receipts", "Reminders to parents before and after the due date"],
   },
   {
+    id: "map",
     mock: MapMock,
     kicker: "Student map and transport",
     title: "See where your students come from.",
@@ -111,9 +115,9 @@ const ROLES = [
 ];
 
 const JOURNEY = [
-  ["upload", "Import your students", "Upload the Excel export from your current system."],
+  ["upload", "Import your students", "Upload the Excel export from your current system.", "import"],
   ["file", "Set your fees", "Add each fee once; dues are created for every student."],
-  ["plus", "Invite your staff", "Share your join code; approve each request and pick their classes."],
+  ["plus", "Invite your staff", "Share your join code; approve each request and pick their classes.", "invite"],
   ["check", "Bring parents in", "Parents log in with their mobile number. Your school is in their pocket."],
 ];
 
@@ -123,12 +127,13 @@ const NEXT = [
   ["newAdmission", "Online enquiries", "A link and QR code for your website and banners. Enquiries land straight in Admissions."],
 ];
 
+// [text, id]: Goddess's answers link to some of these.
 const TRUST = [
-  "Data stored in India (Mumbai)",
-  "Encrypted in transit and at rest",
-  "Only the last 4 digits of Aadhaar are kept",
-  "Home locations seen only by owners and admins",
-  "Each school’s data is walled off from every other",
+  ["Data stored in India (Mumbai)", "in-india"],
+  ["Encrypted in transit and at rest", "encrypted"],
+  ["Only the last 4 digits of Aadhaar are kept"],
+  ["Home locations seen only by owners and admins"],
+  ["Each school’s data is walled off from every other"],
 ];
 
 const LINKS = [
@@ -318,8 +323,11 @@ function GoddessHero({ error }) {
   const [phase, setPhase] = useState("idle"); // idle | think | talk
   const [asked, setAsked] = useState(null); // the FAQ item she's answering
   const [reply, setReply] = useState("");
+  const [filmOn, setFilmOn] = useState(false); // an answer's own clip is showing
   const seq = useRef(0);
   const timer = useRef(0);
+  const film = useRef(null);
+  const filmSrc = FAQ.find((f) => f.clip)?.clip;
 
   const hush = () => {
     seq.current++;
@@ -330,8 +338,28 @@ function GoddessHero({ error }) {
       a.onerror = null;
       a.pause();
     }
+    const v = film.current;
+    if (v) {
+      v.onplaying = v.onended = v.onerror = null;
+      v.pause();
+    }
+    setFilmOn(false);
     setPhase("idle");
   };
+
+  // An answer filmed with her voice (FAQ "clip"): fetched once the page has
+  // settled, so it is ready by the time someone taps.
+  useEffect(() => {
+    if (!filmSrc) return;
+    const t = setTimeout(() => {
+      const v = film.current;
+      if (v && !v.src) {
+        v.src = VOICE + filmSrc;
+        v.load();
+      }
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [filmSrc]);
 
   // Stops her when the hero scrolls away or the page closes.
   useEffect(() => {
@@ -348,12 +376,50 @@ function GoddessHero({ error }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ask(item) {
+  function ask(item) {
     hush();
     const n = seq.current;
     setAsked(item);
     setReply("");
     setPhase("think");
+    const v = film.current;
+    if (!item.clip || !v) return speak(item, n);
+    // Her filmed answer, sound and all: started inside the tap, which is
+    // what lets phones play it with sound. Shown once it is moving; if it
+    // can't play, the recorded voice answers instead.
+    const end = () => {
+      if (n !== seq.current) return;
+      clearTimeout(timer.current);
+      setFilmOn(false);
+      setPhase("idle");
+    };
+    const fail = () => {
+      if (n !== seq.current) return;
+      v.onplaying = v.onended = v.onerror = null;
+      v.pause();
+      speak(item, n);
+    };
+    v.onplaying = () => {
+      if (n !== seq.current) return;
+      setFilmOn(true);
+      setReply(item.a);
+      setPhase("talk");
+      clearTimeout(timer.current);
+      timer.current = setTimeout(end, ((Number.isFinite(v.duration) ? v.duration : 10) + 2) * 1000);
+    };
+    v.onended = end;
+    v.onerror = fail;
+    if (!v.src.endsWith(VOICE + item.clip)) v.src = VOICE + item.clip;
+    v.muted = false;
+    try {
+      v.currentTime = 0;
+    } catch {
+      /* not loaded yet: it starts at 0 anyway */
+    }
+    v.play().catch(fail);
+  }
+
+  async function speak(item, n) {
     const [list] = await Promise.all([loadVoiceList(), new Promise((r) => setTimeout(r, THINK_MS))]);
     if (n !== seq.current) return;
     setReply(item.a);
@@ -392,32 +458,74 @@ function GoddessHero({ error }) {
       onPointerDownCapture={primeVoice}
     >
       <img className="cg-still" src={poster} alt="" style={focus ? { objectPosition: focus } : undefined} fetchpriority="high" />
-      {clips && <ClipStage clips={clips} focus={focus} want={want} after={want} onShotEnd={() => {}} />}
+      {clips && <ClipStage clips={clips} focus={focus} want={filmOn ? "idle" : want} after={filmOn ? "idle" : want} onShotEnd={() => {}} />}
+      {filmSrc && (
+        <video
+          ref={film}
+          className={`lp-film${filmOn ? " is-on" : ""}`}
+          style={focus ? { objectPosition: focus } : undefined}
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        />
+      )}
       <div className="cg-shade" aria-hidden="true" />
 
-      <div className="cg-panel" aria-live="polite">
-        {asked && (
-          <div className={`cg-status${want === "idle" ? "" : " is-on"}`}>
-            <span className="cg-bars">
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </span>
-            {STATUS[want] ?? ""}
+      <div className="lp-goddess-col">
+        <div className="cg-panel" aria-live="polite">
+          {asked && (
+            <div className={`cg-status${want === "idle" ? "" : " is-on"}`}>
+              <span className="cg-bars">
+                <i />
+                <i />
+                <i />
+                <i />
+                <i />
+              </span>
+              {STATUS[want] ?? ""}
+            </div>
+          )}
+          {asked && <p className="cg-asked">{asked.q}</p>}
+          {say && <h1 className="cg-say">{say}</h1>}
+          {error && <p className="cg-error">{error}</p>}
+          <div className="cg-choices lp-faq" role="group" aria-label="Questions">
+            {FAQ.map((item) => (
+              <button key={item.id} type="button" className={`cg-chip${asked?.id === item.id ? " is-on" : ""}`} onClick={() => ask(item)}>
+                {item.q}
+              </button>
+            ))}
           </div>
-        )}
-        {asked && <p className="cg-asked">{asked.q}</p>}
-        {say && <h1 className="cg-say">{say}</h1>}
-        {error && <p className="cg-error">{error}</p>}
-        <div className="cg-choices lp-faq" role="group" aria-label="Questions">
-          {FAQ.map((item) => (
-            <button key={item.id} type="button" className={`cg-chip${asked?.id === item.id ? " is-on" : ""}`} onClick={() => ask(item)}>
-              {item.q}
-            </button>
-          ))}
         </div>
+        {/* Once she answers: where on the page to read more. */}
+        {reply && asked?.links?.length > 0 && (
+          <nav key={asked.id} className="lp-goto" aria-label="Read more">
+            {asked.links.map((l) => (
+              <a
+                key={l.to}
+                href={`#${l.to}`}
+                className="lp-goto-link"
+                onClick={(e) => {
+                  const el = document.getElementById(l.to);
+                  if (!el) return;
+                  e.preventDefault();
+                  el.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
+                  // Show it now rather than when the scroll reaches it, then a glow
+                  // on arrival, so the eye finds it.
+                  for (let r = el.closest("[data-reveal]"); r; r = r.parentElement?.closest("[data-reveal]")) r.classList.add("is-in");
+                  el.classList.remove("lp-flash");
+                  void el.offsetWidth;
+                  el.classList.add("lp-flash");
+                  setTimeout(() => el.classList.remove("lp-flash"), 3200);
+                }}
+              >
+                <span className="lp-goto-icon">
+                  <Icon name={l.icon} size={18} />
+                </span>
+                {l.label}
+              </a>
+            ))}
+          </nav>
+        )}
       </div>
     </section>
   );
@@ -549,9 +657,10 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
           <div className="lp-wrap">
             <Head kicker="Why Godview" title="Everything your school runs on, beautifully simple." />
             <div className="lp-grid">
-              {BENEFITS.map(([icon, title, body], i) => (
+              {BENEFITS.map(([icon, title, body, id], i) => (
                 <article
                   key={title}
+                  id={id}
                   className="lp-card"
                   data-reveal="blur"
                   style={{ "--d": `${i * 80}ms` }}
@@ -626,7 +735,7 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
             <Head kicker="Features" title="Built for the way schools really run." />
             {SPOTLIGHTS.map((s, i) => (
               <div key={s.title} className={`lp-spot${i % 2 ? " is-flipped" : ""}`}>
-                <div className="lp-spot-media" data-reveal={i % 2 ? "right" : "left"}>
+                <div id={s.id} className="lp-spot-media" data-reveal={i % 2 ? "right" : "left"}>
                   <s.mock />
                 </div>
                 <div className="lp-spot-copy" data-reveal style={{ "--d": "120ms" }}>
@@ -651,8 +760,8 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
                 <path d="M10 100 C 180 100, 220 40, 340 60 S 560 110, 680 50 S 880 10, 990 20" />
               </svg>
               <ol>
-                {JOURNEY.map(([icon, title, text], i) => (
-                  <li key={title} style={{ "--d": `${300 + i * 260}ms` }}>
+                {JOURNEY.map(([icon, title, text, id], i) => (
+                  <li key={title} id={id} style={{ "--d": `${300 + i * 260}ms` }}>
                     <span className={`lp-step${i === JOURNEY.length - 1 ? " lp-step-goal" : ""}`}>
                       {i === JOURNEY.length - 1 ? "🏆" : <Icon name={icon} size={18} />}
                     </span>
@@ -718,8 +827,8 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
                 sub="Student records belong to the school. Godview keeps them private, in India, and visible only to the people who need them."
               />
               <ul className="lp-trust">
-                {TRUST.map((t, i) => (
-                  <li key={t} data-reveal="right" style={{ "--d": `${i * 90}ms` }}>
+                {TRUST.map(([t, id], i) => (
+                  <li key={t} id={id} data-reveal="right" style={{ "--d": `${i * 90}ms` }}>
                     <span className="lp-trust-icon">
                       <Icon name="check" size={16} />
                     </span>

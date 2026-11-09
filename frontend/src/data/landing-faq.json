@@ -3,17 +3,79 @@
     {
       "id": "what",
       "q": "What is Godview?",
-      "a": "Godview runs your whole school in one app. Attendance, fees, homework, results, and an app for parents."
+      "a": "Godview runs your whole school in one app. Attendance, fees, homework, results, and an app for parents.",
+      "clip": "what.mp4",
+      "links": [
+        {
+          "to": "attendance",
+          "label": "Attendance",
+          "icon": "register"
+        },
+        {
+          "to": "fees",
+          "label": "Fees",
+          "icon": "rupee"
+        },
+        {
+          "to": "homework",
+          "label": "Homework",
+          "icon": "book"
+        },
+        {
+          "to": "results",
+          "label": "Results",
+          "icon": "exam"
+        },
+        {
+          "to": "parents",
+          "label": "Parent app",
+          "icon": "phone"
+        }
+      ]
     },
     {
       "id": "safe",
       "q": "Is our data safe?",
-      "a": "Yes. Your data stays in India, it's encrypted, and only the right people can see it."
+      "a": "Yes. Your data stays in India, it's encrypted, and only the right people can see it.",
+      "links": [
+        {
+          "to": "in-india",
+          "label": "Stored in India",
+          "icon": "pin"
+        },
+        {
+          "to": "encrypted",
+          "label": "Encrypted",
+          "icon": "lock"
+        },
+        {
+          "to": "roles",
+          "label": "Who sees what",
+          "icon": "users"
+        }
+      ]
     },
     {
       "id": "start",
       "q": "How do we start?",
-      "a": "Import your students from Excel, set your fees, and invite your staff. That's it."
+      "a": "Import your students from Excel, set your fees, and invite your staff. That's it.",
+      "links": [
+        {
+          "to": "import",
+          "label": "Excel import",
+          "icon": "upload"
+        },
+        {
+          "to": "fees",
+          "label": "Fees",
+          "icon": "rupee"
+        },
+        {
+          "to": "invite",
+          "label": "Invite staff",
+          "icon": "teacher"
+        }
+      ]
     }
   ]
 }
