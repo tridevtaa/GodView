@@ -48,108 +48,44 @@
   position: relative;
   inset: auto;
   z-index: 0;
-  height: calc(100svh - 40px);
+  --cg-w: min(460px, 100% - 2 * var(--cg-side));
+  height: 100svh;
   min-height: 560px;
   margin-top: -72px;
   animation: none;
 }
 
-/* Big screens: a slightly bigger box, in step with the room. */
+/* Big screens: a slightly wider column, in step with the room. */
 @media (min-width: 1800px) {
   .lp-goddess.cg {
     --cg-w: 480px;
   }
-
-  .lp-goddess.cg .cg-say {
-    font-size: 24px;
-  }
 }
 
-/* The dialogue box and, once she answers, links to the sections under
-   it: one column where the app has the box alone, clear of the nav. */
+/* The right-hand column (the conversation, concierge.css), pinned from
+   the top so it grows downwards as she answers instead of shifting. */
 .lp-goddess-col {
   position: absolute;
-  top: 50%;
+  top: clamp(112px, 27%, 300px);
   right: var(--cg-side);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   width: var(--cg-w);
-  margin-top: 24px;
-  transform: translateY(-50%);
 }
 
-.lp-goddess.cg .cg-panel {
-  position: static;
-  width: auto;
-  max-height: none;
-  transform: none;
-}
-
-/* Under her answer, one glass strip of equal cells: what she named,
-   each a tap away from its place on the page. */
-.lp-goto {
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  overflow: hidden;
-  border: 1px solid var(--cg-line);
-  border-radius: 22px;
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
-  backdrop-filter: blur(18px) saturate(1.1);
-  -webkit-backdrop-filter: blur(18px) saturate(1.1);
-  box-shadow: 0 18px 50px rgba(60, 40, 25, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  animation: lp-goto-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
-}
-
-.lp-goto-link {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  min-width: 0;
-  padding: 14px 6px 12px;
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.25;
-  text-align: center;
-  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.35);
-  transition: background 0.2s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.lp-goto-link + .lp-goto-link {
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.lp-goto-link:hover {
-  background: rgba(255, 255, 255, 0.14);
-  color: #fff;
-  text-decoration: none;
-}
-
-.lp-goto-icon {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
+/* Contact Sales: the same card, its icon solid. */
+.lp-ask-sales .cv-ask-icon {
+  background: #fff;
   color: var(--ink);
-  box-shadow: 0 6px 14px rgba(45, 30, 18, 0.18);
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.lp-goto-link:hover .lp-goto-icon {
-  transform: translateY(-2px) scale(1.06);
+.lp-sales {
+  animation: cv-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: var(--base, 0s);
 }
 
-.lp-goto-link:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: -4px;
-  border-radius: 18px;
+@media (prefers-reduced-motion: reduce) {
+  .lp-sales {
+    animation: none;
+  }
 }
 
 /* Where a link under her answer lands: a soft sunset glow, twice, once
@@ -167,23 +103,91 @@
   }
 }
 
-@keyframes lp-goto-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
+
+/* The room carrying on under the hero, down to the laptop. The picture
+   is wider than the screen so the laptop sits in front of her, where she
+   is in the hero (about 38% across), and starts just below her knees.
+   On computers it dissolves in over the hero's last stretch; it drifts
+   up a little as it passes (--p, 0 to 1) and fades into the page. */
+.lp-scene {
+  --w: 124vw;
+  --skip: calc(var(--w) * 0.163); /* her lap: already in the hero */
+  position: relative;
+  z-index: 1;
+  --overlap: 12vw;
+  height: min(calc(var(--w) * 0.815 - var(--skip)), 130svh);
+  margin-top: calc(-1 * var(--overlap));
+  overflow: hidden;
+  background: var(--page);
+  pointer-events: none;
+  /* Fully there by the hero's bottom edge, so no seam shows. */
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 var(--overlap));
+  mask-image: linear-gradient(180deg, transparent, #000 var(--overlap));
+}
+
+/* The page's first heading follows straight on from the fade. */
+.lp-section.lp-scene-next {
+  padding-top: 8px;
+}
+
+.lp-scene img {
+  position: absolute;
+  top: calc(-1 * var(--skip));
+  left: calc(38vw - var(--w) / 2);
+  width: var(--w);
+  max-width: none;
+  height: auto;
+  transform: translateY(calc(var(--p, 0) * -60px));
+  will-change: transform;
+}
+
+.lp-scene::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 34%;
+  background: linear-gradient(180deg, transparent, rgba(246, 241, 234, 0.75) 55%, var(--page) 92%);
+}
+
+/* Phones: her words sit at the bottom of the hero, so no overlap; the
+   hero's dark floor carries on into the picture instead. */
+@media (max-width: 760px) {
+  .lp-scene {
+    --w: 160vw;
+    margin-top: 0;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .lp-scene img {
+    left: calc(45vw - var(--w) / 2);
+  }
+
+  .lp-scene::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 1;
+    height: 40%;
+    background: linear-gradient(180deg, rgba(35, 26, 19, 0.82), rgba(35, 26, 19, 0.3) 45%, transparent);
   }
 }
 
-@media (max-height: 640px) and (min-width: 761px) {
-  .lp-goddess-col {
-    top: 104px;
-    margin-top: 0;
+@media (prefers-reduced-motion: reduce) {
+  .lp-scene img {
     transform: none;
   }
 }
 
-.lp-goddess .cg-say {
-  margin: 0;
+/* Short screens: higher up. */
+@media (max-height: 700px) and (min-width: 761px) {
+  .lp-goddess-col {
+    top: 96px;
+  }
 }
 
 /* An answer filmed with her voice, over the clips; it fades in once
@@ -211,25 +215,97 @@
   }
 }
 
-/* The questions sit in the dialogue box, under what she says. */
-.lp-faq {
-  padding-top: 18px;
-  border-top: 1px solid rgba(255, 255, 255, 0.28);
+/* The call-back form, in her answer's place. */
+.lp-sales {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
 }
 
-.lp-goddess .cg-chip {
-  transition: background 0.2s ease, transform 0.2s ease;
+.lp-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--cg-line);
+  border-radius: 14px;
+  background: rgba(30, 22, 16, 0.38);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--cg-ink);
+  font: inherit;
+  font-size: 16px; /* phones zoom into anything smaller */
+  outline: none;
+  transition: border-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.lp-goddess .cg-chip:hover {
-  transform: translateY(-2px);
+.lp-field:focus,
+.lp-field:focus-within {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.lp-field::placeholder,
+.lp-field input::placeholder {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.lp-field-phone span {
+  flex: none;
+  padding-right: 10px;
+  border-right: 1px solid var(--cg-line);
+  color: var(--cg-ink-2);
+}
+
+.lp-field-phone input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  outline: none;
+  box-shadow: none;
+}
+
+.lp-sales .cg-error {
+  margin: 2px 0 0;
+}
+
+.lp-send {
+  height: 48px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.lp-send:hover {
+  background: #fff6ec;
+}
+
+.lp-send:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .lp-section.lp-product {
   padding-bottom: 8px;
 }
 
-/* Phones: the box (and its links) at the bottom. */
+/* Phones: the column at the bottom. */
 @media (max-width: 760px) {
   .lp-goddess.cg {
     --cg-side: 16px;
@@ -240,67 +316,8 @@
     right: var(--cg-side);
     bottom: calc(20px + env(safe-area-inset-bottom));
     left: var(--cg-side);
-    gap: 10px;
     width: auto;
-    margin-top: 0;
-    transform: none;
   }
-
-  .lp-goto-link {
-    gap: 6px;
-    padding: 10px 4px;
-    font-size: 11.5px;
-  }
-
-  .lp-goto-icon {
-    width: 32px;
-    height: 32px;
-  }
-
-  .lp-faq {
-    padding-top: 14px;
-  }
-}
-
-/* ------------------------------------------------ announce */
-
-.lp-announce {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-  text-align: center;
-}
-
-.lp-announce:hover {
-  color: var(--brand);
-  text-decoration: none;
-}
-
-.lp-announce .icon {
-  flex: none;
-  transition: translate 0.25s;
-}
-
-.lp-announce:hover .icon {
-  translate: 4px 0;
-}
-
-.lp-announce-tag {
-  flex: none;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--brand-soft);
-  color: var(--brand);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 /* ----------------------------------------------------- nav */
@@ -2191,10 +2208,6 @@
 @media (max-width: 640px) {
   .lp-wrap {
     padding: 0 16px;
-  }
-
-  .lp-announce {
-    font-size: 13px;
   }
 
   .lp-nav-actions .btn {

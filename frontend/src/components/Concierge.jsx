@@ -5,6 +5,7 @@ import { askConcierge, assistantVoice } from "../data/api.js";
 import ReportCard, { cardLine, reportFacts, useReports } from "./ConciergeCards.jsx";
 import { primeVoice, voiceAudio } from "./voicePlayer.js";
 import { BASE, ClipStage, useClips } from "./GoddessStage.jsx";
+import { Bars, SpokenWords, readTime, useGlide } from "./GoddessTalk.jsx";
 
 export { preloadConcierge } from "./GoddessStage.jsx";
 import "./concierge.css";
@@ -27,7 +28,20 @@ const CARDS = [
   ["fees", "Fee report"],
   ["attendance", "Attendance today"],
 ];
-const STATUS = { listen: "Listening…", think: "Thinking…", talk: "Speaking…", gesture: "Speaking…", greet: "Speaking…" };
+// The shortcut cards' icons, as in the app's own menus.
+// The shortcuts that show their report here, with what the report is.
+const REPORT_SUB = { attendance: "Today's report", fees: "Session report" };
+const ICONS = {
+  attendance: "register",
+  fees: "rupee",
+  students: "scholar",
+  requests: "plane",
+  employees: "teacher",
+  transport: "bus",
+  calendar: "calendar",
+  homework: "book",
+  notices: "notice",
+};
 const ERRORS = {
   premium: "The assistant is part of the Premium plan.",
   not_allowed: "The assistant is for owners, admins and the principal.",
@@ -115,7 +129,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
   const [reply, setReply] = useState("");
   const [choices, setChoices] = useState([]);
   const [error, setError] = useState("");
-  const [more, setMore] = useState(false);
+  const [chosen, setChosen] = useState(null); // the shortcut card tapped
   const [voiceOn, setVoiceOn] = useState(() => {
     try {
       return localStorage.getItem("gv-voice") !== "off";
@@ -124,6 +138,9 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     }
   });
   const history = useRef([]);
+  const asksRef = useRef(null);
+  const closeRef = useRef(null);
+  const markCards = useGlide(asksRef, () => closeRef.current, `${asked}|${chosen ?? ""}|${Boolean(asked || reply || error || card || choices.length)}`);
   const rec = useRef(null);
   const talkTimer = useRef(0);
   const leaveTimer = useRef(0);
@@ -304,6 +321,7 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     if (!line) return false;
     setError("");
     setAsked("");
+    setChosen(kind);
     setCard(kind);
     setChoices([]);
     setReply(line.say);
@@ -316,8 +334,13 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     const q = text.trim();
     if (!q || busy.current) return;
     busy.current = true;
+    markCards();
     hush();
     setDraft("");
+    setChosen(null);
+    // A new question: the report open from before goes (she opens it again
+    // if the answer needs it).
+    setCard(null);
     setAsked(q);
     setReply("");
     setChoices([]);
@@ -347,6 +370,24 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
       busy.current = false;
     }
   };
+  // The cross: back to the greeting and the cards. A page she was about to
+  // open stays shut.
+  function closeReply() {
+    markCards();
+    hush();
+    clearTimeout(leaveTimer.current);
+    leaveFire.current = null;
+    setShot(null);
+    setPhase("idle");
+    setMood("");
+    setAsked("");
+    setReply("");
+    setChoices([]);
+    setError("");
+    setCard(null);
+    setChosen(null);
+  }
+
   const askRef = useRef(ask);
   askRef.current = ask;
 
@@ -442,8 +483,22 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     };
   }, [onClose, hush]);
 
-  const shown = more ? chips : chips.slice(0, 4);
-  const say = reply || (asked ? "" : `${greeting()}${first ? `, ${first}` : ""}. I'm Goddess. How can I help?`);
+  // Two kinds of shortcut: reports she shows here (glass cards), and pages
+  // she opens (smaller pills, folded away while she answers).
+  const reportChips = chips.filter(([k]) => CARDS.some(([c]) => c === k));
+  const pageChips = chips.filter(([k]) => !CARDS.some(([c]) => c === k));
+  const chosenPage = pageChips.find(([k]) => k === chosen);
+  const say = reply;
+  const hello = `${greeting()}${first ? `, ${first}` : ""}. How can I help?`;
+  // Open: answering. The greeting folds away and the cards tuck in behind
+  // the one tapped (or her answer's question, when typed or spoken).
+  const open = Boolean(asked || reply || error || card || choices.length);
+  const stacked = open && Boolean(asked || chosen);
+  // On top: a typed question or a page asked for, else the report chosen.
+  const topLabel = asked || chosenPage?.[1];
+  const behind = reportChips.filter(([k]) => topLabel || k !== chosen).map(([k]) => k);
+  const talking = want !== "idle";
+  const base = `${readTime(say) + 0.3}s`;
 
   return (
     <div
@@ -476,55 +531,125 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         </span>
       </header>
 
-      <section className="cg-panel" aria-live="polite">
-        <div className={`cg-status${want === "idle" ? "" : " is-on"}`}>
-          <span className="cg-bars">
-            <i />
-            <i />
-            <i />
-            <i />
-            <i />
-          </span>
-          {STATUS[wantBase] ?? ""}
+      <section className={`cv-col cg-talk${open ? " is-open" : ""}`} aria-live="polite">
+        <div className={`cv-fold${open ? " is-folded" : ""}`}>
+          <div>
+            <h1 className="cv-title">{hello}</h1>
+          </div>
         </div>
-        {asked && <p className="cg-asked">{asked}</p>}
-        {say && <h1 className="cg-say">{say}</h1>}
+
+        {/* Reports she shows right here: glass cards, under the question box.
+            Tapped, the other tucks in behind it; a typed question (or a page
+            asked for) takes the top and the reports shrink into the cross. */}
+        {(reportChips.length > 0 || stacked) && (
+          <div ref={asksRef} className={`cv-asks${stacked ? " is-stacked" : ""}`} role="group" aria-label="Show a report" style={{ order: open ? 1 : 2 }}>
+            {stacked && topLabel && (
+              <div data-k="typed" className="cv-ask cv-typed is-on">
+                <span className="cv-ask-icon">
+                  <Icon name={asked ? "message" : (ICONS[chosen] ?? "sparkle")} size={17} />
+                </span>
+                <span>{topLabel}</span>
+                {talking && <Bars />}
+              </div>
+            )}
+            {reportChips.map(([key, label]) => {
+              const top = stacked && !topLabel && key === chosen;
+              const d = stacked && !top ? behind.indexOf(key) + 1 : 0;
+              return (
+                <button
+                  key={key}
+                  data-k={key}
+                  type="button"
+                  className={`cv-ask cv-report${stacked && topLabel ? " is-sunk" : top ? " is-on" : d ? (d > 3 ? " is-behind is-gone" : " is-behind") : ""}`}
+                  style={d ? { "--d": Math.min(d, 3) } : undefined}
+                  tabIndex={stacked && !top ? -1 : undefined}
+                  aria-hidden={stacked && !top ? true : undefined}
+                  onClick={() => {
+                    if (stacked) return;
+                    markCards();
+                    if (showCard(key)) return;
+                    setChosen(key);
+                    setAsked("");
+                    respond(`Opening ${label}.`, { type: "go", target: key });
+                  }}
+                >
+                  <span className="cv-ask-icon">
+                    <Icon name={ICONS[key] ?? "chart"} size={17} />
+                  </span>
+                  <span className="cv-report-text">
+                    {label}
+                    {!stacked && <small>{REPORT_SUB[key]}</small>}
+                  </span>
+                  {top && talking && <Bars />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Her answer, as plain words over the room. */}
+        {open && (say || error || card) && (
+          <div className="cv-reply" style={{ "--base": base, order: 3 }}>
+            {say && (
+              <p key={`${asked}|${say}`} className="cv-reply-text" aria-label={say}>
+                <SpokenWords text={say} />
+              </p>
+            )}
+            {error && <p className="cg-error">{error}</p>}
+            {card && (
+              <ReportCard
+                kind={card}
+                reports={reports}
+                onOpen={() => {
+                  const label = pages.find(([k]) => k === card)?.[1] ?? "it";
+                  respond(`Opening ${label}.`, { type: "go", target: card });
+                }}
+                onClose={() => setCard(null)}
+              />
+            )}
+          </div>
+        )}
         {choices.length > 0 && (
-          <div className="cg-choices">
-            {choices.map((p) => (
+          <div className="cv-links" style={{ "--base": base, order: 4 }}>
+            {choices.map((p, i) => (
               <button
                 key={p.id}
                 type="button"
-                className="cg-chip"
+                className="cv-link"
+                style={{ "--i": i }}
                 onClick={() => {
                   setChoices([]);
-                  setAsked("");
                   setReply(`Opening ${p.name}.`);
                   go({ type: "student", id: p.id });
                   speak(`Opening ${p.name}.`, "", { onStart: onVoiceStart });
                 }}
               >
-                {p.name}
-                {p.class ? <span className="cg-chip-sub">{[p.class, p.section].filter(Boolean).join("-")}</span> : null}
+                <span className="cv-link-icon">
+                  <Icon name="scholar" size={16} />
+                </span>
+                <span className="cv-link-name">{p.name}</span>
+                {p.class ? <span className="cv-link-sub">{[p.class, p.section].filter(Boolean).join("-")}</span> : null}
               </button>
             ))}
           </div>
         )}
-        {error && <p className="cg-error">{error}</p>}
-        {card && (
-          <ReportCard
-            kind={card}
-            reports={reports}
-            onOpen={() => {
-              const label = pages.find(([k]) => k === card)?.[1] ?? "it";
-              setAsked("");
-              respond(`Opening ${label}.`, { type: "go", target: card });
-            }}
-            onClose={() => setCard(null)}
-          />
+        {open && (
+          <button
+            key={`close-${asked}|${chosen ?? ""}`}
+            type="button"
+            ref={closeRef}
+            className="cv-close"
+            style={{ "--base": card ? "0.5s" : base, "--i": choices.length, order: 5 }}
+            onClick={closeReply}
+            aria-label="Close answer"
+          >
+            <Icon name="x" size={18} />
+          </button>
         )}
+
         <form
           className="cg-ask"
+          style={{ order: open ? 2 : 1 }}
           onSubmit={(e) => {
             e.preventDefault();
             ask(draft);
@@ -543,30 +668,32 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
         </form>
       </section>
 
-      <nav className="cg-chips" aria-label="Go to">
-        {shown.map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={`cg-chip${card === key ? " is-on" : ""}`}
-            aria-pressed={cards.some(([k]) => k === key) ? card === key : undefined}
-            // Fees and Attendance open their card here; the rest go to the page.
-            onClick={() => {
-              if (card === key) return setCard(null);
-              if (showCard(key)) return;
-              setAsked("");
-              respond(`Opening ${label}.`, { type: "go", target: key });
-            }}
-          >
-            {label}
-          </button>
-        ))}
-        {chips.length > 4 && (
-          <button type="button" className="cg-chip" onClick={() => setMore(!more)} aria-expanded={more}>
-            {more ? "Less" : "More"}
-          </button>
-        )}
-      </nav>
+      {/* Pages she opens: along the bottom, out of the way while she answers. */}
+      {pageChips.length > 0 && (
+        <nav className={`cg-chips cv-pages${open ? " is-hidden" : ""}`} aria-label="Open a page" aria-hidden={open || undefined}>
+          {pageChips.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              className="cv-page"
+              tabIndex={open ? -1 : undefined}
+              onClick={() => {
+                if (open) return;
+                markCards();
+                setChosen(key);
+                setAsked("");
+                respond(`Opening ${label}.`, { type: "go", target: key });
+              }}
+            >
+              <span className="cv-page-icon">
+                <Icon name={ICONS[key] ?? "sparkle"} size={15} />
+              </span>
+              {label}
+              <Icon name="arrowRight" size={13} />
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
