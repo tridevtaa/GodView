@@ -43,24 +43,172 @@
 /* Goddess in her room (concierge.css), filling the first screen under
    the nav instead of the whole window. */
 .lp-goddess.cg {
+  /* The box's right edge lines up with the nav's (1440px wide, 32px in). */
+  --cg-side: max(32px, calc((100% - 1440px) / 2 + 32px));
   position: relative;
   inset: auto;
   z-index: 0;
   height: calc(100svh - 40px);
   min-height: 560px;
-  max-height: 1000px;
   margin-top: -72px;
   animation: none;
 }
 
-/* Under the nav, clear of it. */
-.lp-goddess .cg-panel {
-  max-height: calc(100% - 200px);
+/* Big screens: a slightly bigger box, in step with the room. */
+@media (min-width: 1800px) {
+  .lp-goddess.cg {
+    --cg-w: 480px;
+  }
+
+  .lp-goddess.cg .cg-say {
+    font-size: 24px;
+  }
+}
+
+/* The dialogue box and, once she answers, links to the sections under
+   it: one column where the app has the box alone, clear of the nav. */
+.lp-goddess-col {
+  position: absolute;
+  top: 50%;
+  right: var(--cg-side);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: var(--cg-w);
   margin-top: 24px;
+  transform: translateY(-50%);
+}
+
+.lp-goddess.cg .cg-panel {
+  position: static;
+  width: auto;
+  max-height: none;
+  transform: none;
+}
+
+/* Under her answer, one glass strip of equal cells: what she named,
+   each a tap away from its place on the page. */
+.lp-goto {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  overflow: hidden;
+  border: 1px solid var(--cg-line);
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: 0 18px 50px rgba(60, 40, 25, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  animation: lp-goto-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s both;
+}
+
+.lp-goto-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px 6px 12px;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.35);
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-goto-link + .lp-goto-link {
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.lp-goto-link:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  text-decoration: none;
+}
+
+.lp-goto-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  box-shadow: 0 6px 14px rgba(45, 30, 18, 0.18);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.lp-goto-link:hover .lp-goto-icon {
+  transform: translateY(-2px) scale(1.06);
+}
+
+.lp-goto-link:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+  border-radius: 18px;
+}
+
+/* Where a link under her answer lands: a soft sunset glow, twice, once
+   the scroll has settled. */
+.lp-flash {
+  border-radius: 24px;
+  outline: 3px solid transparent;
+  outline-offset: 10px;
+  animation: lp-flash 1.1s ease-in-out 1s 2;
+}
+
+@keyframes lp-flash {
+  50% {
+    outline-color: rgba(232, 163, 95, 0.85);
+  }
+}
+
+@keyframes lp-goto-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-height: 640px) and (min-width: 761px) {
+  .lp-goddess-col {
+    top: 104px;
+    margin-top: 0;
+    transform: none;
+  }
 }
 
 .lp-goddess .cg-say {
   margin: 0;
+}
+
+/* An answer filmed with her voice, over the clips; it fades in once
+   moving and out at the end, onto her idle clip (same pose both ends). */
+.lp-film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 30% 50%;
+  opacity: 0;
+  transform: scale(1.015);
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.lp-film.is-on {
+  opacity: 1;
+}
+
+@media (max-width: 760px) {
+  .lp-film {
+    object-position: 25% 30%;
+  }
 }
 
 /* The questions sit in the dialogue box, under what she says. */
@@ -81,10 +229,32 @@
   padding-bottom: 8px;
 }
 
-/* Phones: the box sits at the bottom, with nothing under it now. */
+/* Phones: the box (and its links) at the bottom. */
 @media (max-width: 760px) {
-  .lp-goddess .cg-panel {
+  .lp-goddess.cg {
+    --cg-side: 16px;
+  }
+
+  .lp-goddess-col {
+    top: auto;
+    right: var(--cg-side);
     bottom: calc(20px + env(safe-area-inset-bottom));
+    left: var(--cg-side);
+    gap: 10px;
+    width: auto;
+    margin-top: 0;
+    transform: none;
+  }
+
+  .lp-goto-link {
+    gap: 6px;
+    padding: 10px 4px;
+    font-size: 11.5px;
+  }
+
+  .lp-goto-icon {
+    width: 32px;
+    height: 32px;
   }
 
   .lp-faq {
@@ -151,7 +321,9 @@
   color: var(--text);
 }
 
+/* Wider than the sections, so on big screens it spans the hero. */
 .lp-nav-inner {
+  max-width: 1440px;
   display: flex;
   align-items: center;
   gap: 32px;
