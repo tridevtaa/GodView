@@ -13,13 +13,16 @@ import {
   ParentMock,
 } from "./LandingMocks.jsx";
 import { parentLoginLive } from "../pwa/install.js";
+import { BASE, ClipStage, useClips } from "./GoddessStage.jsx";
+import { primeVoice, voiceAudio } from "./voicePlayer.js";
+import { faq as FAQ } from "../data/landing-faq.json";
+import "./concierge.css";
 import "./landing.css";
 
 // Public page at godview.in for anyone not signed in. Claims are limited to
 // what Godview does today: no invented customers, numbers or certifications.
-// Every picture is a drawn product preview (LandingMocks.jsx), not a photo.
-
-const ROTATING = ["student", "admission", "absence", "fee", "homework", "village", "result"];
+// The hero is Goddess in her room, as in the app, answering a few questions;
+// every other picture is a drawn product preview (LandingMocks.jsx).
 
 const MARQUEE = [
   "Admissions", "Certificates", "Letterhead notices", "Attendance", "Parent app", "Homework",
@@ -137,7 +140,7 @@ const LINKS = [
 ];
 const LINK_IDS = LINKS.map(([id]) => id);
 
-// Width the hero's dashboard is drawn at; it is scaled to fit the screen.
+// Width the dashboard preview is drawn at; it is scaled to fit the screen.
 // Phones show its left part, closer up, so it stays readable.
 const homeWidth = () => (window.innerWidth <= 640 ? 720 : 1120);
 
@@ -257,22 +260,6 @@ function Words({ text }) {
   ));
 }
 
-function RotatingWord() {
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (reducedMotion()) return;
-    const t = setInterval(() => setI((n) => (n + 1) % ROTATING.length), 2200);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <span className="lp-rotator" aria-live="off">
-      <span key={i} className="lp-rotator-word">
-        {ROTATING[i]}
-      </span>
-    </span>
-  );
-}
-
 function Checks({ points }) {
   return (
     <ul className="lp-checks">
@@ -296,6 +283,143 @@ function Head({ kicker, title, sub, light }) {
       </h2>
       {sub && <p className="lp-sub">{sub}</p>}
     </div>
+  );
+}
+
+// ------------------------------------------------------------ Goddess ---
+
+// Her recorded answers (scripts/landing-voice.mjs): voice.json lists the
+// text each file says; a file plays only while it matches the answer.
+const VOICE = "/landing/voice/";
+let voiceList = null;
+const loadVoiceList = () =>
+  (voiceList ??= fetch(`${VOICE}voice.json`, { cache: "no-cache" })
+    .then((r) => (r.ok ? r.json() : {}))
+    .catch(() => ({})));
+
+const STATUS = { think: "Thinking…", talk: "Speaking…" };
+// How long she thinks before answering, so the question lands first.
+const THINK_MS = 700;
+
+function greeting() {
+  const h = new Date().getHours();
+  return h >= 4 && h < 12 ? "Good morning" : h >= 12 && h < 17 ? "Good afternoon" : "Good evening";
+}
+
+// The hero: Goddess in her room, exactly as the app's assistant shows her,
+// with no question box: a tap on a question and she answers aloud.
+// Browsers only allow sound a tap started, so she greets in writing.
+function GoddessHero({ error }) {
+  const box = useRef(null);
+  const manifest = useClips();
+  const clips = manifest?.clips && Object.values(manifest.clips).some((l) => l?.length) ? manifest.clips : null;
+  const poster = BASE + (manifest?.poster ?? "still.jpg");
+  const focus = manifest?.focus;
+  const [phase, setPhase] = useState("idle"); // idle | think | talk
+  const [asked, setAsked] = useState(null); // the FAQ item she's answering
+  const [reply, setReply] = useState("");
+  const seq = useRef(0);
+  const timer = useRef(0);
+
+  const hush = () => {
+    seq.current++;
+    clearTimeout(timer.current);
+    const a = voiceAudio();
+    if (a) {
+      a.onended = null;
+      a.onerror = null;
+      a.pause();
+    }
+    setPhase("idle");
+  };
+
+  // Stops her when the hero scrolls away or the page closes.
+  useEffect(() => {
+    loadVoiceList();
+    const el = box.current;
+    let io;
+    if (el && "IntersectionObserver" in window) {
+      io = new IntersectionObserver(([e]) => !e.isIntersecting && hush(), { threshold: 0.15 });
+      io.observe(el);
+    }
+    return () => {
+      io?.disconnect();
+      hush();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function ask(item) {
+    hush();
+    const n = seq.current;
+    setAsked(item);
+    setReply("");
+    setPhase("think");
+    const [list] = await Promise.all([loadVoiceList(), new Promise((r) => setTimeout(r, THINK_MS))]);
+    if (n !== seq.current) return;
+    setReply(item.a);
+    setPhase("talk");
+    // No recording (yet), or it can't play: she still talks, silently, for
+    // about as long as the answer takes to say.
+    const silent = () => {
+      if (n !== seq.current) return;
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => n === seq.current && setPhase("idle"), 1200 + item.a.length * 60);
+    };
+    const a = voiceAudio();
+    if (!a || list[item.id] !== item.a) return silent();
+    const done = () => n === seq.current && setPhase("idle");
+    a.onended = done;
+    a.onerror = silent;
+    a.src = `${VOICE}${item.id}.mp3`;
+    a.play()
+      .then(() => {
+        clearTimeout(timer.current);
+        // Some browsers never say it ended.
+        timer.current = setTimeout(done, (Number.isFinite(a.duration) ? a.duration * 1000 : item.a.length * 70) + 1500);
+      })
+      .catch(silent);
+  }
+
+  const want = phase === "idle" ? "idle" : phase;
+  const say = reply || (asked ? "" : `${greeting()}. I’m Goddess. What would you like to know about Godview?`);
+
+  return (
+    <section
+      ref={box}
+      className={`cg lp-goddess${clips ? " has-clips" : " has-still"}`}
+      aria-label="Ask Goddess about Godview"
+      // Phones: the first tap unlocks sound for the answers that follow.
+      onPointerDownCapture={primeVoice}
+    >
+      <img className="cg-still" src={poster} alt="" style={focus ? { objectPosition: focus } : undefined} fetchpriority="high" />
+      {clips && <ClipStage clips={clips} focus={focus} want={want} after={want} onShotEnd={() => {}} />}
+      <div className="cg-shade" aria-hidden="true" />
+
+      <div className="cg-panel" aria-live="polite">
+        {asked && (
+          <div className={`cg-status${want === "idle" ? "" : " is-on"}`}>
+            <span className="cg-bars">
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </span>
+            {STATUS[want] ?? ""}
+          </div>
+        )}
+        {asked && <p className="cg-asked">{asked.q}</p>}
+        {say && <h1 className="cg-say">{say}</h1>}
+        {error && <p className="cg-error">{error}</p>}
+        <div className="cg-choices lp-faq" role="group" aria-label="Questions">
+          {FAQ.map((item) => (
+            <button key={item.id} type="button" className={`cg-chip${asked?.id === item.id ? " is-on" : ""}`} onClick={() => ask(item)}>
+              {item.q}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -363,39 +487,13 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
 
       <main>
         {/* ------------------------------------------------------- hero */}
-        <section className="lp-hero">
-          <div className="lp-sky" aria-hidden="true">
-            <span className="lp-aurora lp-aurora-1" />
-            <span className="lp-aurora lp-aurora-2" />
-            <span className="lp-aurora lp-aurora-3" />
-            <span className="lp-stars" />
-            <span className="lp-stars lp-stars-2" />
-            <span className="lp-horizon" />
-          </div>
+        <GoddessHero error={error} />
 
-          <div className="lp-wrap lp-hero-copy">
-            <h1 className="lp-enter" style={{ "--d": "80ms" }}>
-              See every
-              <br />
-              <RotatingWord />
-              <br />
-              at a glance.
-            </h1>
-            <p className="lp-lead lp-enter" style={{ "--d": "160ms" }}>
-              One app for your whole school. Made for India.
-            </p>
-            <div className="lp-cta lp-enter" style={{ "--d": "240ms" }}>
-              <button className="btn lp-btn-lg lp-solid lp-shine" onClick={onLogin} disabled={busy}>
-                Log in with Google
-                <Icon name="arrowRight" size={16} className="lp-arrow" />
-              </button>
-              {secondCta}
-            </div>
-            {error && <p className="field-error">{error}</p>}
-          </div>
-
-          <div className="lp-wrap lp-stage">
-            <div className="lp-enter lp-stage-in" style={{ "--d": "420ms" }}>
+        {/* --------------------------------------------------- product */}
+        <section className="lp-section lp-product">
+          <div className="lp-wrap">
+            <Head kicker="Godview" title="Your whole school, on one screen." sub="One app for your whole school. Made for India." />
+            <div className="lp-stage" data-reveal="tilt">
               <div className="lp-window" aria-hidden="true">
                 <div className="lp-window-bar">
                   <span className="lp-dot" />

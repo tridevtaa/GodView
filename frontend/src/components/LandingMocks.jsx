@@ -259,7 +259,7 @@ function Letterhead() {
   return (
     <div className="lpm-lhead">
       <Crest />
-      <strong>Green Valley Public School</strong>
+      <strong>Fox High School</strong>
       <span>Station Road, Kurukshetra, Haryana</span>
     </div>
   );
@@ -458,7 +458,7 @@ export function HomeMock() {
   return (
     <div className="lph">
       <div className="lph-bar">
-        <strong className="lph-school">Green Valley School</strong>
+        <strong className="lph-school">Fox High School</strong>
         <span className="lph-session">
           26-27 <Icon name="chevronDown" size={12} />
         </span>
