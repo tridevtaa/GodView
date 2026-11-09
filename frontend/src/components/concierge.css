@@ -10,7 +10,9 @@
   --cg-line: rgba(255, 255, 255, 0.2);
   --cg-glow: #8fa0ff;
   --cg-side: max(24px, 6vw);
-  --cg-w: min(440px, 100% - 2 * var(--cg-side));
+  /* Grows with the screen, so the right side isn't a small island on a
+     big monitor. */
+  --cg-w: min(clamp(480px, 36vw, 640px), 100% - 2 * var(--cg-side));
 
   position: fixed;
   inset: 0;
@@ -767,10 +769,11 @@
   transform: scale(1.015);
 }
 
+/* No panel: the room darkens on the right so words read over it. */
 .cg.has-clips .cg-shade,
 .cg.has-still .cg-shade {
   background:
-    linear-gradient(90deg, transparent 45%, rgba(45, 34, 25, 0.16) 72%, rgba(45, 34, 25, 0.3) 100%),
+    linear-gradient(90deg, transparent 38%, rgba(35, 26, 19, 0.32) 62%, rgba(35, 26, 19, 0.52) 100%),
     linear-gradient(180deg, rgba(35, 26, 19, 0.38) 0%, transparent 15%, transparent 80%, rgba(35, 26, 19, 0.3) 100%);
 }
 
@@ -815,7 +818,7 @@
 @media (max-width: 760px) {
   .cg.has-clips .cg-shade,
   .cg.has-still .cg-shade {
-    background: linear-gradient(180deg, rgba(35, 26, 19, 0.35) 0%, transparent 14%, transparent 45%, rgba(35, 26, 19, 0.55) 70%, rgba(35, 26, 19, 0.75) 100%);
+    background: linear-gradient(180deg, rgba(35, 26, 19, 0.35) 0%, transparent 14%, transparent 38%, rgba(35, 26, 19, 0.55) 60%, rgba(35, 26, 19, 0.82) 100%);
   }
 
   .cg.has-clips .cg-say,
@@ -851,8 +854,699 @@
   will-change: transform;
 }
 
-.cg.is-dragging .cg-panel {
+.cg.is-dragging .cv-ask,
+.cg.is-dragging .cv-link,
+.cg.is-dragging .cv-close,
+.cg.is-dragging .cg-ask {
   background: rgba(96, 84, 72, 0.92);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+
+/* ---------- The conversation ----------
+   Used by the assistant here and the landing page's hero alike: a
+   headline over the room (no panel), glass cards to pick from, her
+   answer as plain words appearing as she says them, then buttons popping
+   in one by one and a cross to close it. Choosing a card folds the
+   headline away and tucks the other cards behind it. */
+
+.cv-col {
+  --col-gap: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--col-gap);
+  isolation: isolate;
+  transition: gap 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cv-col.is-open {
+  --col-gap: 26px;
+}
+
+/* A soft shade behind the open column, so her words read over any part
+   of the room. */
+.cv-col::before {
+  content: "";
+  position: absolute;
+  inset: -60px -80px -60px -100px;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(28, 20, 14, 0.42), rgba(28, 20, 14, 0.18) 60%, transparent);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.cv-col.is-open::before {
+  opacity: 1;
+}
+
+.cv-title {
+  margin: 0 0 6px;
+  color: #fff;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+  text-shadow: 0 1px 2px rgba(30, 20, 12, 0.25), 0 2px 30px rgba(30, 20, 12, 0.45);
+}
+
+/* The headline folds away while she answers. */
+.cv-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.55s cubic-bezier(0.22, 1, 0.36, 1), margin 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease 0.15s, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cv-fold > div {
+  min-height: 0;
+}
+
+.cv-fold.is-folded {
+  grid-template-rows: 0fr;
+  margin-bottom: calc(-1 * var(--col-gap));
+  opacity: 0;
+  transform: translateY(-10px) scale(0.97);
+  transition-delay: 0s;
+  pointer-events: none;
+}
+
+.cv-fold.is-folded > div {
+  overflow: hidden;
+}
+
+/* Glass cards, two to a row. */
+.cv-asks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cv-ask {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: 0 12px 32px rgba(40, 28, 18, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.35);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cv-ask:hover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.12));
+  transform: translateY(-2px);
+}
+
+.cv-ask:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* The one she's answering. */
+.cv-ask.is-on {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.18));
+}
+
+.cv-ask-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.cv-ask > span {
+  transition: opacity 0.3s ease;
+}
+
+/* While she's speaking: bars in the chosen card. */
+.cv-ask-bars {
+  height: 12px;
+  margin-left: auto;
+  padding-left: 6px;
+}
+
+/* Stacked: as wide as the chosen card needs (never wider than the
+   column), the others tucked behind it with just their edges showing. */
+.cv-asks.is-stacked {
+  grid-template-columns: fit-content(100%);
+  padding-bottom: 10px;
+}
+
+.cv-asks.is-stacked .cv-ask {
+  grid-area: 1 / 1;
+  padding-right: 16px;
+  white-space: nowrap;
+}
+
+.cv-asks.is-stacked .cv-ask.is-on {
+  z-index: 4;
+  cursor: default;
+  transform: none;
+}
+
+.cv-ask.is-behind {
+  z-index: calc(4 - var(--d));
+  opacity: calc(1 - var(--d) * 0.22);
+  transform: translateY(calc(var(--d) * 7px)) scale(calc(1 - var(--d) * 0.05));
+  pointer-events: none;
+}
+
+.cv-ask.is-behind > span {
+  opacity: 0;
+}
+
+/* Behind more than three deep: out of sight. */
+.cv-ask.is-gone {
+  opacity: 0;
+}
+
+/* A typed question, on top of the stack: it may run to a few lines. */
+.cv-asks.is-stacked .cv-ask.cv-typed {
+  white-space: normal;
+  animation: cv-pop 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Her answer: plain words over the room. */
+.cv-reply {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-height: 0;
+  padding: 2px 2px 0;
+}
+
+.cv-reply-text {
+  margin: 0;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+  text-shadow: 0 1px 2px rgba(30, 20, 12, 0.4), 0 2px 20px rgba(30, 20, 12, 0.55);
+}
+
+/* Word by word, as she says them. */
+.cv-word {
+  display: inline-block;
+  animation: cv-word 0.45s ease backwards;
+  animation-delay: var(--t);
+}
+
+@keyframes cv-word {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+    transform: translateY(6px);
+  }
+}
+
+/* Under her answer: each its own glass button, popping in one after
+   another once her words are out. */
+.cv-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cv-link,
+.cv-close {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07));
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: 0 10px 26px rgba(40, 28, 18, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #fff;
+  animation: cv-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--base, 0.15s) + var(--i, 0) * 0.22s);
+  transition: transform 0.25s ease, background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cv-link {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 16px 0 7px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.35);
+  cursor: pointer;
+}
+
+.cv-link:hover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.14));
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.cv-link-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2b2119;
+}
+
+.cv-link {
+  white-space: nowrap;
+}
+
+.cv-link-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-link-sub {
+  flex: none;
+  margin-left: auto;
+  color: var(--cg-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cv-link:focus-visible,
+.cv-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Closes her answer. */
+.cv-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  animation-delay: calc(var(--base, 0.3s) + var(--i, 0) * 0.22s + 0.15s);
+}
+
+.cv-close:hover {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.16));
+  transform: rotate(90deg);
+}
+
+@keyframes cv-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+    filter: blur(4px);
+  }
+}
+
+/* Short screens: a little smaller. */
+@media (max-height: 700px) and (min-width: 761px) {
+  .cv-col {
+    --col-gap: 12px;
+  }
+
+  .cv-col.is-open {
+    --col-gap: 20px;
+  }
+
+  .cv-title {
+    font-size: 32px;
+  }
+
+  .cv-ask {
+    min-height: 56px;
+  }
+
+  .cv-reply-text {
+    font-size: 19px;
+  }
+
+  .cv-link {
+    height: 42px;
+  }
+}
+
+@media (min-width: 1800px) {
+  .cv-title {
+    font-size: 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .cv-col {
+    --col-gap: 12px;
+  }
+
+  .cv-col.is-open {
+    --col-gap: 20px;
+  }
+
+  .cv-title {
+    margin-bottom: 2px;
+    font-size: 28px;
+  }
+
+  .cv-asks {
+    gap: 8px;
+  }
+
+  .cv-ask {
+    gap: 6px;
+    min-height: 52px;
+    padding: 8px 8px 8px 9px;
+    border-radius: 16px;
+    font-size: 13.5px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .cv-ask-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .cv-ask-icon .icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .cv-reply {
+    gap: 16px;
+  }
+
+  .cv-reply-text {
+    font-size: 18px;
+  }
+
+  .cv-links {
+    gap: 10px;
+  }
+
+  .cv-link {
+    gap: 8px;
+    height: 42px;
+    padding: 0 12px 0 6px;
+    font-size: 13.5px;
+  }
+
+  .cv-link-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* The narrowest phones: labels may take two lines. */
+@media (max-width: 380px) {
+  .cv-ask {
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-word,
+  .cv-link,
+  .cv-close,
+  .cv-asks.is-stacked .cv-ask.cv-typed {
+    animation: none;
+  }
+}
+
+/* ---------- The assistant's column ----------
+   On the right, pinned from the top so it grows downwards as she
+   answers; the question box last, for the next question. */
+
+.cg-talk {
+  --cg-top: clamp(96px, 22%, 240px);
+  position: absolute;
+  top: var(--cg-top);
+  right: var(--cg-side);
+  width: var(--cg-w);
+  max-height: calc(100% - var(--cg-top) - 84px - env(safe-area-inset-bottom));
+}
+
+/* A long report scrolls inside its card, the question box stays put. */
+.cg-talk > .cv-reply {
+  flex: 0 1 auto;
+}
+
+.cg-talk .cg-card {
+  background: rgba(38, 30, 23, 0.42);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  /* The report itself shows at once; her words read it out. */
+  animation: cv-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.3s backwards;
+}
+
+.cg-talk .cg-ask {
+  flex: none;
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(38, 30, 23, 0.36);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  box-shadow: 0 12px 32px rgba(40, 28, 18, 0.18);
+}
+
+/* Report cards: the name, and what it shows under it. */
+.cv-report-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cv-report-text small {
+  color: var(--cg-ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Pages she opens: smaller pills along the bottom (.cg-chips), an arrow
+   on each; out of the way while she answers. */
+.cv-pages {
+  gap: 8px;
+  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cv-pages.is-hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+
+/* A typed question on top: the reports have shrunk into the cross. */
+.cv-ask.is-sunk {
+  display: none;
+}
+
+.cv-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px 0 5px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 999px;
+  background: rgba(38, 30, 23, 0.34);
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-shadow: 0 1px 8px rgba(50, 35, 22, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cv-page:hover {
+  background: rgba(38, 30, 23, 0.52);
+  transform: translateY(-1px);
+}
+
+.cv-page:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.cv-page-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cv-page > .icon:last-child {
+  opacity: 0.55;
+  transition: translate 0.2s ease, opacity 0.2s ease;
+}
+
+.cv-page:hover > .icon:last-child {
+  translate: 2px 0;
+  opacity: 1;
+}
+
+@media (max-height: 640px) and (min-width: 761px) {
+  .cg-talk {
+    --cg-top: 84px;
+  }
+}
+
+@media (max-width: 760px) {
+  .cg-talk {
+    top: auto;
+    right: var(--cg-side);
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    left: var(--cg-side);
+    width: auto;
+    max-height: calc(100% - 140px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  /* A report open: it stands in for her words (still spoken), keeping
+     her face in view. */
+  .cg.has-card .cv-reply-text {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .cv-report-text small {
+    font-size: 11.5px;
+  }
+
+  .cv-pages {
+    gap: 6px;
+  }
+
+  .cv-page {
+    flex: none;
+  }
+
+  .cv-page {
+    gap: 6px;
+    height: 36px;
+    padding: 0 11px 0 4px;
+    font-size: 13px;
+  }
+
+  .cv-page-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* ---------- Computers: one tidy right-hand column ----------
+   The greeting, question box and reports a little lower and in step with
+   the screen; the pages along the bottom as a neat grid exactly as wide
+   as the column above, right edges in line. */
+@media (min-width: 761px) {
+  .cg-talk {
+    --cg-top: clamp(96px, 27%, 360px);
+  }
+
+  .cv-pages.cg-chips {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    width: var(--cg-w);
+  }
+
+  .cv-pages .cv-page {
+    display: flex;
+    min-width: 0;
+    padding-right: 12px;
+  }
+
+  .cv-page > .icon:last-child {
+    flex: none;
+    margin-left: auto;
+  }
+}
+
+/* Not short screens: sizes follow the screen up to a big monitor. */
+@media (min-width: 761px) and (min-height: 701px) {
+  .cg-talk .cv-title {
+    font-size: clamp(36px, 2.3vw, 50px);
+  }
+
+  .cg-talk .cv-ask {
+    min-height: clamp(64px, 4.2vw, 82px);
+    font-size: clamp(15px, 0.95vw, 18px);
+  }
+
+  .cg-talk .cv-ask-icon {
+    width: clamp(34px, 2.2vw, 42px);
+    height: clamp(34px, 2.2vw, 42px);
+  }
+
+  .cg-talk .cv-report-text small {
+    font-size: clamp(12px, 0.75vw, 14px);
+  }
+
+  .cg-talk .cv-reply-text {
+    font-size: clamp(22px, 1.3vw, 27px);
+  }
+
+  .cg-talk .cg-ask input {
+    height: clamp(44px, 2.9vw, 56px);
+    font-size: clamp(16px, 1vw, 19px);
+  }
+
+  .cv-pages .cv-page {
+    height: clamp(40px, 2.6vw, 48px);
+    font-size: clamp(13px, 0.85vw, 15px);
+  }
+}
+
+/* Narrower computers: the pills drop their arrows to fit four across. */
+@media (min-width: 761px) and (max-width: 1799px) {
+  .cv-pages .cv-page {
+    gap: 6px;
+    padding: 0 8px 0 5px;
+    font-size: 13px;
+  }
+
+  .cv-page > .icon:last-child {
+    display: none;
+  }
+
+  .cv-pages .cv-page-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.cv-page {
+  white-space: nowrap;
 }

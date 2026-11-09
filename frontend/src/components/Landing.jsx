@@ -14,8 +14,10 @@ import {
 } from "./LandingMocks.jsx";
 import { parentLoginLive } from "../pwa/install.js";
 import { BASE, ClipStage, useClips } from "./GoddessStage.jsx";
+import { Bars, SpokenWords, readTime, useGlide } from "./GoddessTalk.jsx";
 import { primeVoice, voiceAudio } from "./voicePlayer.js";
 import { faq as FAQ } from "../data/landing-faq.json";
+import { supabase } from "../supabase.js";
 import "./concierge.css";
 import "./landing.css";
 
@@ -203,6 +205,39 @@ function useScrollVars(root) {
 }
 
 // Scales a fixed-width drawing to the width of its box, as --k.
+// Under the hero the room carries on: scrolling down tilts the camera to
+// the laptop on the table in front of her (the same villa, a taller shot),
+// then fades into the page. Lined up with where she sits in the hero.
+function LaptopScene() {
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || reducedMotion()) return;
+    let raf = 0;
+    const set = () => {
+      raf = 0;
+      const r = el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (r.bottom < 0 || r.top > vh) return;
+      el.style.setProperty("--p", Math.min(1, Math.max(0, (vh - r.top) / (vh + r.height))).toFixed(3));
+    };
+    const onScroll = () => (raf ||= requestAnimationFrame(set));
+    set();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+  return (
+    <div ref={box} className="lp-scene" aria-hidden="true">
+      <img src="/landing/scene-laptop.jpg" alt="" loading="lazy" decoding="async" width="1536" height="1252" />
+    </div>
+  );
+}
+
 function useFit(box, width) {
   useEffect(() => {
     const el = box.current;
@@ -306,10 +341,9 @@ const STATUS = { think: "Thinking…", talk: "Speaking…" };
 // How long she thinks before answering, so the question lands first.
 const THINK_MS = 700;
 
-function greeting() {
-  const h = new Date().getHours();
-  return h >= 4 && h < 12 ? "Good morning" : h >= 12 && h < 17 ? "Good afternoon" : "Good evening";
-}
+const SALES_SAY = "Leave your details and our team will call you back.";
+const tenDigits = (v) => v.replace(/\D/g, "").replace(/^(?:91|0)(?=\d{10}$)/, "");
+
 
 // The hero: Goddess in her room, exactly as the app's assistant shows her,
 // with no question box: a tap on a question and she answers aloud.
@@ -324,6 +358,9 @@ function GoddessHero({ error }) {
   const [asked, setAsked] = useState(null); // the FAQ item she's answering
   const [reply, setReply] = useState("");
   const [filmOn, setFilmOn] = useState(false); // an answer's own clip is showing
+  // Contact Sales: null, or the call-back form in the box.
+  const [sales, setSales] = useState(null); // { step: "form" | "sending" | "sent", error }
+  const [lead, setLead] = useState({ name: "", school: "", phone: "" });
   const seq = useRef(0);
   const timer = useRef(0);
   const film = useRef(null);
@@ -376,8 +413,65 @@ function GoddessHero({ error }) {
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function ask(item) {
+  // She says the line (silently: there's no recording of it) while the
+  // form shows.
+  function talkFor(text) {
+    const n = seq.current;
+    setPhase("talk");
+    timer.current = setTimeout(() => n === seq.current && setPhase("idle"), 1200 + text.length * 60);
+  }
+
+  const edit = (k) => (e) => {
+    setLead({ ...lead, [k]: e.target.value });
+    if (sales?.error) setSales({ step: "form" });
+  };
+
+  // The cards glide between the grid and the stack.
+  const asks = useRef(null);
+  const stackKey = sales ? "sales" : (asked?.id ?? "");
+  const markCards = useGlide(asks, stackKey);
+
+  // The cross under her answer: back to the headline and all four cards.
+  function closeReply() {
+    markCards();
     hush();
+    setAsked(null);
+    setReply("");
+    setSales(null);
+  }
+
+  function openSales() {
+    markCards();
+    hush();
+    setAsked(null);
+    setReply("");
+    setSales({ step: "form" });
+    talkFor(SALES_SAY);
+  }
+
+
+  async function sendLead(e) {
+    e.preventDefault();
+    const name = lead.name.trim();
+    const school = lead.school.trim();
+    const phone = tenDigits(lead.phone);
+    if (!name || !school) return setSales({ step: "form", error: "Your name and your school's name, please." });
+    if (!/^[6-9]\d{9}$/.test(phone)) return setSales({ step: "form", error: "A 10-digit mobile number, please." });
+    setSales({ step: "sending" });
+    const { error: err } = await supabase.rpc("request_sales_call", { p_name: name, p_school: school, p_phone: phone });
+    if (err) {
+      const mine = err.code === "22023" || err.code === "53400";
+      return setSales({ step: "form", error: mine ? err.message : "Couldn't send that. Please try again." });
+    }
+    hush();
+    setSales({ step: "sent", phone });
+    talkFor("Thank you. We'll call you soon.");
+  }
+
+  function ask(item) {
+    markCards();
+    hush();
+    setSales(null);
     const n = seq.current;
     setAsked(item);
     setReply("");
@@ -447,7 +541,17 @@ function GoddessHero({ error }) {
   }
 
   const want = phase === "idle" ? "idle" : phase;
-  const say = reply || (asked ? "" : `${greeting()}. I’m Goddess. What would you like to know about Godview?`);
+  const open = Boolean(asked || sales);
+  // Stacked: the chosen card on top, the others tucked behind it.
+  const pick = sales ? FAQ.length : FAQ.findIndex((f) => f.id === asked?.id);
+  const depth = (i) => (i === pick ? 0 : 1 + [0, 1, 2, 3].filter((j) => j !== pick).indexOf(i));
+  const first = lead.name.trim().split(/\s+/)[0];
+  const say =
+    sales?.step === "sent"
+      ? `Thank you${first ? `, ${first}` : ""}. Our team will call you on +91 ${sales.phone.slice(0, 5)} ${sales.phone.slice(5)} soon.`
+      : sales
+        ? SALES_SAY
+        : reply;
 
   return (
     <section
@@ -471,39 +575,111 @@ function GoddessHero({ error }) {
       )}
       <div className="cg-shade" aria-hidden="true" />
 
-      <div className="lp-goddess-col">
-        <div className="cg-panel" aria-live="polite">
-          {asked && (
-            <div className={`cg-status${want === "idle" ? "" : " is-on"}`}>
-              <span className="cg-bars">
-                <i />
-                <i />
-                <i />
-                <i />
-                <i />
-              </span>
-              {STATUS[want] ?? ""}
-            </div>
-          )}
-          {asked && <p className="cg-asked">{asked.q}</p>}
-          {say && <h1 className="cg-say">{say}</h1>}
-          {error && <p className="cg-error">{error}</p>}
-          <div className="cg-choices lp-faq" role="group" aria-label="Questions">
-            {FAQ.map((item) => (
-              <button key={item.id} type="button" className={`cg-chip${asked?.id === item.id ? " is-on" : ""}`} onClick={() => ask(item)}>
-                {item.q}
-              </button>
-            ))}
+      <div className={`cv-col lp-goddess-col${open ? " is-open" : ""}`}>
+        {/* Folds away while she answers. */}
+        <div className={`cv-fold${open ? " is-folded" : ""}`}>
+          <div>
+            <h1 className="cv-title">See everything that goes on in your school</h1>
+            {error && <p className="cg-error">{error}</p>}
           </div>
         </div>
+
+        {/* What to ask her: four glass cards. Once one is chosen, the rest
+            tuck in behind it until the cross closes her answer. */}
+        <div ref={asks} className={`cv-asks${open ? " is-stacked" : ""}`} role="group" aria-label="Ask Goddess">
+          {FAQ.map((item, i) => (
+            <button
+              key={item.id}
+              data-k={item.id}
+              type="button"
+              className={`cv-ask${asked?.id === item.id ? " is-on" : open ? " is-behind" : ""}`}
+              style={open ? { "--d": depth(i) } : undefined}
+              tabIndex={open && i !== pick ? -1 : undefined}
+              aria-hidden={open && i !== pick ? true : undefined}
+              onClick={() => !open && ask(item)}
+            >
+              <span className="cv-ask-icon">
+                <Icon name={item.icon} size={17} />
+              </span>
+              <span>{item.q}</span>
+              {asked?.id === item.id && want !== "idle" && <Bars />}
+            </button>
+          ))}
+          <button
+            data-k="sales"
+            type="button"
+            className={`cv-ask lp-ask-sales${sales ? " is-on" : open ? " is-behind" : ""}`}
+            style={open ? { "--d": depth(FAQ.length) } : undefined}
+            tabIndex={open && !sales ? -1 : undefined}
+            aria-hidden={open && !sales ? true : undefined}
+            onClick={() => !open && openSales()}
+          >
+            <span className="cv-ask-icon">
+              <Icon name="phone" size={17} />
+            </span>
+            <span>Contact Sales</span>
+            {sales && want !== "idle" && <Bars />}
+          </button>
+        </div>
+
+        {/* Her answer, as plain words over the room. */}
+        {(asked || sales) && (
+          <div className="cv-reply" aria-live="polite" style={{ "--base": `${(say ? readTime(say) : 0) + 0.3}s` }}>
+            {say && (
+              <p key={`${stackKey}-${say.length}`} className="cv-reply-text" aria-label={say}>
+                <SpokenWords text={say} />
+              </p>
+            )}
+            {(sales?.step === "form" || sales?.step === "sending") && (
+              <form className="lp-sales" onSubmit={sendLead} noValidate>
+                <input
+                  className="lp-field"
+                  placeholder="Your name"
+                  autoComplete="name"
+                  maxLength={80}
+                  value={lead.name}
+                  onChange={edit("name")}
+                  aria-label="Your name"
+                />
+                <input
+                  className="lp-field"
+                  placeholder="School name"
+                  autoComplete="organization"
+                  maxLength={120}
+                  value={lead.school}
+                  onChange={edit("school")}
+                  aria-label="School name"
+                />
+                <label className="lp-field lp-field-phone">
+                  <span>+91</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="Mobile number"
+                    autoComplete="tel-national"
+                    maxLength={14}
+                    value={lead.phone}
+                    onChange={edit("phone")}
+                    aria-label="Mobile number"
+                  />
+                </label>
+                {sales.error && <p className="cg-error">{sales.error}</p>}
+                <button type="submit" className="lp-send" disabled={sales.step === "sending"}>
+                  {sales.step === "sending" ? "Sending…" : "Request a call"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
         {/* Once she answers: where on the page to read more. */}
         {reply && asked?.links?.length > 0 && (
-          <nav key={asked.id} className="lp-goto" aria-label="Read more">
-            {asked.links.map((l) => (
+          <nav key={asked.id} className="cv-links" aria-label="Read more" style={{ "--base": `${readTime(reply) + 0.3}s` }}>
+            {asked.links.map((l, i) => (
               <a
                 key={l.to}
                 href={`#${l.to}`}
-                className="lp-goto-link"
+                className="cv-link"
+                style={{ "--i": i }}
                 onClick={(e) => {
                   const el = document.getElementById(l.to);
                   if (!el) return;
@@ -518,13 +694,28 @@ function GoddessHero({ error }) {
                   setTimeout(() => el.classList.remove("lp-flash"), 3200);
                 }}
               >
-                <span className="lp-goto-icon">
-                  <Icon name={l.icon} size={18} />
+                <span className="cv-link-icon">
+                  <Icon name={l.icon} size={16} />
                 </span>
                 {l.label}
               </a>
             ))}
           </nav>
+        )}
+        {open && say && (
+          <button
+            key={`close-${stackKey}`}
+            type="button"
+            className="cv-close"
+            style={{
+              "--base": `${say ? readTime(say) + 0.3 : 0.3}s`,
+              "--i": reply && asked?.links?.length ? asked.links.length : 0,
+            }}
+            onClick={closeReply}
+            aria-label="Close answer"
+          >
+            <Icon name="x" size={18} />
+          </button>
         )}
       </div>
     </section>
@@ -560,12 +751,6 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
 
   return (
     <div className="lp" ref={root}>
-      <a className="lp-announce" href="#new">
-        <span className="lp-announce-tag">New</span>
-        Admissions, certificates and letters
-        <Icon name="arrowRight" size={14} />
-      </a>
-
       <header className={`lp-nav${scrolled ? " is-scrolled" : ""}`}>
         <div className="lp-wrap lp-nav-inner">
           <a className="logo" href="/" aria-label="Godview home">
@@ -596,9 +781,10 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
       <main>
         {/* ------------------------------------------------------- hero */}
         <GoddessHero error={error} />
+        <LaptopScene />
 
         {/* --------------------------------------------------- product */}
-        <section className="lp-section lp-product">
+        <section className="lp-section lp-product lp-scene-next">
           <div className="lp-wrap">
             <Head kicker="Godview" title="Your whole school, on one screen." sub="One app for your whole school. Made for India." />
             <div className="lp-stage" data-reveal="tilt">
