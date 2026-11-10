@@ -2,6 +2,13 @@
 // only play sound that a tap started, so the tap that opens the assistant
 // plays a moment of silence on it (primeVoice); her greeting and answers
 // can then play on the same element later.
+//
+// A second, separate iPhone restriction: by default a page's audio plays
+// on the "Ambient" channel, which the ringer/silent switch mutes outright
+// (play() still resolves — nothing is heard). The Audio Session API
+// (Safari 17+) moves the page to the "playback" channel, which the switch
+// doesn't touch; older Safari has no such API and stays silenced, same as
+// before.
 
 const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 let el = null;
@@ -20,6 +27,13 @@ export function voiceAudio() {
 // rest of the session with no retry. Failing quietly lets the next tap
 // try again instead.
 export function primeVoice() {
+  if (navigator.audioSession && navigator.audioSession.type !== "playback") {
+    try {
+      navigator.audioSession.type = "playback";
+    } catch {
+      /* unsupported here: audio still plays, just muted by the silent switch */
+    }
+  }
   const a = voiceAudio();
   if (!a || primed || priming) return;
   priming = true;
