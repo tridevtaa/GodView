@@ -29,6 +29,9 @@
 /landing/voice/*.mp3
   Cache-Control: public, max-age=86400
 
-# Pictures on the landing page: a day.
+# Pictures on the landing page, and the frames of its scroll scene: a day.
 /landing/*.jpg
+  Cache-Control: public, max-age=86400
+
+/landing/laptop/*
   Cache-Control: public, max-age=86400

@@ -15,6 +15,7 @@ import {
 import { parentLoginLive } from "../pwa/install.js";
 import { BASE, ClipStage, useClips } from "./GoddessStage.jsx";
 import { Bars, SpokenWords, readTime, useGlide } from "./GoddessTalk.jsx";
+import { useLaptopScene } from "./LaptopScene.js";
 import { primeVoice, voiceAudio } from "./voicePlayer.js";
 import { faq as FAQ } from "../data/landing-faq.json";
 import { supabase } from "../supabase.js";
@@ -315,8 +316,15 @@ const tenDigits = (v) => v.replace(/\D/g, "").replace(/^(?:91|0)(?=\d{10}$)/, ""
 // The hero: Goddess in her room, exactly as the app's assistant shows her,
 // with no question box: a tap on a question and she answers aloud.
 // Browsers only allow sound a tap started, so she greets in writing.
-function GoddessHero({ error }) {
+// scene: scrolling on comes down to the laptop in front of her
+// (LaptopScene.js); off for reduced motion.
+function GoddessHero({ error, scene }) {
   const box = useRef(null);
+  const track = useRef(null);
+  const front = useRef(null);
+  const back = useRef(null);
+  const laptop = useRef(null);
+  const caption = useRef(null);
   const manifest = useClips();
   const clips = manifest?.clips && Object.values(manifest.clips).some((l) => l?.length) ? manifest.clips : null;
   const poster = BASE + (manifest?.poster ?? "still.jpg");
@@ -520,7 +528,10 @@ function GoddessHero({ error }) {
         ? SALES_SAY
         : reply;
 
+  useLaptopScene({ track, front, back, screen: laptop, caption, focus, enabled: scene, onStart: () => hush() });
+
   return (
+    <div ref={track} className={`lp-hero-track${scene ? " has-scene" : ""}`}>
     <section
       ref={box}
       className={`cg lp-goddess${clips ? " has-clips" : " has-still"}`}
@@ -541,6 +552,23 @@ function GoddessHero({ error }) {
         />
       )}
       <div className="cg-shade" aria-hidden="true" />
+      {scene && (
+        <>
+          {/* The scroll scene: frames of the camera coming down to the laptop */}
+          <canvas ref={back} className="lp-scene-back" aria-hidden="true" />
+          <canvas ref={front} className="lp-scene-front" aria-hidden="true" />
+          <div className="lp-scene-dim" aria-hidden="true" />
+          <div ref={laptop} className="lp-laptop-screen" aria-hidden="true">
+            <div className="lp-laptop-inner">
+              <HomeMock />
+            </div>
+          </div>
+          <div ref={caption} className="lp-scene-cap">
+            <span className="lp-kicker">Godview</span>
+            <h2 className="lp-h2">Your whole school, on one screen.</h2>
+          </div>
+        </>
+      )}
 
       <div className={`cv-col lp-goddess-col${open ? " is-open" : ""}`}>
         {/* Folds away while she answers. */}
@@ -686,6 +714,7 @@ function GoddessHero({ error }) {
         )}
       </div>
     </section>
+    </div>
   );
 }
 
@@ -697,6 +726,8 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
   const screen = useRef(null);
   useReveal(root);
   const scrolled = useScrollVars(root);
+  // The hero's scroll scene down to the laptop (not for reduced motion)
+  const [scene] = useState(() => !reducedMotion());
   const spied = useSpy(LINK_IDS);
   const step = useActiveStep(steps);
   useFit(screen, homeWidth);
@@ -747,9 +778,10 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
 
       <main>
         {/* ------------------------------------------------------- hero */}
-        <GoddessHero error={error} />
+        <GoddessHero error={error} scene={scene} />
 
         {/* --------------------------------------------------- product */}
+        {!scene && (
         <section className="lp-section lp-product">
           <div className="lp-wrap">
             <Head kicker="Godview" title="Your whole school, on one screen." sub="One app for your whole school. Made for India." />
@@ -788,6 +820,7 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
             </div>
           </div>
         </section>
+        )}
 
         {/* ---------------------------------------------------- marquee */}
         <div className="lp-marquee" aria-label="What Godview covers">
