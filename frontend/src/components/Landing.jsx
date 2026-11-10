@@ -205,39 +205,6 @@ function useScrollVars(root) {
 }
 
 // Scales a fixed-width drawing to the width of its box, as --k.
-// Under the hero the room carries on: scrolling down tilts the camera to
-// the laptop on the table in front of her (the same villa, a taller shot),
-// then fades into the page. Lined up with where she sits in the hero.
-function LaptopScene() {
-  const box = useRef(null);
-  useEffect(() => {
-    const el = box.current;
-    if (!el || reducedMotion()) return;
-    let raf = 0;
-    const set = () => {
-      raf = 0;
-      const r = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      if (r.bottom < 0 || r.top > vh) return;
-      el.style.setProperty("--p", Math.min(1, Math.max(0, (vh - r.top) / (vh + r.height))).toFixed(3));
-    };
-    const onScroll = () => (raf ||= requestAnimationFrame(set));
-    set();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, []);
-  return (
-    <div ref={box} className="lp-scene" aria-hidden="true">
-      <img src="/landing/scene-laptop.jpg" alt="" loading="lazy" decoding="async" width="1536" height="1252" />
-    </div>
-  );
-}
-
 function useFit(box, width) {
   useEffect(() => {
     const el = box.current;
@@ -781,10 +748,9 @@ export default function Landing({ onLogin, onParentLogin, error, busy }) {
       <main>
         {/* ------------------------------------------------------- hero */}
         <GoddessHero error={error} />
-        <LaptopScene />
 
         {/* --------------------------------------------------- product */}
-        <section className="lp-section lp-product lp-scene-next">
+        <section className="lp-section lp-product">
           <div className="lp-wrap">
             <Head kicker="Godview" title="Your whole school, on one screen." sub="One app for your whole school. Made for India." />
             <div className="lp-stage" data-reveal="tilt">

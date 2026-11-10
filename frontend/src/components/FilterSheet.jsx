@@ -39,12 +39,12 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (slc ? 1 : 0) + (status !== "all" ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (slc ? 1 : 0) + (status !== "active" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
     onSlc?.(false);
-    onStatus("all");
+    onStatus("active");
   };
   const sorts = [["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
   const sortChip = ([by, label]) => (
@@ -98,7 +98,7 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
                 )}
                 <h3>Status</h3>
                 <div className="filter-chips">
-                  {[["all", "All"], ["active", "Active"], ["inactive", "Inactive"]].map(([v, label]) => (
+                  {[["active", "Active"], ["inactive", "Inactive"]].map(([v, label]) => (
                     <button key={v} type="button" className={`chip-btn${status === v ? " is-on" : ""}`} onClick={() => onStatus(v)}>
                       {label}
                     </button>
