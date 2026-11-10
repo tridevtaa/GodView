@@ -30,6 +30,7 @@ import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
 import { useGoddessSwipe } from "./pwa/goddessSwipe.js";
 import { SCREEN_AT, SECTION_OF, listScreens } from "./data/screens.js";
+import { CERT_KINDS } from "./data/certKinds.js";
 import { AiCard, InsightsButton, useInsights } from "./components/AiInsights.jsx";
 import { primeVoice } from "./components/voicePlayer.js";
 
@@ -90,6 +91,7 @@ export default function App() {
   const [plannerView, setPlannerView] = useState("calendar");
   const [inboxView, setInboxView] = useState("all");
   const [admissionsView, setAdmissionsView] = useState("enquiry");
+  const [certKind, setCertKind] = useState(""); // certificates listed: "" for all
   const [query, setQuery] = useState("");
   // Transport: the map starts as a small preview ("routes"); "map" opens it.
   const [view, setView] = useState("routes");
@@ -114,7 +116,7 @@ export default function App() {
   const [askPulled, setAskPulled] = useState(false);
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   const [slcPendingOnly, setSlcPendingOnly] = useState(false);
-  const [statusPick, setStatusPick] = useState("all"); // all | active | inactive
+  const [statusPick, setStatusPick] = useState("active"); // active | inactive
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
   const { school, role, user, setSchool } = useAuth();
@@ -405,6 +407,8 @@ export default function App() {
 
   // Opens a section or any screen in it (data/screens.js).
   function switchMode(next) {
+    // Office has no page of its own: its first screen this person has.
+    if (next === "office") next = screens.find((s) => s.section === "office")?.key ?? "students";
     const [page, tab] = SCREEN_AT[next] ?? [next];
     // A + action opens its form once; moving between pages clears it.
     setQuick({ kind: "", at: 0 });
@@ -421,7 +425,7 @@ export default function App() {
     setTab?.(tab ?? first);
     setQuery("");
     setPickedGrades([]);
-    setStatusPick("all");
+    setStatusPick("active");
     setOpenId(null);
   }
 
@@ -476,7 +480,7 @@ export default function App() {
   }, [mode, currentSession, viewOnly, leads, todayIso, current]);
 
   const insHere = isStudents ? insR : insS;
-  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || slcPendingOnly || statusPick !== "all"));
+  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || slcPendingOnly || statusPick !== "active"));
   const showInsights = insHere.on && !filtered;
   // Today's attendance for who's showing. The school's numbers are per class,
   // so they narrow by grade but not by a search; a teacher's are per student.
@@ -487,7 +491,7 @@ export default function App() {
       const own = today.own.filter((r) => ids.has(r.student_id));
       return { present: own.filter((r) => r.status === "present" || r.status === "late").length, marked: own.length };
     }
-    if (today?.rows && !query.trim() && !slcPendingOnly && statusPick === "all") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
+    if (today?.rows && !query.trim() && !slcPendingOnly && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
     return null;
   })();
 
@@ -540,11 +544,13 @@ export default function App() {
       },
     ];
   })();
+  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly, pendingCount });
   // The top bar has every section, so nothing is more than one row of tabs
   // away (data/screens.js). School settings are in the account menu.
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
+    ...(screens.some((s) => s.section === "office") ? [["office", "Office"]] : []),
     ...(isAdmin ? [["fees", "Fees"]] : []),
     ["academics", "Academics"],
     ["planner", "Planner"],
@@ -554,7 +560,6 @@ export default function App() {
   ];
   // Phones have room for these; More lists everything else directly.
   const barKeys = ["home", "students", isAdmin ? "fees" : "academics", "requests"];
-  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly, pendingCount });
   const litMode = SECTION_OF[mode] ?? mode;
   // Phones: swipe sideways to the next or previous tab (not on a profile).
   useSwipeTabs(barKeys, litMode, switchMode, !studentPage);
@@ -612,7 +617,7 @@ export default function App() {
   );
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "scholar"]] : []),
-    ...(isAdmin && !viewOnly ? [["enquiry", "New enquiry", "newAdmission"]] : []),
+    // New enquiry isn't here: it's a button on Admissions (Office).
     ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
     // Teachers' daily work: their class register (class in-charges), homework
     // and marks. Owners, admins and the principal see these, not give them.
@@ -705,7 +710,7 @@ export default function App() {
   // Pages it can open, each once; the chips are the most used of them.
   // What each section's panel in the top bar offers (computers): big links to
   // its screens, then columns of smaller ones. Everything is one click away.
-  const openStudents = (status = "all", grade = null) => {
+  const openStudents = (status = "active", grade = null) => {
     switchMode("students");
     setStatusPick(status);
     setPickedGrades(grade ? [grade] : []);
@@ -729,13 +734,18 @@ export default function App() {
     },
     students: {
       big: [
-        [leads ? "All students" : "My students", () => openStudents(), { current: isStudents && statusPick === "all" && !pickedGrades.length }],
         ["Active", () => openStudents("active"), { current: isStudents && statusPick === "active" }],
         ["Inactive", () => openStudents("inactive"), { current: isStudents && statusPick === "inactive" }],
-        ...(screens.some((s) => s.key === "admissions") ? [["Admissions", () => switchMode("admissions")]] : []),
+      ],
+      columns: [actions("student", "result"), { title: "Classes", wide: true, links: gradeOptions(searchStudents).map((g) => [gradeLabel(g.value), () => openStudents("active", g.value)]) }],
+    },
+    // The front office: applicants on their way in, and certificates out.
+    office: {
+      big: [
+        ...(screens.some((s) => s.key === "admissions") ? [["Admissions", () => switchMode("admissions"), { current: mode === "admissions" }]] : []),
         ...(screens.some((s) => s.key === "certificates") ? [["Certificates", () => switchMode("certificates"), { current: mode === "certificates" }]] : []),
       ],
-      columns: [actions("student", "enquiry", "result"), { title: "Classes", wide: true, links: gradeOptions(searchStudents).map((g) => [gradeLabel(g.value), () => openStudents("all", g.value)]) }],
+      columns: screens.some((s) => s.key === "admissions") && isAdmin && !viewOnly ? [{ title: "Quick actions", links: [["New enquiry", () => runAction("enquiry")]] }] : [],
     },
     fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure" }), columns: [actions("fee", "bulk")] },
     academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
@@ -773,16 +783,27 @@ export default function App() {
       columns: [],
     },
   };
-  // On Admissions, phones get its stages in that row instead (one row at most)
+  // On Certificates, phones get its kinds in that row instead of a list
+  if (mode === "certificates" && !wideScreen) {
+    menus.office = {
+      ...menus.office,
+      big: [["", "All"], ...CERT_KINDS.map(([k, l]) => [k, l.replace(" (SLC / TC)", "")])].map(([k, l]) => [l, () => setCertKind(k), { current: certKind === k }]),
+    };
+  }
+  // On Admissions, phones get just its stages in that row (one row at most)
   if (mode === "admissions" && !wideScreen) {
-    menus.students = {
-      ...menus.students,
+    menus.office = {
+      ...menus.office,
       big: [
-        ["Students", () => openStudents()],
         ...[["enquiry", "Enquiries"], ["registered", "Registered"], ["admitted", "Admitted"], ["lost", "Not joining"]].map(([k, l]) => [l, () => setAdmissionsView(k), { current: admissionsView === k }]),
       ],
     };
   }
+  // Where you are, for the phone's small heading: the section, and the
+  // screen in it when that's something else (Office › Certificates).
+  const whereSection = mode === "home" ? null : sections.find(([v]) => v === litMode)?.[1] ?? null;
+  const wherePageLabel = screens.find((s) => s.key === (screenNow ?? mode))?.label;
+  const wherePage = wherePageLabel && wherePageLabel !== whereSection ? wherePageLabel : null;
   const askPages = [...screens.map((s) => [s.key, s.label]), ["me", "My profile"]];
   const askChips = ["attendance", "fees", "students", "requests", "employees", "transport", "calendar", "homework", "notices"]
     .map((k) => askPages.find(([x]) => x === k))
@@ -869,6 +890,18 @@ export default function App() {
         </main>
       )}
       <main className="page" hidden={studentPage}>
+        {/* Phones: where you are, small at the top (pages hide their titles there). */}
+        {!wideScreen && whereSection && (
+          <p className="page-where">
+            <span>{whereSection}</span>
+            {wherePage && (
+              <>
+                <Icon name="chevronRight" size={12} />
+                <b>{wherePage}</b>
+              </>
+            )}
+          </p>
+        )}
         <Suspense fallback={<div className="grid" aria-busy="true"><div className="card card-skeleton" /><div className="card card-skeleton" /><div className="card card-skeleton" /></div>}>
         {mode === "me" ? (
           <MyProfile school={school} session={currentSession} email={user.email} googleName={user.displayName} onBack={() => switchMode("home")} />
@@ -1024,7 +1057,7 @@ export default function App() {
         ) : mode === "homework" ? (
           <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} noUpload={computerOnly} onOpenStudent={(id) => openStudent(id)} /> : null} />
         ) : mode === "certificates" && isAdmin ? (
-          <CertificatesRegister school={school} />
+          <CertificatesRegister school={school} kind={certKind} onKind={setCertKind} students={current} sessionId={currentSession?.id} onUpdate={patch} />
         ) : mode === "admissions" && leads ? (
           <AdmissionsPage
             school={school}
@@ -1174,7 +1207,7 @@ export default function App() {
           <div className="empty">
             <p className="empty-title">No {mode} found</p>
             <p>
-              {query ? `Nothing matches “${query}”` : statusPick !== "all" ? `No ${statusPick} students` : "Nothing here yet"}
+              {query ? `Nothing matches “${query}”` : `No ${statusPick} students`}
               {pickedGrades.length ? ` in ${gradesText(pickedGrades)}` : ""}.
             </p>
           </div>

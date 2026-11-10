@@ -744,7 +744,7 @@ export default function AdmissionsPage({ school, grades, sessions, current, stud
             <button className="btn btn-secondary" onClick={() => setForm("settings")} aria-label="Admission settings" title="Admission settings">
               <Icon name="settings" />
             </button>
-            <button className="btn btn-primary" onClick={() => setForm("enquiry")}>
+            <button className="btn btn-primary adm-new" onClick={() => setForm("enquiry")}>
               <Icon name="plus" /> New enquiry
             </button>
           </div>

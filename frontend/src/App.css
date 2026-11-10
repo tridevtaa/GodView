@@ -10289,6 +10289,17 @@ h1.page-title {
     display: none;
   }
 
+  /* Except a new enquiry: the office's first step, so on the page itself. */
+  .has-plus .page .page-actions .btn-primary.adm-new {
+    display: inline-flex;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .has-plus .page .page-header > .page-actions:has(.adm-new) {
+    display: flex;
+  }
+
   .has-plus .page-header > .page-actions:not(:has(.btn-secondary, .popover-anchor)) {
     display: none;
   }
@@ -20006,3 +20017,143 @@ button.class-face:hover {
     left: 16px;
   }
 }
+
+/* =========================================================
+   Quick actions (phones), v4: a column of named pills rising from the
+   +, each with its icon on the right in line with the +. Replaces the
+   icon-only half circle, which was hard to read.
+   ========================================================= */
+@media (max-width: 760px) {
+  .fab .fab-actions {
+    inset: auto 0 calc(100% + 14px) auto;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: flex-end;
+    gap: 10px;
+    width: max-content;
+  }
+
+  .fab .fab-action {
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: auto;
+    opacity: 0;
+    transform: translateY(14px) scale(0.92);
+    transform-origin: 100% 50%;
+    transition:
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1) var(--d),
+      opacity 0.2s var(--d);
+  }
+
+  .fab.is-open .fab-action {
+    opacity: 1;
+    transform: none;
+  }
+
+  .fab .fab-action .fab-action-label {
+    position: static;
+    display: block;
+    width: auto;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 6px 18px rgba(29, 35, 102, 0.16);
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-shadow: none;
+    transform: none;
+  }
+
+  .fab .fab-action .fab-action-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .fab .fab-action:active .fab-action-label,
+  .fab .fab-action:active .fab-action-icon {
+    transform: scale(0.96);
+  }
+
+  /* Squeezed bars: the + is smaller; keep the icons centred over it */
+  .bars-compact:not(.is-typing) .fab .fab-actions {
+    right: -3px;
+  }
+}
+
+/* Phones: the kinds of certificate are in the row above the tab bar. */
+@media (max-width: 760px) {
+  .certs .cert-filter {
+    display: none;
+  }
+}
+
+/* Phones: where you are, small and quiet at the top left of each page. */
+.page-where {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .page-where {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 12px 2px;
+    color: var(--text-3, #8a8fa3);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .page-where .icon {
+    flex: none;
+    opacity: 0.6;
+  }
+
+  .page-where b {
+    color: var(--brand);
+    font-weight: 700;
+  }
+  /* A header holding only the (hidden) title: no empty gap under it */
+  .page .page-header:not(:has(> :not(h1.page-title))) {
+    display: none;
+  }
+}
+
+/* Issue certificate, from the register: who it's for, then which. */
+.cert-pick {
+  width: min(560px, 100%);
+}
+
+.cert-pick .search {
+  width: 100%;
+  max-width: none;
+  margin-bottom: 12px;
+}
+
+.cert-pick-list button .icon {
+  flex: none;
+  color: var(--text-3);
+}
+
+/* The planner's pages never grow wider than the screen: a wide table
+   (the timetable) scrolls sideways inside its own box instead. */
+.cal {
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+}
+
+.cal > * {
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .cal {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

@@ -5,19 +5,13 @@ import { amountInWords, rupees } from "../data/money.js";
 import { gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
 import { StepBar } from "./Steps.jsx";
+import { CERT_KINDS } from "../data/certKinds.js";
 
 // A student's certificates: issue one, and see or reprint what was issued. Each
 // is previewed first, gets its serial number when issued, and keeps what it said
 // then, so a reprint matches the original. Owners and admins only.
 
-const KINDS = [
-  ["bonafide", "Bona fide", "Confirms the child studies here"],
-  ["slc", "Leaving (SLC / TC)", "When the child leaves the school"],
-  ["no_dues", "No dues", "Confirms nothing is owed to the school"],
-  ["character", "Character", "Conduct while at the school"],
-  ["fee_paid", "Fee paid", "Fees paid in a session, for tax or reimbursement"],
-  ["dob", "Date of birth", "As recorded by the school"],
-];
+const KINDS = CERT_KINDS;
 const TITLE = {
   bonafide: "Bona Fide Certificate",
   slc: "School Leaving Certificate",
@@ -639,12 +633,102 @@ function IssueForm({ kind, school, person, sessions, sessionId, onClose, onIssue
 
 // Every certificate the school has issued: the register. Students who have left
 // aren't on the lists any more, so this is how to find and reprint theirs.
-export function CertificatesRegister({ school }) {
+// Issue certificate, from the register: pick the student, then the kind,
+// then the same form as on the student's Certificates tab.
+function PickForCertificate({ students, onClose, onPick }) {
+  const [find, setFind] = useState("");
+  const [person, setPerson] = useState(null);
+  const q = find.trim().toLowerCase();
+  const matches = q ? students.filter((p) => `${p.name} ${p.admission_no ?? ""} ${p.roll_no ?? ""}`.toLowerCase().includes(q)).slice(0, 8) : students.slice(0, 8);
+  const missing = (kind) => (kind === "dob" && !person?.dob ? "No date of birth on record" : "");
+
+  return createPortal(
+    <div className="modal-backdrop" onClick={onClose}>
+      <section className="modal add cert-pick" onClick={(e) => e.stopPropagation()} aria-label="Issue a certificate">
+        <header className="ns-head">
+          <div className="ns-title">
+            <div>
+              <h2>Issue a certificate</h2>
+              <p className="row-sub">{person ? person.name : "Who is it for?"}</p>
+            </div>
+            <button type="button" className="btn-icon ns-close" onClick={onClose} aria-label="Close">
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+          <StepBar steps={["Student", "Certificate"]} step={person ? 1 : 0} onPick={(i) => i === 0 && setPerson(null)} canPick={(i) => i === 0} />
+        </header>
+        <div className="modal-body ns-body">
+          {!person ? (
+            <>
+              <label className="search">
+                <Icon name="search" />
+                <input type="search" autoFocus value={find} onChange={(e) => setFind(e.target.value)} placeholder="Student's name or admission no." aria-label="Find the student" />
+              </label>
+              <ul className="adm-list cert-pick-list">
+                {matches.map((p) => (
+                  <li key={p.id}>
+                    <button type="button" onClick={() => setPerson(p)}>
+                      <span className="inbox-main">
+                        <strong>{p.name}</strong>
+                        <span className="row-sub">{[p.class ? gradeLabel(p.class) + (p.section ? ` ${p.section}` : "") : "", p.admission_no].filter(Boolean).join(" · ")}</span>
+                      </span>
+                      <Icon name="chevronRight" size={16} />
+                    </button>
+                  </li>
+                ))}
+                {matches.length === 0 && <p className="row-sub">No student matches.</p>}
+              </ul>
+            </>
+          ) : (
+            <section className="cert-kinds" aria-label="Certificate">
+              {KINDS.map(([kind, label, line]) => {
+                const why = missing(kind);
+                return (
+                  <button key={kind} type="button" className="cert-kind" disabled={Boolean(why)} onClick={() => onPick(person, kind)}>
+                    <strong>{label}</strong>
+                    <span className="row-sub">{why || line}</span>
+                  </button>
+                );
+              })}
+            </section>
+          )}
+        </div>
+        <footer className="modal-footer ns-foot">
+          {person ? (
+            <button type="button" className="btn btn-secondary" onClick={() => setPerson(null)}>
+              <Icon name="arrowLeft" /> Back
+            </button>
+          ) : (
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
+              Cancel
+            </button>
+          )}
+        </footer>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
+// kind / onKind: which certificates to list ("" for all), from the phone's
+// row of kinds (App.jsx), else the row of pills here.
+// students / sessionId / onUpdate: for issuing one from here.
+export function CertificatesRegister({ school, kind: kindProp, onKind, students = [], sessionId, onUpdate }) {
   const [rows, setRows] = useState(null);
   const [failed, setFailed] = useState(false);
   const [find, setFind] = useState("");
-  const [kind, setKind] = useState("");
+  const [kindOwn, setKindOwn] = useState("");
+  const kind = kindProp ?? kindOwn;
+  const setKind = onKind ?? setKindOwn;
   const [viewing, setViewing] = useState(null);
+  const [picking, setPicking] = useState(false);
+  const [issuing, setIssuing] = useState(null); // { person, kind }
+  const [sessions, setSessions] = useState([]);
+  const [leftChanges, setLeftChanges] = useState(null);
+
+  useEffect(() => {
+    if ((picking || issuing) && !sessions.length) listSessions(school.id).then(setSessions, () => {});
+  }, [picking, issuing, school.id, sessions.length]);
 
   useEffect(() => {
     let live = true;
@@ -664,16 +748,24 @@ export function CertificatesRegister({ school }) {
     <div className="certs">
       <div className="page-header">
         <h1 className="page-title">Certificates</h1>
+        <div className="page-actions">
+          <button className="btn btn-primary adm-new" onClick={() => setPicking(true)}>
+            <Icon name="plus" /> Issue certificate
+          </button>
+        </div>
       </div>
       <div className="adm-tools">
-        <select className="input cert-filter" value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Certificate">
-          <option value="">All certificates</option>
-          {KINDS.map(([k, label]) => (
-            <option key={k} value={k}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="segmented segmented-sm adm-filter" role="group" aria-label="Certificate">
+          {[["", "All"], ...KINDS].map(([k, label]) => {
+            const n = k ? (rows ?? []).filter((c) => c.kind === k).length : 0;
+            return (
+              <button key={k || "all"} type="button" className={kind === k ? "active" : ""} aria-pressed={kind === k} onClick={() => setKind(k)}>
+                {label.replace(" (SLC / TC)", "")}
+                {n > 0 && <span className="adm-count">{n}</span>}
+              </button>
+            );
+          })}
+        </div>
         <label className="search adm-search">
           <Icon name="search" />
           <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder="Name, admission or certificate no." aria-label="Search certificates" />
@@ -698,12 +790,42 @@ export function CertificatesRegister({ school }) {
           ))}
         </ul>
       )}
+      {picking && (
+        <PickForCertificate
+          students={students}
+          onClose={() => setPicking(false)}
+          onPick={(person, k) => {
+            setPicking(false);
+            setIssuing({ person, kind: k });
+          }}
+        />
+      )}
+      {issuing && sessions.length > 0 && (
+        <IssueForm
+          kind={issuing.kind}
+          school={school}
+          person={issuing.person}
+          sessions={sessions}
+          sessionId={sessionId}
+          onClose={() => setIssuing(null)}
+          onIssued={(saved, changes) => {
+            setRows((list) => [{ ...saved, details: saved.details ?? { name: issuing.person.name } }, ...(list ?? [])]);
+            if (changes) setLeftChanges({ id: issuing.person.id, changes });
+            setIssuing(null);
+            setViewing(saved);
+          }}
+        />
+      )}
       {viewing && (
         <CertificateView
           school={school}
           cert={viewing}
           canCancel
-          onClose={() => setViewing(null)}
+          onClose={() => {
+            setViewing(null);
+            if (leftChanges) onUpdate?.(leftChanges.id, leftChanges.changes);
+            setLeftChanges(null);
+          }}
           onCancelled={(saved) => {
             setRows((list) => (list ?? []).map((c) => (c.id === saved.id ? saved : c)));
             setViewing(saved);

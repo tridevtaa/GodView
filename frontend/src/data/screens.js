@@ -26,7 +26,7 @@ export const SCREEN_AT = {
 };
 
 // The top bar section a page lights up
-export const SECTION_OF = { homework: "academics", calendar: "planner", admissions: "students", certificates: "students" };
+export const SECTION_OF = { homework: "academics", calendar: "planner", admissions: "office", certificates: "office" };
 
 // section: which top bar section it's under, for the More sheet's groups
 // computerOnly: an owner or admin on a phone, without the reports and fee
@@ -34,10 +34,10 @@ export const SECTION_OF = { homework: "academics", calendar: "planner", admissio
 export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0 }) {
   return [
     { key: "home", label: "Home", icon: "home", words: "dashboard" },
-    { key: "students", label: "Students", icon: "scholar", words: "admissions" },
+    { key: "students", label: "Students", icon: "scholar", words: "active inactive" },
     { key: "requests", label: "Inbox", icon: "plane", words: "messages parents chat" },
-    ...(leads ? [{ key: "admissions", label: "Admissions", icon: "newAdmission", section: "students", words: "enquiry enquiries registration register new applicant" }] : []),
-    ...(isAdmin ? [{ key: "certificates", label: "Certificates", icon: "certificate", section: "students", words: "bona fide slc tc transfer leaving no dues character fee paid date of birth register" }] : []),
+    ...(leads ? [{ key: "admissions", label: "Admissions", icon: "newAdmission", section: "office", words: "enquiry enquiries registration register new applicant" }] : []),
+    ...(isAdmin ? [{ key: "certificates", label: "Certificates", icon: "certificate", section: "office", words: "bona fide slc tc transfer leaving no dues character fee paid date of birth register" }] : []),
     ...(isAdmin
       ? [
           { key: "fees", label: "Fees", icon: "rupee", section: "fees", words: "dues overdue pending overview" },
@@ -67,4 +67,4 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
   ];
 }
 
-export const SECTION_LABEL = { students: "Students", academics: "Academics", fees: "Fees", planner: "Planner", requests: "Inbox", school: "School" };
+export const SECTION_LABEL = { students: "Students", office: "Office", academics: "Academics", fees: "Fees", planner: "Planner", requests: "Inbox", school: "School" };
