@@ -104,6 +104,132 @@
 }
 
 
+/* ------------------------------------------- the hero's scroll scene */
+
+/* The hero pinned in a tall track: scrolling through it comes down to the
+   laptop in front of her (LaptopScene.js). Without the scene, the track is
+   just the hero. */
+.lp-hero-track {
+  position: relative;
+  margin-top: -72px;
+}
+
+.lp-hero-track > .lp-goddess.cg {
+  margin-top: 0;
+}
+
+.lp-hero-track.has-scene {
+  height: calc(100svh + 240svh);
+}
+
+.lp-hero-track.has-scene > .lp-goddess.cg {
+  position: sticky;
+  top: 0;
+  overflow: hidden;
+}
+
+/* Her questions fade away as the scene starts (--c, 0 to 1) */
+.has-scene .lp-goddess-col {
+  opacity: calc(1 - var(--c, 0));
+  translate: 0 calc(var(--c, 0) * -24px);
+}
+
+.lp-goddess.is-scrubbing .lp-goddess-col {
+  pointer-events: none;
+}
+
+.lp-goddess.is-scrubbing .cg-shade {
+  opacity: calc(1 - var(--fade, 0));
+}
+
+.lp-scene-back,
+.lp-scene-front,
+.lp-scene-dim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.lp-scene-front {
+  opacity: var(--fade, 0);
+}
+
+/* Behind the frame where it no longer fills the screen (phones) */
+.lp-scene-back {
+  opacity: 0;
+  filter: blur(18px) brightness(0.92);
+  transform: scale(1.12);
+}
+
+.lp-scene-back.is-on {
+  opacity: var(--fade, 0);
+}
+
+.lp-scene-dim {
+  background: radial-gradient(120% 90% at 50% 60%, transparent 35%, rgba(28, 20, 14, 0.9));
+  opacity: var(--dim, 0);
+}
+
+/* At the end, the bottom melts into the page that follows */
+.has-scene .lp-goddess.cg::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 22%;
+  background: linear-gradient(180deg, transparent, var(--page));
+  opacity: var(--out, 0);
+  pointer-events: none;
+}
+
+/* Godview's Home screen, on the laptop's screen */
+.lp-laptop-screen {
+  position: absolute;
+  visibility: hidden;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #fff;
+  opacity: 0;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.lp-laptop-inner {
+  width: 1120px;
+  height: 700px;
+  transform: scale(var(--k, 0.3));
+  transform-origin: 0 0;
+  color: var(--text);
+  text-align: left;
+}
+
+.lp-scene-cap {
+  position: absolute;
+  top: calc(72px + 4.5vh);
+  right: 16px;
+  left: 16px;
+  text-align: center;
+  opacity: var(--cap, 0);
+  translate: 0 calc((1 - var(--cap, 0)) * 16px);
+  pointer-events: none;
+}
+
+.lp-scene-cap .lp-kicker {
+  margin-bottom: 0;
+  color: #f6c48f;
+  text-shadow: 0 1px 12px rgba(20, 14, 9, 0.55);
+}
+
+.lp-scene-cap .lp-h2 {
+  margin: 6px 0 0;
+  color: #fff;
+  text-shadow: 0 2px 24px rgba(20, 14, 9, 0.5);
+}
+
 /* Short screens: higher up. */
 @media (max-height: 700px) and (min-width: 761px) {
   .lp-goddess-col {
