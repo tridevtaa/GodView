@@ -14,6 +14,7 @@ export const SCREEN_AT = {
   collection: ["fees", "collection"],
   "class-report": ["fees", "class"],
   structure: ["fees", "structure"],
+  "payment-log": ["fees", "log"],
   calendar: ["calendar", "calendar"],
   datesheet: ["calendar", "datesheet"],
   timetable: ["calendar", "timetable"],
@@ -49,7 +50,12 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
               ]),
         ]
       : []),
-    ...(isOwner && !computerOnly ? [{ key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans" }] : []),
+    ...(isOwner && !computerOnly
+      ? [
+          { key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans" },
+          { key: "payment-log", label: "Payment log", icon: "file", section: "fees", words: "audit who collected cancelled device ip receipt history" },
+        ]
+      : []),
     ...(seesAttendance ? [{ key: "attendance", label: "Attendance", icon: "register", section: "academics", words: "register present absent" }] : []),
     { key: "homework", label: "Homework", icon: "book", section: "academics" },
     { key: "syllabus", label: "Syllabus", icon: "academics", section: "academics" },

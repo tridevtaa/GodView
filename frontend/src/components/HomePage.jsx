@@ -11,6 +11,7 @@ import { AchievementsStrip, isWin, showsImage, useImageUrls, useNotices } from "
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
+import { BusWatch, CollectionToday, RecordsToFix, StaffDays } from "./HomeExtras.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const studentCount = (count) => `${n(count)} student${count === 1 ? "" : "s"}`;
@@ -39,7 +40,7 @@ const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric"
 // (notices are a tile for them, wins live on the Noticeboard); the
 // principal also gets the notice banner; teachers get the banner and the
 // students' wins.
-export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, actions = [], onAction, onGo }) {
+export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, routes = [], actions = [], onAction, onGo, onNeed }) {
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
@@ -102,6 +103,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
     leads && { key: "staff", defaultOn: false },
     showWins && wins.length > 0 && { key: "news" },
     { key: "upcoming" },
+    isAdmin && { key: "collection" },
+    isAdmin && { key: "buses" },
+    isAdmin && { key: "records" },
+    leads && { key: "staffdays" },
   ].filter(Boolean);
   const layout = useHomeLayout(`home:staff:${school.id}:${role}`, meta);
   const on = new Set(layout.visible);
@@ -111,7 +116,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const staffKey = `people:employees:${school.id}:`;
   const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
   const wantInbox = on.has("inbox");
-  const wantStaff = on.has("staff");
+  const wantStaff = on.has("staff") || on.has("staffdays");
   useEffect(() => {
     if (wantInbox) swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
   }, [school.id, wantInbox]);
@@ -231,6 +236,10 @@ export default function HomePage({ school, me, name, role, students, loading, se
   ].filter(Boolean);
 
   const items = Object.fromEntries(tileList.map(({ fresh, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: autoWide.has(t.key) ? "wide" : "small", tile: t }]));
+  items.collection = { kind: "section", label: "Today’s collection", icon: "rupee", tone: "green", size: "wide", node: <CollectionToday schoolId={school.id} onOpen={go("collection")} /> };
+  items.buses = { kind: "section", label: "Buses", icon: "bus", tone: "teal", size: "wide", node: <BusWatch schoolId={school.id} routes={routes} students={students} onOpen={go("transport")} /> };
+  items.records = { kind: "section", label: "Records to fix", icon: "edit", tone: "amber", size: "wide", node: <RecordsToFix students={students} onOpen={(need) => onNeed?.(need)} /> };
+  items.staffdays = { kind: "section", label: "Staff birthdays & anniversaries", icon: "cake", tone: "pink", size: "wide", node: <StaffDays staff={staff} onOpen={go("employees")} /> };
   items.news = { kind: "section", label: "News & Achievements", icon: "trophy", tone: "amber", size: "full", node: <AchievementsStrip items={wins} urls={urls} viewAll={!(showBanner && (notices === null || plain.length > 0))} onOpenNotices={go("notices")} /> };
   items.upcoming = {
     kind: "section",

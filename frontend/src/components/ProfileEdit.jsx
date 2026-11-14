@@ -47,6 +47,7 @@ const FIELDS = {
       ["department", "Department", "text"],
       ["phone", "Phone", "tel"],
       ["email", "Email", "email"],
+      ["dob", "Date of birth", "date"],
     ]],
     ["Work", [
       ["joining_date", "Joined", "date"],

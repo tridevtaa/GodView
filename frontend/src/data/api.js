@@ -1,4 +1,5 @@
 import { supabase } from "../supabase.js";
+import { deviceInfo } from "./device.js";
 import { clean, splitFields, toPerson } from "./personMapping.js";
 import { announceBatch, announceMessage, announceNotice } from "../pwa/push.js";
 
@@ -840,7 +841,9 @@ export async function studentLedger(studentId) {
   return { dues, payments };
 }
 
-export async function recordPayment(studentId, { amount, method, reference, paid_on, note }) {
+// collected_by: who took the money (required). The device details go to the
+// owner's payment log.
+export async function recordPayment(studentId, { amount, method, reference, paid_on, note, collected_by }) {
   const rows = must(
     await supabase.rpc("record_payment", {
       p_student: studentId,
@@ -849,6 +852,8 @@ export async function recordPayment(studentId, { amount, method, reference, paid
       p_reference: reference || null,
       p_paid_on: paid_on || null,
       p_note: note || null,
+      p_collected_by: collected_by,
+      p_device: deviceInfo(),
     })
   );
   return rows?.[0];
@@ -893,7 +898,31 @@ export async function paymentsSince(schoolId, day) {
 }
 
 export async function cancelPayment(id) {
-  must(await supabase.rpc("cancel_payment", { payment: id }));
+  must(await supabase.rpc("cancel_payment", { payment: id, p_device: deviceInfo() }));
+}
+
+// Payments dated today (Home's Today's collection), cancelled ones too.
+export async function paymentsOn(schoolId, day) {
+  return must(
+    await supabase
+      .from("fee_payments")
+      .select("id, amount, method, collected_by, received_by, status, created_at")
+      .eq("school_id", schoolId)
+      .eq("paid_on", day)
+      .limit(2000)
+  );
+}
+
+// The owner's payment log: payments received and cancelled, newest first.
+export async function listPaymentLog(schoolId, { from = 0, size = 100 } = {}) {
+  return must(
+    await supabase
+      .from("fee_payment_log")
+      .select("*, student:students(name, admission_no)")
+      .eq("school_id", schoolId)
+      .order("at", { ascending: false })
+      .range(from, from + size - 1)
+  );
 }
 
 export async function setConcession(invoiceId, amount, note) {

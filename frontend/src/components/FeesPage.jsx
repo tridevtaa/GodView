@@ -9,6 +9,7 @@ import FeesToday from "./FeesToday.jsx";
 import OpeningBalances from "./OpeningBalances.jsx";
 import FeeReport from "./FeeReport.jsx";
 import FeeStructure from "./FeeStructure.jsx";
+import PaymentLog from "./PaymentLog.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
@@ -112,7 +113,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
     <div className="page-header">
       <div>
         <div className="page-meta">
-          <h1 className="page-title">{{ overview: "Overview", collection: "Collection", class: "Class-wise", structure: "Fee structure" }[tab]}</h1>
+          <h1 className="page-title">{{ overview: "Overview", collection: "Collection", class: "Class-wise", structure: "Fee structure", log: "Payment log" }[tab]}</h1>
           {pastSession && <span className="badge badge-neutral">Session {session.name}</span>}
         </div>
       </div>
@@ -147,6 +148,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
     );
 
   if (tab === "collection" || tab === "class") return <FeeReport view={tab} school={school} session={session} students={students} header={headerWith} onOpenStudent={onOpenStudent} />;
+
+  if (isOwner && tab === "log") return <PaymentLog school={school} header={headerWith} />;
 
   if (isOwner && tab === "structure")
     return (

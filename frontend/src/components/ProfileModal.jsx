@@ -13,7 +13,6 @@ import StudentParents from "./StudentParents.jsx";
 import { Photo, gradeLabel, tintFor } from "./PersonCard.jsx";
 import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
-import { stopLabel } from "./TransportPicker.jsx";
 import Icon, { WhatsAppLogo } from "./Icon.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
 
@@ -419,14 +418,25 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
 
   const due = Number(person.fee_due) || 0;
   const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
-  const bus = person.uses_bus ? stopLabel(routes, person.bus_stop_id) || [person.transport_route, person.pickup_point].filter(Boolean).join(" · ") : "";
-  // Each a small tile in the app's colours: [label, value, note, tone, tap]
+  // Transport (owners and admins see it): route as the value, stop below
+  const busRoute = routes.find((r) => r.stops.some((st) => st.id === person.bus_stop_id));
+  const busStop = busRoute?.stops.find((st) => st.id === person.bus_stop_id);
+  const bus = !person.uses_bus
+    ? ["No bus", ""]
+    : busRoute
+      ? [busRoute.name, busStop.name]
+      : person.transport_route || person.pickup_point
+        ? [person.pickup_point || person.transport_route, person.pickup_point ? person.transport_route ?? "" : ""]
+        : ["On the bus", "no stop yet"];
+  const showBus = isAdmin && mode === "students" && (routes.length > 0 || person.uses_bus);
+  // Each a small tile in the app's colours: [label, value, note, tone, tap, sub]
   const stats = [
     ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", () => onTab("details")],
     ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", () => onTab("results")],
     isAdmin
       ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", !feeKnown ? "indigo" : person.fee_status === "overdue" ? "red" : due > 0 ? "amber" : "green", () => onTab("fees")]
       : null,
+    showBus ? ["Transport", bus[0], bus[1] || "", "teal", () => onTab("fees"), bus[1]] : null,
   ].filter(Boolean);
 
   return (
@@ -443,11 +453,12 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
           </div>
           {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
           <ul className="ig-stats">
-            {stats.map(([label, value, note, tone, onClick]) => (
+            {stats.map(([label, value, note, tone, onClick, sub]) => (
               <li key={label} title={`${label}: ${value} ${note}`}>
                 <button type="button" className={`ig-stat t-${tone}`} onClick={onClick}>
                   <span>{label}</span>
                   <strong>{value}</strong>
+                  {sub && <small className="ig-stat-sub">{sub}</small>}
                 </button>
               </li>
             ))}
@@ -469,11 +480,6 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
           {person.status === "inactive" && !canEdit && <span className="badge badge-neutral">Inactive</span>}
         </p>
         {canEdit && person.status !== "left" && <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />}
-        {bus && (
-          <p className="ig-bus">
-            <Icon name="bus" size={14} /> {bus}
-          </p>
-        )}
       </div>
 
       {!editing && (
@@ -706,7 +712,13 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
 
         <div className="modal-body profile-body">
           {isStudent && !editing && tab === "fees" ? (
-            <FeeLedger school={school} person={person} canEdit={canEdit} onChanged={onFeesChanged} />
+            <FeeLedger
+              school={school}
+              person={person}
+              sessionId={sessionId}
+              canEdit={canEdit}
+              onChanged={onFeesChanged}
+            />
           ) : isStudent && isAdmin && !editing && tab === "certificates" ? (
             <CertificatesTab school={school} person={person} sessionId={sessionId} onUpdate={onUpdate} />
           ) : isStudent && !editing && tab === "messages" ? (

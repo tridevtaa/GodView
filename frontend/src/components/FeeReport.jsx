@@ -111,10 +111,10 @@ function Collection({ school, session, students, header, onOpenStudent }) {
   function download() {
     const title = shownModes.length === used.length ? "all-modes" : shownModes.join("-");
     downloadCsv(
-      ["Date", "Receipt no.", "Student", "Reg no.", "Class", "Mode", "Reference", "Received by", "Amount"],
+      ["Date", "Receipt no.", "Student", "Reg no.", "Class", "Mode", "Reference", "Collected by", "Entered by", "Amount"],
       [
-        ...list.map((p) => [p.paid_on, p.receipt_no, p.student?.name, p.student?.admission_no, klass(p), modeName(p), p.reference, p.received_by, Number(p.amount)]),
-        ["Total", "", "", "", "", "", "", "", total],
+        ...list.map((p) => [p.paid_on, p.receipt_no, p.student?.name, p.student?.admission_no, klass(p), modeName(p), p.reference, p.collected_by, p.received_by, Number(p.amount)]),
+        ["Total", "", "", "", "", "", "", "", "", total],
       ],
       `${school.slug}-fee-collection-${from}-to-${to}-${title}.csv`
     );
