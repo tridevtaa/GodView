@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { NEEDS } from "../data/needs.js";
 import { createPortal } from "react-dom";
 import { gradeLabel } from "./PersonCard.jsx";
 import Icon from "./Icon.jsx";
@@ -6,7 +7,7 @@ import Icon from "./Icon.jsx";
 // Students page: one button in place of the row of filters. It opens a panel
 // with the grades, the sort, active or inactive and "show only"; changes apply straight away, and
 // the button counts what's on (the direction is SortArrow, beside it). grades: gradeOptions(); sort is
-// always one of grade, fee or results — withSort, withFee and onSlc depend on what this person can use.
+// always one of grade, fee or results; withSort, withFee and onNeed depend on what this person can use.
 const SORT_START = { grade: "asc", fee: "desc", perf: "asc" };
 const SORT_FIRST = {
   grade: { asc: "Junior first", desc: "Senior first" },
@@ -30,7 +31,7 @@ export function SortArrow({ sort, onSort }) {
   );
 }
 
-export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, slc, onSlc, status, onStatus, shown }) {
+export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, need, onNeed, status, onStatus, shown }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -39,11 +40,11 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (slc ? 1 : 0) + (status !== "active" ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (need ? 1 : 0) + (status !== "active" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
-    onSlc?.(false);
+    onNeed?.(null);
     onStatus("active");
   };
   const sorts = [["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
@@ -104,18 +105,15 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
                     </button>
                   ))}
                 </div>
-                {onSlc && (
+                {onNeed && (
                   <>
                     <h3>Show only</h3>
                     <div className="filter-chips">
-                      <button
-                        type="button"
-                        className={`chip-btn${slc ? " is-on" : ""}`}
-                        onClick={() => onSlc(!slc)}
-                        title="Students still owing a transfer certificate"
-                      >
-                        SLC pending
-                      </button>
+                      {Object.entries(NEEDS).map(([key, n]) => (
+                        <button key={key} type="button" className={`chip-btn${need === key ? " is-on" : ""}`} onClick={() => onNeed(need === key ? null : key)}>
+                          {n.label}
+                        </button>
+                      ))}
                     </div>
                   </>
                 )}

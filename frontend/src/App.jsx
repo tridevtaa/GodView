@@ -30,6 +30,7 @@ import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
 import { useGoddessSwipe } from "./pwa/goddessSwipe.js";
 import { SCREEN_AT, SECTION_OF, listScreens } from "./data/screens.js";
+import { NEEDS } from "./data/needs.js";
 import { CERT_KINDS } from "./data/certKinds.js";
 import { AiCard, InsightsButton, useInsights } from "./components/AiInsights.jsx";
 import { primeVoice } from "./components/voicePlayer.js";
@@ -115,7 +116,8 @@ export default function App() {
   const [askPeek, setAskPeek] = useState(false);
   const [askPulled, setAskPulled] = useState(false);
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
-  const [slcPendingOnly, setSlcPendingOnly] = useState(false);
+  // Show only students with something missing (data/needs.js), or none
+  const [needPick, setNeedPick] = useState(null);
   const [statusPick, setStatusPick] = useState("active"); // active | inactive
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
@@ -275,10 +277,10 @@ export default function App() {
   const inGrade = useMemo(() => {
     let rows = current;
     if (mode === "students" && pickedGrades.length) rows = rows.filter((p) => pickedGrades.includes(p.class));
-    if (mode === "students" && slcPendingOnly) rows = rows.filter((p) => p.transfer_cert_pending);
+    if (mode === "students" && NEEDS[needPick]) rows = rows.filter(NEEDS[needPick].test);
     if (mode === "students" && statusPick !== "all") rows = rows.filter((p) => (p.status || "active") === statusPick);
     return rows;
-  }, [current, mode, pickedGrades, slcPendingOnly, statusPick]);
+  }, [current, mode, pickedGrades, needPick, statusPick]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -480,7 +482,7 @@ export default function App() {
   }, [mode, currentSession, viewOnly, leads, todayIso, current]);
 
   const insHere = isStudents ? insR : insS;
-  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || slcPendingOnly || statusPick !== "active"));
+  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || statusPick !== "active"));
   const showInsights = insHere.on && !filtered;
   // Today's attendance for who's showing. The school's numbers are per class,
   // so they narrow by grade but not by a search; a teacher's are per student.
@@ -491,7 +493,7 @@ export default function App() {
       const own = today.own.filter((r) => ids.has(r.student_id));
       return { present: own.filter((r) => r.status === "present" || r.status === "late").length, marked: own.length };
     }
-    if (today?.rows && !query.trim() && !slcPendingOnly && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
+    if (today?.rows && !query.trim() && !needPick && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
     return null;
   })();
 
@@ -502,11 +504,11 @@ export default function App() {
       // One tile: how many students, with who's inactive and today's attendance
       const inactive = visible.filter((p) => p.status === "inactive").length;
       const present = todayShown?.marked ? `${todayShown.present.toLocaleString("en-IN")} present today` : null;
-      const who = query.trim() ? "Matching students" : slcPendingOnly ? "SLC pending" : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
+      const who = query.trim() ? "Matching students" : NEEDS[needPick] ? NEEDS[needPick].title : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
       return [
         {
           color: "indigo",
-          label: pickedGrades.length && !query.trim() && !slcPendingOnly ? `${who} in ${gradesText(pickedGrades)}` : who,
+          label: pickedGrades.length && !query.trim() && !needPick ? `${who} in ${gradesText(pickedGrades)}` : who,
           // Active students only, unless the filter asks for inactive ones
           value: loading ? undefined : statusPick === "inactive" ? visible.length : visible.length - inactive,
           note: ((inactive > 0 && statusPick !== "inactive") || present || todayShown?.notMarked > 0) && (
@@ -714,7 +716,7 @@ export default function App() {
     switchMode("students");
     setStatusPick(status);
     setPickedGrades(grade ? [grade] : []);
-    setSlcPendingOnly(false);
+    setNeedPick(null);
     setQuery("");
   };
   const actions = (...kinds) => ({
@@ -723,7 +725,7 @@ export default function App() {
   });
   const screenNow = {
     homework: { attendance: "attendance", homework: "homework", syllabus: "syllabus", results: "marks" }[academicsView],
-    fees: { overview: "fees", collection: "collection", class: "class-report", structure: "structure" }[feesView],
+    fees: { overview: "fees", collection: "collection", class: "class-report", structure: "structure", log: "payment-log" }[feesView],
     calendar: { calendar: "calendar", datesheet: "datesheet", timetable: "timetable", notices: "notices" }[plannerView],
   }[mode];
   const bigLinks = (section, names = {}) => screens.filter((s) => s.section === section).map((s) => [names[s.key] ?? s.label, () => switchMode(s.key), { current: s.key === screenNow }]);
@@ -747,7 +749,7 @@ export default function App() {
       ],
       columns: screens.some((s) => s.key === "admissions") && isAdmin && !viewOnly ? [{ title: "Quick actions", links: [["New enquiry", () => runAction("enquiry")]] }] : [],
     },
-    fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure" }), columns: [actions("fee", "bulk")] },
+    fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure", "payment-log": "Payment log" }), columns: [actions("fee", "bulk")] },
     academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
     planner: { big: bigLinks("planner"), columns: [actions("event", "datesheet", "notice")] },
     requests: {
@@ -929,6 +931,10 @@ export default function App() {
             actions={plusActions}
             onAction={runAction}
             onGo={switchMode}
+            onNeed={(need) => {
+              openStudents("active");
+              setNeedPick(need);
+            }}
           />
         ) : mode === "calendar" ? (
           <>
@@ -1137,8 +1143,8 @@ export default function App() {
               onSort={chooseSort}
               withSort={mode === "students"}
               withFee={isAdmin}
-              slc={slcPendingOnly}
-              onSlc={isAdmin ? setSlcPendingOnly : null}
+              need={needPick}
+              onNeed={isAdmin ? setNeedPick : null}
               status={statusPick}
               onStatus={setStatusPick}
               shown={visible.length}
@@ -1214,7 +1220,7 @@ export default function App() {
         ) : (
           <Grid
             items={ordered}
-            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${slcPendingOnly}|${statusPick}`}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${statusPick}`}
             render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
           />
         )}
