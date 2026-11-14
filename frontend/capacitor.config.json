@@ -1,0 +1,11 @@
+{
+  "appId": "in.godview.app",
+  "appName": "Godview",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

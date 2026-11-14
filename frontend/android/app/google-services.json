@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "982331325518",
+    "project_id": "godview-25fed",
+    "storage_bucket": "godview-25fed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:982331325518:android:e4604a345e81ac8c05571f",
+        "android_client_info": {
+          "package_name": "in.godview.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "982331325518-j36luui9a45633g9kvrahvcpec2snmoa.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkg00yG2wDEWwTUtCE0AtYfuhjK4HROvk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "982331325518-7s8b0174ok970u0psu4ptpu2rushm4rp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

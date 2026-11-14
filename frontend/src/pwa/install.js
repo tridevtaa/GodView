@@ -2,6 +2,7 @@
 // "beforeinstallprompt" early (often before React mounts), so it is caught
 // here at load and kept for the Install button. iPhone has no such event:
 // people add it from Safari's Share menu, so we show those steps instead.
+import { Capacitor } from "@capacitor/core";
 
 let deferred = null;
 const listeners = new Set();
@@ -18,8 +19,10 @@ window.addEventListener("appinstalled", () => {
 });
 
 // Opened as the installed app. The manifest's start URL carries ?app=1 as a
-// second signal for browsers that don't report display-mode.
+// second signal for browsers that don't report display-mode. The Android/iOS
+// Capacitor app is always "installed" — there is no browser tab to compare to.
 export const isStandalone = () =>
+  Capacitor.isNativePlatform() ||
   window.matchMedia?.("(display-mode: standalone)").matches ||
   window.navigator.standalone === true ||
   new URLSearchParams(window.location.search).has("app");
