@@ -1046,9 +1046,9 @@ export async function deletePlan(id) {
   must(await supabase.from("fee_plans").delete().eq("id", id));
 }
 
-// Sets one grade's amount and instalment type for a fee head (owner only).
-// Clearing the amount removes that grade's line.
-export async function setGradeFee(schoolId, sessionId, existing, { grade, headId, amount, planId, streams = null }) {
+// Sets one grade's (or one bus stop's) amount and instalment type for a fee
+// head (owner only). Clearing the amount removes that line.
+export async function setGradeFee(schoolId, sessionId, existing, { grade, headId, amount, planId, streams = null, stopId = null }) {
   const value = Number(amount);
   if (!value) {
     if (existing) must(await supabase.from("fee_schedule").delete().eq("id", existing.id));
@@ -1067,7 +1067,7 @@ export async function setGradeFee(schoolId, sessionId, existing, { grade, headId
   return must(
     await supabase
       .from("fee_schedule")
-      .insert({ school_id: schoolId, session_id: sessionId, class: grade, streams, head_id: headId, amount: value, plan_id: planId })
+      .insert({ school_id: schoolId, session_id: sessionId, class: stopId ? null : grade, streams: stopId ? null : streams, stop_id: stopId, head_id: headId, amount: value, plan_id: planId })
       .select()
       .single()
   );

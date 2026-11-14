@@ -7,6 +7,7 @@ import {
   generateInvoices,
   listFeeHeads,
   listPlans,
+  listRoutes,
   listSchedule,
   removeFeeFromStructure,
   renameFeeHead,
@@ -40,8 +41,15 @@ const sameStreams = (a, b) => (a ?? []).map((x) => x.toLowerCase()).sort().join(
 const inStreams = (streams, stream) => !streams || streams.some((x) => x.trim().toLowerCase() === (stream ?? "").trim().toLowerCase());
 const rank = (l) => (!l.class ? 0 : !l.streams ? 1 : 2);
 // The line a student pays for a fee: class and stream, then class, then all.
+// A fee by bus stop: the line for the student's stop, if they ride the bus.
 const bestLine = (lines, s) =>
-  lines.filter((l) => (!l.class || l.class === s.class) && inStreams(l.streams, s.stream)).sort((a, b) => rank(b) - rank(a))[0];
+  lines.some((l) => l.stop_id)
+    ? s.uses_bus
+      ? lines.find((l) => l.stop_id && l.stop_id === s.bus_stop_id)
+      : undefined
+    : lines.filter((l) => (!l.class || l.class === s.class) && inStreams(l.streams, s.stream)).sort((a, b) => rank(b) - rank(a))[0];
+// Transport-sounding names start out charged by bus stop.
+const TRANSPORT_NAME = /transport|\bbus\b|\bvan\b|conveyance/i;
 // Instalments due in an earlier month, e.g. "Jun with May".
 const earlyText = (p) =>
   (p.due_months ?? []).map((d, i) => (d !== p.months[i] ? `${MONTHS[p.months[i] - 1]} with ${MONTHS[d - 1]}` : null)).filter(Boolean).join(", ");
@@ -55,6 +63,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   const [heads, setHeads] = useState([]);
   const [savedPlans, setSavedPlans] = useState([]);
   const [schedule, setSchedule] = useState([]);
+  const [routes, setRoutes] = useState([]);
   const [drafts, setDrafts] = useState([]); // new, unsaved fee cards
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -63,10 +72,16 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   const load = useCallback(async () => {
     if (!session) return;
     try {
-      const [h, p, s] = await Promise.all([listFeeHeads(school.id), listPlans(school.id), listSchedule(session.id)]);
+      const [h, p, s, r] = await Promise.all([
+        listFeeHeads(school.id),
+        listPlans(school.id),
+        listSchedule(session.id),
+        listRoutes(school.id).catch(() => []),
+      ]);
       setHeads(h);
       setSavedPlans(p);
       setSchedule(s);
+      setRoutes(r);
       setError("");
     } catch (err) {
       setError(
@@ -103,6 +118,21 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     });
     return new Map([...m].map(([k, v]) => [k, [...v].sort()]));
   }, [students]);
+  // Riders per stop and per route; riders with no stop on any route.
+  const riders = useMemo(() => {
+    const routeOf = new Map(routes.flatMap((r) => r.stops.map((st) => [st.id, r.id])));
+    const byStop = new Map();
+    const byRoute = new Map();
+    let noStop = 0;
+    students.forEach((s) => {
+      if (!s.uses_bus) return;
+      const r = routeOf.get(s.bus_stop_id);
+      if (!r) return noStop++;
+      byStop.set(s.bus_stop_id, (byStop.get(s.bus_stop_id) ?? 0) + 1);
+      byRoute.set(r, (byRoute.get(r) ?? 0) + 1);
+    });
+    return { byStop, byRoute, noStop };
+  }, [students, routes]);
   const fees = heads.filter((h) => schedule.some((l) => l.head_id === h.id));
 
   if (!session) return <p className="notice">Import your students first; fees are set per session.</p>;
@@ -129,8 +159,8 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     }
   }
 
-  // Writes one card: fee name, frequency, grade names and amounts.
-  async function saveFee(head, { name, plan, rows }) {
+  // Writes one card: fee name, frequency, and amounts by grade or by stop.
+  async function saveFee(head, { name, plan, rows, byStop, stopRows }) {
     setError("");
     setNotice("");
     let gradesChanged = false;
@@ -139,6 +169,23 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
       if (!planId) throw Object.assign(new Error("no plan"), { code: "PGRST205" });
       const fee = head ?? (await addFeeHead(school.id, name));
       if (head && name.trim() !== head.name) await renameFeeHead(head.id, name);
+
+      // A fee is by grade or by stop: switching clears the other kind.
+      for (const l of schedule.filter((l) => l.head_id === fee.id && Boolean(l.stop_id) !== byStop)) {
+        await setGradeFee(school.id, session.id, l, { amount: 0 });
+      }
+      if (byStop) {
+        for (const row of stopRows) {
+          const own = schedule.find((l) => l.head_id === fee.id && l.stop_id === row.stopId);
+          const amount = Number(row.amount) || 0;
+          if (own && Number(own.amount) === amount && own.plan_id === planId) continue;
+          if (!own && !amount) continue;
+          await setGradeFee(school.id, session.id, own, { headId: fee.id, amount, planId, stopId: row.stopId });
+        }
+        await load();
+        setNotice(`${name.trim()} saved.`);
+        return true;
+      }
 
       let sort = Math.max(0, ...grades.map((g) => g.sort));
       for (const row of rows) {
@@ -159,13 +206,13 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
 
       for (const row of rows) {
         if (!row.code) continue;
-        const own = schedule.find((l) => l.head_id === fee.id && l.class === row.code && sameStreams(l.streams, row.streams));
+        const own = schedule.find((l) => l.head_id === fee.id && !l.stop_id && l.class === row.code && sameStreams(l.streams, row.streams));
         const amount = Number(row.amount) || 0;
         if (own && Number(own.amount) === amount && own.plan_id === planId) continue;
         if (!own && !amount) continue;
         await setGradeFee(school.id, session.id, own, { grade: row.code, headId: fee.id, amount, planId, streams: row.streams ?? null });
       }
-      const shared = schedule.find((l) => l.head_id === fee.id && !l.class);
+      const shared = schedule.find((l) => l.head_id === fee.id && !l.class && !l.stop_id);
       if (shared) await setGradeFee(school.id, session.id, shared, { amount: 0 });
 
       await load();
@@ -217,7 +264,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     }
   }
 
-  const cardProps = { grades: gradeList, plans, counts, streamsByGrade, onRemoveGrade: removeGrade, onAddFrequency: addFrequency };
+  const cardProps = { grades: gradeList, plans, counts, streamsByGrade, routes, riders, onRemoveGrade: removeGrade, onAddFrequency: addFrequency };
 
   return (
     <>
@@ -230,7 +277,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
         </span>
         <span className="fc-add-text">
           <strong>Add a fee</strong>
-          <span>Tuition, transport, exam fee… set the amount for each grade</span>
+          <span>Tuition, exam fee… by grade. Transport by bus stop.</span>
         </span>
       </button>
 
@@ -283,7 +330,16 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   );
 }
 
-function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency }) {
+function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, streamsByGrade, routes, riders, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency }) {
+  const lines = useMemo(() => allLines.filter((l) => !l.stop_id), [allLines]);
+  const savedByStop = allLines.some((l) => l.stop_id);
+  const startStopRows = useCallback(
+    () =>
+      routes.flatMap((r) =>
+        r.stops.map((st) => ({ key: st.id, stopId: st.id, route: r, label: st.name, amount: amountText(allLines.find((l) => l.stop_id === st.id)?.amount) }))
+      ),
+    [routes, allLines]
+  );
   const startRows = useCallback(
     () =>
       grades.flatMap((g) => {
@@ -304,6 +360,9 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
   const [name, setName] = useState(head?.name ?? "");
   const [plan, setPlan] = useState(startPlan);
   const [rows, setRows] = useState(startRows);
+  const [byStop, setByStop] = useState(savedByStop);
+  const [pickedBy, setPickedBy] = useState(Boolean(head)); // owner chose grade/stop
+  const [stopRows, setStopRows] = useState(startStopRows);
   const [dirty, setDirty] = useState(!head);
   const [saving, setSaving] = useState(false);
   const [asking, setAsking] = useState(false);
@@ -313,18 +372,26 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
   useEffect(() => {
     if (!dirty) {
       setRows(startRows());
+      setStopRows(startStopRows());
+      setByStop(savedByStop);
       setPlan(startPlan);
       setName(head?.name ?? "");
     }
-  }, [startRows, startPlan, head?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startRows, startStopRows, savedByStop, startPlan, head?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const times = plans.find((p) => p.name === plan)?.months.length ?? 0;
   const edit = (fn) => {
     setDirty(true);
     fn();
   };
-  const setRow = (key, field, value) => edit(() => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r))));
-  const shown = rows.filter((r) => !r.hidden);
+  const setRow = (key, field, value) =>
+    edit(() => (byStop ? setStopRows : setRows)((rs) => rs.map((r) => (r.key === key ? { ...r, [field]: value } : r))));
+  const shown = byStop ? stopRows : rows.filter((r) => !r.hidden);
+  const hasStops = routes.some((r) => r.stops.length) || savedByStop;
+  const chooseBy = (v) => edit(() => (setByStop(v), setPickedBy(true)));
+  // Same amount for every stop on a route
+  const fillRoute = (routeId, amount) =>
+    edit(() => setStopRows((rs) => rs.map((r) => (r.route.id === routeId ? { ...r, amount } : r))));
   const yearTotal = shown.reduce((t, r) => Math.max(t, (Number(r.amount) || 0) * times), 0);
   const filled = shown.filter((r) => Number(r.amount) > 0).length;
 
@@ -365,7 +432,7 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
   async function save(e) {
     e.preventDefault();
     setSaving(true);
-    const ok = await onSave({ name, plan, rows: rows.map((r) => ({ ...r })) });
+    const ok = await onSave({ name, plan, rows: rows.map((r) => ({ ...r })), byStop, stopRows });
     setSaving(false);
     if (ok) {
       setDirty(false);
@@ -388,7 +455,7 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
         </span>
         <span className="fc-mini-stats">
           <span>
-            <span className="fc-mini-label">Grades</span>
+            <span className="fc-mini-label">{byStop ? "Stops" : "Grades"}</span>
             <strong>{new Set(shown.filter((r) => Number(r.amount) > 0).map((r) => r.grade?.code ?? r.key)).size}</strong>
           </span>
           <span>
@@ -416,13 +483,27 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
             className="fc-name"
             placeholder="Fee name, e.g. Tuition fee"
             value={name}
-            onChange={(e) => edit(() => setName(e.target.value))}
+            onChange={(e) => {
+              const v = e.target.value;
+              edit(() => setName(v));
+              if (!pickedBy && hasStops) setByStop(TRANSPORT_NAME.test(v));
+            }}
             required
             maxLength={60}
             autoFocus={!head}
             aria-label="Fee name"
           />
           <FrequencyMenu plans={plans} value={plan} onChange={(v) => edit(() => setPlan(v))} onAdd={onAddFrequency} />
+          {hasStops && (
+            <div className="segmented segmented-sm" role="radiogroup" aria-label="Charge by">
+              <button type="button" role="radio" aria-checked={!byStop} className={byStop ? "" : "active"} onClick={() => chooseBy(false)}>
+                By grade
+              </button>
+              <button type="button" role="radio" aria-checked={byStop} className={byStop ? "active" : ""} onClick={() => chooseBy(true)}>
+                By bus stop
+              </button>
+            </div>
+          )}
         </div>
         <div className="fc-head-end">
           {head &&
@@ -458,11 +539,71 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
 
       <div className="fc-table">
         <div className="fc-grid fc-cols">
-          <span>Grade</span>
+          <span>{byStop ? "Bus stop" : "Grade"}</span>
           <span>Amount per instalment</span>
           <span className="fc-right">Per year</span>
         </div>
-        {shown.map((r, i) => {
+        {byStop &&
+          shown.map((r, i) => {
+            const amount = Number(r.amount) || 0;
+            const n = riders.byStop.get(r.stopId) ?? 0;
+            const first = shown[i - 1]?.route.id !== r.route.id;
+            const group = shown.filter((x) => x.route.id === r.route.id);
+            const same = group.every((x) => x.amount === group[0].amount) ? group[0].amount : "";
+            return (
+              <div key={r.key}>
+                {first && (
+                  <div className="fc-grid fc-route">
+                    <div className="fc-grade">
+                      <span className="fc-grade-text">{r.route.name}</span>
+                      <span className="fc-stream">
+                        {group.length} stop{group.length === 1 ? "" : "s"} · {riders.byRoute.get(r.route.id) ?? 0} on the bus
+                      </span>
+                    </div>
+                    {group.length > 1 && (
+                      <label className="fc-amount fc-amount-all">
+                        <span>₹</span>
+                        <input
+                          type="number"
+                          min="0"
+                          inputMode="numeric"
+                          placeholder="All stops"
+                          value={same}
+                          onChange={(e) => fillRoute(r.route.id, e.target.value)}
+                          aria-label={`Same amount for every stop on ${r.route.name}`}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+              <div className={`fc-grid fc-row fc-stop${amount > 0 ? " is-set" : ""}`}>
+                <div className="fc-grade">
+                  <span className="fc-stop-name">{r.label}</span>
+                  {n > 0 && <span className="fc-count">{n} on the bus</span>}
+                </div>
+                <label className="fc-amount">
+                  <span>₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={r.amount}
+                    onChange={(e) => setRow(r.key, "amount", e.target.value)}
+                    aria-label={`${r.label} amount`}
+                  />
+                </label>
+                <span className="fc-right fc-year">{amount > 0 ? rupees(amount * times) : "-"}</span>
+              </div>
+              </div>
+            );
+          })}
+        {byStop && riders.noStop > 0 && (
+          <p className="row-sub fc-note">
+            {riders.noStop} on the bus {riders.noStop === 1 ? "has" : "have"} no stop yet, so no transport fee. Set it in Transport.
+          </p>
+        )}
+        {!byStop && shown.map((r, i) => {
           const students = r.grade?.id ? counts.get(r.grade.code) ?? 0 : null;
           const amount = Number(r.amount) || 0;
           const byStream = Boolean(r.streams || r.other);
@@ -515,14 +656,18 @@ function FeeCard({ head, lines, savedPlan, grades, plans, counts, streamsByGrade
       </div>
 
       <footer className="fc-foot">
-        <button
-          type="button"
-          className="btn btn-secondary"
-          onClick={() => edit(() => setRows((rs) => [...rs, { key: `new-${Date.now()}`, grade: null, label: "", amount: "" }]))}
-        >
-          <Icon name="plus" />
-          Add grade
-        </button>
+        {byStop ? (
+          <span />
+        ) : (
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => edit(() => setRows((rs) => [...rs, { key: `new-${Date.now()}`, grade: null, label: "", amount: "" }]))}
+          >
+            <Icon name="plus" />
+            Add grade
+          </button>
+        )}
         <span className="fc-foot-end">
           <span className="row-sub">
             {dirty ? `${filled} of ${shown.length} rows filled` : "Saved"}
