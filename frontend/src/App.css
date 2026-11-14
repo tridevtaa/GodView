@@ -4490,6 +4490,35 @@ a:hover {
   font-weight: 600;
 }
 
+/* Fee by bus stop: a header per route (with one amount for all its stops),
+   its stops indented under it */
+.fc-route {
+  min-height: 52px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.fc-amount-all {
+  height: 34px;
+  border-style: dashed;
+  background: transparent;
+}
+
+.fc-stop .fc-grade {
+  padding-left: 18px;
+}
+
+.fc-stop-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Riders a fee by stop misses */
+.fc-note {
+  margin: 0;
+  padding: 12px 28px;
+}
+
 .fc-foot {
   display: flex;
   flex-wrap: wrap;
@@ -4569,7 +4598,8 @@ a:hover {
 
 @media (max-width: 720px) {
   .fc-head,
-  .fc-foot {
+  .fc-foot,
+  .fc-note {
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -4603,6 +4633,20 @@ a:hover {
     grid-area: 2 / 1;
     font-size: 12px;
     text-align: left;
+  }
+
+  .fc-row.fc-stop .fc-year {
+    padding-left: 18px;
+  }
+
+  .fc-route .fc-grade {
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    padding: 8px 0;
+  }
+
+  .fc-route .fc-grade-text {
+    white-space: nowrap;
   }
 
   .fc-count {
