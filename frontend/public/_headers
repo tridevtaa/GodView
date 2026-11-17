@@ -35,3 +35,8 @@
 
 /landing/laptop/*
   Cache-Control: public, max-age=86400
+
+# Android app link check: always fresh, so key changes show at once.
+/.well-known/assetlinks.json
+  Content-Type: application/json
+  Cache-Control: no-cache
