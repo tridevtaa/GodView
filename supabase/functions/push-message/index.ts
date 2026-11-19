@@ -34,8 +34,17 @@ webpush.setVapidDetails("https://godview.in", Deno.env.get("VAPID_PUBLIC_KEY")!,
 const fcmAuth = (() => {
   const json = Deno.env.get("FCM_SERVICE_ACCOUNT");
   if (!json) return null;
-  const credentials = JSON.parse(json);
-  return { projectId: credentials.project_id as string, auth: new GoogleAuth({ credentials, scopes: ["https://www.googleapis.com/auth/firebase.messaging"] }) };
+  // A malformed secret used to throw here, at start-up, so every call
+  // failed and browser notifications stopped too (13 to 19 Nov 2026). Now
+  // only the Android/iOS sends are skipped, and the log says why.
+  try {
+    const credentials = JSON.parse(json);
+    if (!credentials?.project_id || !credentials?.private_key) throw new Error("missing project_id or private_key");
+    return { projectId: credentials.project_id as string, auth: new GoogleAuth({ credentials, scopes: ["https://www.googleapis.com/auth/firebase.messaging"] }) };
+  } catch (err) {
+    console.error(`FCM_SERVICE_ACCOUNT is not a valid service account JSON (${err instanceof Error ? err.message : err}); native pushes are off`);
+    return null;
+  }
 })();
 
 async function sendFcm(token: string, title: string, body: string, url: string) {

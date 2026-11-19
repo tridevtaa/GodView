@@ -827,6 +827,35 @@ export default function App() {
       f.attendance_today = { present: today.present, absent: today.absent, on_leave: today.leave, marked: today.marked };
       if (today.classes) f.attendance_today.classes_not_marked = `${today.notMarked} of ${today.classes}`;
     }
+    // Class by class, so "how many in 5 A" or "which class owes most"
+    // has an answer instead of a vague reply.
+    const active = searchStudents.filter((p) => p.status !== "inactive");
+    const classOf = (c, s) => [gradeLabel(c), s].filter(Boolean).join(" ") || "No class";
+    const byClass = new Map();
+    for (const p of active) {
+      const name = classOf(p.class, p.section);
+      if (!byClass.has(name)) byClass.set(name, { class: name, students: 0, ...(isAdmin ? { fee_due: 0, owing: 0 } : {}) });
+      const c = byClass.get(name);
+      c.students += 1;
+      if (isAdmin && Number(p.fee_due) > 0) {
+        c.fee_due += Number(p.fee_due);
+        c.owing += 1;
+      }
+    }
+    for (const r of today?.rows ?? []) {
+      const c = byClass.get(classOf(r.class, r.section));
+      if (!c) continue;
+      if (Number(r.unmarked) === Number(r.students)) c.attendance = "not marked";
+      else Object.assign(c, { present: Number(r.present) + Number(r.late), absent: Number(r.absent), on_leave: Number(r.on_leave) });
+    }
+    f.classes = [...byClass.values()].slice(0, 60);
+    if (isAdmin) {
+      f.most_due = active
+        .filter((p) => Number(p.fee_due) > 0)
+        .sort((a, b) => Number(b.fee_due) - Number(a.fee_due))
+        .slice(0, 10)
+        .map((p) => ({ name: p.name, class: classOf(p.class, p.section), due: Number(p.fee_due) }));
+    }
     f.inbox_waiting = inboxCount;
     if (isOwner) f.staff_waiting_for_app_access = pendingCount;
     return f;
