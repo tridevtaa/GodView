@@ -38,7 +38,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
   const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
   // Premium: the AI card above the charts, and short lines by the figures
-  const ins = useInsights(school, "fees", (role === "owner" || role === "admin") && !pastSession);
+  const ins = useInsights(school, "fees", (role === "owner" || role === "admin" || role === "principal") && !pastSession);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -130,10 +130,10 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
               Old balances
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => onCollect()}>
+          {onCollect && <button className="btn btn-primary" onClick={() => onCollect()}>
             <Icon name="plus" />
             Collect fee
-          </button>
+          </button>}
         </div>
     )
   );
@@ -275,9 +275,9 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
                     </span>
                   </button>
                   <span className={`badge ${s.fee_status === "overdue" ? "badge-danger" : "badge-warning"}`}>{rupees(s.fee_due)}</span>
-                  <button className="btn btn-secondary btn-sm" onClick={() => onCollect(s)}>
+                  {onCollect && <button className="btn btn-secondary btn-sm" onClick={() => onCollect(s)}>
                     Collect
-                  </button>
+                  </button>}
                 </div>
               </li>
             ))}

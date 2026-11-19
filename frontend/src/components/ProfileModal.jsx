@@ -15,6 +15,7 @@ import { rupees } from "../data/money.js";
 import { mapsLink } from "../data/maps.js";
 import Icon, { WhatsAppLogo } from "./Icon.jsx";
 import ClassCard, { ClassTeacherBadge, useClassTeachers } from "./ClassCard.jsx";
+import { usePerms } from "../data/permissions.js";
 
 const phone = (n) => n && <a href={`tel:${n}`}>{n}</a>;
 const longDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
@@ -416,8 +417,9 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
     };
   }, [person.id, sessionId]);
 
+  const perms = usePerms();
   const due = Number(person.fee_due) || 0;
-  const feeKnown = isAdmin && person.fee_status && person.fee_status !== "unknown";
+  const feeKnown = isAdmin && perms.fees >= 1 && person.fee_status && person.fee_status !== "unknown";
   // Transport (owners and admins see it): route as the value, stop below
   const busRoute = routes.find((r) => r.stops.some((st) => st.id === person.bus_stop_id));
   const busStop = busRoute?.stops.find((st) => st.id === person.bus_stop_id);
@@ -428,12 +430,12 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
       : person.transport_route || person.pickup_point
         ? [person.pickup_point || person.transport_route, person.pickup_point ? person.transport_route ?? "" : ""]
         : ["On the bus", "no stop yet"];
-  const showBus = isAdmin && mode === "students" && (routes.length > 0 || person.uses_bus);
+  const showBus = isAdmin && perms.transport >= 1 && mode === "students" && (routes.length > 0 || person.uses_bus);
   // Each a small tile in the app's colours: [label, value, note, tone, tap, sub]
   const stats = [
     ["Attendance", att === null ? "–" : `${att}%`, "this month", "green", () => onTab("details")],
     ["Result", result ? `${result.pct}%` : "–", result?.exam ?? "no marks yet", "violet", () => onTab("results")],
-    isAdmin
+    isAdmin && perms.fees >= 1
       ? ["Fees due", feeKnown ? (due > 0 ? rupees(due) : "Paid") : "–", feeKnown ? (due > 0 ? "due now" : "all clear") : "not set", !feeKnown ? "indigo" : person.fee_status === "overdue" ? "red" : due > 0 ? "amber" : "green", () => onTab("fees")]
       : null,
     showBus ? ["Transport", bus[0], bus[1] || "", "teal", () => onTab("fees"), bus[1]] : null,
@@ -590,6 +592,8 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   }, [onClose, editing]);
 
   const isStudent = mode === "students";
+  // Role permissions: tabs and sections for the areas this person can see.
+  const perms = usePerms();
   // Staff: their classes this session (the class teacher one starred)
   const [staffClasses, setStaffClasses] = useState("");
   useEffect(() => {
@@ -620,11 +624,11 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
   const callNo = person.parent_phone || person.father_phone || person.mother_phone || person.phone;
   const tabs = [
     ["details", "Details"],
-    ...(isAdmin ? [["fees", "Fees"]] : []),
+    ...(isAdmin && (perms.fees >= 1 || perms.transport >= 1) ? [["fees", "Fees"]] : []),
     // On the full page, Messages is a button beside Call instead
     ...(asPage ? [] : [["messages", "Messages"]]),
     ["results", "Results"],
-    ...(isAdmin && isStudent ? [["certificates", "Certificates"]] : []),
+    ...(isAdmin && isStudent && perms.certificates >= 1 ? [["certificates", "Certificates"]] : []),
   ];
 
   const card = (
@@ -719,7 +723,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               canEdit={canEdit}
               onChanged={onFeesChanged}
             />
-          ) : isStudent && isAdmin && !editing && tab === "certificates" ? (
+          ) : isStudent && isAdmin && perms.certificates >= 1 && !editing && tab === "certificates" ? (
             <CertificatesTab school={school} person={person} sessionId={sessionId} onUpdate={onUpdate} />
           ) : isStudent && !editing && tab === "messages" ? (
             <Chat
@@ -749,7 +753,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               }
             />
           ) : isStudent && !editing && tab === "results" ? (
-            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite} autoFocus={initialTab === "results"} />
+            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite && perms.results >= 2} autoFocus={initialTab === "results"} />
           ) : editing ? (
             <ProfileEdit
               person={person}
@@ -788,9 +792,9 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 </section>
               ))}
               {isStudent && <StudentClass person={person} sessionId={sessionId} students={students} onOpenStudent={onOpenStudent} />}
-              {isStudent && <StudentDocuments person={person} schoolId={schoolId} sessionId={sessionId} canEdit={canEdit} onUpdate={onUpdate} />}
-              {!isStudent && isAdmin && person.email && <StaffDocuments schoolId={schoolId} email={person.email} />}
-              {isStudent && isAdmin && (
+              {isStudent && (!isAdmin || perms.students >= 1) && <StudentDocuments person={person} schoolId={schoolId} sessionId={sessionId} canEdit={canEdit && perms.students >= 2} onUpdate={onUpdate} />}
+              {!isStudent && isAdmin && perms.staff >= 1 && person.email && <StaffDocuments schoolId={schoolId} email={person.email} />}
+              {isStudent && isAdmin && perms.students >= 1 && (
                 <section className="profile-group profile-facts g-parents">
                   <StudentParents person={person} canEdit={canEdit} />
                 </section>

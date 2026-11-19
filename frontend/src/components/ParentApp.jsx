@@ -796,11 +796,6 @@ function ParentMenu({ phone, onPassword, onProfile }) {
             <Icon name="logout" />
             Log out
           </button>
-          {/* Google Play asks for a way to delete the account from the app. */}
-          <a role="menuitem" className="menu-item menu-item-quiet" href="/delete-account">
-            <Icon name="trash" />
-            Delete account
-          </a>
         </div>
       )}
     </div>

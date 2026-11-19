@@ -3,6 +3,7 @@ import { loadMyGuardian, saveMyGuardian, saveMyGuardianPhoto } from "../data/pro
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { idText } from "./Designation.jsx";
 import Icon from "./Icon.jsx";
+import DeleteAccount from "./DeleteAccount.jsx";
 import { haptic } from "../pwa/haptics.js";
 
 const RELATION = { father: "Father", mother: "Mother", guardian: "Guardian" };
@@ -111,6 +112,7 @@ export default function ParentProfile({ family = [], onOpenChild }) {
           </ul>
         </section>
       )}
+      {!editing && <DeleteAccount />}
     </div>
   );
 }

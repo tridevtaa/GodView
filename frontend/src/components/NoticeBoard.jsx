@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { NOTICE_IMAGE_DAYS, clearExpiredNoticeImages, deleteNotice, listNotices, logoUrl, noticeImageUrls, postNotice, removeNoticeImage, updateNotice, uploadNoticeImage } from "../data/api.js";
 import { peek, remember, swr } from "../data/cache.js";
 import Icon from "./Icon.jsx";
+import { usePerms } from "../data/permissions.js";
 import { haptic } from "../pwa/haptics.js";
 
 // A notice can be tagged with one of these, for the homepage's achievements
@@ -155,7 +156,9 @@ export default function NoticeBoard({ school, schoolId, me, isAdmin = false, com
   const urls = useImageUrls(notices);
   // News and the students' wins in one list: a win carries its tag.
   const shown = notices;
-  const canPost = Boolean(me);
+  // Role permissions: Notices Edit posts; View only reads.
+  const perms = usePerms();
+  const canPost = Boolean(me) && perms.notices >= 2;
   const canManage = (n) => canPost && (isAdmin || n.created_by === me);
 
   async function pin(n) {

@@ -77,3 +77,23 @@ export async function saveMyGuardianPhoto(guardian, file) {
   const { signedUrl } = must(await supabase.storage.from("photos").createSignedUrl(path, 3600));
   return { photo_path: path, photo_src: signedUrl };
 }
+
+// ------------------------------------------------------ delete account ---
+
+// Schools where the signed-in person is the only owner: [{ id, name }].
+// Their account can't be deleted until someone else owns those schools.
+export async function accountDeletionBlockers() {
+  return must(await supabase.rpc("account_deletion_blockers")) ?? [];
+}
+
+// Deletes the signed-in person's account (delete-account edge function).
+// Throws { code: "sole_owner" | "signed_out" | "failed" }.
+export async function deleteMyAccount() {
+  const { error } = await supabase.functions.invoke("delete-account", { body: { confirm: "DELETE" } });
+  if (error) {
+    const reply = await error.context?.json?.().catch(() => null);
+    const e = new Error(reply?.error || "failed");
+    e.code = reply?.error || "failed";
+    throw e;
+  }
+}

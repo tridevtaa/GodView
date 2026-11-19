@@ -12,7 +12,8 @@ import Icon from "./Icon.jsx";
 // above), each with a pickup and drop time. Anything that needs fixing
 // (papers running out, too many students for the seats, a route with no
 // bus, students with no stop) is listed at the top.
-export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged }) {
+// readOnly: the owner gave this person Transport View (role permissions).
+export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged, readOnly = false }) {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const areasKey = `areas:${school.id}`;
@@ -111,6 +112,10 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
 
   const act = (fn) => async (...args) => {
     setError("");
+    if (readOnly) {
+      setError("You can see transport but not change it. The owner can change this in App access.");
+      return false;
+    }
     try {
       await fn(...args);
       await onChanged();
@@ -135,7 +140,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
           <ul>
             {attention.map((a, i) => (
               <li key={i} className={`is-${a.level}`}>
-                {a.onClick ? (
+                {a.onClick && !readOnly ? (
                   <button type="button" className="link-btn" onClick={a.onClick}>
                     {a.text}
                   </button>
@@ -151,7 +156,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       {busesMissing ? (
         <p className="notice">Buses aren’t set up in the database yet (npx supabase db push).</p>
       ) : (
-        buses !== null && <BusList buses={buses} routes={routes} onEdit={setEditing} onAdd={() => setEditing("new")} />
+        buses !== null && <BusList buses={buses} routes={routes} onEdit={readOnly ? () => {} : setEditing} onAdd={readOnly ? null : () => setEditing("new")} />
       )}
       {editing && (
         <BusForm
@@ -167,7 +172,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
         />
       )}
 
-      <form
+      {!readOnly && <form
         className="tr-add"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -182,10 +187,10 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
           <Icon name="plus" />
           Add route
         </button>
-      </form>
+      </form>}
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={setEditing} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={readOnly ? () => {} : setEditing} />
       ))}
     </>
   );

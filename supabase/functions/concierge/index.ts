@@ -76,6 +76,8 @@ When they ask how something is going (fees, attendance) and there is a card for 
 
 Pick a "mood" for how your reply is said: "pleased" for good news or thanks, "concerned" for worrying figures (low attendance, large dues, classes still not marked late in the day), "sorry" when you can't help or can't find something, otherwise "neutral".
 
+Answer the exact question they asked. The figures include a "classes" list (students, fees due and today's attendance for each class) and "most_due" (the students owing the most): use them for questions about a class or a student before opening a page. A short follow-up ("and class 5?", "why?") continues the earlier turns. If you are not sure what they mean, ask one short question back instead of guessing.
+
 Only use page and form keys from the lists you are given. When you open something, say so in a few words ("Opening Fees for you."). Only quote numbers that appear in the figures you are given; if the answer needs data you don't have, open the page where it lives and say so. If you can't help, say what you can do instead. Never claim to have changed or saved anything: forms open for the user to fill in.`;
 
 const SCHEMA = {
@@ -119,9 +121,10 @@ Deno.serve(async (req) => {
   });
   const { data: auth } = await user.auth.getUser();
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
-  const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
-  const { data: isPrincipal } = isAdmin ? { data: false } : await user.rpc("is_principal", { school: school_id });
-  if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
+  // Goddess: owners, and admins and principals while the owner has her on
+  // for them (role permissions).
+  const { data: allowed } = await user.rpc("can_wide", { p_school: school_id, p_area: "assistant", p_level: 1 });
+  if (!allowed) return reply({ error: "not_allowed" }, 403);
   const { data: school } = await user.from("schools").select("name, plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);
 
@@ -137,12 +140,23 @@ Deno.serve(async (req) => {
   else if (over === "burst") return reply({ error: "too_fast" }, 429);
   else if (over === "daily") return reply({ error: "daily_limit" }, 429);
 
+  // Figures as whole JSON: a big school drops classes from the end rather
+  // than cutting the text mid-way (which left the model broken JSON).
+  const f = facts && typeof facts === "object" ? { ...facts } : {};
+  let figures = JSON.stringify(f);
+  while (figures.length > 9000 && Array.isArray(f.classes) && f.classes.length) {
+    f.classes = f.classes.slice(0, -5);
+    figures = JSON.stringify(f);
+  }
+  figures = figures.slice(0, 9000);
+
+  const started = Date.now();
   const context = [
     `School: ${school.name}. Speaking with: ${String(name).slice(0, 60) || "a school lead"}. They are on the "${String(page).slice(0, 20)}" page.`,
     `Pages they can open:\n${pages.map(([k, l]) => `- ${k} (${l}): ${PAGES[k]}`).join("\n")}`,
     `Forms they can open:\n${forms.map(([k, l]) => `- ${k}: ${l}`).join("\n") || "- none"}`,
     `Cards you can show:\n${cards.map(([k, l]) => `- ${k}: ${l}`).join("\n") || "- none"}${card ? `\nOn screen now: the ${card} card.` : ""}`,
-    `Figures (now, ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}):\n${JSON.stringify(facts).slice(0, 3000)}`,
+    `Figures (now, ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}):\n${figures}`,
   ].join("\n\n");
 
   // Earlier turns as plain text; the last user turn carries the context.
@@ -163,13 +177,16 @@ Deno.serve(async (req) => {
     messages: turns.map((t) => ({ role: t.role === "assistant" ? ("assistant" as const) : ("user" as const), content: String(t.content) })),
     schema: SCHEMA,
     name: "reply",
-    maxTokens: 1500,
-    minTokens: 600,
-    timeoutMs: 8000,
-    effort: "low",
+    maxTokens: 2500,
+    minTokens: 1200,
+    timeoutMs: 10000,
+    // "low" missed what short or spoken questions meant; "medium" thinks a
+    // little longer and still answers in a few seconds.
+    effort: "medium",
   });
   // deno-lint-ignore no-explicit-any
   let out: any = fast && String((fast.json as { say?: unknown })?.say ?? "").trim() ? fast.json : null;
+  let answeredBy = out ? fast!.model : "";
 
   if (!out) {
     let response;
@@ -197,6 +214,7 @@ Deno.serve(async (req) => {
       console.log(`claude stopped: ${msg.stop_reason}`);
       return reply({ error: "ai_failed" }, 502);
     }
+    answeredBy = `${msg.model} (claude)`;
     const text = msg.content.find((b) => b.type === "text");
     try {
       out = JSON.parse(text && text.type === "text" ? text.text : "");
@@ -217,6 +235,9 @@ Deno.serve(async (req) => {
   if (!ok) action = { type: "none", target: "" };
 
   const mood = ["pleased", "concerned", "sorry"].includes(out?.mood) ? out.mood : "neutral";
+  // Which model answered and how fast; never the question or the answer
+  // (they can hold student names).
+  console.log(`answered by ${answeredBy} in ${Date.now() - started}ms, action ${action.type}, ${turns.length} turns, figures ${figures.length} chars`);
 
   return reply({ say, mood, action });
 });

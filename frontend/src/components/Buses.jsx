@@ -65,10 +65,12 @@ export function BusList({ buses, routes, onEdit, onAdd }) {
           </h2>
           {buses.length > 0 && <span className="freq-btn fc-mini-freq">{buses.length}</span>}
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={onAdd}>
-          <Icon name="plus" />
-          Add bus
-        </button>
+        {onAdd && (
+          <button className="btn btn-secondary btn-sm" onClick={onAdd}>
+            <Icon name="plus" />
+            Add bus
+          </button>
+        )}
       </header>
       {buses.length === 0 ? (
         <p className="row-sub bus-empty">Add each bus with its driver and the dates its papers run out. Then pick a bus for each route.</p>

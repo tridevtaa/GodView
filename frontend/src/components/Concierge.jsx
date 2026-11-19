@@ -397,21 +397,40 @@ export default function Concierge({ school, sessionId, seesFees, name, students,
     const r = new SR();
     r.lang = "en-IN";
     r.interimResults = true;
+    // Keeps listening through a short pause mid-question: stopping at the
+    // first final result sent "how much fee is pending" without "for
+    // class 5". It stops after a quiet spell instead (shorter once the
+    // engine has a final result), or after 20 seconds at most.
+    r.continuous = true;
     let heard = "";
+    let quiet = null;
+    const cap = setTimeout(() => r.stop(), 20000);
+    const stopAfter = (ms) => {
+      clearTimeout(quiet);
+      quiet = setTimeout(() => r.stop(), ms);
+    };
+    stopAfter(6000); // nothing said at all
     r.onresult = (e) => {
-      heard = Array.from(e.results, (x) => x[0].transcript).join("");
+      // Desktop Chrome gives one result per phrase; Android repeats the
+      // whole sentence so far in each. Either way, build it up once.
+      let text = "";
+      for (const x of e.results) {
+        const t = x[0].transcript.trim();
+        if (!t) continue;
+        const lo = text.toLowerCase();
+        if (t.toLowerCase().startsWith(lo)) text = t;
+        else if (!lo.endsWith(t.toLowerCase())) text = `${text} ${t}`;
+      }
+      heard = text;
       setDraft(heard);
-      // Her mic used to wait for the engine's own pause-detection to end
-      // the recognition, which on some machines takes several seconds (or
-      // longer with background noise) and looked like it was stuck
-      // listening. Ending it the moment the final transcript is in is
-      // immediate instead.
-      if (e.results[e.results.length - 1].isFinal) r.stop();
+      stopAfter(e.results[e.results.length - 1].isFinal ? 1500 : 3000);
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") setError("Allow the microphone to talk to GodView.");
     };
     r.onend = () => {
+      clearTimeout(quiet);
+      clearTimeout(cap);
       rec.current = null;
       setPhase((p) => (p === "listen" ? "idle" : p));
       if (heard.trim()) askRef.current(heard);
