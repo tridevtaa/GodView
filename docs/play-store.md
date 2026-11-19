@@ -77,13 +77,23 @@ none optional unless noted:
 
 | Data type | Notes |
 |---|---|
-| Personal info: name, email address, phone number, address, other info (date of birth, gender, admission details) | Staff and parents; students' records entered by the school |
-| Photos | Student and staff photos, uploaded documents |
-| Files and docs | Documents the school uploads (birth or transfer certificate, Aadhaar copy) |
-| Financial info: other | Fee dues and payment records |
+| Personal info: name, email address, phone number, address | Staff and parents; students' and applicants' records entered by the school; call back requests |
+| Personal info: race and ethnicity | Student category (General, SC, ST, OBC), entered by the school |
+| Personal info: political or religious beliefs | Student religion, entered by the school |
+| Personal info: other info | Date of birth, gender, admission details, staff KYC proof documents |
+| Financial info: other | Fee dues and payment records (no card or bank details) |
+| Photos and videos | Student and staff photos, notice and message attachments |
+| Files and docs | Documents the school uploads (birth or transfer certificate, Aadhaar copy, staff KYC) |
 | Messages: other in-app messages | Parent and school messages and requests |
 | App activity: app interactions | Microsoft Clarity heatmaps (**analytics**), with screen content masked |
+| App activity: other user-generated content | Assistant questions and replies (Premium) |
+| Device or other IDs | Push notification token; browser and device on the fee payment log (**fraud prevention, security**) |
 | Audio: voice or sound recordings | **Not collected**: speech is turned into text on the device |
+
+Data is **shared** with no one in Play's sense: Groq, Anthropic, Google
+(FCM, Maps, Text-to-Speech), Microsoft Clarity, Supabase and Cloudflare are
+service providers processing data for us. Privacy policy URL:
+`https://godview.in/privacy/`
 
 ## 4. Store listing (Grow > Store presence > Main store listing)
 
