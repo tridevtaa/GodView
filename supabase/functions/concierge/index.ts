@@ -121,9 +121,10 @@ Deno.serve(async (req) => {
   });
   const { data: auth } = await user.auth.getUser();
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
-  const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
-  const { data: isPrincipal } = isAdmin ? { data: false } : await user.rpc("is_principal", { school: school_id });
-  if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
+  // Goddess: owners, and admins and principals while the owner has her on
+  // for them (role permissions).
+  const { data: allowed } = await user.rpc("can_wide", { p_school: school_id, p_area: "assistant", p_level: 1 });
+  if (!allowed) return reply({ error: "not_allowed" }, 403);
   const { data: school } = await user.from("schools").select("name, plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);
 

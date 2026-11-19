@@ -63,9 +63,9 @@ Deno.serve(async (req) => {
 
   const { data: auth } = await user.auth.getUser();
   if (!auth?.user) return reply({ error: "signed_out" }, 401);
-  const { data: isAdmin } = await user.rpc("is_school_admin", { school: school_id });
-  const { data: isPrincipal } = section === "results" || section === "homework" ? await user.rpc("is_principal", { school: school_id }) : { data: false };
-  if (!isAdmin && !isPrincipal) return reply({ error: "not_allowed" }, 403);
+  // Goddess on for them and the section's own area (role permissions).
+  const { data: allowed } = await user.rpc("can_see_insight", { p_school: school_id, p_section: section });
+  if (!allowed) return reply({ error: "not_allowed" }, 403);
   // As the user: the service role has no grant on schools in this project
   const { data: school } = await user.from("schools").select("plan").eq("id", school_id).single();
   if (school?.plan !== "premium") return reply({ error: "premium" }, 403);

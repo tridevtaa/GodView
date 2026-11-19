@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useReducer, useRef, useState } from "react"
 import { latestInsight, runInsight } from "../data/api.js";
 import { rupees, rupeesShort } from "../data/money.js";
 import Icon from "./Icon.jsx";
+import { usePerms } from "../data/permissions.js";
 import { useDismiss } from "./useDismiss.js";
 
 // AI insights (Premium) on Fees, Transport, Results, Homework and Staff, built into the
@@ -93,7 +94,9 @@ async function run(e, schoolId, section) {
 // enabled: this person can see insights here (Premium, and a role allowed
 // to); auto: and may start the daily refresh.
 export function useInsights(school, section, enabled = true) {
-  const on = Boolean(enabled && school?.plan === "premium");
+  // Goddess off for this person (role permissions): no insights.
+  const perms = usePerms();
+  const on = Boolean(enabled && perms.assistant >= 1 && school?.plan === "premium");
   const key = `${school?.id}:${section}`;
   const [, rerender] = useReducer((x) => x + 1, 0);
   useEffect(() => {

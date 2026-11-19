@@ -29,6 +29,7 @@ import { useSchoolBranding } from "./pwa/branding.js";
 import UpdatePrompt from "./components/UpdatePrompt.jsx";
 import { useSwipeTabs } from "./pwa/swipeTabs.js";
 import { useGoddessSwipe } from "./pwa/goddessSwipe.js";
+import { PermsContext, useMyPermissions } from "./data/permissions.js";
 import { SCREEN_AT, SECTION_OF, listScreens } from "./data/screens.js";
 import { NEEDS } from "./data/needs.js";
 import { CERT_KINDS } from "./data/certKinds.js";
@@ -132,12 +133,21 @@ export default function App() {
   const isPrincipal = role === "principal";
   // Owners, admins and the principal: they see the whole school.
   const leads = isAdmin || isPrincipal;
+  // Role permissions: what the owner lets this person see (1) and change
+  // (2) in each area (data/permissions.js; the database enforces them).
+  const perms = useMyPermissions(school.id, role);
+  const seesFees = leads && perms.fees >= 1;
+  const editsFees = seesFees && perms.fees >= 2;
+  const seesAdmissions = leads && perms.admissions >= 1;
+  const seesCertificates = leads && perms.certificates >= 1;
+  const seesTransport = leads && perms.transport >= 1;
+  const seesStaff = leads && perms.staff >= 1;
   // Owners and admins on a phone: Excel uploads and exports, reports and the
   // fee structure stay on computers. Parents and teachers keep everything.
   const wideScreen = useWide();
   const computerOnly = isAdmin && !wideScreen;
   // The assistant is Premium, for the people who see the whole school.
-  const canAsk = leads && school.plan === "premium";
+  const canAsk = leads && perms.assistant >= 1 && school.plan === "premium";
   const [pendingCount, setPendingCount] = useState(0);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
@@ -194,7 +204,7 @@ export default function App() {
     );
   }, [role, school.id, currentSession, user.email]);
   const isClassTeacher = (myAssignments ?? []).some((a) => a.is_class_teacher);
-  const seesAttendance = role !== "teacher" || isClassTeacher;
+  const seesAttendance = (role !== "teacher" || isClassTeacher) && perms.attendance >= 1;
   // A teacher with no classes this session picks them first, before anything else.
   const needsClasses = role === "teacher" && Boolean(currentSession) && myAssignments !== null && myAssignments.length === 0;
 
@@ -254,10 +264,12 @@ export default function App() {
   // Records: owners/admins. Photos, notes, results: anyone who can see the student.
   const canEdit = source === "supabase" && !viewOnly && isAdmin;
   const canWrite = source === "supabase" && !viewOnly && !isPrincipal;
+  // Entering results: teachers for their classes, the office for any class.
+  const writesResults = source === "supabase" && !viewOnly && perms.results >= 2;
   // AI insights (Premium): Transport on its page, Results on Students
-  const insT = useInsights(school, "transport", isAdmin && mode === "transport");
-  const insS = useInsights(school, "staff", isAdmin && !viewOnly && source === "supabase" && mode === "employees" && staffTab === "people");
-  const insR = useInsights(school, "results", (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && mode === "students");
+  const insT = useInsights(school, "transport", seesTransport && mode === "transport");
+  const insS = useInsights(school, "staff", seesStaff && !viewOnly && source === "supabase" && mode === "employees" && staffTab === "people");
+  const insR = useInsights(school, "results", leads && perms.results >= 1 && !viewOnly && source === "supabase" && mode === "students");
 
   // Students who left stay in the database (history) but aren't shown.
   // Ordered by grade (Nursery → 12), then section, then name.
@@ -311,9 +323,9 @@ export default function App() {
   };
   // Fee sorting is for those who see fees
   const sort =
-    sortPick && (sortPick.by !== "fee" || isAdmin)
+    sortPick && (sortPick.by !== "fee" || seesFees)
       ? sortPick
-      : isAdmin
+      : seesFees
       ? { by: "fee", dir: "desc" }
       : { by: "perf", dir: "asc" };
   const [perf, setPerf] = useState(new Map());
@@ -463,6 +475,7 @@ export default function App() {
   useEffect(() => {
     if ((mode !== "students" && mode !== "home") || !currentSession || viewOnly) return;
     if (leads) {
+      if (perms.attendance < 1) return setToday(null);
       swr(`att-overview:${currentSession.id}:${todayIso}`, () => attendanceOverview(currentSession.id, todayIso), (rows) =>
         setToday({ ...attendanceTotals(rows), rows })
       ).catch(() => {});
@@ -479,7 +492,7 @@ export default function App() {
         });
       }).catch(() => {});
     }
-  }, [mode, currentSession, viewOnly, leads, todayIso, current]);
+  }, [mode, currentSession, viewOnly, leads, todayIso, current, perms.attendance]);
 
   const insHere = isStudents ? insR : insS;
   const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || statusPick !== "active"));
@@ -546,22 +559,22 @@ export default function App() {
       },
     ];
   })();
-  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly, pendingCount });
+  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite: writesResults, computerOnly, pendingCount, seesFees, seesAdmissions, seesCertificates, seesTransport, seesStaff, seesNotices: perms.notices >= 1 });
   // The top bar has every section, so nothing is more than one row of tabs
   // away (data/screens.js). School settings are in the account menu.
   const sections = [
     ["home", "Home"],
     ["students", "Students"],
     ...(screens.some((s) => s.section === "office") ? [["office", "Office"]] : []),
-    ...(isAdmin ? [["fees", "Fees"]] : []),
+    ...(seesFees ? [["fees", "Fees"]] : []),
     ["academics", "Academics"],
     ["planner", "Planner"],
     ["requests", "Inbox", mode === "requests" ? 0 : inboxCount],
-    ...(leads ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
-    ...(isAdmin ? [["transport", "Transport"]] : []),
+    ...(seesStaff || isOwner ? [["employees", "Staff", isOwner ? pendingCount : 0]] : []),
+    ...(seesTransport ? [["transport", "Transport"]] : []),
   ];
   // Phones have room for these; More lists everything else directly.
-  const barKeys = ["home", "students", isAdmin ? "fees" : "academics", "requests"];
+  const barKeys = ["home", "students", seesFees ? "fees" : "academics", "requests"];
   const litMode = SECTION_OF[mode] ?? mode;
   // Phones: swipe sideways to the next or previous tab (not on a profile).
   useSwipeTabs(barKeys, litMode, switchMode, !studentPage);
@@ -599,7 +612,7 @@ export default function App() {
     <GlobalSearch
       school={school}
       students={searchStudents}
-      seesStaff={leads}
+      seesStaff={seesStaff}
       screens={screens}
       onScreen={switchMode}
       onStudent={(id) => {
@@ -620,15 +633,15 @@ export default function App() {
   const plusActions = [
     ...(canEdit ? [["student", "Add student", "scholar"]] : []),
     // New enquiry isn't here: it's a button on Admissions (Office).
-    ...(isAdmin && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
+    ...(editsFees && !viewOnly ? [["fee", "Collect fee", "rupee"]] : []),
     // Teachers' daily work: their class register (class in-charges), homework
     // and marks. Owners, admins and the principal see these, not give them.
     ...(role === "teacher" && isClassTeacher && !viewOnly ? [["attendance", "Mark attendance", "register"]] : []),
     ...(role === "teacher" ? [["homework", "Give homework", "book"]] : []),
-    ...(role === "teacher" && canWrite ? [["result", "Add result", "chart"]] : []),
+    ...(role === "teacher" && writesResults ? [["result", "Add result", "chart"]] : []),
     // Exams: teachers for their classes, the office for any class
     ...(role === "teacher" || (isAdmin && !viewOnly) ? [["datesheet", "Add exam", "exam"]] : []),
-    ["notice", "Post notice", "notice"],
+    ...(perms.notices >= 2 ? [["notice", "Post notice", "notice"]] : []),
     ...(isAdmin && !viewOnly ? [["bulk", "Message parents", "users"]] : []),
     ...(isAdmin ? [["event", "Add to calendar", "calendar"]] : []),
   ];
@@ -747,7 +760,7 @@ export default function App() {
         ...(screens.some((s) => s.key === "admissions") ? [["Admissions", () => switchMode("admissions"), { current: mode === "admissions" }]] : []),
         ...(screens.some((s) => s.key === "certificates") ? [["Certificates", () => switchMode("certificates"), { current: mode === "certificates" }]] : []),
       ],
-      columns: screens.some((s) => s.key === "admissions") && isAdmin && !viewOnly ? [{ title: "Quick actions", links: [["New enquiry", () => runAction("enquiry")]] }] : [],
+      columns: screens.some((s) => s.key === "admissions") && perms.admissions >= 2 && !viewOnly ? [{ title: "Quick actions", links: [["New enquiry", () => runAction("enquiry")]] }] : [],
     },
     fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure", "payment-log": "Payment log" }), columns: [actions("fee", "bulk")] },
     academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
@@ -766,7 +779,7 @@ export default function App() {
         ["Org chart", () => switchMode("org-chart"), { current: mode === "employees" && staffTab === "people" && staffView === "chart" }],
         ...(isOwner ? [["App access", () => switchMode("access"), { current: mode === "employees" && staffTab === "access", count: pendingCount }]] : []),
       ],
-      columns: isAdmin ? [{ title: "Quick actions", links: [["Add staff", () => runAction("staff")]] }] : [],
+      columns: seesStaff && perms.staff >= 2 ? [{ title: "Quick actions", links: [["Add staff", () => runAction("staff")]] }] : [],
     },
     transport: {
       big: [
@@ -814,7 +827,7 @@ export default function App() {
   const askFacts = useMemo(() => {
     if (!asking) return {};
     const f = { session: currentSession?.name ?? "", students: searchStudents.filter((p) => p.status !== "inactive").length };
-    if (isAdmin) {
+    if (seesFees) {
       const owing = searchStudents.filter((p) => Number(p.fee_due) > 0);
       f.fees = {
         due_rupees: owing.reduce((t, p) => t + Number(p.fee_due), 0),
@@ -834,10 +847,10 @@ export default function App() {
     const byClass = new Map();
     for (const p of active) {
       const name = classOf(p.class, p.section);
-      if (!byClass.has(name)) byClass.set(name, { class: name, students: 0, ...(isAdmin ? { fee_due: 0, owing: 0 } : {}) });
+      if (!byClass.has(name)) byClass.set(name, { class: name, students: 0, ...(seesFees ? { fee_due: 0, owing: 0 } : {}) });
       const c = byClass.get(name);
       c.students += 1;
-      if (isAdmin && Number(p.fee_due) > 0) {
+      if (seesFees && Number(p.fee_due) > 0) {
         c.fee_due += Number(p.fee_due);
         c.owing += 1;
       }
@@ -849,7 +862,7 @@ export default function App() {
       else Object.assign(c, { present: Number(r.present) + Number(r.late), absent: Number(r.absent), on_leave: Number(r.on_leave) });
     }
     f.classes = [...byClass.values()].slice(0, 60);
-    if (isAdmin) {
+    if (seesFees) {
       f.most_due = active
         .filter((p) => Number(p.fee_due) > 0)
         .sort((a, b) => Number(b.fee_due) - Number(a.fee_due))
@@ -859,12 +872,13 @@ export default function App() {
     f.inbox_waiting = inboxCount;
     if (isOwner) f.staff_waiting_for_app_access = pendingCount;
     return f;
-  }, [asking, currentSession, searchStudents, isAdmin, isOwner, routes, today, inboxCount, pendingCount]);
+  }, [asking, currentSession, searchStudents, seesFees, isOwner, routes, today, inboxCount, pendingCount]);
   if (needsClasses) {
     return <ClassAllocationGate school={school} session={currentSession} />;
   }
 
   return (
+    <PermsContext.Provider value={perms}>
     <div className={`app${plusActions.length ? " has-plus" : ""}`} data-clarity-mask="True">
       <TopBar
         mode={litMode}
@@ -977,9 +991,9 @@ export default function App() {
               onOpenNotices={() => setPlannerView("notices")}
               view={plannerView}
               onView={setPlannerView}
-              notices={<NoticeBoard school={school} schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} />}
+              notices={perms.notices >= 1 ? <NoticeBoard school={school} schoolId={school.id} me={user.email} isAdmin={isAdmin} compose={noticeCompose} onCompose={setNoticeCompose} /> : null}
               noticeAction={
-                !viewOnly && (
+                !viewOnly && perms.notices >= 2 && (
                   <button className="btn btn-primary" onClick={() => setNoticeCompose(true)}>
                     <Icon name="plus" /> Post notice
                   </button>
@@ -1004,12 +1018,12 @@ export default function App() {
             isOwner={isOwner}
             onSchoolSaved={setSchool}
           />
-        ) : mode === "fees" ? (
+        ) : mode === "fees" && seesFees ? (
           <FeesPage
             computerOnly={computerOnly}
             view={feesView}
             onView={setFeesView}
-            onCollect={(student) => setCollect({ student })}
+            onCollect={editsFees ? (student) => setCollect({ student }) : null}
             onOpenStudent={(id, tab) => openStudent(id, tab)}
             onOpened={revalidate}
             refreshAt={feesAt}
@@ -1022,7 +1036,7 @@ export default function App() {
             students={current}
             onChanged={reload}
           />
-        ) : mode === "transport" && isAdmin ? (
+        ) : mode === "transport" && seesTransport ? (
           <>
             <h1 className="sr-only">Transport</h1>
             {school.plan !== "premium" && (
@@ -1069,9 +1083,9 @@ export default function App() {
             {/* The map on top: a short preview that opens to full size. */}
             {/* The map card; tapping it opens the map full screen on top. */}
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
-              <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
+              <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit && perms.transport >= 2} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
+            <TransportRoutes readOnly={perms.transport < 2} school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
@@ -1082,7 +1096,7 @@ export default function App() {
                     school={school}
                     students={current}
                     allStudents={current}
-                    canEdit={canEdit}
+                    canEdit={canEdit && perms.transport >= 2}
                     onOpenStudent={(id) => (setView("routes"), openStudent(id))}
                   />
                 </Suspense>
@@ -1090,10 +1104,10 @@ export default function App() {
             )}
           </>
         ) : mode === "homework" ? (
-          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !canWrite ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={isPrincipal} onOpenStudent={(id) => openStudent(id)} results={canWrite ? <MarksPage school={school} session={currentSession} students={current} noUpload={computerOnly} onOpenStudent={(id) => openStudent(id)} /> : null} />
-        ) : mode === "certificates" && isAdmin ? (
+          <HomeworkPage school={school} session={currentSession} students={current} me={user.email} isAdmin={isAdmin} readOnly={leads} giveAt={quick.kind === "homework" ? quick.at : 0} view={academicsView === "results" && !writesResults ? "homework" : academicsView} onView={setAcademicsView} attIsAdmin={leads} attReadOnly={perms.attendance < 2} onOpenStudent={(id) => openStudent(id)} results={writesResults ? <MarksPage school={school} session={currentSession} students={current} noUpload={computerOnly} onOpenStudent={(id) => openStudent(id)} /> : null} />
+        ) : mode === "certificates" && seesCertificates ? (
           <CertificatesRegister school={school} kind={certKind} onKind={setCertKind} students={current} sessionId={currentSession?.id} onUpdate={patch} />
-        ) : mode === "admissions" && leads ? (
+        ) : mode === "admissions" && seesAdmissions ? (
           <AdmissionsPage
             school={school}
             grades={schoolGrades}
@@ -1102,7 +1116,7 @@ export default function App() {
             students={current}
             routes={routes}
             me={user.email}
-            readOnly={isPrincipal}
+            readOnly={perms.admissions < 2}
             view={admissionsView}
             onView={setAdmissionsView}
             addAt={quick.kind === "enquiry" ? quick.at : 0}
@@ -1152,7 +1166,7 @@ export default function App() {
             key={insHere.section}
             ins={insHere}
             lead={<StatCards items={overview} />}
-            opens={isStudents ? (canWrite ? ["marks"] : []) : isOwner ? ["access"] : []}
+            opens={isStudents ? (writesResults ? ["marks"] : []) : isOwner ? ["access"] : []}
             onOpen={(kind) => (kind === "marks" ? switchMode("marks") : setStaffTab("access"))}
             onPerson={(id) => openStudent(id)}
           />
@@ -1171,7 +1185,7 @@ export default function App() {
               sort={sort}
               onSort={chooseSort}
               withSort={mode === "students"}
-              withFee={isAdmin}
+              withFee={seesFees}
               need={needPick}
               onNeed={isAdmin ? setNeedPick : null}
               status={statusPick}
@@ -1213,7 +1227,7 @@ export default function App() {
                   Add student
                 </button>
               )}
-              {role === "teacher" && canWrite && (
+              {role === "teacher" && writesResults && (
                 <button className="btn btn-primary" onClick={() => switchMode("marks")}>
                   <Icon name="chart" />
                   Add results
@@ -1250,7 +1264,7 @@ export default function App() {
           <Grid
             items={ordered}
             resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${statusPick}`}
-            render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={isAdmin} onOpen={() => openStudent(p.id)} />}
+            render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={seesFees} onOpen={() => openStudent(p.id)} />}
           />
         )}
         </>
@@ -1268,7 +1282,7 @@ export default function App() {
             pulled={askPulled}
             school={school}
             sessionId={currentSession?.id}
-            seesFees={isAdmin}
+            seesFees={seesFees}
             name={user.displayName}
             students={searchStudents}
             facts={askFacts}
@@ -1280,7 +1294,7 @@ export default function App() {
             onClose={closeAsk}
           />
         )}
-        {collect && isAdmin && (
+        {collect && editsFees && (
           <CollectFee
             school={school}
             students={dataMode === "students" ? current : searchStudents}
@@ -1349,5 +1363,6 @@ export default function App() {
       )}
       </Suspense>
     </div>
+    </PermsContext.Provider>
   );
 }

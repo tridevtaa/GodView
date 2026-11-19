@@ -28,6 +28,8 @@ import { Photo, gradeLabel } from "./PersonCard.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 import { isOutdatedApp, reloadForNewRelease } from "../pwa/release.js";
+import RolePermissions, { MemberPermissions } from "./RolePermissions.jsx";
+import { loadPermissionSettings } from "../data/permissions.js";
 import { roleFor } from "./Designation.jsx";
 
 const ROLE_LABEL = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
@@ -52,6 +54,9 @@ export default function TeamPage({ view = "access", school, session, me, isOwner
   const [classRequests, setClassRequests] = useState([]);
   const [exports, setExports] = useState([]);
   const [memberTab, setMemberTab] = useState("teachers");
+  // Role permissions (owner): settings, and whose exceptions are open.
+  const [perms, setPerms] = useState(null);
+  const [permsFor, setPermsFor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -68,6 +73,7 @@ export default function TeamPage({ view = "access", school, session, me, isOwner
       ]);
       setMembers(m);
       setAssignments(a);
+      loadPermissionSettings(school.id).then(setPerms, () => setPerms(null));
       setRequests(r);
       setClassRequests(cr);
       setExports(x);
@@ -232,6 +238,8 @@ export default function TeamPage({ view = "access", school, session, me, isOwner
               }
             }}
             canAssign={Boolean(session)}
+            onPermissions={perms ? () => setPermsFor(m) : null}
+            custom={Object.keys(perms?.members[m.email] ?? {}).length}
           />
         ))}
             </div>
@@ -245,6 +253,9 @@ export default function TeamPage({ view = "access", school, session, me, isOwner
           defaultDesignation={memberTab === "teachers" ? "Teacher" : ""}
         />
       </section>
+
+      {perms && <RolePermissions school={school} settings={perms} onChange={setPerms} />}
+      {perms && permsFor && <MemberPermissions school={school} member={permsFor} settings={perms} onChange={setPerms} onClose={() => setPermsFor(null)} />}
     </>
   );
 }
@@ -440,7 +451,7 @@ function ClassAllocationRequestRow({ request, name, classOptions, onApprove, onR
   );
 }
 
-function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAssign, onUnassign, onClassTeacher, canAssign }) {
+function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAssign, onUnassign, onClassTeacher, canAssign, onPermissions, custom = 0 }) {
   const [confirming, setConfirming] = useState(false);
   const [pick, setPick] = useState("");
   const isOwner = member.role === "owner";
@@ -524,6 +535,17 @@ function MemberRow({ member, isMe, classes, assignments, onRole, onRemove, onAss
         ) : (
           <>
             <RolePicker value={member.role} onChange={onRole} />
+            {onPermissions && (
+              <button
+                className={`icon-btn-sm perm-key${custom ? " is-custom" : ""}`}
+                onClick={onPermissions}
+                aria-label={custom ? `Permissions (${custom} exceptions)` : "Permissions"}
+                title={custom ? `${custom} exception${custom === 1 ? "" : "s"} to the ${member.role} setting` : "Permissions"}
+              >
+                <Icon name="lock" size={16} />
+                {custom > 0 && <span className="perm-key-n">{custom}</span>}
+              </button>
+            )}
             <button className="icon-btn-sm" onClick={() => setConfirming(true)} aria-label="Remove access" title="Remove access">
               <Icon name="trash" size={16} />
             </button>

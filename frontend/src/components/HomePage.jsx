@@ -12,6 +12,7 @@ import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
 import { BusWatch, CollectionToday, RecordsToFix, StaffDays } from "./HomeExtras.jsx";
+import { usePerms } from "../data/permissions.js";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const studentCount = (count) => `${n(count)} student${count === 1 ? "" : "s"}`;
@@ -44,6 +45,11 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
+  // Role permissions: tiles only for the areas this person can see.
+  const perms = usePerms();
+  const seesFees = isAdmin && perms.fees >= 1;
+  const seesAtt = leads && perms.attendance >= 1;
+  const seesStaff = leads && perms.staff >= 1;
   const showBanner = !isAdmin;
   const showWins = role === "teacher";
   const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
@@ -74,14 +80,14 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // The top card is this person's priority: pending fees for owners and
   // admins, today's attendance for the principal and class teachers,
   // homework for other teachers.
-  const prio = isAdmin ? "fees" : leads || today ? "attendance" : "homework";
+  const prio = seesFees ? "fees" : seesAtt || today ? "attendance" : "homework";
   // Premium: the AI's one line for today, on the fees card
 
   // On computers the top card is bigger: a few numbers and this period
   // against the last one.
   const wide = useWide();
   const feeTrend = useFeeTrend(school.id, wide && prio === "fees");
-  const attTrend = useAttendanceTrend(session?.id, leads, students, today, wide && prio === "attendance" && !loading);
+  const attTrend = useAttendanceTrend(session?.id, seesAtt, students, today, wide && prio === "attendance" && !loading);
   const trend = !wide ? null : prio === "fees" ? feeTrend : prio === "attendance" ? attTrend : homeworkTrend(homework);
 
   // The latest notice, for a line under its tile
@@ -95,18 +101,18 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // and Staff can be added back from + Add widget.
   const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
   const meta = [
-    isAdmin && { key: "attendance" },
-    isAdmin && { key: "notices" },
+    isAdmin && perms.attendance >= 1 && { key: "attendance" },
+    isAdmin && perms.notices >= 1 && { key: "notices" },
     { key: "students", defaultOn: false },
     { key: "inbox", defaultOn: false },
     prio !== "homework" && { key: "homework", defaultOn: false },
-    leads && { key: "staff", defaultOn: false },
+    seesStaff && { key: "staff", defaultOn: false },
     showWins && wins.length > 0 && { key: "news" },
     { key: "upcoming" },
-    isAdmin && { key: "collection" },
-    isAdmin && { key: "buses" },
+    seesFees && { key: "collection" },
+    isAdmin && perms.transport >= 1 && { key: "buses" },
     isAdmin && { key: "records" },
-    leads && { key: "staffdays" },
+    seesStaff && { key: "staffdays" },
   ].filter(Boolean);
   const layout = useHomeLayout(`home:staff:${school.id}:${role}`, meta);
   const on = new Set(layout.visible);
@@ -138,7 +144,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
   // Each tile: a number and a word, then its facts. badge: what's waiting on
   // this person; hot: something new, the tile glows.
   const tileList = [
-    isAdmin && {
+    isAdmin && perms.attendance >= 1 && {
       key: "attendance",
       icon: "register",
       tone: attTone,
@@ -152,7 +158,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       ],
       onClick: go("attendance"),
     },
-    isAdmin && {
+    isAdmin && perms.notices >= 1 && {
       key: "notices",
       icon: "notice",
       tone: "orange",
@@ -194,7 +200,7 @@ export default function HomePage({ school, me, name, role, students, loading, se
       facts: homework === null ? [] : [!leads && dueTomorrow > 0 && `${dueTomorrow} due tomorrow`, nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"],
       onClick: go("homework"),
     },
-    leads && {
+    seesStaff && {
       key: "staff",
       icon: "idcard",
       tone: "pink",
@@ -213,11 +219,11 @@ export default function HomePage({ school, me, name, role, students, loading, se
   const todayIso = new Date().toISOString().slice(0, 10);
   const [admissionsDue, setAdmissionsDue] = useState(0);
   useEffect(() => {
-    if (!leads) return;
+    if (!leads || perms.admissions < 1) return;
     const d = new Date();
     const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     admissionFollowUpsDue(school.id, local).then((c) => setAdmissionsDue(Number(c) || 0), () => {});
-  }, [school.id, leads]);
+  }, [school.id, leads, perms.admissions]);
   const shortDay = (d) => (d === todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
   const tickerItems = [
     left > 0 && {
@@ -228,9 +234,9 @@ export default function HomePage({ school, me, name, role, students, loading, se
       onClick: go("attendance"),
     },
     admissionsDue > 0 && { key: "adm", icon: "newAdmission", tone: "teal", text: `${n(admissionsDue)} admission follow-up${admissionsDue === 1 ? "" : "s"} due`, onClick: go("admissions") },
-    isAdmin && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${studentCount(overdue)} ${overdue === 1 ? "has" : "have"} overdue fees`, onClick: go("fees") },
+    seesFees && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${studentCount(overdue)} ${overdue === 1 ? "has" : "have"} overdue fees`, onClick: go("fees") },
     !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
-    ...(notices ?? []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
+    ...(perms.notices >= 1 ? notices ?? [] : []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
     ...(upcoming ?? []).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
     birthdays.length > 0 && { key: "bd", icon: "cake", tone: "pink", text: `Birthdays this week: ${firstNames(birthdays)}`, onClick: go("students") },
   ].filter(Boolean);

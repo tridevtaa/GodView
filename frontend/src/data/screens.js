@@ -32,14 +32,16 @@ export const SECTION_OF = { homework: "academics", calendar: "planner", admissio
 // section: which top bar section it's under, for the More sheet's groups
 // computerOnly: an owner or admin on a phone, without the reports and fee
 // structure (App.jsx)
-export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0 }) {
+// seesX: role permissions for each area (data/permissions.js); left out,
+// they follow the role as before.
+export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0, seesFees = isAdmin, seesAdmissions = leads, seesCertificates = isAdmin, seesTransport = isAdmin, seesStaff = leads, seesNotices = true }) {
   return [
     { key: "home", label: "Home", icon: "home", words: "dashboard" },
     { key: "students", label: "Students", icon: "scholar", words: "active inactive" },
     { key: "requests", label: "Inbox", icon: "plane", words: "messages parents chat" },
-    ...(leads ? [{ key: "admissions", label: "Admissions", icon: "newAdmission", section: "office", words: "enquiry enquiries registration register new applicant" }] : []),
-    ...(isAdmin ? [{ key: "certificates", label: "Certificates", icon: "certificate", section: "office", words: "bona fide slc tc transfer leaving no dues character fee paid date of birth register" }] : []),
-    ...(isAdmin
+    ...(seesAdmissions ? [{ key: "admissions", label: "Admissions", icon: "newAdmission", section: "office", words: "enquiry enquiries registration register new applicant" }] : []),
+    ...(seesCertificates ? [{ key: "certificates", label: "Certificates", icon: "certificate", section: "office", words: "bona fide slc tc transfer leaving no dues character fee paid date of birth register" }] : []),
+    ...(seesFees
       ? [
           { key: "fees", label: "Fees", icon: "rupee", section: "fees", words: "dues overdue pending overview" },
           ...(computerOnly
@@ -63,13 +65,13 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
     { key: "calendar", label: "Calendar", icon: "calendar", section: "planner", words: "planner holidays events" },
     { key: "datesheet", label: "Datesheet", icon: "exam", section: "planner", words: "planner exams" },
     { key: "timetable", label: "Timetable", icon: "table", section: "planner", words: "planner periods schedule" },
-    { key: "notices", label: "Notices", icon: "notice", section: "planner", words: "noticeboard circulars news achievements wins awards" },
+    ...(seesNotices ? [{ key: "notices", label: "Notices", icon: "notice", section: "planner", words: "noticeboard circulars news achievements wins awards" }] : []),
     { key: "unread", label: "Unread", icon: "mail", section: "requests", words: "messages" },
     { key: "open-requests", label: "Requests", icon: "plane", section: "requests", words: "leave parents" },
-    ...(leads ? [{ key: "employees", label: "Staff", icon: "teacher", section: "school", words: "teachers employees" }] : []),
-    ...(leads ? [{ key: "org-chart", label: "Org chart", icon: "users", section: "school", words: "staff hierarchy" }] : []),
+    ...(seesStaff ? [{ key: "employees", label: "Staff", icon: "teacher", section: "school", words: "teachers employees" }] : []),
+    ...(seesStaff ? [{ key: "org-chart", label: "Org chart", icon: "users", section: "school", words: "staff hierarchy" }] : []),
     ...(isOwner ? [{ key: "access", label: "App access", icon: "lock", section: "school", words: "staff login invite", count: pendingCount }] : []),
-    ...(isAdmin ? [{ key: "transport", label: "Transport", icon: "bus", section: "school", words: "bus routes map stops" }] : []),
+    ...(seesTransport ? [{ key: "transport", label: "Transport", icon: "bus", section: "school", words: "bus routes map stops" }] : []),
   ];
 }
 
