@@ -70,11 +70,6 @@ export default function AccountMenu({ onSettings, onProfile }) {
             <Icon name="logout" />
             Sign out
           </button>
-          {/* Google Play asks for a way to delete the account from the app. */}
-          <a role="menuitem" className="menu-item menu-item-quiet" href="/delete-account">
-            <Icon name="trash" />
-            Delete account
-          </a>
         </div>
       )}
     </div>

@@ -21269,3 +21269,43 @@ button.class-face:hover {
 .hx-people li.is-today .hx-when {
   color: var(--c);
 }
+
+/* My profile: Delete account, quiet at the bottom (DeleteAccount.jsx) */
+.account-delete {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+.account-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+}
+
+.account-delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.account-delete-confirm input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.account-delete-confirm input:focus {
+  border-color: var(--danger);
+  outline: 2px solid var(--danger-soft);
+}

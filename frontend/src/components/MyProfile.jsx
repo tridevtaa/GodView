@@ -7,6 +7,7 @@ import { StepBar } from "./Steps.jsx";
 import ClassPicker from "./ClassPicker.jsx";
 import { InChargePicker, gradeOptions, inChargeKey, withInCharge } from "./ClassAllocationGate.jsx";
 import Icon from "./Icon.jsx";
+import DeleteAccount from "./DeleteAccount.jsx";
 import { haptic } from "../pwa/haptics.js";
 
 const ROLE = { owner: "Owner", admin: "Admin", principal: "Principal", teacher: "Teacher" };
@@ -126,6 +127,7 @@ export default function MyProfile({ school, session, email, googleName, onBack }
       )}
 
       {isTeacher && !editing && <MyClasses school={school} session={session} classes={data.classes} request={data.request} />}
+      {!editing && <DeleteAccount isStaff />}
     </div>
   );
 }
