@@ -150,109 +150,145 @@ grant execute on function public.can_wide_folder(text, text, integer) to authent
 grant execute on function public.can_see_insight(uuid, text) to authenticated;
 grant execute on function public.my_permissions(uuid) to authenticated;
 
+-- The same check as a set: the schools where the signed-in person has at
+-- least this level. Rules use "school_id in (select ...)", which runs once
+-- per query instead of once per row.
+create function public.schools_with(p_area text, p_level integer default 1) returns setof uuid
+language sql stable security definer set search_path = '' as $$
+  select m.school_id
+  from public.school_members m
+  left join public.member_permissions mp on mp.school_id = m.school_id and mp.email = m.email and mp.area = p_area
+  left join public.role_permissions rp on rp.school_id = m.school_id and rp.role = m.role and rp.area = p_area
+  where m.email = public.current_email()
+    and (case
+      when m.role = 'owner' then 2
+      when m.role::text = 'teacher' and p_area not in ('attendance', 'results', 'students', 'notices') then 0
+      else coalesce(mp.level, rp.level, public.default_level(m.role::text, p_area))
+    end) >= p_level
+$$;
+
+-- Owners, admins and principals only.
+create function public.schools_wide(p_area text, p_level integer default 1) returns setof uuid
+language sql stable security definer set search_path = '' as $$
+  select s from public.schools_with(p_area, p_level) s
+  where exists (
+    select 1 from public.school_members m
+    where m.school_id = s and m.email = public.current_email() and m.role::text <> 'teacher'
+  )
+$$;
+
+revoke execute on function public.schools_with(text, integer) from public, anon;
+revoke execute on function public.schools_wide(text, integer) from public, anon;
+grant execute on function public.schools_with(text, integer) to authenticated;
+grant execute on function public.schools_wide(text, integer) to authenticated;
+
 -- ----------------------------------------------------------------- rules ---
 
 -- Fees
 drop policy "admins read allocations" on public.fee_allocations;
 create policy "fees viewers read allocations" on public.fee_allocations
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 
 drop policy "admins manage fee dues" on public.fee_dues;
 create policy "fees viewers read fee dues" on public.fee_dues
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 create policy "fees editors manage fee dues" on public.fee_dues
-  for all to authenticated using (public.can_wide(school_id, 'fees', 2)) with check (public.can_wide(school_id, 'fees', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('fees', 2))) with check (school_id in (select public.schools_wide('fees', 2)));
 
 drop policy "admins read fee heads" on public.fee_heads;
 create policy "fees viewers read fee heads" on public.fee_heads
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 
 drop policy "admins manage dues" on public.fee_invoices;
 create policy "fees viewers read dues" on public.fee_invoices
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 create policy "fees editors manage dues" on public.fee_invoices
-  for all to authenticated using (public.can_wide(school_id, 'fees', 2)) with check (public.can_wide(school_id, 'fees', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('fees', 2))) with check (school_id in (select public.schools_wide('fees', 2)));
 
 drop policy "admins read payments" on public.fee_payments;
 create policy "fees viewers read payments" on public.fee_payments
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 
 drop policy "admins read fee plans" on public.fee_plans;
 create policy "fees viewers read fee plans" on public.fee_plans
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 
 drop policy "admins read fee schedule" on public.fee_schedule;
 create policy "fees viewers read fee schedule" on public.fee_schedule
-  for select to authenticated using (public.can_wide(school_id, 'fees', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('fees', 1)));
 
 -- Admissions
 drop policy "admins manage admissions" on public.admissions;
 drop policy "principal reads admissions" on public.admissions;
 create policy "admissions viewers read" on public.admissions
-  for select to authenticated using (public.can_wide(school_id, 'admissions', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('admissions', 1)));
 create policy "admissions editors manage" on public.admissions
-  for all to authenticated using (public.can_wide(school_id, 'admissions', 2)) with check (public.can_wide(school_id, 'admissions', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('admissions', 2))) with check (school_id in (select public.schools_wide('admissions', 2)));
 
 -- Certificates
 drop policy "admins read certificates" on public.student_certificates;
 create policy "certificates viewers read" on public.student_certificates
-  for select to authenticated using (public.can_wide(school_id, 'certificates', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('certificates', 1)));
 
 -- Transport: everyone in the school still reads routes and stops (parents
 -- and teachers see the buses); managing them follows the setting.
 drop policy "admins manage bus routes" on public.bus_routes;
 create policy "transport editors manage bus routes" on public.bus_routes
-  for all to authenticated using (public.can_wide(school_id, 'transport', 2)) with check (public.can_wide(school_id, 'transport', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('transport', 2))) with check (school_id in (select public.schools_wide('transport', 2)));
 drop policy "admins manage bus stops" on public.bus_stops;
 create policy "transport editors manage bus stops" on public.bus_stops
-  for all to authenticated using (public.can_wide(school_id, 'transport', 2)) with check (public.can_wide(school_id, 'transport', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('transport', 2))) with check (school_id in (select public.schools_wide('transport', 2)));
 drop policy "admins manage buses" on public.buses;
 create policy "transport editors manage buses" on public.buses
-  for all to authenticated using (public.can_wide(school_id, 'transport', 2)) with check (public.can_wide(school_id, 'transport', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('transport', 2))) with check (school_id in (select public.schools_wide('transport', 2)));
 drop policy "admins manage areas" on public.school_areas;
 create policy "transport viewers read areas" on public.school_areas
-  for select to authenticated using (public.can_wide(school_id, 'transport', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('transport', 1)));
 create policy "transport editors manage areas" on public.school_areas
-  for all to authenticated using (public.can_wide(school_id, 'transport', 2)) with check (public.can_wide(school_id, 'transport', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('transport', 2))) with check (school_id in (select public.schools_wide('transport', 2)));
 
--- Staff records and join requests (the staff list of app users and class
+-- Staff records and join requests; join requests (with their KYC
+-- documents) and parent records stay with owners and admins, as before.
+-- (The staff list of app users and class
 -- assignments stay readable as before: other screens show those names).
 drop policy "admins read employees" on public.employees;
 drop policy "principal reads employees" on public.employees;
 drop policy "admins add employees" on public.employees;
 drop policy "admins edit employees" on public.employees;
 create policy "staff viewers read employees" on public.employees
-  for select to authenticated using (public.can_wide(school_id, 'staff', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('staff', 1)));
 create policy "staff editors add employees" on public.employees
-  for insert to authenticated with check (public.can_wide(school_id, 'staff', 2));
+  for insert to authenticated with check (school_id in (select public.schools_wide('staff', 2)));
 create policy "staff editors edit employees" on public.employees
-  for update to authenticated using (public.can_wide(school_id, 'staff', 2)) with check (public.can_wide(school_id, 'staff', 2));
+  for update to authenticated using (school_id in (select public.schools_wide('staff', 2))) with check (school_id in (select public.schools_wide('staff', 2)));
 
 drop policy "requesters see their own, admins see school's" on public.access_requests;
 create policy "requesters see their own, staff viewers see school's" on public.access_requests
-  for select to authenticated using (email = public.current_email() or public.can_wide(school_id, 'staff', 1));
+  for select to authenticated using (
+    email = public.current_email() or (school_id in (select public.schools_wide('staff', 1)) and public.is_school_admin(school_id))
+  );
 
 -- Student details (contact, address, documents)
 drop policy "admins manage personal details" on public.student_private;
 drop policy "principal reads student details" on public.student_private;
 create policy "student details viewers read" on public.student_private
   for select to authenticated using (
-    public.can_wide(school_id, 'students', 1) or (public.can(school_id, 'students', 1) and public.can_see_student(student_id))
+    school_id in (select public.schools_wide('students', 1)) or (school_id in (select public.schools_with('students', 1)) and public.can_see_student(student_id))
   );
 create policy "student details editors manage" on public.student_private
-  for all to authenticated using (public.can_wide(school_id, 'students', 2)) with check (public.can_wide(school_id, 'students', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('students', 2))) with check (school_id in (select public.schools_wide('students', 2)));
 
 drop policy "admins manage guardians" on public.guardians;
 create policy "student details viewers read guardians" on public.guardians
-  for select to authenticated using (public.can_wide(school_id, 'students', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('students', 1)) and public.is_school_admin(school_id));
 create policy "student details editors manage guardians" on public.guardians
-  for all to authenticated using (public.can_wide(school_id, 'students', 2)) with check (public.can_wide(school_id, 'students', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('students', 2))) with check (school_id in (select public.schools_wide('students', 2)));
 
 drop policy "admins manage guardian links" on public.guardian_students;
 create policy "student details viewers read guardian links" on public.guardian_students
-  for select to authenticated using (public.can_wide(school_id, 'students', 1));
+  for select to authenticated using (school_id in (select public.schools_wide('students', 1)) and public.is_school_admin(school_id));
 create policy "student details editors manage guardian links" on public.guardian_students
-  for all to authenticated using (public.can_wide(school_id, 'students', 2)) with check (public.can_wide(school_id, 'students', 2));
+  for all to authenticated using (school_id in (select public.schools_wide('students', 2))) with check (school_id in (select public.schools_wide('students', 2)));
 
 drop policy "admins and class teachers see student documents" on storage.objects;
 create policy "student details viewers see student documents" on storage.objects
@@ -276,34 +312,34 @@ drop policy "principal reads attendance" on public.attendance;
 drop policy "staff who see the student read attendance" on public.attendance;
 create policy "attendance viewers read" on public.attendance
   for select to authenticated using (
-    public.can_wide(school_id, 'attendance', 1) or (public.can(school_id, 'attendance', 1) and public.can_see_student(student_id))
+    school_id in (select public.schools_wide('attendance', 1)) or (school_id in (select public.schools_with('attendance', 1)) and public.can_see_student(student_id))
   );
 drop policy "admins remove attendance" on public.attendance;
 create policy "attendance editors remove" on public.attendance
-  for delete to authenticated using (public.can_wide(school_id, 'attendance', 2));
+  for delete to authenticated using (school_id in (select public.schools_wide('attendance', 2)));
 
 -- Results
 drop policy "principal reads results" on public.exam_results;
 drop policy "see results of visible students" on public.exam_results;
 create policy "results viewers read" on public.exam_results
   for select to authenticated using (
-    public.can_wide(school_id, 'results', 1) or (public.can(school_id, 'results', 1) and public.can_see_student(student_id))
+    school_id in (select public.schools_wide('results', 1)) or (school_id in (select public.schools_with('results', 1)) and public.can_see_student(student_id))
   );
 drop policy "enter results for visible students" on public.exam_results;
 create policy "results editors enter" on public.exam_results
   for insert to authenticated with check (
-    public.can_wide(school_id, 'results', 2) or (public.can(school_id, 'results', 2) and public.can_see_student(student_id))
+    school_id in (select public.schools_wide('results', 2)) or (school_id in (select public.schools_with('results', 2)) and public.can_see_student(student_id))
   );
 drop policy "update results for visible students" on public.exam_results;
 create policy "results editors update" on public.exam_results
   for update to authenticated
-  using (public.can_wide(school_id, 'results', 2) or (public.can(school_id, 'results', 2) and public.can_see_student(student_id)))
-  with check (public.can_wide(school_id, 'results', 2) or (public.can(school_id, 'results', 2) and public.can_see_student(student_id)));
+  using (school_id in (select public.schools_wide('results', 2)) or (school_id in (select public.schools_with('results', 2)) and public.can_see_student(student_id)))
+  with check (school_id in (select public.schools_wide('results', 2)) or (school_id in (select public.schools_with('results', 2)) and public.can_see_student(student_id)));
 drop policy "enterers or admins delete results" on public.exam_results;
 create policy "results editors delete" on public.exam_results
   for delete to authenticated using (
-    (public.is_school_admin(school_id) and public.can(school_id, 'results', 2))
-    or (entered_by = public.current_email() and public.can(school_id, 'results', 2))
+    school_id in (select public.schools_with('results', 2))
+    and (entered_by = public.current_email() or public.is_school_admin(school_id))
   );
 
 -- Notices: Off hides the staff noticeboard, View reads it, Edit posts
@@ -311,22 +347,22 @@ create policy "results editors delete" on public.exam_results
 drop policy "staff and parents read notices" on public.notices;
 create policy "staff and parents read notices" on public.notices
   for select to authenticated using (
-    (public.is_member(school_id) and public.can(school_id, 'notices', 1)) or (for_parents and public.is_parent_in_school(school_id))
+    school_id in (select public.schools_with('notices', 1)) or (for_parents and public.is_parent_in_school(school_id))
   );
 drop policy "staff post notices" on public.notices;
 create policy "staff post notices" on public.notices
   for insert to authenticated with check (
-    public.is_member(school_id) and public.can(school_id, 'notices', 2) and created_by = public.current_email()
+    school_id in (select public.schools_with('notices', 2)) and created_by = public.current_email()
   );
 drop policy "authors or admins change notices" on public.notices;
 create policy "authors or admins change notices" on public.notices
   for update to authenticated
-  using (public.can(school_id, 'notices', 2) and (created_by = public.current_email() or public.is_school_admin(school_id)))
+  using (school_id in (select public.schools_with('notices', 2)) and (created_by = public.current_email() or public.is_school_admin(school_id)))
   with check (public.is_member(school_id));
 drop policy "authors or admins remove notices" on public.notices;
 create policy "authors or admins remove notices" on public.notices
   for delete to authenticated using (
-    public.can(school_id, 'notices', 2) and (created_by = public.current_email() or public.is_school_admin(school_id))
+    school_id in (select public.schools_with('notices', 2)) and (created_by = public.current_email() or public.is_school_admin(school_id))
   );
 
 -- AI insights
@@ -1358,6 +1394,7 @@ AS $function$
     join auth.users u on lower(u.email) = r.email
     where object_name like 'requests/' || u.id::text || '/%'
       and public.can_wide(r.school_id, 'staff', 1)
+      and public.is_school_admin(r.school_id)
   )
 $function$;
 
@@ -1373,6 +1410,7 @@ AS $function$
     join auth.users u on lower(u.email) = r.email
     where object_name = 'requests/' || u.id::text || '.jpg'
       and public.can_wide(r.school_id, 'staff', 1)
+      and public.is_school_admin(r.school_id)
   )
 $function$;
 
@@ -1457,7 +1495,7 @@ begin
       'stream', e.stream,
       'roll_no', e.roll_no,
       'status', e.status,
-      'student', to_jsonb(s) || jsonb_build_object('private', case when public.can_wide(s.school_id, 'students', 1) then to_jsonb(p) end)
+      'student', to_jsonb(s) || jsonb_build_object('private', case when s.school_id in (select public.schools_wide('students', 1)) then to_jsonb(p) end)
     )
     from public.student_enrolments e
     join public.students s on s.id = e.student_id
