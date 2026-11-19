@@ -488,6 +488,12 @@ a:hover {
   background: var(--surface-2);
 }
 
+/* Delete account: a link to the page that explains it, kept quiet. */
+.menu-item-quiet {
+  color: var(--text-3);
+  text-decoration: none;
+}
+
 .menu-check {
   display: inline-grid;
   place-items: center;
