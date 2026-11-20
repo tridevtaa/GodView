@@ -21469,3 +21469,162 @@ button.class-face:hover {
     flex: 1;
   }
 }
+
+/* --- Report card (results tab) --- */
+
+.results-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.rc-setup {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rc-setup .choice-row {
+  flex-wrap: wrap;
+}
+
+.rc-setup textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.report-card {
+  padding-top: 20px;
+}
+
+.report-card .cert-title {
+  margin-bottom: 16px;
+}
+
+.rc-meta {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.rc-scroll {
+  overflow-x: auto;
+}
+
+.rc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-table th,
+.rc-table td {
+  padding: 7px 10px;
+  border: 1px solid #bbb;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rc-table thead th {
+  background: #f1f1f4;
+  font-weight: 600;
+  vertical-align: bottom;
+}
+
+.rc-table thead small {
+  display: block;
+  color: #666;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.rc-table tbody th,
+.rc-table tfoot th,
+.rc-table thead th:first-child {
+  text-align: left;
+}
+
+.rc-table tbody th {
+  font-weight: 500;
+  white-space: normal;
+}
+
+.rc-table tfoot th,
+.rc-table tfoot td {
+  font-weight: 600;
+  background: #f7f7f9;
+}
+
+.rc-grade {
+  font-weight: 600;
+}
+
+.rc-overall {
+  margin: 14px 0 0;
+  font-size: 15px;
+  text-align: right;
+}
+
+.rc-remarks {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  font-size: 13.5px;
+}
+
+.rc-remarks span {
+  color: #666;
+  font-size: 12px;
+}
+
+.rc-remarks p {
+  margin: 0;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.rc-remarks p.is-blank {
+  min-height: 3em;
+  border-bottom: 1px dotted #888;
+}
+
+.rc-scale {
+  margin: 14px 0 0;
+  color: #666;
+  font-size: 11px;
+}
+
+.report-card .cert-sign {
+  margin-top: 56px;
+}
+
+@media screen and (max-width: 760px) {
+  .rc-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media print {
+  .rc-scroll {
+    overflow: visible;
+  }
+
+  .receipt-backdrop .rc-meta {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rc-table thead th,
+  .rc-table tfoot th,
+  .rc-table tfoot td {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

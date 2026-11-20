@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { deleteResult, listResults, saveResult } from "../data/api.js";
 import Icon from "./Icon.jsx";
+import ReportCard from "./ReportCard.jsx";
 
 const EMPTY = { exam: "", subject: "", marks: "", max_marks: "100" };
 const pct = (r) => (r.marks !== null && r.max_marks ? Math.round((r.marks / r.max_marks) * 100) : null);
 
 // Marks per exam and subject for the session being viewed.
-export default function StudentResults({ person, sessionId, me, isAdmin, canWrite, autoFocus }) {
+export default function StudentResults({ school, person, sessionId, me, isAdmin, canWrite, autoFocus }) {
   const first = useRef(null);
   useEffect(() => {
     if (autoFocus) first.current?.focus();
@@ -15,6 +16,7 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [card, setCard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +72,14 @@ export default function StudentResults({ person, sessionId, me, isAdmin, canWrit
 
   return (
     <div className="results">
+      {school && byExam.length > 0 && (
+        <div className="results-tools">
+          <button className="btn btn-secondary btn-sm" onClick={() => setCard(true)}>
+            <Icon name="file" /> Report card
+          </button>
+        </div>
+      )}
+      {card && <ReportCard school={school} person={person} sessionId={sessionId} results={results} onClose={() => setCard(false)} />}
       {results === null ? (
         <p className="row-sub">Loading…</p>
       ) : byExam.length === 0 ? (
