@@ -36,7 +36,7 @@ const FIELDS = {
       ["admission_category", "Admission category", "text"],
       ["category", "Category", "text"],
       ["religion", "Religion", "text"],
-      ["srn", "SRN", "text"],
+      ["srn", "House", "text"],
       ["aadhaar", "Aadhaar (last 4 digits)", "text"],
     ]],
   ],

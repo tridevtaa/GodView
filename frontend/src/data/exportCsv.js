@@ -5,7 +5,7 @@ const COLUMNS = [
   ["Grade", "class"], ["Section", "section"], ["Stream", "stream"], ["Roll no.", "roll_no"], ["Status", "status"],
   ["Father", "parent_name"], ["Mother", "mother_name"], ["Parent phone", "parent_phone"],
   ["Father phone", "father_phone"], ["Mother phone", "mother_phone"], ["Email", "email"], ["Address", "address"],
-  ["City", "city"], ["State", "state"], ["Category", "category"], ["Religion", "religion"], ["SRN", "srn"],
+  ["City", "city"], ["State", "state"], ["Category", "category"], ["Religion", "religion"], ["House", "srn"],
   ["Aadhaar (last 4)", "aadhaar"], ["Admission date", "admission_date"], ["Admission type", "admission_type"],
   ["Pick-up point", "pickup_point"], ["Fee status", "fee_status"], ["Fee due", "fee_due"],
 ];

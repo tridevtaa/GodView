@@ -48,7 +48,7 @@ const FACT_PIC = {
   Stream: "books",
   "Admission date": "calendar",
   "Admission type": "school",
-  SRN: "numbers",
+  House: "flag",
   "Left on": "door",
   Remarks: "memo",
   Phone: "mobile-phone",
@@ -111,7 +111,7 @@ const GROUPS = {
         // Office details: teachers don't need them. (The bus is in the header.)
         ["Admission date", (p) => longDate(p.admission_date), null, "admin"],
         ["Admission type", (p) => [p.admission_type, p.admission_category].filter(Boolean).join(" · "), null, "admin"],
-        ["SRN", (p) => p.srn],
+        ["House", (p) => p.srn],
         ["Left on", (p) => p.status === "left" && longDate(p.left_as_of)],
         ["Remarks", (p) => p.remarks, "wide"],
       ],
