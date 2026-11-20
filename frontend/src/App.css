@@ -22618,3 +22618,425 @@ button.class-face:hover {
 .ai-lead .sw-row.fees-tiles .sw-tile {
   height: auto;
 }
+
+/* Collect fee: what it's for, the amount, how it was paid */
+.cf2 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 12px;
+}
+
+.cf2-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cf2-step + .cf2-step {
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.cf2-step h4 {
+  margin: 0;
+  color: var(--text-3);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cf2-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cf2-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cf2-chip strong {
+  color: var(--text);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cf2-chip:hover {
+  border-color: var(--brand);
+}
+
+.cf2-chip.on {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+.cf2-chip.on strong {
+  color: var(--brand);
+}
+
+.cf2-chip.is-small {
+  padding: 6px 12px;
+  font-size: 13.5px;
+}
+
+.cf2-months {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 6px;
+}
+
+.cf2-month {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.cf2-month small {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.cf2-month.is-due:not(.on) small {
+  color: var(--danger);
+}
+
+.cf2-month.on {
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-color: var(--brand);
+}
+
+.cf2-month .icon {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+}
+
+.cf2-amount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.cf2-amount:focus-within {
+  border-color: var(--brand);
+}
+
+.cf2-rupee {
+  color: var(--text-3);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.cf2-amount input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+.cf2-amount .link-btn {
+  flex: none;
+  font-size: 13px;
+}
+
+.cf2-covers {
+  margin: 0 2px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cf2 .input {
+  flex: none;
+  height: 42px;
+  padding: 0 14px;
+}
+
+.cf2-more .input {
+  min-width: 0;
+}
+
+.cf2-who {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf2-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cf2-more {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.cf2-more-btn {
+  align-self: flex-start;
+  font-size: 13px;
+}
+
+.cf2-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cf2-actions .btn-primary {
+  min-width: 160px;
+}
+
+@media (max-width: 600px) {
+  .cf2-more {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cf2-actions .btn {
+    flex: 1;
+  }
+}
+
+/* Student page details: a small 3D picture per fact, straight on the card */
+.fact-icon.is-pic,
+.profile-page .fact-icon.is-pic,
+.profile-full .fact-icon.is-pic {
+  width: 38px;
+  height: 38px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.fact-icon.is-pic img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 4px rgba(29, 35, 102, 0.12));
+}
+
+/* Student header: the name with an Active switch beside it, then the
+   admission no., grade and roll on one quiet line */
+.ig-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ig-name-row .ig-name {
+  min-width: 0;
+}
+
+/* Dots sit before each item; the one that would start a wrapped line is
+   clipped off the left edge */
+.ig-side-title .ig-id {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.ig-id-in {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 0;
+  margin-left: -15px;
+}
+
+.ig-id-in > span {
+  position: relative;
+  padding-left: 15px;
+  white-space: nowrap;
+}
+
+.ig-id-in > span::before {
+  content: "·";
+  position: absolute;
+  left: 5px;
+  color: var(--text-3);
+}
+
+.ig-side-title .ig-grade {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ig-switch {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-3) 35%, transparent);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.ig-switch.on {
+  background: #22a35a;
+}
+
+.ig-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+  transition: transform 0.18s ease;
+}
+
+.ig-switch.on .ig-switch-knob {
+  transform: translateX(16px);
+}
+
+.ig-switch:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Student sections: the section below fades up as it opens */
+.tab-in {
+  animation: tab-in 0.26s ease-out;
+}
+
+@keyframes tab-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* --- Sliding tabs (pwa/slideTabs.js) ---
+   One highlight per tab group, drawn behind the tabs and moved to the
+   active one. Pill groups get a brand pill; the top bar and the student
+   sections on phones get an underline. */
+[data-slide] {
+  position: relative;
+}
+
+[data-slide] > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-slide]::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--slide-w, 0);
+  height: var(--slide-h, 0);
+  border-radius: 999px;
+  background: var(--brand);
+  box-shadow: var(--shadow-sm);
+  opacity: var(--slide-o, 0);
+  transform: translate(var(--slide-x, 0), var(--slide-y, 0));
+  pointer-events: none;
+  content: "";
+}
+
+[data-slide="on"]::before {
+  transition:
+    transform 0.34s cubic-bezier(0.3, 1.3, 0.5, 1),
+    width 0.34s cubic-bezier(0.3, 1.3, 0.5, 1),
+    height 0.34s ease,
+    opacity 0.2s ease;
+}
+
+[data-slide] > button {
+  transition: color 0.2s ease;
+}
+
+/* The pill now carries the colour; the tab itself stays clear */
+[data-slide] > .active,
+[data-slide] > .is-on,
+[data-slide] > .is-current {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+[data-slide] > .active::after,
+[data-slide] > .is-on::after,
+[data-slide] > .is-current::after {
+  display: none !important;
+}
+
+/* Underline groups: a short bar under the active tab */
+.topbar-tabs[data-slide]::before,
+.ig-tabs[data-slide]:not(.profile-page .ig-tabs)::before {
+  top: auto;
+  bottom: 0;
+  height: 2.5px;
+  border-radius: 2px;
+  box-shadow: none;
+  transform: translateX(var(--slide-x, 0));
+  width: calc(var(--slide-w, 0px) - 24px);
+  margin-left: 12px;
+}
+
+@media (min-width: 761px) {
+  .topbar-tabs[data-slide]::before {
+    height: 2px;
+    width: calc(var(--slide-w, 0px) - 20px);
+    margin-left: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slide="on"]::before,
+  [data-slide] > button {
+    transition: none;
+  }
+
+  .tab-in {
+    animation: none;
+  }
+}

@@ -5,6 +5,8 @@
 // gets a push: Web Push for a browser/PWA, FCM for the Android/iOS app
 // (its "endpoint" column holds the FCM registration token instead of a
 // push-service URL — see the native_push migration).
+// A cancelled payment ({ cancel }: its payment-log row) comes from a trigger
+// in the database; cancel_push() tells each owner (see its migration).
 // The everyday ones ({ slot }: attendance reminders, morning to-do…) come
 // from pg_cron; daily_push() decides those (see its migration).
 // Devices the push service says are gone are forgotten. Deploy with:
@@ -67,16 +69,19 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return reply({ sent: 0 }, 405);
 
-  const { message, notice, batch, slot } = await req.json().catch(() => ({}));
+  const { message, notice, batch, slot, cancel } = await req.json().catch(() => ({}));
   const id = message ?? notice ?? batch;
   const daily = typeof slot === "string" && /^[a-z-]{2,30}$/.test(slot);
-  if (!daily && (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id))) return reply({ sent: 0 }, 400);
+  const cancelled = Number.isSafeInteger(cancel) && cancel > 0;
+  if (!daily && !cancelled && (typeof id !== "string" || !/^[0-9a-f-]{36}$/.test(id))) return reply({ sent: 0 }, 400);
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: rows, error } = daily
     ? await admin.rpc("daily_push", { p_slot: slot })
+    : cancelled
+    ? await admin.rpc("cancel_push", { p_log: cancel })
     : message
     ? await admin.rpc("message_push", { p_message: id })
     : batch
