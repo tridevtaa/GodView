@@ -31,33 +31,35 @@ const digits = (n = "") => String(n).replace(/\D/g, "").slice(-10);
 
 // Facts shown as an icon and the value (the label is the tooltip); facts
 // without an icon keep a small label.
-const FACT_ICON = {
-  Father: "father",
-  Mother: "mother",
-  "Parent phone": "phone",
-  "Father phone": "phone",
-  "Mother phone": "phone",
-  Email: "mail",
+// Each detail's picture: a small 3D image in public/icons/3d/<name>.png.
+// To redraw one, save a new square PNG under the same name.
+const FACT_PIC = {
+  Father: "man",
+  Mother: "woman",
+  "Parent phone": "mobile-phone",
+  "Father phone": "mobile-phone",
+  "Mother phone": "mobile-phone",
+  Email: "email",
   "Date of birth": "cake",
-  Category: "tag",
-  Religion: "religion",
-  Aadhaar: "idcard",
-  Home: "pin",
-  Stream: "book",
-  "Admission date": "register",
-  "Admission type": "newAdmission",
-  SRN: "hash",
-  "Left on": "logout",
-  Remarks: "note",
-  Phone: "phone",
-  Joined: "register",
-  "Student ID": "idcard",
-  "Staff ID": "idcard",
-  "Aadhaar / PAN": "idcard",
-  "Emergency contact": "phone",
-  Qualification: "academics",
-  Subjects: "book",
-  Classes: "scholar",
+  Category: "label",
+  Religion: "place-of-worship",
+  Aadhaar: "id-card",
+  Home: "house",
+  Stream: "books",
+  "Admission date": "calendar",
+  "Admission type": "school",
+  SRN: "numbers",
+  "Left on": "door",
+  Remarks: "memo",
+  Phone: "mobile-phone",
+  Joined: "calendar",
+  "Student ID": "id-card",
+  "Staff ID": "id-card",
+  "Aadhaar / PAN": "id-card",
+  "Emergency contact": "telephone",
+  Qualification: "graduation-cap",
+  Subjects: "books",
+  Classes: "backpack",
 };
 
 // Details in groups; empty rows and empty groups are left out.
@@ -310,6 +312,20 @@ export function MonthAttendance({ studentId, title = "This month" }) {
 
 const TAB_ICONS = { details: "file", fees: "rupee", messages: "plane", results: "chart", certificates: "certificate" };
 
+// The student page's sections (the highlight slides: see pwa/slideTabs.js)
+function SectionTabs({ tabs, tab, onTab }) {
+  return (
+    <nav className="ig-tabs" aria-label="Profile sections">
+      {tabs.map(([value, label]) => (
+        <button key={value} className={tab === value ? "is-on" : ""} onClick={() => onTab(value)} aria-current={tab === value ? "page" : undefined}>
+          <Icon name={TAB_ICONS[value]} size={18} weight={tab === value ? "fill" : "regular"} />
+          <span>{label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 // The student page header, kept minimal: photo, name and three numbers
 // (each opens its tab), a line about the student, and the main actions.
 // Owners and admins: active or inactive, changed through a sheet that says what
@@ -345,10 +361,18 @@ function StudentStatus({ person, sessionId, onUpdate }) {
     }
   }
   return (
-    <div className="ig-status">
-      <span className={`badge ${active ? "badge-success" : "badge-neutral"}`}>{active ? "Active" : "Inactive"}</span>
-      <button type="button" className="link-btn" aria-haspopup="dialog" onClick={() => (setError(""), setAsking(true))}>
-        Change
+    <>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={active}
+        aria-haspopup="dialog"
+        aria-label={active ? "Active. Tap to make inactive" : "Inactive. Tap to make active"}
+        title={active ? "Active" : "Inactive"}
+        className={`ig-switch${active ? " on" : ""}`}
+        onClick={() => (setError(""), setAsking(true))}
+      >
+        <span className="ig-switch-knob" />
       </button>
       {asking &&
         createPortal(
@@ -378,7 +402,7 @@ function StudentStatus({ person, sessionId, onUpdate }) {
           </div>,
           document.body
         )}
-    </div>
+    </>
   );
 }
 
@@ -451,25 +475,29 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
       <div className="ig-side-main">
         <div className="ig-head">
           <div className="ig-side-title">
-            <h2 className="ig-name">
-              {person.name}
-              <GenderMark gender={person.gender} />
-            </h2>
-            {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
-          </div>
-          <div className="ig-bio">
-            <p className="ig-bio-main">
-              <span>
-                {gradeLabel(person.class)}
-                <span className="ig-section">
+            <div className="ig-name-row">
+              <h2 className="ig-name">
+                {person.name}
+                <GenderMark gender={person.gender} />
+              </h2>
+              {person.status === "left" ? (
+                <span className="badge badge-danger">Left</span>
+              ) : canEdit ? (
+                <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />
+              ) : (
+                person.status === "inactive" && <span className="badge badge-neutral">Inactive</span>
+              )}
+            </div>
+            <p className="ig-id">
+              <span className="ig-id-in">
+                {person.admission_no && <span>#{person.admission_no}</span>}
+                <span className="ig-grade">
+                  {gradeLabel(person.class)}
                   {person.section ? ` · ${person.section}` : ""}
-                  {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
                 </span>
+                {person.roll_no && <span>Roll {person.roll_no}</span>}
               </span>
-              {person.status === "left" && <span className="badge badge-danger">Left</span>}
-              {person.status === "inactive" && !canEdit && <span className="badge badge-neutral">Inactive</span>}
             </p>
-            {canEdit && person.status !== "left" && <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />}
           </div>
           {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
           <ul className="ig-stats">
@@ -694,16 +722,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
         </header>
         )}
 
-        {isStudent && !editing && asPage && (
-          <nav className="ig-tabs" aria-label="Profile sections">
-            {tabs.map(([value, label]) => (
-              <button key={value} className={tab === value ? "is-on" : ""} onClick={() => setTab(value)} aria-current={tab === value ? "page" : undefined}>
-                <Icon name={TAB_ICONS[value]} size={18} weight={tab === value ? "fill" : "regular"} />
-                <span>{label}</span>
-              </button>
-            ))}
-          </nav>
-        )}
+        {isStudent && !editing && asPage && <SectionTabs tabs={tabs} tab={tab} onTab={setTab} />}
         {isStudent && !editing && !asPage && (
           <nav className="segmented profile-tabs" aria-label="Profile sections">
             {tabs.map(([value, label]) => (
@@ -714,7 +733,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
           </nav>
         )}
 
-        <div className="modal-body profile-body">
+        <div className={`modal-body profile-body${isStudent && !editing && asPage && tab !== "messages" ? " tab-in" : ""}`} key={isStudent && asPage ? tab : undefined}>
           {isStudent && !editing && tab === "fees" ? (
             <FeeLedger
               school={school}
@@ -779,8 +798,8 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                   <ul className="facts">
                     {rows.map(([label, value, wide]) => (
                       <li key={label} className={wide ? "is-wide" : ""}>
-                        <span className="fact-icon" aria-hidden="true">
-                          <Icon name={FACT_ICON[label] ?? "note"} size={18} />
+                        <span className="fact-icon is-pic" aria-hidden="true">
+                          <img src={`/icons/3d/${FACT_PIC[label] ?? "memo"}.png`} alt="" width="34" height="34" loading="lazy" decoding="async" />
                         </span>
                         <span className="fact-text">
                           <span className="fact-value">{value}</span>

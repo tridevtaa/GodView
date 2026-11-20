@@ -15,6 +15,7 @@ import './pwa/links.js'
 import './pwa/scrollLock.js'
 import './pwa/viewport.js'
 import './pwa/compactBars.js'
+import './pwa/slideTabs.js'
 import { reloadForNewRelease } from './pwa/release.js'
 import { installHaptics } from './pwa/haptics.js'
 

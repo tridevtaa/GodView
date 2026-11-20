@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { listFeeHeads, recordPayment, studentLedger } from "../data/api.js";
 import { rupees } from "../data/money.js";
-import { PaymentForm } from "./FeeLedger.jsx";
+import CollectForm from "./CollectForm.jsx";
+import { payOrder } from "../data/feeDues.js";
 import { Photo, gradeLabel } from "./PersonCard.jsx";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
@@ -101,7 +102,7 @@ export default function CollectFee({ school, students, student: given = null, on
               </div>
               {error && <p className="field-error">{error}</p>}
               {!ledger && !error && <p className="row-sub">Loading…</p>}
-              {ledger && <PaymentForm key={student.id} suggested={dueNow || later} onCancel={onClose} onSave={save} />}
+              {ledger && <CollectForm key={student.id} dues={ledger.dues} sid={[...ledger.dues].sort(payOrder).at(-1)?.session_id} onCancel={onClose} onSave={save} />}
             </>
           )}
         </div>

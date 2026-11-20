@@ -5,73 +5,16 @@ import PaymentHistory from "./PaymentHistory.jsx";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
 import { haptic } from "../pwa/haptics.js";
+import { describeDues, isEarlier, isMonth, isTransport, n, payOrder, shortHead } from "../data/feeDues.js";
+import CollectForm from "./CollectForm.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const shortDate = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
 const dayMonth = (d) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "");
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const n = (v) => Number(v) || 0;
-// "Monthly fee" -> "Monthly", for lists of several fees
-const shortHead = (h) => (h ?? "Fee").replace(/\s*fees?$/i, "") || h;
-const isMonth = (p) => /^\d{4}-\d{2}$/.test(p ?? "");
-const nextMonth = (p) => {
-  const [y, m] = p.split("-").map(Number);
-  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
-};
 // Each fee type keeps one colour everywhere on the page (dot, card, month
 // lines), so Monthly and Transport are told apart at a glance.
 const TONES = ["indigo", "amber", "teal", "pink", "slate"];
-const isTransport = (name) => /transport|\bbus\b|\bvan\b|conveyance/i.test(name ?? "");
-// Dues from before this session: the old system's balances, or last year
-const isEarlier = (d, sid) => d.period === "opening" || d.session_id !== sid;
-
-// The order record_payment() pays dues in: oldest due date first
-const payOrder = (a, b) => String(a.due_date ?? "").localeCompare(String(b.due_date ?? "")) || String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
-
-// Dues as words, months run together: "Apr – Jul 2026, Aug 2026 (part)".
-// items: [{ due, part, rest }] (rest: the remainder of a part-paid due). Several fees: "Monthly Apr – Jul 2026 · Transport Dec 2026".
-function describeDues(items) {
-  const byHead = new Map();
-  for (const it of items) {
-    const k = it.due.head_name ?? "Fee";
-    if (!byHead.has(k)) byHead.set(k, []);
-    byHead.get(k).push(it);
-  }
-  const parts = [...byHead].map(([head, list]) => {
-    list.sort((a, b) => String(a.due.period).localeCompare(String(b.due.period)));
-    const runs = [];
-    for (const it of list) {
-      const run = runs.at(-1);
-      const last = run?.at(-1);
-      if (last && !last.part && !it.part && !last.rest && !it.rest && isMonth(last.due.period) && it.due.period === nextMonth(last.due.period)) run.push(it);
-      else runs.push([it]);
-    }
-    const text = runs
-      .map((r) =>
-        r.length === 1
-          ? `${r[0].due.label}${r[0].part ? " (part)" : r[0].rest ? " (rest)" : ""}`
-          : `${r[0].due.label.split(" ")[0]} – ${r.at(-1).due.label}`
-      )
-      .join(", ");
-    return byHead.size > 1 ? `${shortHead(head)} ${text}` : text;
-  });
-  return parts.join(" · ");
-}
-
-// What a payment of `amount` would clear, the way record_payment() does it:
-// the ticked dues first (`first`, ids), then the rest, each oldest first.
-function coverage(amount, open, first = null) {
-  let left = n(amount);
-  const items = [];
-  const ahead = (d) => (first?.has(d.id) ? 0 : 1);
-  for (const d of [...open].sort((a, b) => ahead(a) - ahead(b) || payOrder(a, b))) {
-    if (left <= 0) break;
-    const take = Math.min(left, n(d.balance));
-    items.push({ due: d, part: take < n(d.balance), rest: take >= n(d.balance) && n(d.paid) > 0 });
-    left -= take;
-  }
-  return { items, credit: Math.max(0, left) };
-}
 
 // A student's fees on one scroll (owners and admins): what's due now, what
 // they pay this year, the year month by month, and the payments received.
@@ -150,8 +93,8 @@ export default function FeeLedger({ school, person, sessionId, canEdit, onChange
 
       {paying && (
         <CollectPanel
-          open={open}
-          dueNow={dueNow}
+          dues={dues}
+          sid={sid}
           picked={paying === "picked" ? pickedDues : []}
           onClose={() => setPaying(false)}
           onSave={async (form) => {
@@ -308,24 +251,9 @@ function Summary({ yearDues, sid, toneOf, open, late, dueNow, later, canEdit, pa
   );
 }
 
-// Collect: amount shortcuts, what the payment will cover, then the usual form.
-// On phones it slides up from the bottom.
-// picked: the dues ticked on the page; they're paid first.
-function CollectPanel({ open, dueNow, picked = [], onClose, onSave }) {
-  const all = open.reduce((t, d) => t + n(d.balance), 0);
-  const first = picked.length ? new Set(picked.map((d) => d.id)) : null;
-  const ticked = picked.reduce((t, d) => t + n(d.balance), 0);
-  const options = [
-    first && { label: "Ticked", amount: ticked },
-    dueNow > 0 && (!first || dueNow !== ticked) && { label: "Due now", amount: dueNow },
-    all > dueNow && { label: "Everything", amount: all },
-  ].filter(Boolean);
-  const preview = (amount) => {
-    if (!(n(amount) > 0)) return "";
-    if (!open.length) return "Nothing is due; this stays as credit";
-    const { items, credit } = coverage(amount, open, first);
-    return `Covers ${describeDues(items)}${credit > 0 ? ` · ${rupees(credit)} extra stays as credit` : ""}`;
-  };
+// Collect: what it's for, how it was paid and who took it (CollectForm).
+// picked: the dues ticked on the page, to start from. On phones it slides up.
+function CollectPanel({ dues, sid, picked = [], onClose, onSave }) {
   return (
     <>
       <div className="fees2-sheet-backdrop" onClick={onClose} />
@@ -336,7 +264,7 @@ function CollectPanel({ open, dueNow, picked = [], onClose, onSave }) {
             <Icon name="x" size={16} />
           </button>
         </header>
-        <PaymentForm suggested={first ? ticked : dueNow || all} options={options} preview={preview} onCancel={onClose} onSave={(form) => onSave(first ? { ...form, dues: [...first] } : form)} />
+        <CollectForm dues={dues} sid={sid} picked={picked.map((d) => d.id)} onCancel={onClose} onSave={onSave} />
       </section>
     </>
   );
@@ -495,7 +423,9 @@ function DueRow({ due: d, title, tone, todayStr, canEdit, picked, onPick, open, 
     : [
         n(d.concession) > 0 && `${rupees(d.concession)} off`,
         status === "paid" ? "paid" : part && `${rupees(d.paid)} of ${rupees(n(d.amount) - n(d.concession))} paid`,
-        status !== "paid" && early && `due ${dayMonth(d.due_date)}`,
+        // Every unpaid month says when it's due; a month due in another
+        // month (June with May, over the holidays) says so
+        status !== "paid" && d.due_date && `due ${dayMonth(d.due_date)}${early ? ` with ${MONTHS[Number(d.due_date.slice(5, 7)) - 1]}` : ""}`,
       ]
         .filter(Boolean)
         .join(" · ");
@@ -754,148 +684,6 @@ function PaymentRow({ payment: p, dues, onOpen }) {
   );
 }
 
-const PAY_METHODS = ["cash", "upi", "cheque", "card", "bank_transfer"];
-
-// Names that collected fees on this device, newest first, for one-tap picking.
-const COLLECTORS_KEY = "godview.collectors";
-function recentCollectors() {
-  try {
-    const list = JSON.parse(localStorage.getItem(COLLECTORS_KEY) || "[]");
-    return Array.isArray(list) ? list.filter((x) => typeof x === "string").slice(0, 4) : [];
-  } catch {
-    return [];
-  }
-}
-function rememberCollector(name) {
-  try {
-    const list = [name, ...recentCollectors().filter((x) => x.toLowerCase() !== name.toLowerCase())].slice(0, 4);
-    localStorage.setItem(COLLECTORS_KEY, JSON.stringify(list));
-  } catch {
-    // private window or storage blocked: nothing to remember
-  }
-}
-
-// Amount and how it was paid; reference only when the method has one; who
-// collected it (required); date and note tucked away (today, no note) until
-// asked for.
-// options: amount shortcuts [{ label, amount }]; preview(amount): what it pays.
-export function PaymentForm({ suggested, options = [], preview, onSave, onCancel }) {
-  const [form, setForm] = useState({ amount: suggested ? String(suggested) : "", method: "cash", reference: "", paid_on: today(), note: "", collected_by: "" });
-  const [recent] = useState(recentCollectors);
-  const [more, setMore] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const needsRef = ["cheque", "upi", "card", "netbanking", "bank_transfer"].includes(form.method);
-  const covers = preview?.(form.amount);
-
-  async function submit(e) {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    const who = form.collected_by.trim();
-    if (!who) {
-      setError("Say who is collecting this payment.");
-      setBusy(false);
-      return;
-    }
-    try {
-      await onSave({ ...form, collected_by: who });
-      rememberCollector(who);
-    } catch (err) {
-      setError(
-        err?.code === "PGRST202"
-          ? "The payment log update isn’t live yet, so payments can’t be saved. Ask the owner to apply it."
-          : "Couldn’t record the payment. Check the amount and try again."
-      );
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="payment-form" onSubmit={submit}>
-      {options.length > 0 && (
-        <div className="pay-options" role="group" aria-label="Amount">
-          {options.map((o) => (
-            <button
-              type="button"
-              key={o.label}
-              className={`pay-option${n(form.amount) === n(o.amount) ? " on" : ""}`}
-              onClick={() => setForm({ ...form, amount: String(o.amount) })}
-            >
-              <span>{o.label}</span>
-              <strong>{rupees(o.amount)}</strong>
-            </button>
-          ))}
-        </div>
-      )}
-      <label className="pay-amount">
-        <span className="sr-only">Amount</span>
-        <span className="pay-rupee">₹</span>
-        <input type="number" inputMode="decimal" min="1" step="0.01" required value={form.amount} onChange={set("amount")} autoFocus />
-      </label>
-      {covers && <p className="pay-covers">{covers}</p>}
-      <div className="choice-row pay-methods" role="radiogroup" aria-label="Paid by">
-        {PAY_METHODS.map((m) => (
-          <button type="button" key={m} role="radio" aria-checked={form.method === m} className={`choice${form.method === m ? " on" : ""}`} onClick={() => setForm({ ...form, method: m })}>
-            {METHODS[m]}
-          </button>
-        ))}
-      </div>
-      {needsRef && (
-        <input className="input" value={form.reference} onChange={set("reference")} required maxLength={80} placeholder={form.method === "cheque" ? "Cheque no." : "Reference / UTR"} />
-      )}
-      <div className="pay-collector">
-        <label htmlFor="pay-collected-by">
-          Collected by <span className="pay-required">required</span>
-        </label>
-        <input
-          id="pay-collected-by"
-          className="input"
-          value={form.collected_by}
-          onChange={set("collected_by")}
-          required
-          maxLength={80}
-          placeholder="Who is taking the money, e.g. Ramesh (office)"
-          autoComplete="off"
-        />
-        {recent.length > 0 && (
-          <div className="pay-collector-recent">
-            {recent.map((name) => (
-              <button
-                type="button"
-                key={name}
-                className={`pill pill-sm${form.collected_by.trim() === name ? " on" : ""}`}
-                onClick={() => setForm({ ...form, collected_by: name })}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      {more ? (
-        <div className="pay-more">
-          <input className="input" type="date" value={form.paid_on} max={today()} onChange={set("paid_on")} required aria-label="Paid on" />
-          <input className="input" value={form.note} onChange={set("note")} maxLength={300} placeholder="Note (optional)" />
-        </div>
-      ) : (
-        <button type="button" className="link-btn" onClick={() => setMore(true)}>
-          Paid today. Change date or add a note
-        </button>
-      )}
-      {error && <p className="field-error">{error}</p>}
-      <div className="payment-form-actions">
-        <button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={busy}>
-          Cancel
-        </button>
-        <button className="btn btn-primary btn-sm" disabled={busy || !(Number(form.amount) > 0) || !form.collected_by.trim()} title="Oldest dues are paid first; anything extra stays as credit">
-          {busy ? "Saving…" : "Save & receipt"}
-        </button>
-      </div>
-    </form>
-  );
-}
 
 // In the receipt's toolbar: cancel the payment, after a second tap.
 function CancelPayment({ onConfirm }) {
