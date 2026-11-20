@@ -753,7 +753,7 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
               }
             />
           ) : isStudent && !editing && tab === "results" ? (
-            <StudentResults person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite && perms.results >= 2} autoFocus={initialTab === "results"} />
+            <StudentResults school={school} person={person} sessionId={sessionId} me={me} isAdmin={isAdmin} canWrite={canWrite && perms.results >= 2} autoFocus={initialTab === "results"} />
           ) : editing ? (
             <ProfileEdit
               person={person}

@@ -762,7 +762,7 @@ export default function App() {
       ],
       columns: screens.some((s) => s.key === "admissions") && perms.admissions >= 2 && !viewOnly ? [{ title: "Quick actions", links: [["New enquiry", () => runAction("enquiry")]] }] : [],
     },
-    fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Collection", structure: "Structure", "payment-log": "Payment log" }), columns: [actions("fee", "bulk")] },
+    fees: { big: bigLinks("fees", { fees: "Overview", "class-report": "Class-wise", collection: "Report", structure: "Structure", "payment-log": "Payment log" }), columns: [actions("fee", "bulk")] },
     academics: { big: bigLinks("academics"), columns: [actions("attendance", "homework", "result")] },
     planner: { big: bigLinks("planner"), columns: [actions("event", "datesheet", "notice")] },
     requests: {

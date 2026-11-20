@@ -113,7 +113,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
     <div className="page-header">
       <div>
         <div className="page-meta">
-          <h1 className="page-title">{{ overview: "Overview", collection: "Collection", class: "Class-wise", structure: "Fee structure", log: "Payment log" }[tab]}</h1>
+          <h1 className="page-title">{{ overview: "Overview", collection: "Report", class: "Class-wise", structure: "Fee structure", log: "Payment log" }[tab]}</h1>
           {pastSession && <span className="badge badge-neutral">Session {session.name}</span>}
         </div>
       </div>
