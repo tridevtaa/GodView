@@ -441,17 +441,35 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
     showBus ? ["Transport", bus[0], bus[1] || "", "teal", () => onTab("fees"), bus[1]] : null,
   ].filter(Boolean);
 
+  // The photo fills the card's left side, uncropped by a circle; the name,
+  // class and status, figures and actions sit beside it.
   return (
-    <header className="ig-hero">
-      <div className="ig-top">
+    <header className="ig-hero ig-side">
+      <div className="ig-side-photo">
         <EditablePhoto person={person} kind={mode} schoolId={schoolId} canWrite={canWrite} onSaved={(patch) => onUpdate(person.id, patch)} />
+      </div>
+      <div className="ig-side-main">
         <div className="ig-head">
-          <div>
+          <div className="ig-side-title">
             <h2 className="ig-name">
               {person.name}
               <GenderMark gender={person.gender} />
             </h2>
             {person.admission_no && <p className="ig-id">#{person.admission_no}</p>}
+          </div>
+          <div className="ig-bio">
+            <p className="ig-bio-main">
+              <span>
+                {gradeLabel(person.class)}
+                <span className="ig-section">
+                  {person.section ? ` · ${person.section}` : ""}
+                  {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
+                </span>
+              </span>
+              {person.status === "left" && <span className="badge badge-danger">Left</span>}
+              {person.status === "inactive" && !canEdit && <span className="badge badge-neutral">Inactive</span>}
+            </p>
+            {canEdit && person.status !== "left" && <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />}
           </div>
           {mode === "students" && <ClassTeacherBadge teachers={teachers} />}
           <ul className="ig-stats">
@@ -466,55 +484,37 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
             ))}
           </ul>
         </div>
-      </div>
 
-      <div className="ig-bio-row">
-      <div className="ig-bio">
-        <p className="ig-bio-main">
-          <span>
-            {gradeLabel(person.class)}
-            <span className="ig-section">
-              {person.section ? ` · ${person.section}` : ""}
-              {person.roll_no ? ` · Roll ${person.roll_no}` : ""}
-            </span>
-          </span>
-          {person.status === "left" && <span className="badge badge-danger">Left</span>}
-          {person.status === "inactive" && !canEdit && <span className="badge badge-neutral">Inactive</span>}
-        </p>
-        {canEdit && person.status !== "left" && <StudentStatus person={person} sessionId={sessionId} onUpdate={onUpdate} />}
-      </div>
-
-      {!editing && (
-        <div className="ig-actions">
-          {/* Messages with the parents, beside the other ways to reach them */}
-          <button className="ig-act ig-act-msg" onClick={() => onTab("messages")} aria-label="Messages" title="Messages">
-            <Icon name="message" size={18} />
-          </button>
-          {callNo && (
-            <a className="ig-act" href={`tel:${callNo}`} aria-label="Call parent" title="Call parent">
-              <Icon name="phone" size={18} />
-            </a>
-          )}
-          {callNo && (
-            <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp parent" title="WhatsApp parent">
-              <WhatsAppLogo size={26} />
-            </a>
-          )}
-          {canEdit && (
-            <button className="ig-act" onClick={onEdit} aria-label="Edit details" title="Edit details">
-              <Icon name="edit" size={18} />
+        {!editing && (
+          <div className="ig-actions">
+            {/* Messages with the parents, beside the other ways to reach them */}
+            <button className="ig-act ig-act-msg" onClick={() => onTab("messages")} aria-label="Messages" title="Messages">
+              <Icon name="message" size={18} />
             </button>
-          )}
-          {/* Owners only: opens the delete check (what goes with it, or Mark as Left) */}
-          {onDelete && (
-            <button className="ig-act ig-act-del" onClick={onDelete} aria-label="Delete student" title="Delete student">
-              <Icon name="trash" size={18} />
-            </button>
-          )}
-        </div>
-      )}
+            {callNo && (
+              <a className="ig-act" href={`tel:${callNo}`} aria-label="Call parent" title="Call parent">
+                <Icon name="phone" size={18} />
+              </a>
+            )}
+            {callNo && (
+              <a className="ig-act" href={`https://wa.me/91${digits(callNo)}`} target="_blank" rel="noreferrer" aria-label="WhatsApp parent" title="WhatsApp parent">
+                <WhatsAppLogo size={26} />
+              </a>
+            )}
+            {canEdit && (
+              <button className="ig-act" onClick={onEdit} aria-label="Edit details" title="Edit details">
+                <Icon name="edit" size={18} />
+              </button>
+            )}
+            {/* Owners only: opens the delete check (what goes with it, or Mark as Left) */}
+            {onDelete && (
+              <button className="ig-act ig-act-del" onClick={onDelete} aria-label="Delete student" title="Delete student">
+                <Icon name="trash" size={18} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
-
     </header>
   );
 }

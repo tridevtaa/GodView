@@ -10,6 +10,7 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeReport from "./FeeReport.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import PaymentLog from "./PaymentLog.jsx";
+import FeesTransport, { useTransportPending } from "./FeesTransport.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
@@ -30,7 +31,7 @@ function sessionMonths(session) {
 // get Structure (what each grade pays).
 // pastSession: a past session is open (picked on Students); say which.
 // view, onView: which tab shows.
-export default function FeesPage({ computerOnly = false, school, role, session, pastSession = false, students, grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
+export default function FeesPage({ computerOnly = false, school, role, session, pastSession = false, students, routes = [], grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
   const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
@@ -39,6 +40,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
   const [showAll, setShowAll] = useState(false);
   // Premium: the AI card above the charts, and short lines by the figures
   const ins = useInsights(school, "fees", (role === "owner" || role === "admin" || role === "principal") && !pastSession);
+  // Transport dues on their own (the Overview's Transport tile and list)
+  const transport = useTransportPending(school, tab === "overview" ? session : null, students, refreshAt);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -176,6 +179,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
   // One tile: what's due now, with what's collected and what's still to come
   const tile = (
     <StatCards
+      className="fees-tiles"
       items={[
         {
           label: "Due now",
@@ -189,6 +193,29 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
             </span>
           ),
         },
+        transport &&
+          transport.list.length > 0 && {
+            label: "Transport due now",
+            value: transport.now,
+            format: rupeesShort,
+            color: "teal",
+            note: (
+              <span className="sw-facts">
+                <span>
+                  {transport.owingNow} {transport.owingNow === 1 ? "student" : "students"}
+                  {transport.late > 0 && ` · ${transport.late} late`}
+                </span>
+                <span>{rupeesShort(transport.later)} due later</span>
+                <button
+                  type="button"
+                  className="link-btn sw-link"
+                  onClick={() => document.getElementById("fees-transport")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                >
+                  See who owes
+                </button>
+              </span>
+            ),
+          },
       ]}
     />
   );
@@ -249,6 +276,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
       ) : (
         <FeesToday school={school} students={students} refreshAt={refreshAt} onOpenStudent={onOpenStudent} />
       )}
+
+      <FeesTransport pending={transport} routes={routes} onOpenStudent={onOpenStudent} onCollect={onCollect} />
 
       <section className="panel" id="fees-owing">
         <div className="panel-title panel-title-row">

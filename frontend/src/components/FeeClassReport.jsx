@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { sessionFeeLines } from "../data/api.js";
+import { sessionConcessions, sessionFeeLines } from "../data/api.js";
 import { downloadCsv } from "../data/exportCsv.js";
 import { rupees } from "../data/money.js";
 import { gradeRank } from "./GradeFilter.jsx";
@@ -22,7 +22,7 @@ function add(t, line) {
   t.dueLater += line.dueLater;
 }
 
-export default function FeeClassReport({ school, session, students, header }) {
+export default function FeeClassReport({ school, session, students, header, onOpenStudent }) {
   const [lines, setLines] = useState(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -188,6 +188,85 @@ export default function FeeClassReport({ school, session, students, header }) {
           </div>
         </section>
       )}
+      {lines !== null && <Concessions school={school} session={session} students={students} onOpenStudent={onOpenStudent} />}
     </>
+  );
+}
+
+const shortDay = (t) => (t ? new Date(t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "");
+
+// Every concession this session: who, which fee, how much, and the remark.
+// from/to (days): only those given in that period (Fees > Report).
+export function Concessions({ school, session, students, onOpenStudent, from, to }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    let stale = false;
+    setRows(null);
+    sessionConcessions(session.id).then(
+      (r) => !stale && setRows(r),
+      () => !stale && setRows([])
+    );
+    return () => {
+      stale = true;
+    };
+  }, [session.id]);
+  const byId = useMemo(() => new Map(students.map((s) => [s.id, s])), [students]);
+  const day = (t) => (t ? new Date(t).toLocaleDateString("en-CA") : "");
+  const all = rows ?? [];
+  const list = from && to ? all.filter((r) => r.concession_at && day(r.concession_at) >= from && day(r.concession_at) <= to) : all;
+  if (!list.length) return null;
+  const klass = (s) => (s ? [gradeLabel(s.class), s.section].filter(Boolean).join(" · ") : "");
+  const sum = list.reduce((t, r) => t + Number(r.concession), 0);
+  const fee = (r) => [r.head?.name ?? "Fee", r.label].filter(Boolean).join(" · ");
+
+  function download() {
+    downloadCsv(
+      ["Student", "Reg no.", "Class", "Fee", "Concession", "Remark", "Given by", "Given on"],
+      [
+        ...list.map((r) => {
+          const s = byId.get(r.student_id);
+          return [s?.name ?? "", s?.admission_no ?? "", klass(s), fee(r), Number(r.concession), r.concession_reason ?? "", r.concession_by ?? "", r.concession_at ? r.concession_at.slice(0, 10) : ""];
+        }),
+        ["Total", "", "", "", sum, "", "", ""],
+      ],
+      `${school.slug}-concessions-${from && to ? `${from}-to-${to}` : session.name}.csv`
+    );
+  }
+
+  return (
+    <section className="panel report-panel">
+      <div className="panel-title panel-title-row">
+        <h2>
+          {from && to ? "Concessions given" : "Concessions"} <span className="cc-total">{rupees(sum)}</span>
+        </h2>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={download}>
+          <Icon name="download" /> Download
+        </button>
+      </div>
+      <ul className="cc-list">
+        {list.map((r) => {
+          const s = byId.get(r.student_id);
+          return (
+            <li key={r.id}>
+              <span className="cc-who">
+                {onOpenStudent && s ? (
+                  <button type="button" className="link-btn" onClick={() => onOpenStudent(r.student_id, "fees")}>
+                    {s.name}
+                  </button>
+                ) : (
+                  <strong>{s?.name ?? "Student"}</strong>
+                )}
+                <span className="row-sub">{[klass(s), fee(r)].filter(Boolean).join(" · ")}</span>
+              </span>
+              <span className="cc-reason">
+                {r.concession_reason || <span className="row-sub">No remark</span>}
+                {(r.concession_by || r.concession_at) && <span className="row-sub">{[r.concession_by, shortDay(r.concession_at)].filter(Boolean).join(" · ")}</span>}
+              </span>
+              <strong className="cc-amount">{rupees(r.concession)}</strong>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

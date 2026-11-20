@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { feeCollection, listSessions } from "../data/api.js";
 import { downloadCsv } from "../data/exportCsv.js";
 import { METHODS, rupees } from "../data/money.js";
-import FeeClassReport from "./FeeClassReport.jsx";
+import FeeClassReport, { Concessions } from "./FeeClassReport.jsx";
 import StatCards from "./StatCards.jsx";
 import { classOf } from "./StudentPicker.jsx";
 import Icon from "./Icon.jsx";
@@ -235,6 +235,8 @@ function Collection({ school, session, students, header, onOpenStudent }) {
           )}
         </section>
       )}
+
+      {session && from && to && !backwards && <Concessions school={school} session={session} students={students} onOpenStudent={onOpenStudent} from={from} to={to} />}
 
       {filtering &&
         createPortal(

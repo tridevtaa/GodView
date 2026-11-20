@@ -13,6 +13,7 @@ import { NotifyPrompt } from "./Notify.jsx";
 import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
 import { BusWatch, CollectionToday, RecordsToFix, StaffDays } from "./HomeExtras.jsx";
 import { usePerms } from "../data/permissions.js";
+import CheckInCard from "./CheckIn.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
 const studentCount = (count) => `${n(count)} student${count === 1 ? "" : "s"}`;
@@ -313,6 +314,8 @@ export default function HomePage({ school, me, name, role, students, loading, se
           {first ? `, ${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""}
         </h1>
       </header>
+
+      {role !== "owner" && <CheckInCard schoolId={school.id} />}
 
       <NotifyPrompt text="Get notified when parents write." />
 

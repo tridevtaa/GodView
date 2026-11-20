@@ -3,6 +3,7 @@ import { addRoute, addStop, deleteRoute, deleteStop, listAreas, listBuses, putOn
 import { BusForm, BusList, busAlerts, label as busLabel, plate } from "./Buses.jsx";
 import { aliasIndex, matchArea } from "../data/areas.js";
 import { gradeLabel } from "./PersonCard.jsx";
+import { gradeRank } from "./GradeFilter.jsx";
 import { peek, swr } from "../data/cache.js";
 import { MAP_ID, hasMaps, loadMaps, mapsLink } from "../data/maps.js";
 import Icon from "./Icon.jsx";
@@ -13,7 +14,7 @@ import Icon from "./Icon.jsx";
 // (papers running out, too many students for the seats, a route with no
 // bus, students with no stop) is listed at the top.
 // readOnly: the owner gave this person Transport View (role permissions).
-export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged, readOnly = false }) {
+export default function TransportRoutes({ school, routes, students, onChanged, onStudentsChanged, onOpenStudent, readOnly = false }) {
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const areasKey = `areas:${school.id}`;
@@ -190,7 +191,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       </form>}
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={readOnly ? () => {} : setEditing} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={readOnly ? () => {} : setEditing} readOnly={readOnly} onOpenStudent={onOpenStudent} />
       ))}
     </>
   );
@@ -204,10 +205,14 @@ const clock = (t) => {
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 };
 
-function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus }) {
+function RouteCard({ school, route: saved, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus, readOnly, onOpenStudent }) {
   const [adding, setAdding] = useState(false);
   const [filling, setFilling] = useState(null); // stop id getting students
   const [editingStop, setEditingStop] = useState(null); // stop id being edited
+  const [viewing, setViewing] = useState(null); // stop id whose students are listed
+  // A moved stop shows in its new place at once, while it saves
+  const [order, setOrder] = useState(null);
+  const route = order ? { ...saved, stops: order } : saved;
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(route.name);
   const [asking, setAsking] = useState(false);
@@ -216,13 +221,15 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
   // Morning pickups should get later stop by stop
   const pickups = route.stops.map((s) => hm(s.pickup_at)).filter(Boolean);
   const outOfOrder = pickups.some((t, i) => i > 0 && t < pickups[i - 1]);
-  const move = (i, by) =>
-    act(async () => {
-      const list = [...route.stops];
-      const [st] = list.splice(i, 1);
-      list.splice(i + by, 0, st);
-      await reorderStops(list);
-    })();
+  const move = async (i, by) => {
+    const list = [...route.stops];
+    const [st] = list.splice(i, 1);
+    list.splice(i + by, 0, st);
+    setOrder(list);
+    await act(() => reorderStops(list))();
+    setOrder(null);
+  };
+  const ridersAt = (stopId) => students.filter((p) => p.uses_bus && p.bus_stop_id === stopId);
 
   return (
     <section className="fc tr-route">
@@ -346,13 +353,18 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
               <span className="tr-stop-text">
                 <strong>{s.name}</strong>
                 <span className="row-sub">
-                  {[
-                    s.pickup_at && `pickup ${clock(s.pickup_at)}`,
-                    s.drop_at && `drop ${clock(s.drop_at)}`,
-                    `${riders.get(s.id) ?? 0} student${riders.get(s.id) === 1 ? "" : "s"}`,
-                  ]
+                  {[s.pickup_at && `pickup ${clock(s.pickup_at)}`, s.drop_at && `drop ${clock(s.drop_at)}`]
                     .filter(Boolean)
-                    .join(" · ")}
+                    .map((t) => `${t} · `)
+                    .join("")}
+                  {riders.get(s.id) ? (
+                    <button type="button" className="tr-riders" aria-expanded={viewing === s.id} onClick={() => setViewing(viewing === s.id ? null : s.id)}>
+                      {riders.get(s.id)} student{riders.get(s.id) === 1 ? "" : "s"}
+                      <Icon name={viewing === s.id ? "chevronDown" : "chevronRight"} size={12} />
+                    </button>
+                  ) : (
+                    "0 students"
+                  )}
                 </span>
               </span>
               {s.lat != null && (
@@ -360,31 +372,45 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
                   <Icon name="pin" size={14} />
                 </a>
               )}
-              {filling !== s.id && (
-                <button className="link-btn tr-fill-btn" onClick={() => setFilling(s.id)}>
+              {!readOnly && route.stops.length > 1 && (
+                <span className="tr-order">
+                  <button type="button" className="icon-btn-sm" disabled={i === 0 || Boolean(order)} onClick={() => move(i, -1)} aria-label={`Move ${s.name} up`} title="Move up">
+                    <Icon name="arrowUp" size={14} />
+                  </button>
+                  <button type="button" className="icon-btn-sm" disabled={i === route.stops.length - 1 || Boolean(order)} onClick={() => move(i, 1)} aria-label={`Move ${s.name} down`} title="Move down">
+                    <Icon name="arrowDown" size={14} />
+                  </button>
+                </span>
+              )}
+              {!readOnly && filling !== s.id && (
+                <button className="link-btn tr-fill-btn" onClick={() => setFilling(s.id)} aria-label={`Add students to ${s.name}`} title="Add students">
                   <Icon name="plus" size={13} />
-                  Add students
+                  <span className="tr-fill-label">Add students</span>
                 </button>
               )}
-              <button
-                className="icon-btn-sm"
-                aria-label={`Edit ${s.name}`}
-                title="Times, order, remove"
-                aria-expanded={editingStop === s.id}
-                onClick={() => setEditingStop(editingStop === s.id ? null : s.id)}
-              >
-                <Icon name="edit" size={14} />
-              </button>
+              {!readOnly && (
+                <button
+                  className="icon-btn-sm"
+                  aria-label={`Edit ${s.name}`}
+                  title="Times, remove"
+                  aria-expanded={editingStop === s.id}
+                  onClick={() => setEditingStop(editingStop === s.id ? null : s.id)}
+                >
+                  <Icon name="edit" size={14} />
+                </button>
+              )}
             </li>,
+            viewing === s.id && (
+              <li key={`${s.id}:riders`} className="tr-fill-row">
+                <StopRiders list={ridersAt(s.id)} onOpen={onOpenStudent} />
+              </li>
+            ),
             editingStop === s.id && (
               <li key={`${s.id}:edit`} className="tr-fill-row">
                 <StopEdit
                   stop={s}
-                  index={i}
-                  count={route.stops.length}
                   riders={riders.get(s.id) ?? 0}
                   onTime={(k, v) => act(() => updateStop(s.id, { [k]: v || null }))()}
-                  onMove={(by) => move(i, by)}
                   onRemove={async () => {
                     if (await act(() => deleteStop(s.id))()) setEditingStop(null);
                   }}
@@ -444,9 +470,9 @@ function RouteCard({ school, route, riders, act, areas, usedOn, onOpenPicker, st
   );
 }
 
-// One stop's pickup and drop times, its place in the route, and removing
+// One stop's pickup and drop times, and removing
 // it (asks first when students use it; they're left without a stop).
-function StopEdit({ stop, index, count, riders, onTime, onMove, onRemove, onDone }) {
+function StopEdit({ stop, riders, onTime, onRemove, onDone }) {
   const [asking, setAsking] = useState(false);
   return (
     <div className="tr-fill tr-stop-edit">
@@ -459,14 +485,6 @@ function StopEdit({ stop, index, count, riders, onTime, onMove, onRemove, onDone
           <span>Afternoon drop</span>
           <input type="time" defaultValue={hm(stop.drop_at)} onBlur={(e) => e.target.value !== hm(stop.drop_at) && onTime("drop_at", e.target.value)} />
         </label>
-        <span className="tr-move">
-          <button type="button" className="btn btn-secondary btn-sm" disabled={index === 0} onClick={() => onMove(-1)}>
-            <Icon name="arrowUp" size={14} /> Earlier
-          </button>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={index === count - 1} onClick={() => onMove(1)}>
-            <Icon name="arrowDown" size={14} /> Later
-          </button>
-        </span>
       </div>
       <div className="tr-fill-actions">
         <button type="button" className="btn btn-primary btn-sm" onClick={onDone}>
@@ -491,6 +509,27 @@ function StopEdit({ stop, index, count, riders, onTime, onMove, onRemove, onDone
         )}
       </div>
     </div>
+  );
+}
+
+// Who gets on at a stop, by class. Tap a name for their profile.
+function StopRiders({ list, onOpen }) {
+  const sorted = [...list].sort((a, b) => gradeRank(a.class ?? "") - gradeRank(b.class ?? "") || (a.section ?? "").localeCompare(b.section ?? "") || a.name.localeCompare(b.name));
+  return (
+    <ul className="tr-riders-list">
+      {sorted.map((p) => (
+        <li key={p.id}>
+          {onOpen ? (
+            <button type="button" className="link-btn" onClick={() => onOpen(p.id)}>
+              {p.name}
+            </button>
+          ) : (
+            <span>{p.name}</span>
+          )}
+          <span className="row-sub">{[gradeLabel(p.class), p.section].filter(Boolean).join(" · ")}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
