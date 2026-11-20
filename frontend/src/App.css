@@ -23040,3 +23040,9 @@ button.class-face:hover {
     animation: none;
   }
 }
+
+/* Student header: the actions sit at the card's bottom right */
+.ig-side .ig-actions {
+  justify-content: flex-end;
+  margin-top: auto;
+}
