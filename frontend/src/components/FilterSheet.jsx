@@ -31,7 +31,8 @@ export function SortArrow({ sort, onSort }) {
   );
 }
 
-export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, need, onNeed, status, onStatus, shown }) {
+// bus/onBus: Transport, "bus" (on the bus) or "none" (not); for those who see transport.
+export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, need, onNeed, bus = null, onBus, status, onStatus, shown }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -40,11 +41,12 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (need ? 1 : 0) + (status !== "active" ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (need ? 1 : 0) + (bus ? 1 : 0) + (status !== "active" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
     onNeed?.(null);
+    onBus?.(null);
     onStatus("active");
   };
   const sorts = [["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
@@ -105,6 +107,18 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
                     </button>
                   ))}
                 </div>
+                {onBus && (
+                  <>
+                    <h3>Transport</h3>
+                    <div className="filter-chips">
+                      {[[null, "All"], ["bus", "Takes the bus"], ["none", "No transport"]].map(([v, label]) => (
+                        <button key={label} type="button" className={`chip-btn${bus === v ? " is-on" : ""}`} onClick={() => onBus(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {onNeed && (
                   <>
                     <h3>Show only</h3>

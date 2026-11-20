@@ -828,7 +828,7 @@ export async function feeSessionSummary(sessionId) {
 
 // Every due and payment for one student (all sessions), newest first.
 export async function studentLedger(studentId) {
-  const [dues, payments] = await Promise.all([
+  const [dues, payments, remarks] = await Promise.all([
     all(() => supabase.from("fee_invoice_balances").select("*").eq("student_id", studentId).order("due_date")),
     all(() =>
       supabase
@@ -837,13 +837,24 @@ export async function studentLedger(studentId) {
         .eq("student_id", studentId)
         .order("paid_on", { ascending: false })
     ),
+    // Concession remarks (the balances view predates them). Before the
+    // database has them, the ledger just shows no remarks.
+    supabase
+      .from("fee_invoices")
+      .select("id, concession_reason, concession_by, concession_at")
+      .eq("student_id", studentId)
+      .gt("concession", 0)
+      .then(({ data }) => data ?? [], () => []),
   ]);
-  return { dues, payments };
+  const byId = new Map(remarks.map((r) => [r.id, r]));
+  return { dues: dues.map((d) => (byId.has(d.id) ? { ...d, ...byId.get(d.id) } : d)), payments };
 }
 
 // collected_by: who took the money (required). The device details go to the
 // owner's payment log.
-export async function recordPayment(studentId, { amount, method, reference, paid_on, note, collected_by }) {
+// dues: ids of the dues being paid for (ticked on the student's Fees tab);
+// they're paid first. Left out, the oldest dues are paid first.
+export async function recordPayment(studentId, { amount, method, reference, paid_on, note, collected_by, dues }) {
   const rows = must(
     await supabase.rpc("record_payment", {
       p_student: studentId,
@@ -854,6 +865,7 @@ export async function recordPayment(studentId, { amount, method, reference, paid
       p_note: note || null,
       p_collected_by: collected_by,
       p_device: deviceInfo(),
+      ...(dues?.length ? { p_dues: dues } : {}),
     })
   );
   return rows?.[0];
@@ -901,6 +913,27 @@ export async function cancelPayment(id) {
   must(await supabase.rpc("cancel_payment", { payment: id, p_device: deviceInfo() }));
 }
 
+// Open transport dues for a session (the Fees overview's Transport figures):
+// heads named like transport, or charged by bus stop.
+export async function transportBalances(schoolId, sessionId) {
+  const [heads, lines] = await Promise.all([
+    must(await supabase.from("fee_heads").select("id, name").eq("school_id", schoolId)),
+    must(await supabase.from("fee_schedule").select("head_id").eq("session_id", sessionId).not("stop_id", "is", null)),
+  ]);
+  const ids = [...new Set([...heads.filter((h) => /transport|\bbus\b|\bvan\b|conveyance/i.test(h.name)).map((h) => h.id), ...lines.map((l) => l.head_id)])];
+  if (!ids.length) return [];
+  return all(() =>
+    supabase
+      .from("fee_invoice_balances")
+      .select("id, student_id, balance, due_date, label")
+      .eq("session_id", sessionId)
+      .in("head_id", ids)
+      .gt("balance", 0)
+      .order("due_date")
+      .order("id")
+  );
+}
+
 // Payments dated today (Home's Today's collection), cancelled ones too.
 export async function paymentsOn(schoolId, day) {
   return must(
@@ -925,12 +958,27 @@ export async function listPaymentLog(schoolId, { from = 0, size = 100 } = {}) {
   );
 }
 
-export async function setConcession(invoiceId, amount, note) {
+// A concession needs a remark (the database refuses one without:
+// "concession-reason"); it records who gave it and when.
+export async function setConcession(invoiceId, amount, reason) {
   must(
     await supabase
       .from("fee_invoices")
-      .update({ concession: Number(amount) || 0, note: note || null })
+      .update({ concession: Number(amount) || 0, concession_reason: reason?.trim() || null })
       .eq("id", invoiceId)
+  );
+}
+
+// Every concession in a session, with its remark (Fees > Class-wise).
+export async function sessionConcessions(sessionId) {
+  return all(() =>
+    supabase
+      .from("fee_invoices")
+      .select("id, student_id, label, period, concession, concession_reason, concession_by, concession_at, head:fee_heads(name)")
+      .eq("session_id", sessionId)
+      .gt("concession", 0)
+      .order("concession_at", { ascending: false, nullsFirst: false })
+      .order("id")
   );
 }
 
@@ -1873,4 +1921,48 @@ export async function cancelCertificate(id, reason) {
 export async function attendanceTotals(studentId, sessionId) {
   const rows = await all(() => supabase.from("attendance").select("status, day").eq("student_id", studentId).eq("session_id", sessionId).order("day"));
   return { working: rows.length, present: rows.filter((r) => r.status === "present" || r.status === "late").length };
+}
+
+// What a student still owed from before this session (their old fee system,
+// or last year), as one due per fee type, payable now. Setting it again for
+// the same fee type replaces the amount.
+// dueDate: the session's first day, so a payment clears it before this year's months.
+export async function setEarlierPending(schoolId, sessionId, studentId, headId, amount, label, dueDate) {
+  return must(
+    await supabase
+      .from("fee_invoices")
+      .upsert(
+        { school_id: schoolId, session_id: sessionId, student_id: studentId, head_id: headId, period: "opening", label, amount, due_date: dueDate || new Date().toISOString().slice(0, 10) },
+        { onConflict: "student_id,session_id,head_id,period" }
+      )
+      .select()
+      .single()
+  );
+}
+
+// ------------------------------------------------------- staff check-in ---
+
+// Is check-in on for this school, and today's check-in/out for me.
+export async function checkinToday(schoolId) {
+  return must(await supabase.rpc("checkin_today", { p_school: schoolId }));
+}
+
+// action "in" or "out", from where the phone is. The database checks the
+// distance; errors come back as their message (off, rough, too-far,
+// already-in, not-in) with the metres in `details`.
+export async function staffCheck(schoolId, action, { lat, lng, accuracy }) {
+  return must(await supabase.rpc("staff_check", { p_school: schoolId, p_action: action, p_lat: lat, p_lng: lng, p_accuracy: accuracy }));
+}
+
+// Everyone who signs in (not owners) with their check-ins from..to (dates).
+export async function checkinRegister(schoolId, from, to) {
+  return must(await supabase.rpc("staff_checkin_register", { p_school: schoolId, p_from: from, p_to: to })) ?? [];
+}
+
+export async function setCheckinSettings(schoolId, { enabled, radius, lateAfter }) {
+  must(await supabase.rpc("set_checkin_settings", { p_school: schoolId, p_enabled: enabled, p_radius: radius, p_late_after: lateAfter || null }));
+}
+
+export async function checkinSettings(schoolId) {
+  return must(await supabase.from("schools").select("checkin_enabled, checkin_radius_m, checkin_late_after, lat, lng").eq("id", schoolId).single());
 }

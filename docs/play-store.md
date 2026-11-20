@@ -59,7 +59,7 @@ itself (name, icon, package settings).
 | Privacy policy | `https://godview.in/privacy/` |
 | App access | **All or some functionality is restricted**: add a demo school login (staff email + password) and a demo parent login, with one line on what to try |
 | Ads | No ads |
-| Content rating | Category **Utility, productivity, communication or other**; answer No to violence, sexual content, drugs, gambling. Users interact (messages between parents and school): **Yes**. Shares location: No (no device location is used) |
+| Content rating | Category **Utility, productivity, communication or other**; answer No to violence, sexual content, drugs, gambling. Users interact (messages between parents and school): **Yes**. Shares location: No (staff check-in reads the phone's location once to measure the distance to school; it is not shared with other users) |
 | Target audience | **18 and over** only. Children don't use the app; schools and parents do |
 | News app | No |
 | Government app | No |
@@ -87,6 +87,7 @@ none optional unless noted:
 | Messages: other in-app messages | Parent and school messages and requests |
 | App activity: app interactions | Microsoft Clarity heatmaps (**analytics**), with screen content masked |
 | App activity: other user-generated content | Assistant questions and replies (Premium) |
+| Location: precise location | Staff check-in only: read once when they tap Check in or Check out; only the distance to school is stored. Not collected in the background |
 | Device or other IDs | Push notification token; browser and device on the fee payment log (**fraud prevention, security**) |
 | Audio: voice or sound recordings | **Not collected**: speech is turned into text on the device |
 

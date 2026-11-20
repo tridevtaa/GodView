@@ -72,6 +72,7 @@ const CollectFee = lazy(SCREENS.CollectFee);
 const StudentMap = lazy(() => import("./components/StudentMap.jsx"));
 const MyProfile = lazy(() => import("./components/MyProfile.jsx"));
 const OrgChart = lazy(() => import("./components/OrgChart.jsx"));
+const StaffCheckins = lazy(() => import("./components/StaffCheckins.jsx"));
 const loadConcierge = () => import("./components/Concierge.jsx");
 const Concierge = lazy(loadConcierge);
 // Today's attendance added up, from the per-class overview
@@ -119,6 +120,8 @@ export default function App() {
   const [pickedGrades, setPickedGrades] = useState([]); // picked grades; none means all
   // Show only students with something missing (data/needs.js), or none
   const [needPick, setNeedPick] = useState(null);
+  // Transport: everyone, only those on the bus ("bus"), or those not on it ("none")
+  const [busPick, setBusPick] = useState(null);
   const [statusPick, setStatusPick] = useState("active"); // active | inactive
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
@@ -290,9 +293,10 @@ export default function App() {
     let rows = current;
     if (mode === "students" && pickedGrades.length) rows = rows.filter((p) => pickedGrades.includes(p.class));
     if (mode === "students" && NEEDS[needPick]) rows = rows.filter(NEEDS[needPick].test);
+    if (mode === "students" && busPick) rows = rows.filter((p) => Boolean(p.uses_bus) === (busPick === "bus"));
     if (mode === "students" && statusPick !== "all") rows = rows.filter((p) => (p.status || "active") === statusPick);
     return rows;
-  }, [current, mode, pickedGrades, needPick, statusPick]);
+  }, [current, mode, pickedGrades, needPick, busPick, statusPick]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -495,7 +499,7 @@ export default function App() {
   }, [mode, currentSession, viewOnly, leads, todayIso, current, perms.attendance]);
 
   const insHere = isStudents ? insR : insS;
-  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || statusPick !== "active"));
+  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || busPick || statusPick !== "active"));
   const showInsights = insHere.on && !filtered;
   // Today's attendance for who's showing. The school's numbers are per class,
   // so they narrow by grade but not by a search; a teacher's are per student.
@@ -506,7 +510,7 @@ export default function App() {
       const own = today.own.filter((r) => ids.has(r.student_id));
       return { present: own.filter((r) => r.status === "present" || r.status === "late").length, marked: own.length };
     }
-    if (today?.rows && !query.trim() && !needPick && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
+    if (today?.rows && !query.trim() && !needPick && !busPick && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
     return null;
   })();
 
@@ -517,11 +521,11 @@ export default function App() {
       // One tile: how many students, with who's inactive and today's attendance
       const inactive = visible.filter((p) => p.status === "inactive").length;
       const present = todayShown?.marked ? `${todayShown.present.toLocaleString("en-IN")} present today` : null;
-      const who = query.trim() ? "Matching students" : NEEDS[needPick] ? NEEDS[needPick].title : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
+      const who = query.trim() ? "Matching students" : NEEDS[needPick] ? NEEDS[needPick].title : busPick ? (busPick === "bus" ? "Students on the bus" : "Students not on the bus") : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
       return [
         {
           color: "indigo",
-          label: pickedGrades.length && !query.trim() && !needPick ? `${who} in ${gradesText(pickedGrades)}` : who,
+          label: pickedGrades.length && !query.trim() && !needPick && !busPick ? `${who} in ${gradesText(pickedGrades)}` : who,
           // Active students only, unless the filter asks for inactive ones
           value: loading ? undefined : statusPick === "inactive" ? visible.length : visible.length - inactive,
           note: ((inactive > 0 && statusPick !== "inactive") || present || todayShown?.notMarked > 0) && (
@@ -730,6 +734,7 @@ export default function App() {
     setStatusPick(status);
     setPickedGrades(grade ? [grade] : []);
     setNeedPick(null);
+    setBusPick(null);
     setQuery("");
   };
   const actions = (...kinds) => ({
@@ -777,6 +782,7 @@ export default function App() {
       big: [
         ["People", () => switchMode("people"), { current: mode === "employees" && staffTab === "people" && staffView === "list" }],
         ["Org chart", () => switchMode("org-chart"), { current: mode === "employees" && staffTab === "people" && staffView === "chart" }],
+        ...(seesStaff ? [["Attendance", () => switchMode("staff-attendance"), { current: mode === "employees" && staffTab === "checkins" }]] : []),
         ...(isOwner ? [["App access", () => switchMode("access"), { current: mode === "employees" && staffTab === "access", count: pendingCount }]] : []),
       ],
       columns: seesStaff && perms.staff >= 2 ? [{ title: "Quick actions", links: [["Add staff", () => runAction("staff")]] }] : [],
@@ -959,6 +965,15 @@ export default function App() {
             </div>
             <TeamPage view="access" school={school} session={currentSession} me={user.email} onCount={setPendingCount} />
           </>
+        ) : mode === "employees" && seesStaff && staffTab === "checkins" ? (
+          <>
+            <div className="page-header">
+              <div className="page-meta">
+                <h1 className="page-title">Staff attendance</h1>
+              </div>
+            </div>
+            <StaffCheckins school={school} canEdit={perms.staff >= 2} canLocate={isAdmin} canDownload={isOwner} />
+          </>
         ) : mode === "home" ? (
           <HomePage
             school={school}
@@ -1034,6 +1049,7 @@ export default function App() {
             session={selectedSession}
             pastSession={Boolean(currentSession) && sessionId !== currentSession.id}
             students={current}
+            routes={routes}
             onChanged={reload}
           />
         ) : mode === "transport" && seesTransport ? (
@@ -1085,7 +1101,7 @@ export default function App() {
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
               <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit && perms.transport >= 2} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes readOnly={perms.transport < 2} school={school} routes={routes} students={current} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
+            <TransportRoutes readOnly={perms.transport < 2} school={school} routes={routes} students={current} onOpenStudent={(id) => openStudent(id)} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
@@ -1188,6 +1204,8 @@ export default function App() {
               withFee={seesFees}
               need={needPick}
               onNeed={isAdmin ? setNeedPick : null}
+              bus={busPick}
+              onBus={seesTransport ? setBusPick : null}
               status={statusPick}
               onStatus={setStatusPick}
               shown={visible.length}
@@ -1263,7 +1281,7 @@ export default function App() {
         ) : (
           <Grid
             items={ordered}
-            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${statusPick}`}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${busPick}|${statusPick}`}
             render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={seesFees} onOpen={() => openStudent(p.id)} />}
           />
         )}
