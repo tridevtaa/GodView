@@ -1,435 +1,495 @@
 import { useEffect, useState } from "react";
-import { admissionFollowUpsDue, listHomework, loadEmployees, staffInbox, withPhotoUrls } from "../data/api.js";
+import { admissionFollowUpsDue, listDatesheet, listHomework, resultKeys, staffInbox } from "../data/api.js";
 import { peek, swr } from "../data/cache.js";
 import { rupeesShort } from "../data/money.js";
-import { PriorityCard, arrangeTiles } from "./Widgets.jsx";
-import { birthdaysSoon } from "./TileVisuals.jsx";
-import EditableHome, { useHomeLayout } from "./HomeWidgets.jsx";
-import { ComingUp, useUpcoming } from "./CalendarPage.jsx";
-import Ticker from "./Ticker.jsx";
-import { AchievementsStrip, isWin, showsImage, useImageUrls, useNotices } from "./NoticeBoard.jsx";
+import { NEEDS } from "../data/needs.js";
+import { useUpcoming } from "./CalendarPage.jsx";
+import { useNotices } from "./NoticeBoard.jsx";
 import Icon from "./Icon.jsx";
 import { NotifyPrompt } from "./Notify.jsx";
-import { homeworkTrend, useAttendanceTrend, useFeeTrend, useWide } from "./HomeTrend.jsx";
-import { BusWatch, CollectionToday, RecordsToFix, StaffDays } from "./HomeExtras.jsx";
+import { useFeeTrend, useWide } from "./HomeTrend.jsx";
 import { usePerms } from "../data/permissions.js";
 import CheckInCard from "./CheckIn.jsx";
 
 const n = (v) => Number(v || 0).toLocaleString("en-IN");
-const studentCount = (count) => `${n(count)} student${count === 1 ? "" : "s"}`;
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-};
-// "5m ago", "3h ago", "2d ago", then the date
-const ago = (t) => {
-  const m = Math.max(0, Math.round((Date.now() - new Date(t)) / 6e4));
-  return m < 60 ? `${m || 1}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : m < 7 * 1440 ? `${Math.round(m / 1440)}d ago` : dateText(t);
-};
-const dateText = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+const pl = (count, one, many = `${one}s`) => `${n(count)} ${count === 1 ? one : many}`;
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const dayLabel = (d, todayIso) => (d <= todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }));
 
-// Home, like phone widgets: a greeting, today's attendance next to the
-// noticeboard as a banner to swipe through, colourful tiles for what
-// has no tab of its own (one number and one word), students' wins
-// (News & Achievements), and what's coming up beside a small calendar. Quick
-// actions sit right under the top card. Anything waiting on this
-// person shows as a red badge on its tile or tab (overdue fees, open
-// requests, staff waiting for access…). Uses the same remembered data as the pages,
-// so it's quick and the pages open already filled.
-// Nothing shows twice: a notice is either in the banner or among the wins,
-// and the quick actions are the + menu's (computers only; phones have the +).
-// Each role sees what it acts on: owners and admins get numbers and tasks
-// (notices are a tile for them, wins live on the Noticeboard); the
-// principal also gets the notice banner; teachers get the banner and the
-// students' wins.
-export default function HomePage({ school, me, name, role, students, loading, session, today, pendingCount, routes = [], actions = [], onAction, onGo, onNeed }) {
+// Home, kept calm: what needs doing at the very top as red cards (tap one
+// to open it in place: the detail and the button that deals with it), then a bento of plain
+// white cards: the numbers that matter to this person (the first one big)
+// and what's coming up. Every card and row opens its page.
+// Sundays and calendar holidays are days off: no attendance to chase.
+export default function HomePage({ school, role, students, loading, session, today, pendingCount, actions = [], onAction, onGo, onNeed }) {
   const isAdmin = role === "owner" || role === "admin";
   const leads = isAdmin || role === "principal";
   const isOwner = role === "owner";
-  // Role permissions: tiles only for the areas this person can see.
   const perms = usePerms();
   const seesFees = isAdmin && perms.fees >= 1;
-  const seesAtt = leads && perms.attendance >= 1;
-  const seesStaff = leads && perms.staff >= 1;
-  const showBanner = !isAdmin;
-  const showWins = role === "teacher";
-  const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
-  const [notices] = useNotices(school.id);
-  const urls = useImageUrls(notices);
-  const wins = (notices ?? []).filter(isWin);
-  const plain = (notices ?? []).filter((x) => !isWin(x));
+  const seesAtt = leads ? perms.attendance >= 1 : Boolean(today);
+  const go = (to) => () => onGo(to);
+  // Quick actions show on computers; phones have the + beside search
+  const wide = useWide();
 
+  // Data (the same remembered lists as the pages, so it's quick)
+  const [homework, setHomework] = useState(() => (session ? peek(`homework:${session.id}`) ?? null : null));
   useEffect(() => {
     if (!session) return;
     swr(`homework:${session.id}`, () => listHomework(school.id, session.id), setHomework).catch(() => setHomework([]));
   }, [school.id, session]);
-
-  // Numbers
-  const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-  const weekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-  const dueTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow).length;
-  const thisWeek = (homework ?? []).filter((h) => h.created_at >= weekAgo).length;
-  const owing = students.filter((p) => Number(p.fee_due) > 0);
-  const overdue = students.filter((p) => p.fee_status === "overdue").length;
-  const due = owing.reduce((t, p) => t + Number(p.fee_due), 0);
-  const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
-  const unmarked = today && today.marked === 0;
-  const left = today?.notMarked ?? 0;
-  const needsMarking = Boolean(unmarked || left > 0);
-  const attTone = needsMarking ? "red" : attPct === null ? "indigo" : attPct >= 90 ? "green" : attPct >= 75 ? "amber" : "red";
-
-  // The top card is this person's priority: pending fees for owners and
-  // admins, today's attendance for the principal and class teachers,
-  // homework for other teachers.
-  const prio = seesFees ? "fees" : seesAtt || today ? "attendance" : "homework";
-  // Premium: the AI's one line for today, on the fees card
-
-  // On computers the top card is bigger: a few numbers and this period
-  // against the last one.
-  const wide = useWide();
-  const feeTrend = useFeeTrend(school.id, wide && prio === "fees");
-  const attTrend = useAttendanceTrend(session?.id, seesAtt, students, today, wide && prio === "attendance" && !loading);
-  const trend = !wide ? null : prio === "fees" ? feeTrend : prio === "attendance" ? attTrend : homeworkTrend(homework);
-
-  // The latest notice, for a line under its tile
-  const lastNotice = (notices ?? [])[0];
-
-  const go = (to) => () => onGo(to);
-
-  // Home is laid out by each person (HomeWidgets.jsx). Shown at first:
-  // only what has no tab of its own (the office's attendance and notices),
-  // the students' wins for teachers and Coming up. Students, Inbox, Homework
-  // and Staff can be added back from + Add widget.
-  const quickActions = actions.filter(([key]) => !(key === "attendance" && prio === "attendance") && !(key === "homework" && prio === "homework"));
-  const meta = [
-    isAdmin && perms.attendance >= 1 && { key: "attendance" },
-    isAdmin && perms.notices >= 1 && { key: "notices" },
-    { key: "students", defaultOn: false },
-    { key: "inbox", defaultOn: false },
-    prio !== "homework" && { key: "homework", defaultOn: false },
-    seesStaff && { key: "staff", defaultOn: false },
-    showWins && wins.length > 0 && { key: "news" },
-    { key: "upcoming" },
-    seesFees && { key: "collection" },
-    isAdmin && perms.transport >= 1 && { key: "buses" },
-    isAdmin && { key: "records" },
-    seesStaff && { key: "staffdays" },
-  ].filter(Boolean);
-  const layout = useHomeLayout(`home:staff:${school.id}:${role}`, meta);
-  const on = new Set(layout.visible);
-
-  // Only load what a shown widget needs
   const [threads, setThreads] = useState(() => peek(`inbox:${school.id}`) ?? null);
-  const staffKey = `people:employees:${school.id}:`;
-  const [staff, setStaff] = useState(() => peek(staffKey) ?? null);
-  const wantInbox = on.has("inbox");
-  const wantStaff = on.has("staff") || on.has("staffdays");
   useEffect(() => {
-    if (wantInbox) swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
-  }, [school.id, wantInbox]);
-  useEffect(() => {
-    if (wantStaff) swr(staffKey, () => loadEmployees(school.id).then(withPhotoUrls), setStaff, { persist: true, maxAge: 120000 }).catch(() => {});
-  }, [school.id, wantStaff, staffKey]);
-
-  const unread = (threads ?? []).filter((t) => Number(t.unread) > 0).length;
-  const requests = (threads ?? []).filter((t) => Number(t.open_requests) > 0).length;
-  const lastThread = (threads ?? []).find((t) => t.last_from_parent);
-  const byId = new Map(students.map((p) => [p.id, p]));
-  const inactive = students.filter((p) => p.status === "inactive").length;
-  const teachingStaff = (staff ?? []).filter((p) => /teach|prt|tgt|pgt|lecturer|faculty/i.test(`${p.designation ?? ""} ${p.department ?? ""}`)).length;
-  const birthdays = birthdaysSoon(students);
-  const firstNames = (list) => list.slice(0, 2).map((p) => p.name.split(" ")[0]).join(", ") + (list.length > 2 ? ` +${list.length - 2}` : "");
-  const nextDue = (homework ?? []).map((h) => h.due_date).filter((d) => d && d >= new Date().toISOString().slice(0, 10)).sort()[0];
-  const dayShort = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-
-  // Each tile: a number and a word, then its facts. badge: what's waiting on
-  // this person; hot: something new, the tile glows.
-  const tileList = [
-    isAdmin && perms.attendance >= 1 && {
-      key: "attendance",
-      icon: "register",
-      tone: attTone,
-      label: "Present Today",
-      value: today === null ? undefined : today?.marked ? today.present : "–",
-      badge: left,
-      facts: [
-        today?.marked > 0 && `${attPct}% of the school in`,
-        today?.marked > 0 && `${n(today.absent)} absent`,
-        left > 0 && `${left} class${left === 1 ? "" : "es"} not marked`,
-      ],
-      onClick: go("attendance"),
-    },
-    isAdmin && perms.notices >= 1 && {
-      key: "notices",
-      icon: "notice",
-      tone: "orange",
-      label: "Notices",
-      value: notices === null ? undefined : notices.length,
-      sub: lastNotice?.title,
-      fresh: lastNotice?.created_at,
-      facts: [lastNotice && ago(lastNotice.created_at)],
-      onClick: go("notices"),
-    },
-    {
-      key: "students",
-      icon: "scholar",
-      tone: "indigo",
-      label: leads ? "Students" : "My students",
-      value: loading ? undefined : students.length - inactive,
-      facts: [inactive > 0 && `${n(inactive)} inactive`, birthdays.length > 0 && `🎂 ${firstNames(birthdays)}`],
-      onClick: go("students"),
-    },
-    {
-      key: "inbox",
-      icon: "plane",
-      tone: "violet",
-      label: "Unread Messages",
-      value: threads === null ? undefined : unread,
-      badge: requests,
-      hot: unread > 0,
-      sub: lastThread && `${byId.get(lastThread.student_id)?.name?.split(" ")[0] ?? "A parent"}: ${lastThread.last_body} · ${ago(lastThread.last_at)}`,
-      facts: [requests > 0 && `${requests} request${requests === 1 ? "" : "s"} waiting`],
-      onClick: go("requests"),
-    },
-    prio !== "homework" && {
-      key: "homework",
-      icon: "book",
-      tone: "teal",
-      label: "New Homework",
-      value: homework === null ? undefined : thisWeek,
-      badge: leads ? 0 : dueTomorrow,
-      facts: homework === null ? [] : [!leads && dueTomorrow > 0 && `${dueTomorrow} due tomorrow`, nextDue ? `Next due ${dayShort(nextDue)}` : "Nothing due this week"],
-      onClick: go("homework"),
-    },
-    seesStaff && {
-      key: "staff",
-      icon: "idcard",
-      tone: "pink",
-      label: "Staff Members",
-      value: staff === null ? undefined : staff.length,
-      facts: staff?.length > 0 ? [`${n(teachingStaff)} teaching`, `${n(staff.length - teachingStaff)} other staff`] : [],
-      onClick: go("employees"),
-    },
-  ].filter(Boolean);
-  // Until someone arranges Home, tiles that need attention lead and are wide
-  const auto = arrangeTiles(tileList.filter((t) => on.has(t.key)));
-  const autoWide = new Set(auto.tiles.filter((t) => t.big).map((t) => t.key));
-
-  // The thin banner up top: reminders first, then notices and what's on
-  const upcoming = useUpcoming(school.id, true, 14);
-  const todayIso = new Date().toISOString().slice(0, 10);
+    swr(`inbox:${school.id}`, () => staffInbox(school.id), setThreads).catch(() => setThreads([]));
+  }, [school.id]);
   const [admissionsDue, setAdmissionsDue] = useState(0);
   useEffect(() => {
     if (!leads || perms.admissions < 1) return;
-    const d = new Date();
-    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    admissionFollowUpsDue(school.id, local).then((c) => setAdmissionsDue(Number(c) || 0), () => {});
+    admissionFollowUpsDue(school.id, iso(new Date())).then((c) => setAdmissionsDue(Number(c) || 0), () => {});
   }, [school.id, leads, perms.admissions]);
-  const shortDay = (d) => (d === todayIso ? "Today" : new Date(`${d}T12:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }));
-  const tickerItems = [
-    left > 0 && {
-      key: "att",
-      icon: "register",
-      tone: "red",
-      text: today?.marked ? `${left} class${left === 1 ? " hasn’t" : "es haven’t"} marked attendance yet` : "Attendance isn’t marked yet today",
-      onClick: go("attendance"),
+  const [notices] = useNotices(school.id);
+  const upcoming = useUpcoming(school.id, true, 14);
+  const feeTrend = useFeeTrend(school.id, seesFees);
+  // The datesheet and which marks are in, for "results pending"
+  const examsKey = session ? `home:results:${session.id}` : null;
+  const [exams, setExams] = useState(() => (examsKey ? peek(examsKey) ?? null : null));
+  useEffect(() => {
+    if (!examsKey) return;
+    swr(examsKey, () => Promise.all([listDatesheet(school.id, session.id), resultKeys(session.id)]).then(([sheet, keys]) => ({ sheet, keys })), setExams, {
+      persist: true,
+      maxAge: 300000,
+    }).catch(() => setExams({ sheet: [], keys: [] }));
+  }, [examsKey, school.id, session]);
+
+  const todayIso = iso(new Date());
+  const [openTask, setOpenTask] = useState(null);
+  const holiday = (upcoming ?? []).find((it) => it.kind === "holiday" && it.start <= todayIso && (it.end ?? it.start) >= todayIso);
+  const dayOff = holiday ? holiday.title : new Date().getDay() === 0 ? "Sunday" : null;
+
+  // Numbers
+  const active = students.filter((p) => (p.status || "active") === "active");
+  const due = students.reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
+  const overdue = students.filter((p) => p.fee_status === "overdue").length;
+  const monthIn = feeTrend?.chart?.cur?.at(-1);
+  const left = today?.notMarked ?? 0;
+  const tomorrow = iso(new Date(Date.now() + 864e5));
+  const dueTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow).length;
+  const unread = (threads ?? []).filter((t) => Number(t.unread) > 0).length;
+  const requests = (threads ?? []).filter((t) => Number(t.open_requests) > 0).length;
+
+  const cur = feeTrend?.chart?.cur ?? null;
+  const todayIn = cur ? (cur.at(-1) ?? 0) - (cur.at(-2) ?? 0) : undefined;
+  const attPct = today?.marked ? Math.round((today.present / today.marked) * 100) : null;
+  // The focus cards: what's still outstanding for this person (the first
+  // wide, the other two small), each with the button that gets on with it. The office: fees, documents,
+  // results. Teachers: today's attendance, results, homework.
+  const docRows = Object.entries(NEEDS)
+    .filter(([, x]) => x.doc)
+    .map(([key, x]) => ({ key, label: x.label, count: active.filter(x.test).length }))
+    .filter((r) => r.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const docTotal = docRows.reduce((t, r) => t + r.count, 0);
+  // Papers already held (on the datesheet) whose marks aren't in yet, for
+  // the classes this person can see
+  const pendingPapers = (() => {
+    if (!exams) return null;
+    const inClass = new Map();
+    for (const p of active) {
+      const k = `${p.class}|${p.section ?? ""}`;
+      if (!inClass.has(k)) inClass.set(k, []);
+      inClass.get(k).push(p.id);
+    }
+    const has = new Set(exams.keys.map((r) => `${r.student_id}|${r.exam}|${r.subject}`));
+    const seen = new Set();
+    const out = [];
+    for (const e of exams.sheet) {
+      if (!e.exam_date || e.exam_date >= todayIso) continue;
+      const key = `${e.class}|${e.section ?? ""}|${e.exam_name}|${e.subject}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const ids = [...inClass].filter(([k]) => k.split("|")[0] === e.class && (!e.section || k.split("|")[1] === e.section)).flatMap(([, list]) => list);
+      if (ids.length && !ids.some((id) => has.has(`${id}|${e.exam_name}|${e.subject}`))) out.push(e);
+    }
+    return out;
+  })();
+  const resultsSeg = {
+    key: "results",
+    label: "Results pending",
+    value: pendingPapers === null ? undefined : n(pendingPapers.length),
+    action: "Enter marks",
+    onClick: go("marks"),
+  };
+  const docsSeg = {
+    key: "docs",
+    label: "Pending documents",
+    value: loading ? undefined : n(docTotal),
+    action: "Collect",
+    onClick: docRows.length ? () => onNeed?.(docRows[0].key) : go("students"),
+  };
+  const attSeg = {
+    key: "att",
+    label: "Attendance today",
+    value: dayOff ? "Closed" : today === null ? undefined : leads ? (today?.marked ? `${attPct}%` : "Not marked") : today?.marked ? `${n(today.present)} / ${n(today.marked)}` : "Not taken",
+    action: !leads && !today?.marked && !dayOff ? "Take attendance" : "Open register",
+    onClick: go("attendance"),
+  };
+  const focus = seesFees
+    ? [
+        { key: "fees", label: "Fees remaining", value: loading ? undefined : rupeesShort(due), action: "View fees", onClick: go("fees") },
+        docsSeg,
+        resultsSeg,
+      ]
+    : leads
+      ? [seesAtt && attSeg, resultsSeg, perms.students >= 1 ? docsSeg : { key: "hw", label: "Homework due tomorrow", value: homework === null ? undefined : n(dueTomorrow), action: "See homework", onClick: go("homework") }].filter(Boolean)
+      : [seesAtt && attSeg, resultsSeg, { key: "hw", label: "Homework due tomorrow", value: homework === null ? undefined : n(dueTomorrow), action: "See homework", onClick: go("homework") }].filter(Boolean);
+
+  // To do: what's waiting on this person, most pressing first
+  // Each task opens in place: a line of context, the rows behind it, and
+  // the button that deals with it.
+  const gapRows = Object.entries(NEEDS)
+    .filter(([, x]) => !x.doc)
+    .map(([key, x]) => ({ key, label: x.label, value: n(active.filter(x.test).length), count: active.filter(x.test).length, cta: "Fix", onClick: () => onNeed?.(key) }))
+    .filter((r) => r.count > 0)
+    .sort((a, b) => b.count - a.count);
+  const gapTotal = gapRows.reduce((t, r) => t + r.count, 0);
+  const byId = new Map(students.map((p) => [p.id, p]));
+  const overdueAmt = students.filter((p) => p.fee_status === "overdue").reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
+  const waiting = (threads ?? []).filter((t) => Number(t.open_requests) > 0);
+  const hwTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow);
+  const todo = [
+    isOwner && pendingCount > 0 && {
+      key: "access",
+      text: `${pl(pendingCount, "person", "people")} waiting for app access`,
+      info: "They've asked to use GodView. Approve each one and pick what they can see.",
+      actions: [{ label: "Review requests", onClick: go("access") }],
     },
-    admissionsDue > 0 && { key: "adm", icon: "newAdmission", tone: "teal", text: `${n(admissionsDue)} admission follow-up${admissionsDue === 1 ? "" : "s"} due`, onClick: go("admissions") },
-    seesFees && overdue > 0 && { key: "fees", icon: "rupee", tone: "red", text: `${studentCount(overdue)} ${overdue === 1 ? "has" : "have"} overdue fees`, onClick: go("fees") },
-    !leads && dueTomorrow > 0 && { key: "hw", icon: "book", tone: "amber", text: `${dueTomorrow} homework due tomorrow`, onClick: go("homework") },
-    ...(perms.notices >= 1 ? notices ?? [] : []).slice(0, 3).map((x) => ({ key: `n${x.id}`, icon: "notice", tone: "orange", text: x.title, onClick: go("notices") })),
-    ...(upcoming ?? []).slice(0, 3).map((it) => ({ key: `e${it.id}`, icon: "calendar", tone: "violet", text: `${shortDay(it.start)}: ${it.title}`, onClick: go("calendar") })),
-    birthdays.length > 0 && { key: "bd", icon: "cake", tone: "pink", text: `Birthdays this week: ${firstNames(birthdays)}`, onClick: go("students") },
+    !dayOff && seesAtt && left > 0 && {
+      key: "att",
+      text: leads ? `${pl(left, "class", "classes")} haven't marked attendance` : "Take today's attendance",
+      info: leads
+        ? today?.marked
+          ? `${pl(today.marked, "student")} marked so far, ${n(today.present)} present. ${pl(left, "class", "classes")} still to go.`
+          : "No class has marked attendance yet today."
+        : "Mark who's in today for your class.",
+      actions: [{ label: leads ? "Open attendance" : "Take attendance", onClick: go("attendance") }],
+    },
+    requests > 0 && {
+      key: "requests",
+      text: `${pl(requests, "parent request")} waiting`,
+      rows: waiting.slice(0, 3).map((t) => ({ key: t.student_id, label: byId.get(t.student_id)?.name ?? "A parent", value: t.last_body, quiet: true })),
+      actions: [{ label: "Open inbox", onClick: go("requests") }],
+    },
+    !leads && dueTomorrow > 0 && {
+      key: "hw",
+      text: `${pl(dueTomorrow, "homework")} due tomorrow`,
+      rows: hwTomorrow.slice(0, 4).map((h) => ({ key: h.id, label: h.subject || "Homework", value: h.body, quiet: true })),
+      actions: [{ label: "See homework", onClick: go("homework") }],
+    },
+    seesFees && overdue > 0 && actions.some(([k]) => k === "bulk") && {
+      key: "remind",
+      text: `Remind ${pl(overdue, "family", "families")} with overdue fees`,
+      info: `${pl(overdue, "student")} ${overdue === 1 ? "is" : "are"} past the due date, ${rupeesShort(overdueAmt)} in all. Send their parents one reminder, or see who owes what first.`,
+      actions: [
+        { label: "Message parents", onClick: () => onAction("bulk"), primary: true },
+        { label: "See who owes", onClick: go("fees") },
+      ],
+    },
+    admissionsDue > 0 && {
+      key: "admissions",
+      text: `${pl(admissionsDue, "admission follow-up")} due`,
+      info: "Families you planned to call back today about joining.",
+      actions: [{ label: "Open admissions", onClick: go("admissions") }],
+    },
+    isAdmin && gapTotal > 0 && {
+      key: "records",
+      text: `${pl(gapTotal, "gap")} in student records`,
+      info: "Active students with something missing. Fix opens just those students.",
+      rows: gapRows,
+    },
   ].filter(Boolean);
 
-  const items = Object.fromEntries(tileList.map(({ fresh, ...t }) => [t.key, { kind: "tile", label: t.label, icon: t.icon, tone: t.tone, size: autoWide.has(t.key) ? "wide" : "small", tile: t }]));
-  items.collection = { kind: "section", label: "Today’s collection", icon: "rupee", tone: "green", size: "wide", node: <CollectionToday schoolId={school.id} onOpen={go("collection")} /> };
-  items.buses = { kind: "section", label: "Buses", icon: "bus", tone: "teal", size: "wide", node: <BusWatch schoolId={school.id} routes={routes} students={students} onOpen={go("transport")} /> };
-  items.records = { kind: "section", label: "Records to fix", icon: "edit", tone: "amber", size: "wide", node: <RecordsToFix students={students} onOpen={(need) => onNeed?.(need)} /> };
-  items.staffdays = { kind: "section", label: "Staff birthdays & anniversaries", icon: "cake", tone: "pink", size: "wide", node: <StaffDays staff={staff} onOpen={go("employees")} /> };
-  items.news = { kind: "section", label: "News & Achievements", icon: "trophy", tone: "amber", size: "full", node: <AchievementsStrip items={wins} urls={urls} viewAll={!(showBanner && (notices === null || plain.length > 0))} onOpenNotices={go("notices")} /> };
-  items.upcoming = {
-    kind: "section",
-    label: "Coming up",
-    icon: "calendar",
-    tone: "violet",
-    size: "full",
-    node: <ComingUp schoolId={school.id} session={session} staff onOpenCalendar={go("calendar")} />,
-  };
+  const coming = (upcoming ?? []).filter((it) => (it.end ?? it.start) >= todayIso).slice(0, 3);
+  // Teachers and the principal also get the latest notices (the office posts them)
+  const latest = isAdmin ? [] : (notices ?? []).slice(0, 3);
 
-  // Owners: anyone waiting for app access comes first, beside the fees
-  const access =
-    isOwner && pendingCount > 0
-      ? {
-          tone: "violet",
-          urgent: true,
-          label: "App access",
-          title: `${pendingCount} waiting`,
-          sub: "Approve them and pick their classes",
-          cta: "Review",
-          onClick: go("access"),
-        }
-      : null;
-  const priority =
-    prio === "fees"
-      ? {
-          tone: overdue ? "red" : due > 0 ? "amber" : "green",
-          urgent: overdue > 0,
-          label: due > 0 || loading ? "Fees pending" : "Fees",
-          title: loading ? "…" : due > 0 ? rupeesShort(due) : "All collected",
-          status: loading ? "" : overdue ? `${studentCount(overdue)} overdue` : due > 0 ? `${studentCount(owing.length)} ${owing.length === 1 ? "owes" : "owe"} fees` : "Nothing pending",
-          cta: "View fees",
-          onClick: go("fees"),
-        }
-      : prio === "attendance"
-      ? {
-          tone: attTone,
-          urgent: needsMarking,
-          label: "Today’s attendance",
-          title: today === null ? "…" : today?.marked ? `${n(today.present)} present` : "Not marked yet",
-          status: today === null ? "" : left ? `${left} class${left === 1 ? "" : "es"} left to mark` : today?.marked ? "All classes marked" : "",
-          pct: today?.marked ? attPct : null,
-          cta: today?.marked ? "View attendance" : "Take attendance",
-          onClick: go("attendance"),
-        }
-      : {
-          tone: dueTomorrow ? "amber" : "teal",
-          label: "Homework",
-          title: homework === null ? "…" : dueTomorrow ? `${dueTomorrow} due tomorrow` : thisWeek ? `${thisWeek} set this week` : "None set this week",
-          status: homework !== null && dueTomorrow && thisWeek ? `${thisWeek} set this week` : "",
-          cta: actions.some(([k]) => k === "homework") ? "Give homework" : "See homework",
-          onClick: actions.some(([k]) => k === "homework") ? () => onAction("homework") : go("homework"),
-        };
-
-  // The banner shows while there are plain notices (or they're loading).
-  const banner = showBanner && (notices === null || plain.length > 0);
-
-  const first = (name || me || "").split(/[\s@]/)[0];
+  const tasks = todo.map((t) => ({ ...t, id: t.key }));
   return (
-    <div className="home hw home-roomy">
-      <header className="home-hero">
-        <p className="home-date">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
-        <h1>
-          {greeting()}
-          {first ? `, ${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""}
-        </h1>
-      </header>
+    <div className="hc">
+      {tasks.length === 0 ? (
+        <p className="hc-line hc-caught">
+          <Icon name="check" size={14} weight="bold" />
+          You're all caught up.
+        </p>
+      ) : (
+        <ul className="hc-checks" aria-label="To do">
+          {tasks.map((t, i) => {
+            return (
+              <li key={t.id} className={`hc-line${openTask === t.id ? " is-open" : ""}`} style={{ "--i": i }}>
+                <div className="hc-line-row">
+                  <button type="button" className="hc-task" aria-expanded={openTask === t.id} onClick={() => setOpenTask((cur) => (cur === t.id ? null : t.id))}>
+                    <span>{t.text}</span>
+                    <Icon name="chevronDown" size={15} />
+                  </button>
+                </div>
+                <div className="hc-more" aria-hidden={openTask !== t.id}>
+                  <div className="hc-more-inner">
+                    {t.info && <p className="hc-info">{t.info}</p>}
+                    {t.rows?.length > 0 && (
+                      <ul className="hc-rows">
+                        {t.rows.map((r) => (
+                          <li key={r.key}>
+                            <span>{r.label}</span>
+                            <em className={r.quiet ? "is-quiet" : ""}>{r.value}</em>
+                            {r.onClick && (
+                              <button type="button" className="hc-mini" onClick={r.onClick} tabIndex={openTask === t.id ? 0 : -1}>
+                                {r.cta}
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {t.actions?.length > 0 && (
+                      <div className="hc-actions">
+                        {t.actions.map((x, i) => (
+                          <button type="button" key={x.label} className={`hc-act${x.primary || (i === 0 && t.actions.length === 1) ? " is-primary" : ""}`} onClick={x.onClick} tabIndex={openTask === t.id ? 0 : -1}>
+                            {x.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {wide && <QuickActions actions={actions} onAction={onAction} />}
 
       {role !== "owner" && <CheckInCard schoolId={school.id} />}
-
       <NotifyPrompt text="Get notified when parents write." />
 
-      <Ticker items={tickerItems} />
+      <div className={`hc-bento ${seesFees ? "is-office" : "is-staff"}${latest.length ? " has-notices" : ""}${focus.length < 3 ? " has-two" : ""}`}>
+        {focus.map((f, i) => (
+          <button type="button" key={f.key} className={`hc-card hc-pick hc-f${i + 1}${i === 0 ? " is-lead" : ""}`} onClick={f.onClick}>
+            <span className="hc-label">{f.label}</span>
+            <strong className="hc-value">{f.value ?? "…"}</strong>
+            <span className="hc-seg-go">
+              {f.action}
+              <Icon name="arrowRight" size={13} />
+            </span>
+          </button>
+        ))}
 
-      <div className={`home-row1${access ? " is-pair" : banner ? "" : " is-solo"}${trend ? " has-trend" : ""}`}>
-        {access && <PriorityCard {...access} />}
-        <PriorityCard {...priority} trend={trend} />
-        {banner && <NoticeBanner notices={notices === null ? null : plain} urls={urls} onOpenNotices={go("notices")} />}
+        {seesFees && (
+          <button type="button" className="hc-card hc-month" onClick={go("collection")} aria-label={feeTrend?.note?.text ? `Collected this month, ${feeTrend.note.text}` : "Collected this month"}>
+            <span className="hc-label">Collected in {new Date().toLocaleDateString("en-IN", { month: "long" })}</span>
+            <strong className="hc-value">{monthIn === undefined ? "…" : rupeesShort(monthIn)}</strong>
+            {feeTrend?.chart && cur.length > 0 && <Area chart={feeTrend.chart} />}
+          </button>
+        )}
+
+        {seesFees && seesAtt && (
+          <button type="button" className="hc-card hc-present is-center" onClick={go("attendance")}>
+            <span className="hc-label">Present today</span>
+            {dayOff ? (
+              <>
+                <Pic name="sun" big />
+                <strong className="hc-value">Closed</strong>
+                <span className="hc-sub">{dayOff}</span>
+              </>
+            ) : (
+              <>
+                <Ring pct={attPct ?? 0} empty={!today?.marked} />
+                <strong className="hc-value">{today === null ? "…" : today?.marked ? `${n(today.present)} / ${n(today.marked)}` : "Not marked"}</strong>
+                <span className="hc-sub">{today?.marked ? "students in" : "No class has marked yet"}</span>
+              </>
+            )}
+          </button>
+        )}
+
+        <button type="button" className="hc-card hc-students is-center" onClick={go("students")}>
+          <span className="hc-label">{leads ? "Students" : "My students"}</span>
+          <Pic name="backpack" big />
+          <strong className="hc-value">{loading ? "…" : n(active.length)}</strong>
+        </button>
+
+        {seesFees ? (
+          <button type="button" className="hc-card hc-today is-center" onClick={go("collection")}>
+            <span className="hc-label">Collected today</span>
+            <strong className="hc-value hc-glow">{todayIn === undefined ? "…" : rupeesShort(todayIn)}</strong>
+            <span className="hc-sub">{dayOff ? "School's closed" : "so far today"}</span>
+          </button>
+        ) : (
+          <button type="button" className="hc-card hc-today is-center" onClick={go("requests")}>
+            <span className="hc-label">Unread messages</span>
+            <Pic name="speech-balloon" big />
+            <strong className="hc-value">{threads === null ? "…" : n(unread)}</strong>
+          </button>
+        )}
+
+        <section className={`hc-card hc-coming${coming.length === 1 ? " is-solo" : ""}`}>
+          <span className="hc-label">Coming up</span>
+          {upcoming === null ? (
+            <p className="hc-quiet">…</p>
+          ) : coming.length === 0 ? (
+            <div className="hc-next is-empty">
+              <Pic name="calendar" big />
+              <span className="hc-sub">Nothing in the next two weeks</span>
+            </div>
+          ) : (
+            <>
+              <button type="button" className="hc-next" onClick={go("calendar")}>
+                <Leaf date={coming[0].start <= todayIso ? todayIso : coming[0].start} />
+                <span className="hc-next-text">
+                  <strong>{coming[0].title}</strong>
+                  <span>{dayLabel(coming[0].start, todayIso)}</span>
+                </span>
+              </button>
+              {coming.length > 1 && (
+                <ul className="hc-list">
+                  {coming.slice(1).map((it) => (
+                    <li key={it.id}>
+                      <button type="button" onClick={go("calendar")}>
+                        <em>{dayLabel(it.start, todayIso)}</em>
+                        <span>{it.title}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </section>
+
+        {latest.length > 0 && (
+          <section className="hc-card hc-notices">
+            <span className="hc-label">Notices</span>
+            <ul className="hc-list">
+              {latest.map((x) => (
+                <li key={x.id}>
+                  <button type="button" onClick={go("notices")}>
+                    <Pic name="loudspeaker" />
+                    <span>{x.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
-
-      {wide && <QuickActionsRow actions={quickActions} onAction={onAction} />}
-
-      <EditableHome layout={layout} items={items} />
     </div>
   );
 }
 
-// The noticeboard, as a banner to swipe through (one notice at a time, with
-// its picture if it has one). Autoplays gently; tapping it, the arrows, or
-// a dot all work the same way phone banners do. notices: null while loading.
-function NoticeBanner({ notices, urls, onOpenNotices }) {
-  const slides = (notices ?? []).slice(0, 6);
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    if (idx >= slides.length) setIdx(0);
-  }, [slides.length, idx]);
-  useEffect(() => {
-    if (slides.length < 2) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), 6000);
-    return () => clearInterval(t);
-  }, [slides.length]);
+// Everyday shortcuts, one button each: the + menu's actions as
+// [key, label, icon], each with its 3D picture.
+const ACTION_PIC = { student: "backpack", enquiry: "telephone", fee: "rupee", attendance: "check-mark", homework: "books", result: "graduation-cap", datesheet: "memo", notice: "loudspeaker", bulk: "speech-balloon", event: "calendar" };
 
-  const current = slides[idx];
-  const image = current && showsImage(current) ? urls.get(current.image_path) : null;
-  const shift = (by, e) => {
-    e.stopPropagation();
-    setIdx((i) => (i + by + slides.length) % slides.length);
-  };
-
-  return (
-    <section className="home-notice">
-      <header className="home-notice-head">
-        <span className="home-notice-icon">
-          <Icon name="notice" size={18} weight="fill" />
-        </span>
-        <span className="home-notice-text">
-          <strong>Notice Board</strong>
-        </span>
-        <button type="button" className="home-section-all home-notice-cta" onClick={onOpenNotices}>
-          View all <Icon name="arrowRight" size={13} />
-        </button>
-      </header>
-
-      {notices === null ? (
-        <div className="home-notice-slide is-empty">
-          <div className="nb-skeleton" aria-busy="true" />
-        </div>
-      ) : (
-        <div className="home-notice-wrap">
-          {slides.length > 1 && (
-            <button type="button" className="home-notice-nav is-prev" onClick={(e) => shift(-1, e)} aria-label="Previous notice">
-              <Icon name="chevronLeft" size={16} />
-            </button>
-          )}
-          <div className="home-notice-slide" onClick={onOpenNotices} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onOpenNotices()} role="button" tabIndex={0}>
-            <div className="home-notice-copy">
-              {current.event_on && <span className="home-notice-date">{dateText(current.event_on)}</span>}
-              <strong>{current.title}</strong>
-              {current.body && <p>{current.body}</p>}
-            </div>
-            {image ? (
-              <img className="home-notice-pic" src={image} alt="" loading="lazy" />
-            ) : (
-              <span className="home-notice-pic home-notice-pic-icon">
-                <Icon name="notice" size={34} />
-              </span>
-            )}
-          </div>
-          {slides.length > 1 && (
-            <button type="button" className="home-notice-nav is-next" onClick={(e) => shift(1, e)} aria-label="Next notice">
-              <Icon name="chevronRight" size={16} />
-            </button>
-          )}
-        </div>
-      )}
-      {slides.length > 1 && (
-        <div className="home-notice-dots">
-          {slides.map((s, i) => (
-            <span key={s.id} className={i === idx ? "is-on" : ""} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-// Everyday shortcuts under the top card, one button each: the + menu's
-// actions, as [key, label, icon]. Computers only; on phones the + beside the
-// search does the same job.
-const ACTION_TONE = { bulk: "violet", enquiry: "teal", student: "indigo", fee: "amber", attendance: "green", homework: "teal", result: "violet", datesheet: "pink", notice: "orange", event: "violet" };
-
-function QuickActionsRow({ actions, onAction }) {
+function QuickActions({ actions, onAction }) {
   if (!actions.length) return null;
   return (
-    <div className="home-quick-row">
-      {actions.map(([key, label, icon]) => (
-        <button type="button" key={key} className="home-quick-btn" onClick={() => onAction(key)}>
-          <span className={`home-quick-badge t-${ACTION_TONE[key] ?? "indigo"}`}>
-            <Icon name={icon} size={18} weight="fill" />
-          </span>
+    <div className="hc-quick">
+      {actions.map(([key, label]) => (
+        <button type="button" key={key} className="hc-act-card" onClick={() => onAction(key)}>
+          <Pic name={ACTION_PIC[key] ?? "memo"} />
           <span>{label}</span>
         </button>
       ))}
     </div>
+  );
+}
+
+// A small 3D picture, the same set as the student profile's details
+// (Fluent Emoji, public/icons/3d).
+function Pic({ name, big = false }) {
+  const size = big ? 60 : 28;
+  return <img className={`hc-pic${big ? " is-big" : ""}`} src={`/icons/3d/${name}.png`} alt="" width={size} height={size} loading="lazy" decoding="async" />;
+}
+
+// Present today as a ring (pct 0 to 100).
+function Ring({ pct, empty = false }) {
+  const size = 96;
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  return (
+    <span className="hc-ring" role="img" aria-label={empty ? "Not marked yet" : `${pct}% present`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <defs>
+          <linearGradient id="hc-ring-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#7c8cf0" />
+            <stop offset="1" stopColor="#4c58c4" />
+          </linearGradient>
+        </defs>
+        <circle className="hc-ring-track" cx={size / 2} cy={size / 2} r={r} strokeWidth={stroke} />
+        {!empty && (
+          <circle
+            className="hc-ring-fill"
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            strokeWidth={stroke}
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - pct / 100)}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
+      </svg>
+      <span className="hc-ring-num">{empty ? "–" : `${pct}%`}</span>
+    </span>
+  );
+}
+
+// A tear-off calendar leaf: the month in a red strip, the day big.
+function Leaf({ date }) {
+  const d = new Date(`${date}T12:00:00`);
+  return (
+    <span className="hc-leaf" aria-hidden="true">
+      <span>{d.toLocaleDateString("en-IN", { month: "short" })}</span>
+      <strong>{d.getDate()}</strong>
+    </span>
+  );
+}
+
+// This month's running total (solid, soft fill under it) against last
+// month's (dashed), each named at its end, last month with its total.
+function Area({ chart }) {
+  const { cur, prev, days, curName, prevName } = chart;
+  const w = 300;
+  const h = 76;
+  const max = Math.max(...cur, ...prev, 1);
+  const x = (i) => (days > 1 ? (i / (days - 1)) * w : 0);
+  const y = (v) => h - 4 - (v / max) * (h - 14);
+  const path = (list) => list.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const curLine = path(cur);
+  const end = [x(cur.length - 1), y(cur.at(-1))];
+  const prevEnd = [x(prev.length - 1), y(prev.at(-1) ?? 0)];
+  const pct = ([px, py]) => ({ left: `${(px / w) * 100}%`, top: `${(py / h) * 100}%` });
+  return (
+    <span className="hc-area" aria-hidden="true">
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="hc-area-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#5b68c4" stopOpacity="0.26" />
+            <stop offset="1" stopColor="#5b68c4" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {prev.length > 1 && <polyline className="hc-area-prev" points={path(prev)} vectorEffect="non-scaling-stroke" />}
+        {cur.length > 1 && <polygon points={`0,${h} ${curLine} ${end[0].toFixed(1)},${h}`} fill="url(#hc-area-grad)" />}
+        {cur.length > 1 && <polyline className="hc-area-cur" points={curLine} vectorEffect="non-scaling-stroke" />}
+      </svg>
+      <span className="hc-area-dot" style={pct(end)} />
+      <span className="hc-area-tag is-cur" style={pct(end)}>
+        {curName}
+      </span>
+      {prev.length > 1 && (
+        <span className="hc-area-tag is-prev" style={pct(prevEnd)}>
+          {prevName} <strong>{rupeesShort(prev.at(-1) ?? 0)}</strong>
+        </span>
+      )}
+    </span>
   );
 }

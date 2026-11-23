@@ -1,3 +1,16 @@
+Two sets of 3D pictures live here.
+
+1. 3dicons by Vijay Verma (https://3dicons.co, https://github.com/realvjy/3dicons),
+   CC0 1.0 (public domain, no attribution required):
+   books, cake, calendar, check-mark, email, flag, loudspeaker, man, memo,
+   mobile-phone, rupee, speech-balloon, sun, telephone, woman.
+
+2. Fluent Emoji by Microsoft, MIT License (below), for pictures 3dicons
+   doesn't have: backpack, door, graduation-cap, house, id-card, label,
+   place-of-worship, school.
+
+----------------------------------------------------------------------
+
 These pictures are from Fluent Emoji by Microsoft (https://github.com/microsoft/fluentui-emoji),
 used under the MIT License:
 
