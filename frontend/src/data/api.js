@@ -374,6 +374,12 @@ export async function sessionResultPercents(sessionId) {
   return new Map([...sums].map(([id, [m, max]]) => [id, max ? (m / max) * 100 : null]));
 }
 
+// Which exam + subject each student has marks for this session (Home's
+// "results pending": papers held that have no marks yet).
+export async function resultKeys(sessionId) {
+  return all(() => supabase.from("exam_results").select("student_id, exam, subject").eq("session_id", sessionId));
+}
+
 export async function listResults(studentId, sessionId) {
   return must(
     await supabase
