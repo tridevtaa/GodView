@@ -1946,6 +1946,17 @@ export async function setEarlierPending(schoolId, sessionId, studentId, headId, 
   );
 }
 
+// A one-off charge on one student (a lost ID card, a trip). It goes under
+// a "Miscellaneous" fee type the database makes the first time.
+export async function addMiscCharge(studentId, sessionId, amount, label) {
+  return must(await supabase.rpc("add_misc_charge", { p_student: studentId, p_session: sessionId, p_amount: Number(amount), p_label: label.trim() }));
+}
+
+// Takes back a charge nothing has been paid against.
+export async function removeDue(invoiceId) {
+  must(await supabase.from("fee_invoices").delete().eq("id", invoiceId));
+}
+
 // ------------------------------------------------------- staff check-in ---
 
 // Is check-in on for this school, and today's check-in/out for me.

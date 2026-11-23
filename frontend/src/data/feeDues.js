@@ -11,6 +11,8 @@ export const nextMonth = (p) => {
 };
 export const isTransport = (name) => /transport|\bbus\b|\bvan\b|conveyance/i.test(name ?? "");
 // Dues from before this session: the old system's balances, or last year
+// A one-off charge added on the student's Fees tab (add_misc_charge)
+export const isMisc = (d) => String(d?.period ?? "").startsWith("misc-");
 export const isEarlier = (d, sid) => d.period === "opening" || d.session_id !== sid;
 
 // The order record_payment() pays dues in: oldest due date first
