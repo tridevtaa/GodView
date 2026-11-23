@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { cancelPayment, listFeeHeads, listSessions, recordPayment, setConcession, setEarlierPending, studentLedger } from "../data/api.js";
+import { addMiscCharge, cancelPayment, listFeeHeads, listSessions, recordPayment, removeDue, setConcession, setEarlierPending, studentLedger } from "../data/api.js";
 import { METHODS, rupees } from "../data/money.js";
 import PaymentHistory from "./PaymentHistory.jsx";
 import Receipt from "./Receipt.jsx";
 import Icon from "./Icon.jsx";
 import { haptic } from "../pwa/haptics.js";
-import { describeDues, isEarlier, isMonth, isTransport, n, payOrder, shortHead } from "../data/feeDues.js";
+import { describeDues, isEarlier, isMisc, isMonth, isTransport, n, payOrder, shortHead } from "../data/feeDues.js";
 import CollectForm from "./CollectForm.jsx";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -132,6 +132,16 @@ export default function FeeLedger({ school, person, sessionId, canEdit, onChange
         <FeeTypes yearDues={yearDues} toneOf={toneOf} todayStr={todayStr} person={person} canEdit={canEdit} picked={picked} onPick={pick} onChanged={changed} />
       ) : (
         <p className="row-sub fees2-empty">No dues yet. Set up the fee structure in Fees and create the dues for the session.</p>
+      )}
+
+      {canEdit && sid && (
+        <MiscCharge
+          onSave={async (amount, label) => {
+            await addMiscCharge(person.id, sid, amount, label);
+            haptic("success");
+            await changed();
+          }}
+        />
       )}
 
       {canEdit && pickedDues.length > 0 && !paying && (
@@ -285,7 +295,7 @@ function FeeTypes({ yearDues, toneOf, todayStr, person, canEdit, picked, onPick,
   }
   // School fees first, transport after
   heads.sort((x, y) => isTransport(x.name) - isTransport(y.name));
-  const months = new Set(yearDues.map((d) => d.period)).size;
+  const months = new Set(yearDues.filter((d) => !isMisc(d)).map((d) => d.period)).size;
   const stop = person.pickup_point || person.transport_route;
   // Takes the bus, but nothing is charged for it this year
   const noTransport = person.uses_bus && !heads.some((h) => isTransport(h.name) && h.dues.some((d) => n(d.amount) > 0));
@@ -330,16 +340,17 @@ function FeeType({ head: h, months, tone, stop, todayStr, canEdit, picked, onPic
   const off = h.dues.reduce((t, d) => t + n(d.concession), 0);
   const real = h.dues.filter((d) => n(d.amount) > 0);
   const same = real.length && real.every((d) => n(d.amount) === n(real[0].amount));
-  const rate = !real.length ? "" : same ? (real.length > 1 ? `${rupees(real[0].amount)} × ${real.length}` : rupees(real[0].amount)) : `${real.length} instalments`;
+  const misc = h.dues.some(isMisc);
+  const rate = !real.length ? "" : misc ? (real.length > 1 ? `${real.length} charges` : "One-off charge") : same ? (real.length > 1 ? `${rupees(real[0].amount)} × ${real.length}` : rupees(real[0].amount)) : `${real.length} instalments`;
   // Charged in only some months (e.g. transport each quarter): say which
-  const which = real.length > 1 && real.length < months ? real.map((d) => d.label.split(" ")[0]).join(", ") : "";
+  const which = !misc && real.length > 1 && real.length < months ? real.map((d) => d.label.split(" ")[0]).join(", ") : "";
   const dueNow = h.dues.filter((d) => n(d.balance) > 0 && (!d.due_date || d.due_date <= todayStr)).reduce((t, d) => t + n(d.balance), 0);
   const pct = billed > 0 ? Math.round((paid / billed) * 100) : 100;
 
   const rows = h.dues;
   let run = 0;
   while (run < rows.length && n(rows[run].balance) <= 0) run++;
-  const fold = run >= 2 && !showPaid;
+  const fold = !misc && run >= 2 && !showPaid;
   const firstAhead = rows.findIndex((d) => n(d.balance) > 0 && d.due_date && d.due_date > todayStr);
 
   return (
@@ -467,6 +478,54 @@ function DueRow({ due: d, title, tone, todayStr, canEdit, picked, onPick, open, 
 }
 
 
+// 2c. A one-off charge on this student (a lost ID card, a trip): what it's
+// for and how much. It's due today, under the Miscellaneous fee type.
+function MiscCharge({ onSave }) {
+  const [adding, setAdding] = useState(false);
+  const [label, setLabel] = useState("");
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const ready = label.trim() && n(amount) > 0;
+
+  async function save(e) {
+    e.preventDefault();
+    if (!ready) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onSave(n(amount), label);
+      setAdding(false);
+      setLabel("");
+      setAmount("");
+    } catch {
+      setError("Couldn’t add the charge. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!adding)
+    return (
+      <button className="link-btn fees2-earlier-add" onClick={() => setAdding(true)}>
+        <Icon name="plus" size={13} /> Add a charge
+      </button>
+    );
+  return (
+    <form className="fees2-earlier-form fees2-misc-form" onSubmit={save}>
+      <input className="input" value={label} onChange={(e) => setLabel(e.target.value)} maxLength={60} placeholder="What for, e.g. Lost ID card" aria-label="What the charge is for" autoFocus />
+      <input className="input input-num" type="number" inputMode="decimal" min="1" step="1" placeholder="Amount ₹" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="Amount" />
+      <button className="btn btn-primary btn-sm" disabled={busy || !ready}>
+        {busy ? "Adding…" : "Add"}
+      </button>
+      <button type="button" className="link-btn" onClick={() => (setAdding(false), setError(""))}>
+        Cancel
+      </button>
+      {error && <span className="field-error">{error}</span>}
+    </form>
+  );
+}
+
 // 2b. What was still owed from before this session (last year, or the old
 // fee system), kept apart from this year's months. Owners and admins can
 // add it per fee type; it's due now and Collect takes it first.
@@ -587,6 +646,18 @@ function FeeLine({ due, tone, showLabel = false, canEdit, onChanged }) {
     }
   }
 
+  async function remove() {
+    setBusy(true);
+    setError("");
+    try {
+      await removeDue(due.id);
+      onChanged();
+    } catch {
+      setError("Couldn’t remove it. A payment may already use it.");
+      setBusy(false);
+    }
+  }
+
   const sub = [
     n(due.amount) > 0 && rupees(due.amount),
     n(due.paid) > 0 && !settled && `${rupees(due.paid)} paid`,
@@ -606,6 +677,7 @@ function FeeLine({ due, tone, showLabel = false, canEdit, onChanged }) {
             {due.concession_reason || "No remark (given before remarks were needed)"}
           </span>
         )}
+        {error && !editing && <span className="field-error">{error}</span>}
         {editing && (
           <form className="concession-edit concession-form" onSubmit={save}>
             <label className="concession-amount">
@@ -639,6 +711,11 @@ function FeeLine({ due, tone, showLabel = false, canEdit, onChanged }) {
         {canEdit && n(due.paid) === 0 && !settled && !editing && (
           <button className="link-btn" onClick={() => setEditing(true)}>
             {n(due.concession) > 0 ? "Change concession" : "Give concession"}
+          </button>
+        )}
+        {canEdit && isMisc(due) && n(due.paid) === 0 && !editing && (
+          <button className="link-btn is-danger" disabled={busy} onClick={remove}>
+            {busy ? "Removing…" : "Remove charge"}
           </button>
         )}
       </div>

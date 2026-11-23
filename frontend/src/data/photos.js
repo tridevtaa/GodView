@@ -1,24 +1,25 @@
 import { uploadJoinPhoto, uploadPhoto } from "./api.js";
 
-const SIZE = 400; // square, px: sharp on tiles and profiles, even on phones
-// WebP at this quality averages about 11 KB per photo (JPEG about 22 KB, the
-// camera originals 1 to 10 MB). Browsers that can't make WebP get JPEG.
+// The longest side, px. The whole photo is kept (tiles crop it on screen),
+// so the pop-up on the profile shows all of it. WebP at this quality is
+// roughly 15 to 30 KB (the camera originals 1 to 10 MB). Browsers that
+// can't make WebP get JPEG.
+const SIZE = 600;
 const WEBP_QUALITY = 0.72;
 const JPEG_QUALITY = 0.75;
 
 const encode = (canvas, type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 
-// Centre-crops and scales an image file to a small SIZE×SIZE photo.
+// Scales an image file down so its longest side is at most SIZE, uncropped.
 export async function toThumbnail(file) {
   // Some WebKit versions reject the imageOrientation option outright; retry
   // without it rather than losing the photo over EXIF rotation.
   const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(() => createImageBitmap(file));
-  const side = Math.min(bitmap.width, bitmap.height);
+  const scale = Math.min(1, SIZE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = SIZE;
-  canvas
-    .getContext("2d")
-    .drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, SIZE, SIZE);
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
   const webp = await encode(canvas, "image/webp", WEBP_QUALITY);
   const blob = webp?.type === "image/webp" ? webp : await encode(canvas, "image/jpeg", JPEG_QUALITY);
@@ -34,7 +35,7 @@ export async function savePhoto(schoolId, kind, person, file) {
 
 // Makes a small copy of a photo hosted elsewhere (the old ERP's storage) and
 // keeps it as the person's photo. Full-size camera photos (often 1 to 10 MB)
-// are too heavy for phones; the copy is SIZE×SIZE, about 30 KB.
+// are too heavy for phones; the copy is at most SIZE px on its longest side.
 export async function copyHostedPhoto(schoolId, kind, person) {
   const res = await fetch(person.photo_url, { mode: "cors", cache: "no-store" });
   if (!res.ok) throw new Error(`photo-${res.status}`);

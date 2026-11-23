@@ -547,13 +547,31 @@ function StudentHero({ person, mode, school, schoolId, sessionId, routes, isAdmi
   );
 }
 
-// The student's photo; staff who can write tap it to add or change it.
+// The student's photo. Tapping it opens it large; staff who can write get
+// a Replace photo button there. With no photo yet, it goes straight to the
+// file picker.
 function EditablePhoto({ person, kind, schoolId, canWrite, onSaved }) {
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [viewing, setViewing] = useState(false);
+  const hasPhoto = Boolean(person.photo_src || person.has_photo || person.photo_url);
+  const closeView = useBackToClose(viewing, () => setViewing(false));
+
+  // Esc closes the pop-up only, not the profile behind it.
+  useEffect(() => {
+    if (!viewing) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      e.stopPropagation();
+      if (!busy) closeView();
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [viewing, busy, closeView]);
+
   const img = <Photo person={person} className="ig-photo-img" />;
-  if (!canWrite) return <div className="ig-photo">{img}</div>;
+  if (!canWrite && !hasPhoto) return <div className="ig-photo">{img}</div>;
 
   async function onFile(e) {
     const file = e.target.files?.[0];
@@ -571,17 +589,47 @@ function EditablePhoto({ person, kind, schoolId, canWrite, onSaved }) {
     }
   }
 
-  const label = person.has_photo || person.photo_url ? "Change photo" : "Add photo";
+  const label = hasPhoto ? "View photo" : "Add photo";
   return (
     <div className="ig-photo-wrap">
-      <button type="button" className={`ig-photo is-editable${busy ? " is-busy" : ""}`} onClick={() => input.current.click()} disabled={busy} title={label} aria-label={label}>
+      <button
+        type="button"
+        className={`ig-photo is-editable${hasPhoto ? " is-viewable" : ""}${busy ? " is-busy" : ""}`}
+        onClick={() => (hasPhoto ? (setError(""), setViewing(true)) : input.current.click())}
+        disabled={busy && !viewing}
+        title={label}
+        aria-label={label}
+      >
         {img}
-        <span className="ig-photo-hint" aria-hidden="true">
-          {busy ? <span className="spinner" /> : <Icon name="camera" size={22} />}
-        </span>
+        {(!hasPhoto || (busy && !viewing)) && (
+          <span className="ig-photo-hint" aria-hidden="true">
+            {busy ? <span className="spinner" /> : <Icon name="camera" size={22} />}
+          </span>
+        )}
       </button>
-      <input ref={input} type="file" accept="image/*" hidden onChange={onFile} />
-      {error && <p className="field-error">{error}</p>}
+      {canWrite && <input ref={input} type="file" accept="image/*" hidden onChange={onFile} />}
+      {error && !viewing && <p className="field-error">{error}</p>}
+      {viewing &&
+        createPortal(
+          <div className="photo-view" onMouseDown={(e) => e.target === e.currentTarget && !busy && closeView()}>
+            <section className="photo-view-box" role="dialog" aria-modal="true" aria-label={`${person.name}'s photo`}>
+              <button type="button" className="photo-view-close" onClick={closeView} disabled={busy} aria-label="Close" autoFocus>
+                <Icon name="x" size={18} />
+              </button>
+              <Photo person={person} className="photo-view-img" />
+              {canWrite && (
+                <footer className="photo-view-foot">
+                  {error && <p className="field-error">{error}</p>}
+                  <button type="button" className="btn btn-primary" disabled={busy} onClick={() => input.current.click()}>
+                    {busy ? <span className="spinner" /> : <Icon name="camera" size={16} />}
+                    {busy ? "Uploading…" : "Replace photo"}
+                  </button>
+                </footer>
+              )}
+            </section>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
