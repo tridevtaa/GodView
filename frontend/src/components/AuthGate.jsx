@@ -16,7 +16,10 @@ const ParentApp = lazy(() => import("./ParentApp.jsx"));
 const Landing = lazy(() => import("./Landing.jsx"));
 
 // { user: { email, displayName, photoURL }, school, role, setSchool }
-const AuthContext = createContext(null);
+// One context for the life of the page: a hot reload in development would
+// otherwise make a new one, and screens reading it get null ("Cannot
+// destructure property 'school' of useAuth()").
+const AuthContext = import.meta.hot ? (globalThis.__godviewAuthContext ??= createContext(null)) : createContext(null);
 export const useAuth = () => useContext(AuthContext);
 export const useUser = () => useContext(AuthContext)?.user;
 

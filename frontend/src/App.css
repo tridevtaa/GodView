@@ -24279,3 +24279,11 @@ button.hc-card:hover .hc-value {
 .link-btn.is-danger {
   color: var(--danger, #c0392b);
 }
+
+/* The reason a list didn't load, small under the message (usePeople errorText) */
+.notice-detail {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  opacity: 0.75;
+}

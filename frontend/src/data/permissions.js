@@ -34,7 +34,8 @@ export function defaultLevel(role, area) {
 
 export const defaultsFor = (role) => Object.fromEntries(AREAS.map(([a]) => [a, defaultLevel(role, a)]));
 
-export const PermsContext = createContext(null);
+// Kept across hot reloads in development (see AuthContext in AuthGate.jsx).
+export const PermsContext = import.meta.hot ? (globalThis.__godviewPermsContext ??= createContext(null)) : createContext(null);
 
 // The signed-in person's levels: the role's defaults at once, then what
 // the owner set.

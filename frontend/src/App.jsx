@@ -260,7 +260,7 @@ export default function App() {
   const sessionId = pickedSession ?? currentSession?.id;
   // Fees, Requests and Team work on the session's students.
   const dataMode = mode === "employees" ? "employees" : "students";
-  const { people, loading, source, add, patch, drop, reload, revalidate } = usePeople(dataMode, school.id, sessionId);
+  const { people, loading, source, errorText, add, patch, drop, reload, revalidate } = usePeople(dataMode, school.id, sessionId);
 
   // Past sessions are history: shown, not edited.
   const viewOnly = mode !== "employees" && Boolean(currentSession) && sessionId !== currentSession.id;
@@ -1165,6 +1165,7 @@ export default function App() {
         {!loading && source === "error" && (
           <p className="notice notice-error">
             Couldn’t load {mode}. Check your connection, or ask your school’s administrator for access.
+            {errorText && <span className="notice-detail">{errorText}</span>}
           </p>
         )}
 
