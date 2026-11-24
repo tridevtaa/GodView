@@ -251,7 +251,13 @@ export async function withPhotoUrls(people) {
     else missing.push(path);
   }
   for (let i = 0; i < missing.length; i += 500) {
-    const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(missing.slice(i, i + 500), SIGNED_FOR));
+    // Photos are extra: if their links can't be made, the list still loads
+    // (initials show instead) rather than failing as a whole.
+    const signed = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrls(missing.slice(i, i + 500), SIGNED_FOR)
+      .then(must)
+      .catch((err) => (console.warn("[photos] couldn't sign photo links", err), []));
     signed.forEach((s) => {
       if (!s.signedUrl) return;
       urls.set(s.path, s.signedUrl);
