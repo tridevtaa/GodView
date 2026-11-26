@@ -32,7 +32,9 @@ export function SortArrow({ sort, onSort }) {
 }
 
 // bus/onBus: Transport, "bus" (on the bus) or "none" (not); for those who see transport.
-export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, need, onNeed, bus = null, onBus, status, onStatus, shown }) {
+// gender/onGender: "F" (girls), "M" (boys) or "none" (not recorded); null is everyone.
+// fee/onFee: "month" shows only those with a fee due this month (monthName) still unpaid; for fee readers.
+export default function FilterSheet({ grades, picked, onPick, sort, onSort, withSort, withFee, need, onNeed, bus = null, onBus, gender = null, onGender, fee = null, onFee, monthName, status, onStatus, shown }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -41,12 +43,14 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
     return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
-  const on = (picked.length ? 1 : 0) + (need ? 1 : 0) + (bus ? 1 : 0) + (status !== "active" ? 1 : 0);
+  const on = (picked.length ? 1 : 0) + (need ? 1 : 0) + (bus ? 1 : 0) + (gender ? 1 : 0) + (fee ? 1 : 0) + (status !== "active" ? 1 : 0);
   const toggle = (g) => onPick(grades.map((o) => o.value).filter((v) => (v === g ? !picked.includes(v) : picked.includes(v))));
   const clear = () => {
     onPick([]);
     onNeed?.(null);
     onBus?.(null);
+    onGender?.(null);
+    onFee?.(null);
     onStatus("active");
   };
   const sorts = [["grade", "Grade"], ...(withFee ? [["fee", "Fee due"]] : []), ["perf", "Results"]];
@@ -107,6 +111,30 @@ export default function FilterSheet({ grades, picked, onPick, sort, onSort, with
                     </button>
                   ))}
                 </div>
+                {onFee && (
+                  <>
+                    <h3>Fees</h3>
+                    <div className="filter-chips">
+                      {[[null, "All"], ["month", `Due in ${monthName}`]].map(([v, label]) => (
+                        <button key={label} type="button" className={`chip-btn${fee === v ? " is-on" : ""}`} onClick={() => onFee(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {onGender && (
+                  <>
+                    <h3>Gender</h3>
+                    <div className="filter-chips">
+                      {[[null, "All"], ["F", "Girls"], ["M", "Boys"], ["none", "Not set"]].map(([v, label]) => (
+                        <button key={label} type="button" className={`chip-btn${gender === v ? " is-on" : ""}`} onClick={() => onGender(v)}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {onBus && (
                   <>
                     <h3>Transport</h3>

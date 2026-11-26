@@ -946,6 +946,29 @@ export async function transportBalances(schoolId, sessionId) {
   );
 }
 
+// Students list "Fee due this month": what's still unpaid on dues whose due
+// date falls in `month` ("YYYY-MM"), in this session. Arrears from earlier
+// months aren't counted. Returns Map(student_id -> amount). Fee readers
+// only (fee_invoices' access rules apply through the view).
+export async function monthDues(schoolId, sessionId, month) {
+  const [y, m] = month.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate();
+  const rows = await all(() =>
+    supabase
+      .from("fee_invoice_balances")
+      .select("id, student_id, balance")
+      .eq("school_id", schoolId)
+      .eq("session_id", sessionId)
+      .gte("due_date", `${month}-01`)
+      .lte("due_date", `${month}-${String(last).padStart(2, "0")}`)
+      .gt("balance", 0.009)
+      .order("id")
+  );
+  const due = new Map();
+  for (const r of rows) due.set(r.student_id, (due.get(r.student_id) ?? 0) + Number(r.balance));
+  return due;
+}
+
 // Payments dated today (Home's Today's collection), cancelled ones too.
 export async function paymentsOn(schoolId, day) {
   return must(
