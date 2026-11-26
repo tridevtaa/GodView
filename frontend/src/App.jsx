@@ -17,7 +17,7 @@ import HomePage from "./components/HomePage.jsx";
 import ClassAllocationGate from "./components/ClassAllocationGate.jsx";
 import NoticeBoard from "./components/NoticeBoard.jsx";
 import CalendarPage from "./components/CalendarPage.jsx";
-import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, sessionResultPercents, staffInbox } from "./data/api.js";
+import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, monthDues, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -40,6 +40,9 @@ const SEARCH_KEYS = {
   students: ["name", "parent_name", "mother_name", "admission_no", "class", "section", "parent_phone", "srn", "city"],
   employees: ["name", "designation", "department", "employee_no"],
 };
+
+// The Students tile's label for the gender filter.
+const GENDER_WHO = { F: "Girls", M: "Boys", none: "Students without a gender" };
 
 
 // Each screen's code loads when it's first needed, and is fetched in the
@@ -122,6 +125,15 @@ export default function App() {
   const [needPick, setNeedPick] = useState(null);
   // Transport: everyone, only those on the bus ("bus"), or those not on it ("none")
   const [busPick, setBusPick] = useState(null);
+  // Gender: everyone, girls ("F"), boys ("M") or those with none recorded ("none")
+  const [genderPick, setGenderPick] = useState(null);
+  // Fees: everyone, or only those with a fee due this month still unpaid ("month")
+  const [feePick, setFeePick] = useState(null);
+  // This month's unpaid dues per student (Map), loaded when feePick is on; "error" if that failed
+  const [monthDue, setMonthDue] = useState(null);
+  const now = new Date();
+  const thisMonth = now.toLocaleDateString("en-CA").slice(0, 7); // "YYYY-MM", device time
+  const monthName = now.toLocaleDateString("en-IN", { month: "long" });
   const [statusPick, setStatusPick] = useState("active"); // active | inactive
   const [importing, setImporting] = useState(false);
   const [pickedSession, setPickedSession] = useState(null);
@@ -294,9 +306,11 @@ export default function App() {
     if (mode === "students" && pickedGrades.length) rows = rows.filter((p) => pickedGrades.includes(p.class));
     if (mode === "students" && NEEDS[needPick]) rows = rows.filter(NEEDS[needPick].test);
     if (mode === "students" && busPick) rows = rows.filter((p) => Boolean(p.uses_bus) === (busPick === "bus"));
+    if (mode === "students" && genderPick) rows = rows.filter((p) => (genderPick === "none" ? !p.gender : p.gender === genderPick));
+    if (mode === "students" && feePick === "month") rows = monthDue instanceof Map ? rows.filter((p) => monthDue.has(p.id)) : [];
     if (mode === "students" && statusPick !== "all") rows = rows.filter((p) => (p.status || "active") === statusPick);
     return rows;
-  }, [current, mode, pickedGrades, needPick, busPick, statusPick]);
+  }, [current, mode, pickedGrades, needPick, busPick, genderPick, feePick, monthDue, statusPick]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -499,7 +513,7 @@ export default function App() {
   }, [mode, currentSession, viewOnly, leads, todayIso, current, perms.attendance]);
 
   const insHere = isStudents ? insR : insS;
-  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || busPick || statusPick !== "active"));
+  const filtered = Boolean(query.trim()) || (isStudents && (pickedGrades.length > 0 || needPick || busPick || genderPick || feePick || statusPick !== "active"));
   const showInsights = insHere.on && !filtered;
   // Today's attendance for who's showing. The school's numbers are per class,
   // so they narrow by grade but not by a search; a teacher's are per student.
@@ -510,7 +524,7 @@ export default function App() {
       const own = today.own.filter((r) => ids.has(r.student_id));
       return { present: own.filter((r) => r.status === "present" || r.status === "late").length, marked: own.length };
     }
-    if (today?.rows && !query.trim() && !needPick && !busPick && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
+    if (today?.rows && !query.trim() && !needPick && !busPick && !genderPick && !feePick && statusPick === "active") return attendanceTotals(today.rows.filter((r) => pickedGrades.includes(r.class)));
     return null;
   })();
 
@@ -521,15 +535,18 @@ export default function App() {
       // One tile: how many students, with who's inactive and today's attendance
       const inactive = visible.filter((p) => p.status === "inactive").length;
       const present = todayShown?.marked ? `${todayShown.present.toLocaleString("en-IN")} present today` : null;
-      const who = query.trim() ? "Matching students" : NEEDS[needPick] ? NEEDS[needPick].title : busPick ? (busPick === "bus" ? "Students on the bus" : "Students not on the bus") : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
+      // This month's unpaid total for the students showing
+      const monthTotal = feePick && monthDue instanceof Map ? visible.reduce((t, p) => t + (monthDue.get(p.id) ?? 0), 0) : 0;
+      const who = query.trim() ? "Matching students" : NEEDS[needPick] ? NEEDS[needPick].title : busPick ? (busPick === "bus" ? "Students on the bus" : "Students not on the bus") : genderPick ? (statusPick === "inactive" ? `Inactive ${GENDER_WHO[genderPick].toLowerCase()}` : GENDER_WHO[genderPick]) : feePick ? `Fee due in ${monthName}` : statusPick === "active" ? "Active students" : statusPick === "inactive" ? "Inactive students" : leads ? "Students" : "My students";
       return [
         {
           color: "indigo",
           label: pickedGrades.length && !query.trim() && !needPick && !busPick ? `${who} in ${gradesText(pickedGrades)}` : who,
           // Active students only, unless the filter asks for inactive ones
-          value: loading ? undefined : statusPick === "inactive" ? visible.length : visible.length - inactive,
-          note: ((inactive > 0 && statusPick !== "inactive") || present || todayShown?.notMarked > 0) && (
+          value: loading || (feePick && monthDue === null) ? undefined : statusPick === "inactive" ? visible.length : visible.length - inactive,
+          note: ((inactive > 0 && statusPick !== "inactive") || present || todayShown?.notMarked > 0 || monthTotal > 0) && (
             <span className="sw-facts">
+              {monthTotal > 0 && <span>₹{Math.round(monthTotal).toLocaleString("en-IN")} due in {monthName}</span>}
               {inactive > 0 && statusPick !== "inactive" && <span>{inactive.toLocaleString("en-IN")} inactive</span>}
               {present &&
                 (seesAttendance ? (
@@ -591,6 +608,26 @@ export default function App() {
   // { student } when one was tapped. feesAt nudges the Fees page to refresh.
   const [collect, setCollect] = useState(null);
   const [feesAt, setFeesAt] = useState(0);
+  // Past sessions, and people who can't see fees, don't get the fee filter
+  useEffect(() => {
+    if (viewOnly || !seesFees) setFeePick(null);
+  }, [viewOnly, seesFees]);
+  // "Fee due this month": this month's unpaid dues, again after a fee is collected.
+  useEffect(() => {
+    if (feePick !== "month" || !sessionId) {
+      setMonthDue(null);
+      return;
+    }
+    // A refresh keeps the list on screen until the new figures arrive
+    let gone = false;
+    monthDues(school.id, sessionId, thisMonth).then(
+      (due) => !gone && setMonthDue(due),
+      () => !gone && setMonthDue("error")
+    );
+    return () => {
+      gone = true;
+    };
+  }, [feePick, school.id, sessionId, thisMonth, feesAt]);
   // The common search: the session's students (kept from the Students
   // load, so it works on every page) and a conversation to open in Inbox.
   const [searchStudents, setSearchStudents] = useState([]);
@@ -735,6 +772,8 @@ export default function App() {
     setPickedGrades(grade ? [grade] : []);
     setNeedPick(null);
     setBusPick(null);
+    setGenderPick(null);
+    setFeePick(null);
     setQuery("");
   };
   const actions = (...kinds) => ({
@@ -1168,6 +1207,9 @@ export default function App() {
             {errorText && <span className="notice-detail">{errorText}</span>}
           </p>
         )}
+        {isStudents && feePick && monthDue === "error" && (
+          <p className="notice notice-error">Couldn’t load this month’s fee dues. Check your connection and try again.</p>
+        )}
 
         {!loading && isStudents && !isAdmin && !isPrincipal && current.length === 0 && (
           <p className="notice">
@@ -1207,6 +1249,11 @@ export default function App() {
               onNeed={isAdmin ? setNeedPick : null}
               bus={busPick}
               onBus={seesTransport ? setBusPick : null}
+              gender={genderPick}
+              onGender={setGenderPick}
+              fee={feePick}
+              onFee={seesFees && !viewOnly ? setFeePick : null}
+              monthName={monthName}
               status={statusPick}
               onStatus={setStatusPick}
               shown={visible.length}
@@ -1256,7 +1303,7 @@ export default function App() {
           )}
         </div>
 
-        {loading ? (
+        {loading || (isStudents && feePick && monthDue === null) ? (
           <div className="grid" aria-busy="true">
             {Array.from({ length: 10 }, (_, i) => (
               <div key={i} className="card card-skeleton" />
@@ -1275,14 +1322,14 @@ export default function App() {
           <div className="empty">
             <p className="empty-title">No {mode} found</p>
             <p>
-              {query ? `Nothing matches “${query}”` : `No ${statusPick} students`}
+              {query ? `Nothing matches “${query}”` : feePick && monthDue instanceof Map ? `No ${monthName} fees left to collect` : `No ${statusPick} students`}
               {pickedGrades.length ? ` in ${gradesText(pickedGrades)}` : ""}.
             </p>
           </div>
         ) : (
           <Grid
             items={ordered}
-            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${busPick}|${statusPick}`}
+            resetKey={`${mode}|${query}|${pickedGrades.join(",")}|${needPick}|${busPick}|${genderPick}|${feePick}|${statusPick}`}
             render={(p, i) => <PersonCard key={p.id} person={p} mode={mode} index={i} showFee={seesFees} onOpen={() => openStudent(p.id)} />}
           />
         )}
