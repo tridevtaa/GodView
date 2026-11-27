@@ -32,10 +32,12 @@ export function downloadCsv(headers, rows, filename) {
 // Written out, which the student import reads back too
 const GENDER_WORD = { M: "Male", F: "Female" };
 
-export function downloadStudentsCsv(people, filename) {
+// fees: extra columns, one per fee in the structure ({ header, amount(person) }),
+// e.g. Tuition fee and Transport fee, each the student's own amount.
+export function downloadStudentsCsv(people, filename, fees = []) {
   downloadCsv(
-    COLUMNS.map(([h]) => h),
-    people.map((p) => COLUMNS.map(([, k]) => (k === "gender" ? GENDER_WORD[p.gender] : p[k]))),
+    [...COLUMNS.map(([h]) => h), ...fees.map((f) => f.header)],
+    people.map((p) => [...COLUMNS.map(([, k]) => (k === "gender" ? GENDER_WORD[p.gender] : p[k])), ...fees.map((f) => f.amount(p))]),
     filename
   );
 }

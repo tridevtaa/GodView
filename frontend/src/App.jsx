@@ -1307,7 +1307,7 @@ export default function App() {
               {mode === "students" && (isAdmin || isPrincipal) && !viewOnly && source === "supabase" && school.plan !== "premium" && (
                 <InsightsButton section="results" label="Results insights" />
               )}
-              {isAdmin && !computerOnly && !loading && <ExportButton school={school} role={role} people={current} preselect={visible} label={`students-${currentLabel}`} />}
+              {isAdmin && !computerOnly && !loading && <ExportButton school={school} sessionId={sessionId} role={role} people={current} preselect={visible} label={`students-${currentLabel}`} />}
               {canEdit && !computerOnly && (
                 <button className="btn btn-secondary" onClick={() => setImporting(true)} aria-label="Import" title="Import">
                   <Icon name="upload" />

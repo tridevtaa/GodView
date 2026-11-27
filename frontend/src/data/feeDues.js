@@ -10,6 +10,16 @@ export const nextMonth = (p) => {
   return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
 };
 export const isTransport = (name) => /transport|\bbus\b|\bvan\b|conveyance/i.test(name ?? "");
+const inStreams = (streams, stream) => !streams || streams.some((x) => x.trim().toLowerCase() === (stream ?? "").trim().toLowerCase());
+const lineRank = (l) => (!l.class ? 0 : !l.streams ? 1 : 2);
+// The fee_schedule line a student pays for one fee: class and stream, then
+// class, then all. A fee by bus stop: the line for the student's stop, if they ride the bus.
+export const bestLine = (lines, s) =>
+  lines.some((l) => l.stop_id)
+    ? s.uses_bus
+      ? lines.find((l) => l.stop_id && l.stop_id === s.bus_stop_id)
+      : undefined
+    : lines.filter((l) => (!l.class || l.class === s.class) && inStreams(l.streams, s.stream)).sort((a, b) => lineRank(b) - lineRank(a))[0];
 // Dues from before this session: the old system's balances, or last year
 // A one-off charge added on the student's Fees tab (add_misc_charge)
 export const isMisc = (d) => String(d?.period ?? "").startsWith("misc-");

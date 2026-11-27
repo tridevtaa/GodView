@@ -18,6 +18,7 @@ import {
   updateGrade,
 } from "../data/api.js";
 import { rupees } from "../data/money.js";
+import { bestLine } from "../data/feeDues.js";
 import Icon from "./Icon.jsx";
 import { useAuth } from "./AuthGate.jsx";
 
@@ -43,16 +44,6 @@ const TEMPLATE_GRADES = [
 
 const amountText = (n) => (n ? String(Number(n)) : "");
 const sameStreams = (a, b) => (a ?? []).map((x) => x.toLowerCase()).sort().join("|") === (b ?? []).map((x) => x.toLowerCase()).sort().join("|");
-const inStreams = (streams, stream) => !streams || streams.some((x) => x.trim().toLowerCase() === (stream ?? "").trim().toLowerCase());
-const rank = (l) => (!l.class ? 0 : !l.streams ? 1 : 2);
-// The line a student pays for a fee: class and stream, then class, then all.
-// A fee by bus stop: the line for the student's stop, if they ride the bus.
-const bestLine = (lines, s) =>
-  lines.some((l) => l.stop_id)
-    ? s.uses_bus
-      ? lines.find((l) => l.stop_id && l.stop_id === s.bus_stop_id)
-      : undefined
-    : lines.filter((l) => (!l.class || l.class === s.class) && inStreams(l.streams, s.stream)).sort((a, b) => rank(b) - rank(a))[0];
 // Transport-sounding names start out charged by bus stop.
 const TRANSPORT_NAME = /transport|\bbus\b|\bvan\b|conveyance/i;
 // Instalments due in an earlier month, e.g. "Jun with May".
