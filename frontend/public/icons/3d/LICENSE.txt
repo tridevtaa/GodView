@@ -7,7 +7,7 @@ Two sets of 3D pictures live here.
 
 2. Fluent Emoji by Microsoft, MIT License (below), for pictures 3dicons
    doesn't have: backpack, door, graduation-cap, house, id-card, label,
-   place-of-worship, school, cake (Birthday cake).
+   place-of-worship, school, birthday-cake.
 
 ----------------------------------------------------------------------
 

@@ -32,7 +32,9 @@ const digits = (n = "") => String(n).replace(/\D/g, "").slice(-10);
 // Facts shown as an icon and the value (the label is the tooltip); facts
 // without an icon keep a small label.
 // Each detail's picture: a small 3D image in public/icons/3d/<name>.png.
-// To redraw one, save a new square PNG under the same name.
+// To redraw one, save it under a new name: browsers and the app's offline
+// copy keep these pictures for days, so a file changed in place keeps
+// showing the old one.
 const FACT_PIC = {
   Father: "man",
   Mother: "woman",
@@ -40,7 +42,7 @@ const FACT_PIC = {
   "Father phone": "mobile-phone",
   "Mother phone": "mobile-phone",
   Email: "email",
-  "Date of birth": "cake",
+  "Date of birth": "birthday-cake",
   Category: "label",
   Religion: "place-of-worship",
   Aadhaar: "id-card",
