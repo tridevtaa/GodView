@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { listExportRequests, requestExport, consumeExportRequest } from "../data/api.js";
+import { listExportRequests, requestExport, consumeExportRequest, listFeeHeads, listPlans, listSchedule } from "../data/api.js";
 import { downloadStudentsCsv } from "../data/exportCsv.js";
+import { bestLine } from "../data/feeDues.js";
 import StudentPicker, { describePicked } from "./StudentPicker.jsx";
 import { gradeRank } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
@@ -13,17 +14,37 @@ const byClass = (a, b) =>
   (a.name ?? "").localeCompare(b.name ?? "");
 const genderRank = (p) => ({ M: 0, F: 1 })[p.gender] ?? 2;
 const byGender = (a, b) => genderRank(a) - genderRank(b) || byClass(a, b);
+const FREQUENCY = { monthly: "Monthly", quarterly: "Quarterly", half_yearly: "Half-yearly", annual: "Annual", one_time: "One time" };
+
+// One column per fee in the session's structure (Tuition, Transport…): the
+// student's amount per instalment, by grade or by bus stop. None if fees
+// can't be read, so the export still works.
+async function feeColumns(schoolId, sessionId) {
+  if (!sessionId) return [];
+  try {
+    const [heads, plans, schedule] = await Promise.all([listFeeHeads(schoolId), listPlans(schoolId), listSchedule(sessionId)]);
+    return heads.flatMap((h) => {
+      const lines = schedule.filter((l) => l.head_id === h.id && Number(l.amount) > 0);
+      if (!lines.length) return [];
+      const often = [...new Set(lines.map((l) => (l.plan_id ? plans.find((p) => p.id === l.plan_id)?.name : FREQUENCY[l.frequency])))];
+      return [{ header: often.length === 1 && often[0] ? `${h.name} (${often[0]})` : h.name, amount: (p) => bestLine(lines, p)?.amount ?? "" }];
+    });
+  } catch {
+    return [];
+  }
+}
 
 // Owners pick and download. Admins pick and request; once the owner approves,
 // one download of exactly that list is allowed. Teachers don't get this button.
 // people: everyone this session. preselect: who's showing under the filters.
-export default function ExportButton({ school, role, people, preselect, label }) {
+export default function ExportButton({ school, sessionId, role, people, preselect, label }) {
   const [requests, setRequests] = useState([]);
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const isOwner = role === "owner";
   const filename = `${school.slug}-${label}-${new Date().toISOString().slice(0, 10)}.csv`;
+  const download = async (list) => downloadStudentsCsv(list, filename, await feeColumns(school.id, sessionId));
 
   const refresh = useCallback(async () => {
     if (isOwner) return;
@@ -68,7 +89,7 @@ export default function ExportButton({ school, role, people, preselect, label })
             // Not used up if none of them are in the session on screen
             list.length
               ? run(async () => {
-                  if (await consumeExportRequest(approved.id)) downloadStudentsCsv(list, filename);
+                  if (await consumeExportRequest(approved.id)) await download(list);
                   else setError("That approval was already used.");
                 })
               : setError("Those students aren’t in this session.")
@@ -107,17 +128,11 @@ export default function ExportButton({ school, role, people, preselect, label })
           error={error}
           onClose={() => setPicking(false)}
           onDone={(list, selection, reason) =>
-            isOwner
-              ? (downloadStudentsCsv(list, filename), setPicking(false))
-              : run(async () => {
-                  await requestExport(
-                    school.id,
-                    reason,
-                    list.map((p) => p.id),
-                    selection
-                  );
-                  setPicking(false);
-                })
+            run(async () => {
+              if (isOwner) await download(list);
+              else await requestExport(school.id, reason, list.map((p) => p.id), selection);
+              setPicking(false);
+            })
           }
         />
       )}
