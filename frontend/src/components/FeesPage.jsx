@@ -10,7 +10,9 @@ import OpeningBalances from "./OpeningBalances.jsx";
 import FeeReport from "./FeeReport.jsx";
 import FeeStructure from "./FeeStructure.jsx";
 import PaymentLog from "./PaymentLog.jsx";
-import FeesTransport, { useTransportPending } from "./FeesTransport.jsx";
+import FeesTransport, { transportShownRows, useTransportPending } from "./FeesTransport.jsx";
+import { downloadCsv } from "../data/exportCsv.js";
+import FeesFilter, { NO_FEE_FILTER, feeFilterMatch } from "./FeesFilter.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
@@ -31,13 +33,18 @@ function sessionMonths(session) {
 // get Structure (what each grade pays).
 // pastSession: a past session is open (picked on Students); say which.
 // view, onView: which tab shows.
-export default function FeesPage({ computerOnly = false, school, role, session, pastSession = false, students, routes = [], grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened }) {
+export default function FeesPage({ computerOnly = false, school, role, session, pastSession = false, students, routes = [], grades, onGradesChanged, onChanged, view: tab, onView: setTab, onCollect, onOpenStudent, refreshAt = 0, onOpened, editsFees = false, onStructureRequests }) {
   const [summary, setSummary] = useState(() => (session ? peek(`fees:summary:${session.id}`) ?? null : null));
   const [monthly, setMonthly] = useState(() => (session ? peek(`fees:monthly:${session.id}`) ?? [] : []));
   const [byClass, setByClass] = useState(() => (session ? peek(`fees:class:${session.id}`) ?? [] : []));
   const [error, setError] = useState("");
   const [dialog, setDialog] = useState(null); // "balances"
   const [showAll, setShowAll] = useState(false);
+  // The Overview's two tabs, and the Filter that applies to both lists
+  const [feeTab, setFeeTab] = useState("monthly"); // "monthly" | "transport"
+  const [filter, setFilter] = useState(NO_FEE_FILTER);
+  const [transportScope, setTransportScope] = useState("now"); // "now" | "all"
+  const [transportRoute, setTransportRoute] = useState(null);
   // Premium: the AI card above the charts, and short lines by the figures
   const ins = useInsights(school, "fees", (role === "owner" || role === "admin" || role === "principal") && !pastSession);
   // Transport dues on their own (the Overview's Transport tile and list)
@@ -102,11 +109,17 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
   );
 
   // Full-fee defaulters: something is due and nothing has been paid this session.
-  const defaulters = useMemo(
-    () => students.filter((s) => s.fee_due > 0 && !(s.fee_paid > 0)).sort((a, b) => b.fee_due - a.fee_due),
-    [students]
+  // Both lists follow the Filter (grade, section, late only).
+  const owing = useMemo(
+    () => students.filter((s) => s.fee_due > 0 && feeFilterMatch(filter, s) && (!filter.late || s.fee_status === "overdue")).sort((a, b) => b.fee_due - a.fee_due),
+    [students, filter]
   );
-  const owing = useMemo(() => students.filter((s) => s.fee_due > 0).sort((a, b) => b.fee_due - a.fee_due), [students]);
+  const defaulters = useMemo(() => owing.filter((s) => !(s.fee_paid > 0)), [owing]);
+  // Transport dues, filtered the same way (the tile keeps the whole school's)
+  const transportShown = useMemo(
+    () => transport && { ...transport, list: transport.list.filter((t) => feeFilterMatch(filter, t.student) && (!filter.late || t.late)) },
+    [transport, filter]
+  );
 
   if (!session) return <p className="notice">Import your students first; fees are tracked per session.</p>;
 
@@ -154,7 +167,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
 
   if (isOwner && tab === "log") return <PaymentLog school={school} header={headerWith} />;
 
-  if (isOwner && tab === "structure")
+  // Owners save straight away; admins who edit fees send changes for approval
+  if ((isOwner || editsFees) && tab === "structure")
     return (
       <>
         {header}
@@ -164,6 +178,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
           grades={grades}
           onGradesChanged={onGradesChanged}
           students={students}
+          approver={isOwner}
+          onRequestsChanged={onStructureRequests}
           onChanged={() => {
             onChanged?.();
             load();
@@ -176,6 +192,31 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
   const collected = Number(summary?.collected) || 0;
   const notSetUp = summary && billed === 0;
   const list = showAll ? owing : defaulters;
+
+  // Export (owners): exactly the list on screen, with only name, roll no.,
+  // class, a parent phone and what's pending. The Transport tab's list
+  // follows its Due now / All pending switch and route too.
+  const exportRows =
+    feeTab === "monthly"
+      ? list.map((s) => ({ s, amount: s.fee_due }))
+      : (() => {
+          const t = transportShownRows(transportShown, routes, transportScope, transportRoute);
+          return t.shown.map((r) => ({ s: r.student, amount: t.amount(r) }));
+        })();
+  const downloadPending = () => {
+    const what = feeTab === "monthly" ? (showAll ? "fees-pending" : "fees-paid-nothing") : "transport-pending";
+    downloadCsv(
+      ["Name", "Roll no.", "Class", "Phone", feeTab === "monthly" ? "Fee pending" : "Transport pending"],
+      exportRows.map(({ s, amount }) => [
+        s.name,
+        s.roll_no,
+        gradeLabel(s.class) + (s.section ? ` ${s.section}` : ""),
+        s.parent_phone || s.father_phone || s.mother_phone,
+        Math.round(Number(amount) * 100) / 100,
+      ]),
+      `${school.slug}-${what}-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+  };
   // One tile: what's due now, with what's collected and what's still to come
   const tile = (
     <StatCards
@@ -209,7 +250,10 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
                 <button
                   type="button"
                   className="link-btn sw-link"
-                  onClick={() => document.getElementById("fees-transport")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  onClick={() => {
+                    setFeeTab("transport");
+                    setTimeout(() => document.getElementById("fees-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                  }}
                 >
                   See who owes
                 </button>
@@ -233,6 +277,8 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
             if (kind === "structure") setTab("structure");
             else {
               setShowAll(true);
+              setFeeTab("monthly");
+              setFilter(NO_FEE_FILTER);
               setTimeout(() => document.getElementById("fees-owing")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
             }
           }}
@@ -277,8 +323,45 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
         <FeesToday school={school} students={students} refreshAt={refreshAt} onOpenStudent={onOpenStudent} />
       )}
 
-      <FeesTransport pending={transport} routes={routes} onOpenStudent={onOpenStudent} onCollect={onCollect} />
+      <div className="fees-tabs-row" id="fees-tabs">
+        <div className="tabs fees-tabs" role="tablist" aria-label="Which fees">
+          {[
+            ["monthly", "Monthly fee"],
+            ["transport", "Transport"],
+          ].map(([v, l]) => (
+            <button key={v} type="button" role="tab" aria-selected={feeTab === v} className={feeTab === v ? "active" : ""} onClick={() => setFeeTab(v)}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="fees-tabs-actions">
+          <FeesFilter students={students} value={filter} onChange={setFilter} shown={feeTab === "monthly" ? list.length : transportShown?.list.length ?? 0} />
+          {isOwner && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={!exportRows.length}
+              onClick={downloadPending}
+              title={`Download ${exportRows.length} ${exportRows.length === 1 ? "student" : "students"}: name, roll no., class, phone and fee pending`}
+            >
+              <Icon name="download" />
+              <span className="btn-label">Export</span>
+            </button>
+          )}
+        </div>
+      </div>
 
+      {feeTab === "transport" ? (
+        <FeesTransport
+          pending={transportShown}
+          routes={routes}
+          filtered={filter !== NO_FEE_FILTER}
+          scope={transportScope}
+          onScope={setTransportScope}
+          routeId={transportRoute}
+          onRoute={setTransportRoute}
+          onOpenStudent={onOpenStudent} onCollect={onCollect} />
+      ) : (
       <section className="panel" id="fees-owing">
         <div className="panel-title panel-title-row">
           <h2>
@@ -313,6 +396,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
           </ul>
         )}
       </section>
+      )}
 
       {dialog === "balances" && (
         <Dialog title="Bring in old balances" onClose={() => setDialog(null)}>

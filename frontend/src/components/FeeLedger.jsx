@@ -184,8 +184,8 @@ export default function FeeLedger({ school, person, sessionId, canEdit, onChange
             canEdit &&
             payments.find((p) => p.receipt_no === receipt).status === "success" && (
               <CancelPayment
-                onConfirm={async () => {
-                  await cancelPayment(payments.find((p) => p.receipt_no === receipt).id);
+                onConfirm={async (reason) => {
+                  await cancelPayment(payments.find((p) => p.receipt_no === receipt).id, reason);
                   setReceipt(null);
                   await changed();
                 }}
@@ -762,9 +762,12 @@ function PaymentRow({ payment: p, dues, onOpen }) {
 }
 
 
-// In the receipt's toolbar: cancel the payment, after a second tap.
+// In the receipt's toolbar: cancel the payment, with a remark saying why.
 function CancelPayment({ onConfirm }) {
   const [asking, setAsking] = useState(false);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   if (!asking) {
     return (
       <button className="btn btn-secondary btn-sm" onClick={() => setAsking(true)}>
@@ -773,15 +776,35 @@ function CancelPayment({ onConfirm }) {
       </button>
     );
   }
+  const confirm = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await onConfirm(reason.trim());
+    } catch (err) {
+      setError(err?.message === "cancel-reason" ? "Add a remark saying why." : "Couldn’t cancel it. Check your connection.");
+      setBusy(false);
+    }
+  };
   return (
-    <span className="cancel-confirm">
-      <span className="row-sub">Cancel this payment?</span>
-      <button className="link-btn link-danger" onClick={onConfirm}>
-        Yes, cancel
+    <span className="cancel-confirm cancel-payment">
+      <input
+        className="input"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && reason.trim() && !busy && confirm()}
+        maxLength={200}
+        placeholder="Why is it being cancelled?"
+        aria-label="Remark"
+        autoFocus
+      />
+      <button className="link-btn link-danger" onClick={confirm} disabled={!reason.trim() || busy}>
+        {busy ? "Cancelling…" : "Yes, cancel"}
       </button>
-      <button className="link-btn" onClick={() => setAsking(false)}>
+      <button className="link-btn" onClick={() => (setAsking(false), setReason(""), setError(""))} disabled={busy}>
         No
       </button>
+      {error && <span className="row-sub cancel-error">{error}</span>}
     </span>
   );
 }

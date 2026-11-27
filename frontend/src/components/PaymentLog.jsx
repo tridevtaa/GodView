@@ -169,6 +169,7 @@ function LogRow({ row: r, open, onToggle }) {
   const details = [
     ["Logged at", when(r.at)],
     ["Event", cancelled ? "Payment cancelled" : "Payment received"],
+    ["Remark", cancelled ? r.cancel_reason : null],
     ["Amount", rupees(r.amount)],
     ["Method", [METHODS[r.method] ?? r.method, r.reference].filter(Boolean).join(" · ")],
     ["Receipt no.", r.receipt_no],
@@ -197,7 +198,7 @@ function LogRow({ row: r, open, onToggle }) {
             <span className="plog-meta">{[METHODS[r.method] ?? r.method, r.receipt_no].filter(Boolean).join(" · ")}</span>
           </strong>
           <span className="row-sub">
-            {[r.student?.name, r.collected_by ? `collected by ${r.collected_by}` : null, r.user_email ? `entered by ${r.user_email}` : null]
+            {[r.student?.name, cancelled && r.cancel_reason ? `“${r.cancel_reason}”` : null, r.collected_by ? `collected by ${r.collected_by}` : null, r.user_email ? `entered by ${r.user_email}` : null]
               .filter(Boolean)
               .join(" · ")}
           </span>

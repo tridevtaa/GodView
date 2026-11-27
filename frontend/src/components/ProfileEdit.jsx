@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { updateEmployee, updateStudent } from "../data/api.js";
+import { useEffect, useState } from "react";
+import { listPlans, setStudentFeePlan, studentFeePlan, updateEmployee, updateStudent } from "../data/api.js";
 import PlacePicker from "./PlacePicker.jsx";
 import TransportPicker from "./TransportPicker.jsx";
 import Icon from "./Icon.jsx";
@@ -30,7 +30,7 @@ const FIELDS = {
       ["mother_phone", "Mother phone", "tel"],
       ["email", "Email", "email"],
     ]],
-    ["Admission", [
+    ["Admission & fees", [
       ["admission_date", "Admission date", "date"],
       ["admission_type", "Admission type", ["", "New", "Old"]],
       ["admission_category", "Admission category", "text"],
@@ -71,7 +71,9 @@ const ID_TYPE_LABEL = { "": "Not set", aadhaar: "Aadhaar", pan: "PAN" };
 const optionLabel = (key, opt) =>
   key === "status" ? STATUS_LABEL[opt] : key === "gender" ? GENDER_LABEL[opt] : key === "id_type" ? ID_TYPE_LABEL[opt] : opt || "Not set";
 
-export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel, onDelete, routes = [] }) {
+// editsFees: this person can change fees, so the Admission step also has the
+// student's payment plan (onFeesChanged: their dues were regrouped).
+export default function ProfileEdit({ person, kind, sessionId, schoolId, onSaved, onCancel, onDelete, routes = [], editsFees = false, onFeesChanged }) {
   const fields = FIELDS[kind].flatMap(([, list]) => list);
   const initial = Object.fromEntries(
     fields.map(([key]) => [key, String(person[key] ?? (key === "status" ? "active" : ""))])
@@ -86,6 +88,37 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
   const [transport, setTransport] = useState({ uses_bus: Boolean(person.uses_bus), bus_stop_id: person.bus_stop_id ?? null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // The student's own payment plan this session: "" follows the fee structure.
+  const withPlan = editsFees && kind === "students" && Boolean(sessionId);
+  // The school's plans (Monthly, Quarterly, its own…) and the student's
+  // current one load separately: before the database has student plans, the
+  // list still shows and saving says it needs the update.
+  const planSchool = schoolId ?? person.school_id;
+  const [plans, setPlans] = useState(null);
+  const [planReady, setPlanReady] = useState(false);
+  const [startPlan, setStartPlan] = useState("");
+  const [plan, setPlan] = useState("");
+  useEffect(() => {
+    if (!withPlan || !planSchool) return;
+    let live = true;
+    listPlans(planSchool).then(
+      (list) => live && setPlans(list),
+      () => live && setPlans([])
+    );
+    studentFeePlan(person.id, sessionId).then(
+      (current) => {
+        if (!live) return;
+        setStartPlan(current ?? "");
+        setPlan(current ?? "");
+        setPlanReady(true);
+      },
+      () => live && setPlanReady(false)
+    );
+    return () => {
+      live = false;
+    };
+  }, [withPlan, planSchool, person.id, sessionId]);
+  const planChanged = withPlan && planReady && plan !== startPlan;
   // Edited in steps: the field groups (students then add home and bus).
   const steps = [...FIELDS[kind].map(([title, list]) => ({ title, keys: list.map(([k]) => k) })), ...(kind === "students" ? [{ title: "Home & bus", keys: [] }] : [])];
   const [step, setStep] = useState(0);
@@ -118,10 +151,12 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
       });
     }
   }
-  const dirty = Object.keys(changes).length > 0;
+  const dirty = Object.keys(changes).length > 0 || planChanged;
   const HOME_KEYS = ["address", "home_lat", "uses_bus", "bus_stop_id"];
   const stepChanged = (i) =>
-    steps[i].keys.some((k) => k in changes) || (steps[i].title === "Home & bus" && HOME_KEYS.some((k) => k in changes));
+    steps[i].keys.some((k) => k in changes) ||
+    (steps[i].title === "Home & bus" && HOME_KEYS.some((k) => k in changes)) ||
+    (steps[i].title === "Admission & fees" && planChanged);
   const last = step === steps.length - 1;
 
   async function save(e) {
@@ -137,7 +172,21 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
     setError("");
     try {
       const saved =
-        kind === "students" ? await updateStudent(person, sessionId, changes) : await updateEmployee(person, changes);
+        kind === "students"
+          ? Object.keys(changes).length
+            ? await updateStudent(person, sessionId, changes)
+            : person
+          : await updateEmployee(person, changes);
+      if (planChanged) {
+        try {
+          await setStudentFeePlan(person.id, sessionId, plan || null);
+          onFeesChanged?.();
+        } catch {
+          setError("Saved, but the payment plan couldn’t be changed. Try again.");
+          setSaving(false);
+          return;
+        }
+      }
       haptic("success");
       onSaved(saved);
     } catch {
@@ -180,6 +229,27 @@ export default function ProfileEdit({ person, kind, sessionId, onSaved, onCancel
                 )}
               </label>
             ))}
+            {group[0] === "Admission & fees" && withPlan && (
+              <label>
+                <span>Fee payment plan</span>
+                <select value={plan} onChange={(e) => setPlan(e.target.value)} disabled={plans === null || !planReady}>
+                  <option value="">As the fee structure</option>
+                  {(plans ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} · {p.months.length === 1 ? "once a year" : `${p.months.length} times a year`}
+                    </option>
+                  ))}
+                </select>
+                {plans !== null && !planReady && (
+                  <small className="row-sub">Payment plans need the latest database update before they can be set.</small>
+                )}
+                {planChanged && (
+                  <small className="row-sub">
+                    Monthly and other recurring fees are split this way, same total for the year. Paid dues stay as they are.
+                  </small>
+                )}
+              </label>
+            )}
           </div>
         </div>
       )}
