@@ -5,18 +5,23 @@ import { gradeOptions } from "./GradeFilter.jsx";
 import Icon from "./Icon.jsx";
 
 // Fees overview: one Filter button for the lists on both tabs (Monthly fee
-// and Transport). Grades, sections and "late only"; changes apply straight
+// and Transport). Grades, sections, active or inactive and "late only"; changes apply straight
 // away and the button counts what's on. Uses the Students page's filter
-// sheet styles. value: { grades: [], sections: [], late: false }.
-export const NO_FEE_FILTER = { grades: [], sections: [], late: false };
+// sheet styles. value: { grades: [], sections: [], late: false, status }.
+// status: "all", "active" or "inactive" (students who've left aren't listed).
+export const NO_FEE_FILTER = { grades: [], sections: [], late: false, status: "all" };
 
 export function feeFilterOn(f) {
-  return (f.grades.length ? 1 : 0) + (f.sections.length ? 1 : 0) + (f.late ? 1 : 0);
+  return (f.grades.length ? 1 : 0) + (f.sections.length ? 1 : 0) + (f.late ? 1 : 0) + (f.status !== "all" ? 1 : 0);
 }
 
-// Does a student pass the grade and section filters?
+// Does a student pass the grade, section and status filters?
 export function feeFilterMatch(f, s) {
-  return (!f.grades.length || f.grades.includes(s.class)) && (!f.sections.length || f.sections.includes(s.section ?? ""));
+  return (
+    (!f.grades.length || f.grades.includes(s.class)) &&
+    (!f.sections.length || f.sections.includes(s.section ?? "")) &&
+    (f.status === "all" || (f.status === "inactive") === (s.status === "inactive"))
+  );
 }
 
 export default function FeesFilter({ students, value, onChange, shown }) {
@@ -90,6 +95,18 @@ export default function FeesFilter({ students, value, onChange, shown }) {
                     </div>
                   </>
                 )}
+                <h3>Status</h3>
+                <div className="filter-chips">
+                  {[
+                    ["all", "All"],
+                    ["active", "Active"],
+                    ["inactive", "Inactive"],
+                  ].map(([v, label]) => (
+                    <button key={v} type="button" className={`chip-btn${value.status === v ? " is-on" : ""}`} onClick={() => set({ status: v })}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <h3>Dues</h3>
                 <div className="filter-chips">
                   {[
