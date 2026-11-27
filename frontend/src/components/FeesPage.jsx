@@ -12,7 +12,7 @@ import FeeStructure from "./FeeStructure.jsx";
 import PaymentLog from "./PaymentLog.jsx";
 import FeesTransport, { transportShownRows, useTransportPending } from "./FeesTransport.jsx";
 import { downloadCsv } from "../data/exportCsv.js";
-import FeesFilter, { NO_FEE_FILTER, feeFilterMatch } from "./FeesFilter.jsx";
+import FeesFilter, { NO_FEE_FILTER, feeFilterMatch, feeFilterOn } from "./FeesFilter.jsx";
 import Icon from "./Icon.jsx";
 import StatCards from "./StatCards.jsx";
 import { AiCard, InsightsButton, useInsights } from "./AiInsights.jsx";
@@ -355,7 +355,7 @@ export default function FeesPage({ computerOnly = false, school, role, session, 
         <FeesTransport
           pending={transportShown}
           routes={routes}
-          filtered={filter !== NO_FEE_FILTER}
+          filtered={feeFilterOn(filter) > 0}
           scope={transportScope}
           onScope={setTransportScope}
           routeId={transportRoute}
