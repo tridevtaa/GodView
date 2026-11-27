@@ -2759,27 +2759,55 @@ a:hover {
   }
 }
 
-/* A fee receipt prints in the top-left quarter of an A4 sheet (105 x 148 mm,
-   A6), with a dashed edge to cut along. The box is laid out 160 x 225.5 mm
-   and scaled down to 105 x 148, so it keeps its screen layout. */
+/* The receipt's copies scroll inside the pop-up on screen */
+.receipt-copies {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Only on paper (e.g. the parent copy of a fee receipt) */
+.print-only {
+  display: none !important;
+}
+
+/* A fee receipt prints twice across the top half of an A4 sheet: the school
+   copy on the left and the parent copy on the right, each 105 x 148 mm (a
+   quarter of the sheet), with dashed lines to cut along. Each copy is laid
+   out 160 mm wide and the pair is scaled down to fit, so they keep their
+   screen layout. */
 @page fee-receipt {
   size: A4;
   margin: 0;
 }
 
 @media print {
+  .print-only {
+    display: block !important;
+  }
+
+  span.print-only {
+    display: inline !important;
+  }
+
   .receipt-backdrop:has(.fee-receipt-modal) {
     page: fee-receipt;
     place-items: start; /* the pop-up's centring still applies to blocks in new browsers */
   }
 
   .receipt-backdrop .fee-receipt-modal {
-    width: 160mm !important;
-    min-height: 225.5mm; /* a long receipt runs on rather than being cut off */
+    width: 320mm !important;
     margin: 0 !important;
-    zoom: 0.65625; /* 105 / 160 */
-    border-right: 1.5px dashed #999;
+    zoom: 0.65625; /* 210 / 320 */
     border-bottom: 1.5px dashed #999;
+  }
+
+  .fee-receipt-modal .receipt-copies {
+    display: grid;
+    overflow: visible;
+    grid-template-columns: 1fr 1fr;
+    min-height: 225.5mm; /* 148 mm once scaled; a long receipt runs on */
   }
 
   .receipt-backdrop .fee-receipt-modal .receipt {
@@ -2789,6 +2817,18 @@ a:hover {
     padding: 12mm 14mm;
     break-inside: auto;
   }
+
+  .fee-receipt-modal .receipt + .receipt {
+    border-left: 1.5px dashed #999;
+  }
+}
+
+.receipt-copy {
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
 }
 
 /* --- Requests --- */

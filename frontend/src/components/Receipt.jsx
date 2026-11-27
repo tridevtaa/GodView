@@ -9,6 +9,8 @@ const fmt = (d) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", mon
 
 // Printable fee receipt. `dues` are the student's dues (to name what was paid).
 // actions: extra buttons in the toolbar (e.g. Cancel payment); not printed.
+// On paper: a school copy and a parent copy side by side, across the top half
+// of an A4 sheet (App.css, "fee-receipt").
 export default function Receipt({ school, person, payment, dues, onClose, idLabel = "Admission no.", actions = null }) {
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -41,88 +43,95 @@ export default function Receipt({ school, person, payment, dues, onClose, idLabe
           <p className="notice notice-error no-print">Cancelled: {payment.cancel_reason}</p>
         )}
 
-        <article className="receipt">
-          <header className="receipt-head">
-            {school.logo_path && <img src={logoUrl(school.logo_path)} alt="" />}
-            <div>
-              <h2>{school.name}</h2>
-              {address && <p>{address}</p>}
-              {(school.phone || school.email) && <p>{[school.phone, school.email].filter(Boolean).join(" · ")}</p>}
-            </div>
-          </header>
+        {/* Printed twice side by side, a school copy and a parent copy; the
+            second only shows on paper. */}
+        <div className="receipt-copies">
+          {["school", "parent"].map((copy) => (
+          <article className={`receipt${copy === "parent" ? " print-only" : ""}`} key={copy}>
+            <header className="receipt-head">
+              {school.logo_path && <img src={logoUrl(school.logo_path)} alt="" />}
+              <div>
+                <h2>{school.name}</h2>
+                {address && <p>{address}</p>}
+                {(school.phone || school.email) && <p>{[school.phone, school.email].filter(Boolean).join(" · ")}</p>}
+              </div>
+            </header>
 
-          <div className="receipt-title">
-            <span>Fee receipt</span>
-            {payment.status === "cancelled" && <span className="badge badge-danger">Cancelled</span>}
-          </div>
+            <div className="receipt-title">
+              <span>Fee receipt</span>
+              <span className="receipt-copy print-only">{copy === "school" ? "School copy" : "Parent copy"}</span>
+              {payment.status === "cancelled" && <span className="badge badge-danger">Cancelled</span>}
+            </div>
 
-          <dl className="receipt-meta">
-            <div>
-              <dt>Receipt no.</dt>
-              <dd>{payment.receipt_no}</dd>
-            </div>
-            <div>
-              <dt>Date</dt>
-              <dd>{fmt(payment.paid_on)}</dd>
-            </div>
-            <div>
-              <dt>Student</dt>
-              <dd>{person.name}</dd>
-            </div>
-            <div>
-              <dt>{idLabel}</dt>
-              <dd>{person.admission_no}</dd>
-            </div>
-            <div>
-              <dt>Class</dt>
-              <dd>{[gradeLabel(person.class), person.section].filter(Boolean).join(" · ")}</dd>
-            </div>
-            <div>
-              <dt>Paid by</dt>
-              <dd>
-                {METHODS[payment.method]}
-                {payment.reference ? ` (${payment.reference})` : ""}
-              </dd>
-            </div>
-          </dl>
+            <dl className="receipt-meta">
+              <div>
+                <dt>Receipt no.</dt>
+                <dd>{payment.receipt_no}</dd>
+              </div>
+              <div>
+                <dt>Date</dt>
+                <dd>{fmt(payment.paid_on)}</dd>
+              </div>
+              <div>
+                <dt>Student</dt>
+                <dd>{person.name}</dd>
+              </div>
+              <div>
+                <dt>{idLabel}</dt>
+                <dd>{person.admission_no}</dd>
+              </div>
+              <div>
+                <dt>Class</dt>
+                <dd>{[gradeLabel(person.class), person.section].filter(Boolean).join(" · ")}</dd>
+              </div>
+              <div>
+                <dt>Paid by</dt>
+                <dd>
+                  {METHODS[payment.method]}
+                  {payment.reference ? ` (${payment.reference})` : ""}
+                </dd>
+              </div>
+            </dl>
 
-          <table className="receipt-lines">
-            <thead>
-              <tr>
-                <th>Towards</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l) => (
-                <tr key={l.invoice_id}>
-                  <td>{l.due ? `${l.due.head_name ?? "Fee"} · ${l.due.label}` : "Fee"}</td>
-                  <td>{rupees(l.amount)}</td>
-                </tr>
-              ))}
-              {credit > 0.009 && (
+            <table className="receipt-lines">
+              <thead>
                 <tr>
-                  <td>Advance (kept as credit)</td>
-                  <td>{rupees(credit)}</td>
+                  <th>Towards</th>
+                  <th>Amount</th>
                 </tr>
-              )}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th>Total received</th>
-                <th>{rupees(payment.amount)}</th>
-              </tr>
-            </tfoot>
-          </table>
+              </thead>
+              <tbody>
+                {lines.map((l) => (
+                  <tr key={l.invoice_id}>
+                    <td>{l.due ? `${l.due.head_name ?? "Fee"} · ${l.due.label}` : "Fee"}</td>
+                    <td>{rupees(l.amount)}</td>
+                  </tr>
+                ))}
+                {credit > 0.009 && (
+                  <tr>
+                    <td>Advance (kept as credit)</td>
+                    <td>{rupees(credit)}</td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Total received</th>
+                  <th>{rupees(payment.amount)}</th>
+                </tr>
+              </tfoot>
+            </table>
 
-          <p className="receipt-words">{amountInWords(payment.amount)}</p>
-          {payment.note && <p className="receipt-note">Note: {payment.note}</p>}
+            <p className="receipt-words">{amountInWords(payment.amount)}</p>
+            {payment.note && <p className="receipt-note">Note: {payment.note}</p>}
 
-          <footer className="receipt-foot">
-            <span>Received by {payment.collected_by || payment.received_by || "school office"}</span>
-            <span>Generated by Godview</span>
-          </footer>
-        </article>
+            <footer className="receipt-foot">
+              <span>Received by {payment.collected_by || payment.received_by || "school office"}</span>
+              <span>Generated by Godview</span>
+            </footer>
+          </article>
+          ))}
+        </div>
       </section>
     </div>,
     document.body
