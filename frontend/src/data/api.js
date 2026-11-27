@@ -921,8 +921,9 @@ export async function paymentsSince(schoolId, day) {
   return all(() => supabase.from("fee_payments").select("amount, paid_on").eq("school_id", schoolId).eq("status", "success").gte("paid_on", day));
 }
 
-export async function cancelPayment(id) {
-  must(await supabase.rpc("cancel_payment", { payment: id, p_device: deviceInfo() }));
+// A remark (why) is required; the database refuses one without: "cancel-reason".
+export async function cancelPayment(id, reason) {
+  must(await supabase.rpc("cancel_payment", { payment: id, p_reason: reason?.trim() || null, p_device: deviceInfo() }));
 }
 
 // Open transport dues for a session (the Fees overview's Transport figures):
@@ -1156,6 +1157,40 @@ export async function addPlan(schoolId, { name, months, due_day }) {
 
 export async function deletePlan(id) {
   must(await supabase.from("fee_plans").delete().eq("id", id));
+}
+
+// A student's own payment plan for a session (null: as the fee structure).
+export async function studentFeePlan(studentId, sessionId) {
+  const rows = must(await supabase.from("student_enrolments").select("fee_plan_id").eq("student_id", studentId).eq("session_id", sessionId).limit(1));
+  return rows[0]?.fee_plan_id ?? null;
+}
+
+// Sets it; dues already made for recurring fees are regrouped into the new
+// plan (paid ones and concessions stay; the year's total doesn't change).
+export async function setStudentFeePlan(studentId, sessionId, planId) {
+  return must(await supabase.rpc("set_student_fee_plan", { p_student: studentId, p_session: sessionId, p_plan: planId || null }));
+}
+
+// Admins' fee structure changes waiting for the owner (newest first).
+export async function listFeeStructureRequests(sessionId) {
+  return must(
+    await supabase.from("fee_structure_requests").select("*").eq("session_id", sessionId).eq("status", "pending").order("requested_at", { ascending: false })
+  );
+}
+
+export async function countFeeStructureRequests(schoolId) {
+  const { count } = await supabase.from("fee_structure_requests").select("id", { count: "exact", head: true }).eq("school_id", schoolId).eq("status", "pending");
+  return count ?? 0;
+}
+
+// kind "save": payload is the fee card as saved; "remove": the whole fee.
+export async function requestFeeStructureChange(sessionId, headId, kind, name, payload) {
+  return must(await supabase.rpc("request_fee_structure_change", { p_session: sessionId, p_head: headId ?? null, p_kind: kind, p_name: name, p_payload: payload ?? {} }));
+}
+
+// status: "approved" / "rejected" (owner), "withdrawn" (whoever asked).
+export async function decideFeeStructureRequest(id, status, note) {
+  must(await supabase.rpc("decide_fee_structure_request", { p_id: id, p_status: status, p_note: note || null }));
 }
 
 // Sets one grade's (or one bus stop's) amount and instalment type for a fee

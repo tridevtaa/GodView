@@ -35,7 +35,7 @@ export const SECTION_OF = { homework: "academics", calendar: "planner", admissio
 // structure (App.jsx)
 // seesX: role permissions for each area (data/permissions.js); left out,
 // they follow the role as before.
-export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0, seesFees = isAdmin, seesAdmissions = leads, seesCertificates = isAdmin, seesTransport = isAdmin, seesStaff = leads, seesNotices = true }) {
+export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite, computerOnly = false, pendingCount = 0, seesFees = isAdmin, seesAdmissions = leads, seesCertificates = isAdmin, seesTransport = isAdmin, seesStaff = leads, seesNotices = true, editsFees = false, structureCount = 0 }) {
   return [
     { key: "home", label: "Home", icon: "home", words: "dashboard" },
     { key: "students", label: "Students", icon: "scholar", words: "active inactive" },
@@ -53,9 +53,13 @@ export function listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite,
               ]),
         ]
       : []),
+    // Fee structure: the owner, and admins who can edit fees (their changes
+    // wait for the owner). count: changes waiting for the owner.
+    ...((isOwner || editsFees) && !computerOnly
+      ? [{ key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans approval", count: isOwner ? structureCount : 0 }]
+      : []),
     ...(isOwner && !computerOnly
       ? [
-          { key: "structure", label: "Fee structure", icon: "settings", section: "fees", words: "heads plans" },
           { key: "payment-log", label: "Payment log", icon: "file", section: "fees", words: "audit who collected cancelled device ip receipt history" },
         ]
       : []),

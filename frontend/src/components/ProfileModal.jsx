@@ -833,6 +833,9 @@ export default function ProfileModal({ person, mode, initialTab = "details", sch
                 onUpdate(person.id, changes);
                 setEditing(false);
               }}
+              editsFees={isAdmin && perms.fees >= 2}
+              schoolId={schoolId ?? school?.id}
+              onFeesChanged={onFeesChanged}
             />
           ) : (
             <div className="profile-groups">

@@ -3,19 +3,23 @@ import {
   addFeeHead,
   addGrade,
   addPlan,
+  decideFeeStructureRequest,
   deleteGrade,
   generateInvoices,
   listFeeHeads,
+  listFeeStructureRequests,
   listPlans,
   listRoutes,
   listSchedule,
   removeFeeFromStructure,
   renameFeeHead,
+  requestFeeStructureChange,
   setGradeFee,
   updateGrade,
 } from "../data/api.js";
 import { rupees } from "../data/money.js";
 import Icon from "./Icon.jsx";
+import { useAuth } from "./AuthGate.jsx";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const SESSION_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
@@ -24,6 +28,7 @@ const OLD_PER_YEAR = { monthly: 12, quarterly: 4, half_yearly: 2, annual: 1, one
 // Always offered, even before the school's own list has loaded.
 const STANDARD_PLANS = [
   { name: "Monthly", months: SESSION_ORDER, is_standard: true },
+  { name: "Quarterly", months: [4, 7, 10, 1], is_standard: true },
   { name: "Bi-annually", months: [4, 10], is_standard: true },
   { name: "One time", months: [4], is_standard: true },
 ];
@@ -56,10 +61,34 @@ const earlyText = (p) =>
 const monthsText = (months) =>
   months.length === 12 ? "Apr to Mar" : SESSION_ORDER.filter((m) => months.includes(m)).map((m) => MONTHS[m - 1]).join(", ");
 const timesText = (n) => (n === 1 ? "once a year" : `${n} times a year`);
+// A fee card as plain data, for an admin's change waiting for the owner.
+// Approving passes it back to saveFee unchanged.
+const cardPayload = ({ name, plan, rows, byStop, stopRows }) => ({
+  name: name.trim(),
+  plan,
+  byStop,
+  rows: rows.map((r) => ({
+    key: r.key,
+    grade: r.grade ? { id: r.grade.id ?? null, code: r.grade.code, label: r.grade.label, sort: r.grade.sort ?? 0 } : null,
+    label: r.label,
+    amount: r.amount,
+    streams: r.streams ?? null,
+    other: Boolean(r.other),
+    hidden: Boolean(r.hidden),
+  })),
+  stopRows: stopRows.map((r) => ({ key: r.key, stopId: r.stopId, label: r.label, amount: r.amount, route: { id: r.route.id, name: r.route.name } })),
+});
 
-// Owner: one card per fee. Each card lists the grades with their amount and
-// one frequency for the fee. + adds a fee; Save writes the card.
-export default function FeeStructure({ school, session, grades, onGradesChanged, students, onChanged }) {
+// One card per fee. Each card lists the grades with their amount and one
+// frequency for the fee. + adds a fee; Save writes the card.
+// approver (the owner): saves straight away, and approves admins' changes.
+// Others who can edit fees (admins): Save sends the card to the owner, who
+// sees what it would change; it's applied only when they approve.
+// onRequestsChanged: the waiting count changed (the owner's badge).
+export default function FeeStructure({ school, session, grades, onGradesChanged, students, onChanged, approver = true, onRequestsChanged }) {
+  const { user } = useAuth();
+  const [requests, setRequests] = useState([]);
+  const [deciding, setDeciding] = useState(null); // request id
   const [heads, setHeads] = useState([]);
   const [savedPlans, setSavedPlans] = useState([]);
   const [schedule, setSchedule] = useState([]);
@@ -83,6 +112,8 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
       setSchedule(s);
       setRoutes(r);
       setError("");
+      // Before the database has requests, there are none
+      listFeeStructureRequests(session.id).then(setRequests, () => setRequests([]));
     } catch (err) {
       setError(
         err?.code === "PGRST205"
@@ -160,9 +191,23 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   }
 
   // Writes one card: fee name, frequency, and amounts by grade or by stop.
-  async function saveFee(head, { name, plan, rows, byStop, stopRows }) {
+  // Not the owner: sends it for approval instead.
+  async function saveFee(head, card) {
+    const { name, plan, rows, byStop, stopRows } = card;
     setError("");
     setNotice("");
+    if (!approver) {
+      try {
+        await requestFeeStructureChange(session.id, head?.id, "save", name.trim(), cardPayload(card));
+        await load();
+        onRequestsChanged?.();
+        setNotice(`${name.trim()}: sent to the owner for approval.`);
+        return true;
+      } catch {
+        setError("Couldn’t send that change. Check your connection and try again.");
+        return false;
+      }
+    }
     let gradesChanged = false;
     try {
       const planId = savedPlans.find((p) => p.name === plan)?.id;
@@ -232,12 +277,80 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   }
 
   async function removeFee(head) {
+    setError("");
+    setNotice("");
     try {
-      await removeFeeFromStructure(session.id, head.id);
+      if (!approver) {
+        await requestFeeStructureChange(session.id, head.id, "remove", head.name, {});
+        onRequestsChanged?.();
+        setNotice(`Removing ${head.name}: sent to the owner for approval.`);
+      } else await removeFeeFromStructure(session.id, head.id);
       await load();
+      return true;
     } catch {
-      setError("Couldn’t remove that fee.");
+      setError(approver ? "Couldn’t remove that fee." : "Couldn’t send that change. Try again.");
+      return false;
     }
+  }
+
+  // The owner: apply an admin's change exactly as if they'd saved it, then
+  // mark it approved. Or turn it down. Whoever asked can withdraw it.
+  async function decide(req, status) {
+    setDeciding(req.id);
+    setError("");
+    setNotice("");
+    try {
+      if (status === "approved") {
+        const head = heads.find((h) => h.id === req.head_id) ?? heads.find((h) => h.name.toLowerCase() === req.fee_name.toLowerCase()) ?? null;
+        const ok = req.kind === "remove" ? !head || (await removeFee(head)) : await saveFee(head, structuredClone(req.payload));
+        if (!ok) return;
+      }
+      await decideFeeStructureRequest(req.id, status);
+      await load();
+      onRequestsChanged?.();
+      setNotice(
+        status === "approved" ? `Approved: ${req.fee_name} is updated.` : status === "rejected" ? `Turned down the change to ${req.fee_name}.` : "Change withdrawn."
+      );
+    } catch {
+      setError("Couldn’t do that. Check your connection and try again.");
+    } finally {
+      setDeciding(null);
+    }
+  }
+
+  // What a waiting change would do, against the structure as it is now.
+  function describe(req) {
+    if (req.kind === "remove") return ["Remove this fee for all grades"];
+    const p = req.payload ?? {};
+    const head = heads.find((h) => h.id === req.head_id);
+    const lines = head ? schedule.filter((l) => l.head_id === head.id) : [];
+    const curByStop = lines.some((l) => l.stop_id);
+    const curPlan = planName(lines.find((l) => l.plan_id)?.plan_id);
+    const money = (n) => (n > 0 ? rupees(n) : "none");
+    const out = [];
+    if (!head) out.push(`New fee, ${p.plan}`);
+    else {
+      if (p.name && p.name !== head.name) out.push(`Name: ${head.name} → ${p.name}`);
+      if (curPlan && p.plan && curPlan !== p.plan) out.push(`Frequency: ${curPlan} → ${p.plan}`);
+      if (lines.length && curByStop !== Boolean(p.byStop)) out.push(p.byStop ? "Charged by bus stop instead of grade" : "Charged by grade instead of bus stop");
+    }
+    if (p.byStop) {
+      for (const r of p.stopRows ?? []) {
+        const was = Number(lines.find((l) => l.stop_id === r.stopId)?.amount) || 0;
+        const now = Number(r.amount) || 0;
+        if (was !== now) out.push(`${r.label} (${r.route?.name ?? "stop"}): ${money(was)} → ${money(now)}`);
+      }
+    } else {
+      for (const r of p.rows ?? []) {
+        const label = (r.label || r.grade?.label || "").trim();
+        if (r.grade?.label && label && label !== r.grade.label) out.push(`Grade name: ${r.grade.label} → ${label}`);
+        const code = r.grade?.code ?? label;
+        const was = Number(lines.find((l) => !l.stop_id && l.class === code && sameStreams(l.streams, r.streams))?.amount) || 0;
+        const now = r.hidden ? 0 : Number(r.amount) || 0;
+        if (was !== now) out.push(`${label}${r.streams ? ` (${r.streams.join(" / ")})` : r.other ? " (other streams)" : ""}: ${money(was)} → ${money(now)}`);
+      }
+    }
+    return out.length ? out : ["No change from the structure as it is now"];
   }
 
   async function removeGrade(grade) {
@@ -264,12 +377,80 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
     }
   }
 
-  const cardProps = { grades: gradeList, plans, counts, streamsByGrade, routes, riders, onRemoveGrade: removeGrade, onAddFrequency: addFrequency };
+  // Admins can't remove grades or add frequency types (the owner's)
+  const cardProps = {
+    grades: gradeList,
+    plans,
+    counts,
+    streamsByGrade,
+    routes,
+    riders,
+    onRemoveGrade: approver ? removeGrade : null,
+    onAddFrequency: approver ? addFrequency : null,
+    requestMode: !approver,
+  };
+  const waitingFor = new Set(requests.map((r) => r.head_id).filter(Boolean));
 
   return (
     <>
       {error && <p className="notice notice-error">{error}</p>}
       {notice && <p className="notice notice-success">{notice}</p>}
+
+      {!approver && (
+        <p className="callout fsr-note">Changes you save here go to the school owner. They apply once the owner approves them.</p>
+      )}
+
+      {requests.length > 0 && (
+        <section className="panel fsr">
+          <div className="panel-title">
+            <h2>
+              {approver ? "Changes waiting for your approval" : "Waiting for the owner"} <span className="badge badge-warning">{requests.length}</span>
+            </h2>
+          </div>
+          <ul className="fsr-list">
+            {requests.map((req) => {
+              const changes = describe(req);
+              const mine = req.requested_by && user?.email && req.requested_by.toLowerCase() === user.email.toLowerCase();
+              return (
+                <li key={req.id} className="fsr-item">
+                  <div className="fsr-main">
+                    <strong>
+                      {req.kind === "remove" ? `Remove ${req.fee_name}` : req.fee_name}
+                    </strong>
+                    <span className="row-sub">
+                      {req.requested_by ?? "Someone"} ·{" "}
+                      {new Date(req.requested_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                    </span>
+                    <ul className="fsr-changes">
+                      {changes.slice(0, 8).map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                      {changes.length > 8 && <li className="row-sub">and {changes.length - 8} more</li>}
+                    </ul>
+                  </div>
+                  <div className="fsr-actions">
+                    {approver && (
+                      <>
+                        <button className="btn btn-primary btn-sm" disabled={deciding === req.id} onClick={() => decide(req, "approved")}>
+                          {deciding === req.id ? "Applying…" : "Approve"}
+                        </button>
+                        <button className="btn btn-secondary btn-sm" disabled={deciding === req.id} onClick={() => decide(req, "rejected")}>
+                          Turn down
+                        </button>
+                      </>
+                    )}
+                    {!approver && mine && (
+                      <button className="link-btn" disabled={deciding === req.id} onClick={() => decide(req, "withdrawn")}>
+                        Withdraw
+                      </button>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <button className="fc-add" onClick={() => setDrafts((d) => [Date.now(), ...d])}>
         <span className="fc-add-icon">
@@ -300,6 +481,7 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
             head={h}
             lines={lines}
             savedPlan={planName(lines.find((l) => l.plan_id)?.plan_id)}
+            waiting={waitingFor.has(h.id)}
             onSave={(v) => saveFee(h, v)}
             onRemove={() => removeFee(h)}
           />
@@ -330,7 +512,8 @@ export default function FeeStructure({ school, session, grades, onGradesChanged,
   );
 }
 
-function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, streamsByGrade, routes, riders, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency }) {
+// requestMode: Save sends it to the owner. waiting: a change to it is waiting.
+function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, streamsByGrade, routes, riders, onSave, onCancel, onRemove, onRemoveGrade, onAddFrequency, requestMode = false, waiting = false }) {
   const lines = useMemo(() => allLines.filter((l) => !l.stop_id), [allLines]);
   const savedByStop = allLines.some((l) => l.stop_id);
   const startStopRows = useCallback(
@@ -448,6 +631,7 @@ function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, stre
       <button type="button" className="fc fc-mini" onClick={() => setOpen(true)} aria-expanded="false">
         <span className="fc-mini-main">
           <strong className="fc-mini-name">{name}</strong>
+          {waiting && <span className="badge badge-warning">Change waiting</span>}
           <span className="freq-btn fc-mini-freq">
             {plan}
             <span className="freq-times">{times}×</span>
@@ -509,9 +693,9 @@ function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, stre
           {head &&
             (asking ? (
               <span className="ft-confirm">
-                <span>Remove {head.name} for all grades?</span>
-                <button type="button" className="link-btn link-danger" onClick={onRemove}>
-                  Remove
+                <span>{requestMode ? `Ask the owner to remove ${head.name}?` : `Remove ${head.name} for all grades?`}</span>
+                <button type="button" className="link-btn link-danger" onClick={async () => (await onRemove()) && setAsking(false)}>
+                  {requestMode ? "Send" : "Remove"}
                 </button>
                 <button type="button" className="link-btn" onClick={() => setAsking(false)}>
                   Keep
@@ -631,7 +815,7 @@ function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, stre
                     Split by stream
                   </button>
                 )}
-                {!byStream && r.grade?.id && students === 0 && (
+                {!byStream && r.grade?.id && students === 0 && onRemoveGrade && (
                   <button type="button" className="ft-x" title={`Remove ${r.grade.label} from the school`} aria-label={`Remove ${r.grade.label} from the school`} onClick={() => onRemoveGrade(r.grade)}>
                     <Icon name="x" size={12} />
                   </button>
@@ -674,7 +858,7 @@ function FeeCard({ head, lines: allLines, savedPlan, grades, plans, counts, stre
             {yearTotal > 0 && ` · up to ${rupees(yearTotal)} a year`}
           </span>
           <button className="btn btn-primary" disabled={saving || !dirty || !name.trim()}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? (requestMode ? "Sending…" : "Saving…") : requestMode ? "Send for approval" : "Save"}
           </button>
         </span>
       </footer>
@@ -739,7 +923,7 @@ function FrequencyMenu({ plans, value, onChange, onAdd }) {
               {p.name === value && <Icon name="check" size={16} />}
             </button>
           ))}
-          {adding ? (
+          {!onAdd ? null : adding ? (
             <div className="freq-new">
               <input className="input" placeholder="Name, e.g. Quarterly" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} autoFocus />
               <span className="row-sub">Due in these months:</span>

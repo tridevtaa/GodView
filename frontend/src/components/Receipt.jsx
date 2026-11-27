@@ -25,7 +25,7 @@ export default function Receipt({ school, person, payment, dues, onClose, idLabe
   // Rendered straight into <body> so printing can drop the rest of the page.
   return createPortal(
     <div className="modal-backdrop receipt-backdrop" onClick={onClose}>
-      <section className="modal receipt-modal" onClick={(e) => e.stopPropagation()} aria-label="Fee receipt">
+      <section className="modal receipt-modal fee-receipt-modal" onClick={(e) => e.stopPropagation()} aria-label="Fee receipt">
         <div className="receipt-tools no-print">
           <button className="btn btn-primary btn-sm" onClick={() => window.print()}>
             <Icon name="file" />
@@ -36,6 +36,10 @@ export default function Receipt({ school, person, payment, dues, onClose, idLabe
             <Icon name="x" size={18} />
           </button>
         </div>
+
+        {payment.status === "cancelled" && payment.cancel_reason && (
+          <p className="notice notice-error no-print">Cancelled: {payment.cancel_reason}</p>
+        )}
 
         <article className="receipt">
           <header className="receipt-head">

@@ -17,7 +17,7 @@ import HomePage from "./components/HomePage.jsx";
 import ClassAllocationGate from "./components/ClassAllocationGate.jsx";
 import NoticeBoard from "./components/NoticeBoard.jsx";
 import CalendarPage from "./components/CalendarPage.jsx";
-import { attendanceOverview, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, monthDues, sessionResultPercents, staffInbox } from "./data/api.js";
+import { attendanceOverview, countFeeStructureRequests, countPendingRequests, listAssignments, listGrades, listRoutes, loadAttendance, monthDues, sessionResultPercents, staffInbox } from "./data/api.js";
 import StatCards from "./components/StatCards.jsx";
 import { useAuth } from "./components/AuthGate.jsx";
 import { usePeople } from "./data/usePeople.js";
@@ -164,6 +164,11 @@ export default function App() {
   // The assistant is Premium, for the people who see the whole school.
   const canAsk = leads && perms.assistant >= 1 && school.plan === "premium";
   const [pendingCount, setPendingCount] = useState(0);
+  // Owners: admins' fee structure changes waiting for approval
+  const [structureCount, setStructureCount] = useState(0);
+  const refreshStructureCount = useCallback(() => {
+    if (isOwner) countFeeStructureRequests(school.id).then(setStructureCount, () => {});
+  }, [isOwner, school.id]);
   // Inbox badge: conversations with unread parent messages or open requests.
   const [inboxCount, setInboxCount] = useState(0);
   // Badges refresh on opening, every minute, and when the app comes back to
@@ -172,6 +177,7 @@ export default function App() {
     const refresh = () => {
       if (document.visibilityState === "hidden") return;
       if (isOwner) countPendingRequests(school.id).then(setPendingCount, () => {});
+      refreshStructureCount();
       staffInbox(school.id).then(
         (rows) => setInboxCount(rows.filter((t) => Number(t.unread) > 0 || Number(t.open_requests) > 0).length),
         () => {}
@@ -184,7 +190,7 @@ export default function App() {
       clearInterval(t);
       stop();
     };
-  }, [isOwner, school.id]);
+  }, [isOwner, school.id, refreshStructureCount]);
   const { sessions, current: currentSession, reload: reloadSessions } = useSessions(school.id);
 
   // Warm the other screens' code in the background.
@@ -580,7 +586,7 @@ export default function App() {
       },
     ];
   })();
-  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite: writesResults, computerOnly, pendingCount, seesFees, seesAdmissions, seesCertificates, seesTransport, seesStaff, seesNotices: perms.notices >= 1 });
+  const screens = listScreens({ isAdmin, isOwner, leads, seesAttendance, canWrite: writesResults, computerOnly, pendingCount, seesFees, editsFees, structureCount, seesAdmissions, seesCertificates, seesTransport, seesStaff, seesNotices: perms.notices >= 1 });
   // The top bar has every section, so nothing is more than one row of tabs
   // away (data/screens.js). School settings are in the account menu.
   const sections = [
@@ -608,6 +614,25 @@ export default function App() {
   // { student } when one was tapped. feesAt nudges the Fees page to refresh.
   const [collect, setCollect] = useState(null);
   const [feesAt, setFeesAt] = useState(0);
+  // A student put on the bus (or moved stop) gets transport dues from the
+  // database at once, so fee figures reload after such a change.
+  const patchStudent = useCallback(
+    (id, fields) => {
+      // Saving a profile sends the whole person: only a real change counts
+      const was = people.find((p) => p.id === id);
+      const busChanged =
+        fields &&
+        (("uses_bus" in fields && Boolean(fields.uses_bus) !== Boolean(was?.uses_bus)) ||
+          ("bus_stop_id" in fields && (fields.bus_stop_id ?? null) !== (was?.bus_stop_id ?? null)));
+      patch(id, fields);
+      if (busChanged) {
+        forget("fees:");
+        setFeesAt(Date.now());
+        reload();
+      }
+    },
+    [patch, reload, people]
+  );
   // Past sessions, and people who can't see fees, don't get the fee filter
   useEffect(() => {
     if (viewOnly || !seesFees) setFeePick(null);
@@ -962,7 +987,7 @@ export default function App() {
             isAdmin={isAdmin}
             canEdit={canEdit}
             canWrite={canWrite}
-            onUpdate={patch}
+            onUpdate={patchStudent}
             isOwner={isOwner}
             onDeleted={(id) => {
               closeProfile();
@@ -1090,6 +1115,8 @@ export default function App() {
             students={current}
             routes={routes}
             onChanged={reload}
+            editsFees={editsFees}
+            onStructureRequests={refreshStructureCount}
           />
         ) : mode === "transport" && seesTransport ? (
           <>
@@ -1140,7 +1167,7 @@ export default function App() {
             <Suspense fallback={<div className="card card-skeleton tr-map-skeleton" />}>
               <StudentMap school={school} students={current} allStudents={current} canEdit={canEdit && perms.transport >= 2} onOpenStudent={(id) => openStudent(id)} compact onExpand={() => setView("map")} />
             </Suspense>
-            <TransportRoutes readOnly={perms.transport < 2} school={school} routes={routes} students={current} onOpenStudent={(id) => openStudent(id)} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => ids.forEach((id) => patch(id, fields))} />
+            <TransportRoutes readOnly={perms.transport < 2} school={school} routes={routes} students={current} onOpenStudent={(id) => openStudent(id)} onChanged={loadRoutes} onStudentsChanged={(ids, fields) => (ids.slice(1).forEach((id) => patch(id, fields)), ids.length && patchStudent(ids[0], fields))} />
             {view === "map" && (
               <div className="map-full" role="dialog" aria-modal="true" aria-label="Map">
                 <button className="map-full-close" onClick={() => setView("routes")} aria-label="Close map" title="Close">
@@ -1391,7 +1418,7 @@ export default function App() {
           isAdmin={isAdmin}
           canEdit={canEdit}
           canWrite={canWrite}
-          onUpdate={patch}
+          onUpdate={patchStudent}
           isOwner={isOwner}
           onDeleted={(id) => {
             closeProfile();

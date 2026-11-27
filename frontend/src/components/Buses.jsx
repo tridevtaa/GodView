@@ -61,19 +61,19 @@ export function BusList({ buses, routes, onEdit, onAdd }) {
         <div className="fc-title">
           <h2 className="bus-h">
             <Icon name="bus" size={20} />
-            Buses
+            Vehicles
           </h2>
           {buses.length > 0 && <span className="freq-btn fc-mini-freq">{buses.length}</span>}
         </div>
         {onAdd && (
           <button className="btn btn-secondary btn-sm" onClick={onAdd}>
             <Icon name="plus" />
-            Add bus
+            Add vehicle
           </button>
         )}
       </header>
       {buses.length === 0 ? (
-        <p className="row-sub bus-empty">Add each bus with its driver and the dates its papers run out. Then pick a bus for each route.</p>
+        <p className="row-sub bus-empty">The school’s buses and vans: number plate, seats, driver and the dates their papers run out. Add them, then give each route its vehicle.</p>
       ) : (
         <div className="bus-grid">
           {buses.map((b) => {
@@ -238,10 +238,10 @@ export function BusForm({ school, bus, buses, routes, onClose, onSaved }) {
 
   return (
     <div className="modal-backdrop" onClick={() => !saving && onClose()}>
-      <section className="modal bus-modal" role="dialog" aria-modal="true" aria-label={bus ? "Edit bus" : "Add bus"} onClick={(e) => e.stopPropagation()}>
+      <section className="modal bus-modal" role="dialog" aria-modal="true" aria-label={bus ? "Edit vehicle" : "Add vehicle"} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>
-            <Icon name="bus" /> {bus ? plate(bus.number) : "Add bus"}
+            <Icon name="bus" /> {bus ? plate(bus.number) : "Add vehicle"}
           </h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">
             <Icon name="x" size={18} />
@@ -362,7 +362,7 @@ export function BusForm({ school, bus, buses, routes, onClose, onSaved }) {
               )}
               {(bus || last) && (
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? "Saving…" : bus ? "Save" : "Add bus"}
+                  {saving ? "Saving…" : bus ? "Save" : "Add vehicle"}
                 </button>
               )}
             </span>

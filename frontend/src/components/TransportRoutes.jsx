@@ -72,6 +72,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
   const [buses, setBuses] = useState(() => peek(busesKey) ?? null);
   const [busesMissing, setBusesMissing] = useState(false);
   const [editing, setEditing] = useState(null); // a bus, or "new"
+  const [assignTo, setAssignTo] = useState(null); // route getting the new bus
   const loadBuses = () =>
     swr(busesKey, () => listBuses(school.id), setBuses, { persist: true }).catch((err) => {
       setBuses((b) => b ?? []);
@@ -90,7 +91,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
     routes.forEach((r) => {
       const b = busById.get(r.bus_id);
       const n = ridersOn(r);
-      if (buses?.length && !b) out.push({ level: "amber", text: `${r.name} has no bus` });
+      if (buses?.length && !b) out.push({ level: "amber", text: `${r.name} has no vehicle set` });
       if (b?.status === "repair") out.push({ level: "amber", text: `${r.name}: ${busLabel(b)} is in repair`, onClick: () => setEditing(b) });
       if (b?.seats && n > b.seats) out.push({ level: "red", text: `${r.name}: ${n} students, but ${busLabel(b)} has ${b.seats} seats` });
     });
@@ -165,10 +166,12 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
           bus={editing === "new" ? null : editing}
           buses={buses ?? []}
           routes={routes}
-          onClose={() => setEditing(null)}
-          onSaved={async (_, { routesChanged }) => {
+          onClose={() => (setEditing(null), setAssignTo(null))}
+          onSaved={async (saved, { routesChanged }) => {
             await loadBuses();
-            if (routesChanged) await onChanged();
+            // Added from a route's Bus menu: that route gets it
+            if (assignTo && saved?.id) await act(() => updateRoute(assignTo, { bus_id: saved.id }))();
+            else if (routesChanged) await onChanged();
           }}
         />
       )}
@@ -191,7 +194,7 @@ export default function TransportRoutes({ school, routes, students, onChanged, o
       </form>}
 
       {routes.map((r) => (
-        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={readOnly ? () => {} : setEditing} readOnly={readOnly} onOpenStudent={onOpenStudent} />
+        <RouteCard key={r.id} school={school} route={r} riders={riders} act={act} areas={areas} usedOn={usedOn} onOpenPicker={loadAreas} students={riderList} villageOf={villageOf} stopById={stopById} putOn={putOn} buses={busesMissing ? null : buses} bus={busById.get(r.bus_id)} total={ridersOn(r)} onEditBus={readOnly ? () => {} : setEditing} onAddBus={readOnly ? null : () => (setAssignTo(r.id), setEditing("new"))} readOnly={readOnly} onOpenStudent={onOpenStudent} />
       ))}
     </>
   );
@@ -205,7 +208,29 @@ const clock = (t) => {
   return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 };
 
-function RouteCard({ school, route: saved, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus, readOnly, onOpenStudent }) {
+// The bus (or + Add a bus, which comes back to this route), and the start
+// times, saved with their own Save button.
+function RouteCard({ school, route: saved, riders, act, areas, usedOn, onOpenPicker, students, villageOf, stopById, putOn, buses, bus, total, onEditBus, onAddBus, readOnly, onOpenStudent }) {
+  const [times, setTimes] = useState({ morning: hm(saved.morning_at), evening: hm(saved.evening_at) });
+  const [timesSaving, setTimesSaving] = useState(false);
+  const [timesSaved, setTimesSaved] = useState(false);
+  const timesDirty = times.morning !== hm(saved.morning_at) || times.evening !== hm(saved.evening_at);
+  // Pick up times saved elsewhere unless they're being edited
+  useEffect(() => {
+    if (!timesDirty) setTimes({ morning: hm(saved.morning_at), evening: hm(saved.evening_at) });
+  }, [saved.morning_at, saved.evening_at]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!timesSaved) return;
+    const t = setTimeout(() => setTimesSaved(false), 2500);
+    return () => clearTimeout(t);
+  }, [timesSaved]);
+  const saveTimes = async (e) => {
+    e?.preventDefault();
+    setTimesSaving(true);
+    const ok = await act(() => updateRoute(saved.id, { morning_at: times.morning || null, evening_at: times.evening || null }))();
+    setTimesSaving(false);
+    if (ok) setTimesSaved(true);
+  };
   const [adding, setAdding] = useState(false);
   const [filling, setFilling] = useState(null); // stop id getting students
   const [editingStop, setEditingStop] = useState(null); // stop id being edited
@@ -275,40 +300,71 @@ function RouteCard({ school, route: saved, riders, act, areas, usedOn, onOpenPic
       </header>
 
       {buses && (
-        <div className="tr-meta">
+        <form className="tr-meta" onSubmit={saveTimes}>
+          {/* The vehicle that runs this route (number plate, driver, seats).
+              None added yet: a button to add one, which comes back here. */}
+          {buses.length === 0 ? (
+            onAddBus && (
+              <div className="tr-meta-field">
+                <span>Vehicle</span>
+                <button type="button" className="btn btn-secondary tr-add-vehicle" onClick={onAddBus}>
+                  <Icon name="plus" size={16} />
+                  Add vehicle details
+                </button>
+              </div>
+            )
+          ) : (
+            <label className="tr-meta-field">
+              <span>Vehicle</span>
+              <select
+                value={route.bus_id ?? ""}
+                disabled={readOnly}
+                onChange={(e) =>
+                  e.target.value === "__new" ? onAddBus?.() : act(() => updateRoute(route.id, { bus_id: e.target.value || null }))()
+                }
+              >
+                <option value="">Not set</option>
+                {buses
+                  .filter((b) => b.status !== "retired" || b.id === route.bus_id)
+                  .map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {plate(b.number)}
+                      {b.name ? ` · ${b.name}` : ""}
+                      {b.status === "repair" ? " (in repair)" : ""}
+                    </option>
+                  ))}
+                {onAddBus && <option value="__new">+ Add another vehicle…</option>}
+              </select>
+            </label>
+          )}
           <label className="tr-meta-field">
-            <span>Bus</span>
-            <select value={route.bus_id ?? ""} onChange={(e) => act(() => updateRoute(route.id, { bus_id: e.target.value || null }))()}>
-              <option value="">{buses.length ? "Pick a bus" : "Add a bus first"}</option>
-              {buses
-                .filter((b) => b.status !== "retired" || b.id === route.bus_id)
-                .map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {plate(b.number)}
-                    {b.name ? ` · ${b.name}` : ""}
-                    {b.status === "repair" ? " (in repair)" : ""}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="tr-meta-field">
-            <span>Morning start</span>
-            <input
-              type="time"
-              key={route.morning_at ?? ""}
-              defaultValue={hm(route.morning_at)}
-              onBlur={(e) => e.target.value !== hm(route.morning_at) && act(() => updateRoute(route.id, { morning_at: e.target.value || null }))()}
-            />
+            <span>Morning pickup starts</span>
+            <input type="time" value={times.morning} disabled={readOnly} onChange={(e) => setTimes({ ...times, morning: e.target.value })} />
           </label>
           <label className="tr-meta-field">
             <span>Leaves school</span>
-            <input
-              type="time"
-              key={route.evening_at ?? ""}
-              defaultValue={hm(route.evening_at)}
-              onBlur={(e) => e.target.value !== hm(route.evening_at) && act(() => updateRoute(route.id, { evening_at: e.target.value || null }))()}
-            />
+            <input type="time" value={times.evening} disabled={readOnly} onChange={(e) => setTimes({ ...times, evening: e.target.value })} />
           </label>
+          {timesDirty && !readOnly && (
+            <span className="tr-meta-save">
+              <button type="submit" className="btn btn-primary btn-sm" disabled={timesSaving}>
+                {timesSaving ? "Saving…" : "Save timings"}
+              </button>
+              <button
+                type="button"
+                className="link-btn"
+                disabled={timesSaving}
+                onClick={() => setTimes({ morning: hm(saved.morning_at), evening: hm(saved.evening_at) })}
+              >
+                Cancel
+              </button>
+            </span>
+          )}
+          {timesSaved && !timesDirty && (
+            <span className="tr-meta-saved row-sub">
+              <Icon name="check" size={14} /> Timings saved
+            </span>
+          )}
           {bus && (
             <span className="tr-meta-crew">
               {bus.driver_name ? (
@@ -331,7 +387,7 @@ function RouteCard({ school, route: saved, riders, act, areas, usedOn, onOpenPic
               )}
             </span>
           )}
-        </div>
+        </form>
       )}
       {(bus?.status === "repair" || full || outOfOrder) && (
         <p className="tr-warn">

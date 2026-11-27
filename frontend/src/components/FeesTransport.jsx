@@ -44,18 +44,38 @@ export function useTransportPending(school, session, students, refreshAt = 0) {
   }, [rows, students]);
 }
 
-// The Fees overview's Transport section: totals by route, then everyone who
+// The Fees overview's Transport tab: totals by route, then everyone who
 // owes transport, with Collect. Due now first; "All pending" adds what's due
 // later.
-export default function FeesTransport({ pending, routes, onOpenStudent, onCollect }) {
-  const [scope, setScope] = useState("now"); // "now" | "all"
-  const [routeId, setRouteId] = useState(null);
-  const stopOf = useMemo(() => new Map(routes.flatMap((r) => r.stops.map((s) => [s.id, { route: r, stop: s }]))), [routes]);
-  if (!pending || !pending.list.length) return null;
-
+// Who the Transport tab lists (and its Export downloads): in scope ("now" or
+// "all"), on the picked route, late first then most owed. Also the route
+// totals for the route buttons.
+export function transportShownRows(pending, routes, scope, routeId) {
+  const stopOf = new Map(routes.flatMap((r) => r.stops.map((s) => [s.id, { route: r, stop: s }])));
   const amount = (t) => (scope === "now" ? t.now : t.now + t.later);
-  const inScope = pending.list.filter((t) => amount(t) > 0);
+  const inScope = (pending?.list ?? []).filter((t) => amount(t) > 0);
   const routeKey = (t) => stopOf.get(t.student.bus_stop_id)?.route.id ?? "none";
+  const shown = inScope
+    .filter((t) => !routeId || routeKey(t) === routeId)
+    .sort((a, b) => Number(b.late) - Number(a.late) || amount(b) - amount(a));
+  return { stopOf, amount, inScope, routeKey, shown };
+}
+
+// filtered: the Overview's Filter is on (so an empty list says so).
+// scope/onScope ("now" | "all") and routeId/onRoute live on the page, so its
+// Export downloads exactly this list.
+export default function FeesTransport({ pending, routes, filtered = false, scope, onScope: setScope, routeId, onRoute: setRouteId, onOpenStudent, onCollect }) {
+  if (!pending || !pending.list.length)
+    return (
+      <section className="panel ftp" id="fees-transport">
+        <div className="panel-title">
+          <h2>Transport fees pending</h2>
+        </div>
+        <p className="row-sub panel-empty">{!pending ? "Loading…" : filtered ? "Nobody matches the filter." : "No transport fees pending. 🎉"}</p>
+      </section>
+    );
+
+  const { stopOf, amount, inScope, routeKey, shown } = transportShownRows(pending, routes, scope, routeId);
   const byRoute = new Map();
   for (const t of inScope) {
     const k = routeKey(t);
@@ -65,9 +85,6 @@ export default function FeesTransport({ pending, routes, onOpenStudent, onCollec
     byRoute.set(k, g);
   }
   const groups = [...byRoute.values()].sort((a, b) => (a.id === "none") - (b.id === "none") || a.name.localeCompare(b.name, undefined, { numeric: true }));
-  const shown = inScope
-    .filter((t) => !routeId || routeKey(t) === routeId)
-    .sort((a, b) => Number(b.late) - Number(a.late) || amount(b) - amount(a));
   const total = shown.reduce((s, t) => s + amount(t), 0);
 
   return (
