@@ -68,8 +68,9 @@ export default function HomePage({ school, role, students, loading, session, tod
 
   // Numbers
   const active = students.filter((p) => (p.status || "active") === "active");
-  const due = students.reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
-  const overdue = students.filter((p) => p.fee_status === "overdue").length;
+  // Fees count active students only, not inactive ones or those who left
+  const due = active.reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
+  const overdue = active.filter((p) => p.fee_status === "overdue").length;
   const monthIn = feeTrend?.chart?.cur?.at(-1);
   const left = today?.notMarked ?? 0;
   const tomorrow = iso(new Date(Date.now() + 864e5));
@@ -153,7 +154,7 @@ export default function HomePage({ school, role, students, loading, session, tod
     .sort((a, b) => b.count - a.count);
   const gapTotal = gapRows.reduce((t, r) => t + r.count, 0);
   const byId = new Map(students.map((p) => [p.id, p]));
-  const overdueAmt = students.filter((p) => p.fee_status === "overdue").reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
+  const overdueAmt = active.filter((p) => p.fee_status === "overdue").reduce((t, p) => t + Math.max(0, Number(p.fee_due) || 0), 0);
   const waiting = (threads ?? []).filter((t) => Number(t.open_requests) > 0);
   const hwTomorrow = (homework ?? []).filter((h) => h.due_date === tomorrow);
   const todo = [
